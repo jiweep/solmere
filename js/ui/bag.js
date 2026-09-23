@@ -1,0 +1,297 @@
+'use strict';
+// ============================================================================
+//  Bag: pockets, item details, field use, battle use, give, register
+// ============================================================================
+G.itemIconFor = id => { const it = G.ITEMS[id]; return G.tiles.itemIcon(it ? it.icon || 'gem' : 'gem', it ? it.ic || '#999' : '#999'); };
+G.BagScene = class {
+  constructor(o, res) {
+    this.o = o; this.res = res; this.opaque = true; this.t = 0;
+    this.pockets = G.POCKETS.filter(p => {
+      if (o.mode === 'battle') return ['med', 'orb', 'battle', 'berry'].includes(p.id);
+      if (o.mode === 'give') return ['hold', 'berry', 'misc', 'med'].includes(p.id);
+      if (o.mode === 'sell') return p.id !== 'key';
+      return true;
+    });
+    this.p = G.bagMemory && this.pockets.findIndex(p => p.id === G.bagMemory.p) >= 0 ? this.pockets.findIndex(p => p.id === G.bagMemory.p) : 0;
+    if (o.mode === 'battle' && o.wild === false && this.pockets[this.p].id === 'orb') this.p = 0;
+    this.i = 0; this.scroll = 0; this.sub = null; this.msg = null;
+  }
+  list() {
+    const p = this.pockets[this.p].id;
+    let l = G.bag.list(p);
+    if (this.o.mode === 'give') l = l.filter(id => G.ITEMS[id].holdable);
+    if (this.o.mode === 'sell') l = l.filter(id => G.ITEMS[id].price > 0);
+    return l;
+  }
+  close(v) { G.bagMemory = { p: this.pockets[this.p].id }; G.pop(this); this.res(v); }
+  update(top) {
+    this.t++; if (!top) return;
+    if (this.sub) { const r = this.sub.update(true); if (r) { const s = this.sub; this.sub = null; if (!r.cancel) G.run(() => this.onSub(s.items[r.pick].id)); } return; }
+    const I = G.input, L = this.list();
+    if (I.repeat('left') || I.pressed('l')) { this.p = (this.p + this.pockets.length - 1) % this.pockets.length; this.i = 0; this.scroll = 0; G.audio && G.audio.sfx('page'); }
+    if (I.repeat('right') || I.pressed('r')) { this.p = (this.p + 1) % this.pockets.length; this.i = 0; this.scroll = 0; G.audio && G.audio.sfx('page'); }
+    const n = L.length + 1;
+    if (I.repeat('up')) { this.i = (this.i + n - 1) % n; G.audio && G.audio.sfx('cursor'); }
+    if (I.repeat('down')) { this.i = (this.i + 1) % n; G.audio && G.audio.sfx('cursor'); }
+    if (this.i < this.scroll) this.scroll = this.i; if (this.i >= this.scroll + 10) this.scroll = this.i - 9;
+    if (I.pressed('b')) { I.consume('b'); G.audio && G.audio.sfx('back'); this.close(null); return; }
+    if (I.pressed('a')) {
+      I.consume('a');
+      if (this.i >= L.length) { G.audio && G.audio.sfx('back'); this.close(null); return; }
+      G.audio && G.audio.sfx('select');
+      G.run(() => this.pick(L[this.i]));
+    }
+  }
+  async pick(id) {
+    const it = G.ITEMS[id], mode = this.o.mode;
+    if (mode === 'give') { this.close({ item: id }); return; }
+    if (mode === 'sell') { this.close({ item: id }); return; }
+    if (mode === 'battle') { await this.battleUse(id); return; }
+    const items = [];
+    if (G.itemFieldUsable(id)) items.push({ id: 'use', label: it.pocket === 'tm' ? 'Teach' : 'Use' });
+    if (it.holdable) items.push({ id: 'give', label: 'Give' });
+    if (it.pocket === 'key' && it.field) items.push({ id: 'reg', label: G.save.reg === id ? 'Deselect' : 'Register' });
+    if (it.pocket !== 'key' && it.pocket !== 'tm') items.push({ id: 'toss', label: 'Toss' });
+    items.push({ id: 'cancel', label: 'Cancel' });
+    this.sub = new G.ListMenu(items, { x: 150, y: 120 - items.length * 6, w: 70, cancel: items.length - 1 }); this.sub.items = items; this.subItem = id;
+  }
+  async onSub(act) {
+    const id = this.subItem, it = G.ITEMS[id];
+    if (act === 'cancel') return;
+    if (act === 'toss') {
+      const n = await G.askNumber({ min: 1, max: G.bag.count(id), start: 1, text: `Toss how many ${it.name}?` });
+      if (n > 0 && await G.yesno(`Throw away ${n} ${it.name}?`)) { G.bag.remove(id, n); G.audio && G.audio.sfx('toss'); }
+      this.i = Math.min(this.i, this.list().length); return;
+    }
+    if (act === 'reg') { G.save.reg = G.save.reg === id ? null : id; G.toast(G.save.reg ? `${it.name} registered to F` : 'Unregistered'); return; }
+    if (act === 'give') {
+      const k = await G.openParty({ mode: 'select', prompt: `Give the ${it.name} to which mon?` });
+      if (k === null || k < 0) return;
+      const m = G.save.party[k];
+      if (m.item) { if (!await G.yesno(`${G.mon.name(m)} is already holding a ${G.ITEMS[m.item].name}. Swap it for the ${it.name}?`)) return; G.bag.add(m.item); }
+      G.bag.remove(id); m.item = id; await G.say(`${G.mon.name(m)} is now holding the ${it.name}.`); return;
+    }
+    if (act === 'use') { const closeAfter = await G.useItemField(id, this); if (closeAfter) this.close(null); this.i = Math.min(this.i, this.list().length); }
+  }
+  async battleUse(id) {
+    const it = G.ITEMS[id];
+    if (it.ball) {
+      if (this.o.wild === false) { this.close({ item: id }); return; }
+      if (G.save.party.length >= 6 && G.save.boxes.every(b => b.length >= 30)) { await G.say('There\'s no room left for another mon!'); return; }
+      this.close({ item: id }); return;
+    }
+    if (it.xstat || it.flee) { this.close({ item: id, target: undefined }); return; }
+    if (it.pocket === 'med' || it.pocket === 'berry') {
+      if (it.level || it.ev || it.ppup || it.evreset || it.expc) { await G.say('That can\'t be used in battle.'); return; }
+      const k = await G.openParty({
+        mode: 'select', prompt: `Use the ${it.name} on which mon?`,
+        filter: m => G.itemUsefulOn(id, m), filterMsg: 'It won\'t have any effect.', label: m => G.itemLabelFor(id, m),
+      });
+      if (k === null || k < 0) return;
+      let moveIdx;
+      if (it.pp && !it.ppAll) {
+        const m = G.save.party[k];
+        const j = await G.choose(m.moves.map(x => ({ label: G.MOVES[x.id].name, right: `${x.pp}/${G.mon.maxPP(x)}` })).concat([{ label: 'Cancel' }]), { x: 150, y: 60, w: 130, cancel: m.moves.length });
+        if (j < 0 || j >= m.moves.length) return; moveIdx = j;
+      }
+      this.close({ item: id, target: k, moveIdx });
+      return;
+    }
+    await G.say('That can\'t be used right now.');
+  }
+  draw(b) { G.menuBG(b, '#b87a3a', '#5a3418', this.t / 60); }
+  drawUI() {
+    const U = G.ui, P = this.pockets[this.p], L = this.list();
+    // pocket tabs
+    this.pockets.forEach((p, k) => {
+      const w = (G.W - 16) / this.pockets.length, x = 8 + k * w, sel = k === this.p;
+      U.panel(x + 1, 6 + (sel ? 0 : 2), w - 2, 16, sel ? 'select' : 'dark', { r: 4 });
+      U.text(p.name, x + w / 2, 10 + (sel ? 0 : 2), { size: 5.8, weight: 800, align: 'center', color: sel ? '#3a2800' : '#dde' });
+    });
+    U.text('◀ Q / E ▶', G.W - 12, 26, { size: 5, align: 'right', color: 'rgba(255,255,255,.6)' });
+    // list
+    U.panel(8, 30, 220, 180, 'light', { r: 6 });
+    const rows = L.slice(this.scroll, this.scroll + 10);
+    rows.forEach((id, k) => {
+      const i = k + this.scroll, y = 36 + k * 16.4, sel = this.i === i, it = G.ITEMS[id];
+      if (sel) { U.rrect(12, y - 1.5, 212, 15, 3); U.c.fillStyle = 'rgba(59,130,224,.16)'; U.c.fill(); U.cursor(14, y + 5.5); }
+      U.img(G.itemIconFor(id), 22, y - 1, { scale: .8 });
+      let label = it.name;
+      U.text(label, 38, y + 1.4, { size: 7, weight: 700 });
+      if (it.pocket === 'tm') { const mv = G.MOVES[it.tm]; U.typeBadge(mv.type, 168, y + 1, 26, 8, 4.6); }
+      if (it.pocket !== 'key' && it.pocket !== 'tm') U.text('×' + G.bag.count(id), 218, y + 1.6, { size: 6.6, weight: 800, align: 'right', color: '#5a6070' });
+      if (this.o.mode === 'sell') U.text('$' + it.sell, 190, y + 1.6, { size: 6, weight: 700, align: 'right', color: '#2aa86a' });
+      if (G.save.reg === id) U.text('F', 218, y + 1.6, { size: 6.6, weight: 900, align: 'right', color: '#e8484a' });
+    });
+    const cy = 36 + (L.length - this.scroll) * 16.4;
+    if (L.length - this.scroll < 10) { const sel = this.i >= L.length; if (sel) U.cursor(14, cy + 5.5); U.text('Close Bag', 38, cy + 1.4, { size: 7, weight: 700, color: '#8a90a0' }); }
+    if (!L.length) U.text('Nothing here yet.', 118, 110, { size: 7, color: '#9aa0aa', align: 'center' });
+    // detail
+    U.panel(234, 30, 142, 180, 'paper', { r: 6 });
+    const id = L[this.i];
+    if (id) {
+      const it = G.ITEMS[id];
+      U.img(G.itemIconFor(id), 280, 40, { scale: 3 });
+      U.text(it.name, 305, 92, { size: 7.6, weight: 800, align: 'center', color: '#4a3a20' });
+      G.ui.wrap(it.desc, 128, 6).slice(0, 8).forEach((l, k) => U.text(l, 242, 106 + k * 9, { size: 6, color: '#5a4a30' }));
+      if (it.pocket === 'tm') { const mv = G.MOVES[it.tm]; U.text(`${G.cap(mv.type)} · ${mv.cat === 'phys' ? 'Physical' : mv.cat === 'spec' ? 'Special' : 'Status'} · Pow ${mv.pow > 1 ? mv.pow : '—'} · Acc ${mv.acc === true ? '—' : mv.acc}`, 305, 190, { size: 5.2, align: 'center', color: '#6a5a40', weight: 700 }); }
+    } else U.text(this.o.mode === 'battle' ? 'Pick an item to use.' : 'Your trusty bag.', 305, 110, { size: 6.4, color: '#8a7550', align: 'center' });
+    U.text(`$${G.save.money.toLocaleString()}`, 370, 200, { size: 6.4, weight: 800, align: 'right', color: '#2aa86a' });
+    if (this.sub) this.sub.draw();
+  }
+};
+G.openBag = function (o = {}) { return new Promise(res => G.push(new G.BagScene(o, res))); };
+
+// ----------------------------------------------------------- item logic --
+G.itemFieldUsable = function (id) {
+  const it = G.ITEMS[id];
+  if (it.pocket === 'tm') return true;
+  if (it.pocket === 'med' || it.pocket === 'berry') return !!(it.heal || it.healPct || it.cure || it.revive || it.pp || it.level || it.ev || it.ppup || it.evreset || it.expc);
+  if (it.stone || it.mint || it.capsule || it.patch || it.cap || it.repel || it.escape) return true;
+  if (it.pocket === 'key') return ['bike', 'rod', 'prorod', 'wingwhistle', 'dex', 'journal', 'tideboard', 'resonanceband', 'expshare', 'vsrecorder', 'lantern', 'dowsing'].includes(id);
+  if (it.fossil) return false;
+  return false;
+};
+G.itemUsefulOn = function (id, m) {
+  const it = G.ITEMS[id]; if (!it) return false;
+  if (m.dead) return false;
+  const max = G.mon.maxHP(m);
+  if (it.revive) return m.hp <= 0;
+  if (m.hp <= 0) return false;
+  if ((it.heal || it.healPct) && m.hp < max) return true;
+  if (it.cure && m.status && (it.cure === 'all' || it.cure.includes(m.status))) return true;
+  if (it.pp) return m.moves.some(x => x.pp < G.mon.maxPP(x));
+  if (it.level) return m.lvl < 100;
+  if (it.expc) return m.lvl < 100;
+  if (it.ev) return (m.evs[it.ev] || 0) < 252 && G.mon.totalEVs(m) < 510;
+  if (it.evreset) return G.mon.totalEVs(m) > 0;
+  if (it.ppup) return m.moves.some(x => (x.ppup || 0) < 3);
+  return false;
+};
+G.itemLabelFor = function (id, m) {
+  const it = G.ITEMS[id];
+  if (it.pocket === 'tm') return G.mon.hasMove(m, it.tm) ? 'LEARNED' : G.canLearnTM(m.sp, it.tm) ? 'ABLE' : 'UNABLE';
+  if (it.stone) return G.mon.evoTarget(m, { trigger: 'item', item: it.stone }) ? 'ABLE' : 'UNABLE';
+  if (it.pocket === 'med' || it.pocket === 'berry') return G.itemUsefulOn(id, m) ? '' : '—';
+  return '';
+};
+G.capMonLevel = function () {
+  const s = G.save.settings;
+  if (s.levelCap === 'off' || !s.levelCap) return 100;
+  return G.levelCapNow ? G.levelCapNow() : 100;
+};
+G.useItemField = async function (id, bagScene) {
+  const it = G.ITEMS[id];
+  const pickMon = async (prompt, filter, label, filterMsg) => { const k = await G.openParty({ mode: 'select', prompt, filter, label, filterMsg }); return k === null || k < 0 ? null : G.save.party[k]; };
+  // key items
+  if (it.pocket === 'key') {
+    if (id === 'bike') { if (G.world.scene) { await G.world.scene.toggleBike(); return true; } return false; }
+    if (id === 'rod' || id === 'prorod') { if (G.world.scene) { const w = G.world.scene, f = w.facing(), c = w.cellAt(f.x, f.y); if (c && c.water) { if (bagScene) bagScene.close(null); await G.fish(); return false; } } await G.say('There\'s no water to fish in here.'); return false; }
+    if (id === 'wingwhistle') { if (bagScene) bagScene.close(null); await G.openTownMap({ fly: true }); return false; }
+    if (id === 'dex') { await G.openDex(); return false; }
+    if (id === 'journal') { await G.openQuests(); return false; }
+    if (id === 'expshare') { G.save.settings.expShare = !G.save.settings.expShare; await G.say(`EXP Share turned ${G.save.settings.expShare ? 'ON. Your whole party will share battle EXP' : 'OFF. Only mons that battle will earn EXP'}.`); return false; }
+    if (id === 'tideboard') { await G.say('Face some water and press Z to ride the Tide Board!'); return false; }
+    if (id === 'resonanceband') { await G.say('The band hums with a soft warmth.\\pIn battle, open FIGHT and press R to let one mon Resonate: its main type\'s moves hit much harder, and a Resonant Shield softens the first super-effective hit it takes. Once per battle!'); return false; }
+    if (id === 'vsrecorder') { await G.say('Trainers you\'ve beaten may want a rematch after you earn more badges. Just talk to them again!'); return false; }
+    if (id === 'lantern') { await G.say('The Lantern lights your way automatically in dark places.'); return false; }
+    if (id === 'dowsing') { const n = G.hiddenItemNear ? G.hiddenItemNear() : null; await G.say(n ? `The rod is twitching! Something is hidden about ${n} step${n > 1 ? 's' : ''} away...` : 'The rod isn\'t reacting. Nothing hidden nearby.'); return false; }
+    return false;
+  }
+  if (it.repel) { if (G.save.repel > 0) { await G.say('The effects of a previous repellent are still lingering.'); return false; } G.bag.remove(id); G.save.repel = it.repel; G.audio && G.audio.sfx('item'); await G.say(`You used the ${it.name}. Weaker wild mons will stay away for a while.`); return false; }
+  if (it.escape) {
+    const w = G.world.scene; if (!w || w.map.type === 'outdoor') { await G.say('You can\'t use that here.'); return false; }
+    if (w.map.def.noEscape) { await G.say('A strange force prevents escaping from here!'); return false; }
+    G.bag.remove(id); if (bagScene) bagScene.close(null); G.audio && G.audio.sfx('warp');
+    const r = G.save.lastOutdoor; await w.warpTo(r.map, r.x, r.y, 'down'); return false;
+  }
+  if (it.pocket === 'tm') {
+    const m = await pickMon(`Teach ${G.MOVES[it.tm].name} to which mon?`, x => G.canLearnTM(x.sp, it.tm) && !G.mon.hasMove(x, it.tm), x => G.itemLabelFor(id, x), 'It can\'t learn that move.');
+    if (!m) return false;
+    await G.learnWithPrompt(m, it.tm); return false;
+  }
+  if (it.stone) {
+    const m = await pickMon(`Use the ${it.name} on which mon?`, x => !!G.mon.evoTarget(x, { trigger: 'item', item: it.stone }), x => G.itemLabelFor(id, x), 'It won\'t have any effect.');
+    if (!m) return false;
+    const to = G.mon.evoTarget(m, { trigger: 'item', item: it.stone });
+    G.bag.remove(id); if (bagScene) bagScene.close(null);
+    await G.evolveMon(m, to, { item: true }); return false;
+  }
+  if (it.mint) {
+    const m = await pickMon(`Use the ${it.name} on which mon?`); if (!m) return false;
+    if (!await G.yesno(`${G.mon.name(m)}'s stats will grow as if it had a ${G.cap(it.mint)} nature. Use it?`)) return false;
+    G.bag.remove(id); m.mint = it.mint; G.audio && G.audio.sfx('heal'); await G.say(`${G.mon.name(m)}'s stats may grow differently now!`); return false;
+  }
+  if (it.capsule) {
+    const m = await pickMon('Use the Ability Capsule on which mon?', x => !!G.SPECIES[x.sp].abil[1] && x.abil !== 2, null, 'It won\'t have any effect.'); if (!m) return false;
+    const sp = G.SPECIES[m.sp], nw = m.abil === 0 ? 1 : 0;
+    if (!await G.yesno(`Change ${G.mon.name(m)}'s Ability to ${G.ABILITIES[sp.abil[nw]].name}?`)) return false;
+    G.bag.remove(id); m.abil = nw; await G.say(`${G.mon.name(m)}'s Ability became ${G.ABILITIES[sp.abil[nw]].name}!`); return false;
+  }
+  if (it.patch) {
+    const m = await pickMon('Use the Ability Patch on which mon?', x => !!G.SPECIES[x.sp].abil[2] && x.abil !== 2, null, 'It won\'t have any effect.'); if (!m) return false;
+    const sp = G.SPECIES[m.sp];
+    if (!await G.yesno(`Awaken ${G.mon.name(m)}'s Hidden Ability, ${G.ABILITIES[sp.abil[2]].name}?`)) return false;
+    G.bag.remove(id); m.abil = 2; await G.say(`${G.mon.name(m)}'s Ability became ${G.ABILITIES[sp.abil[2]].name}!`); return false;
+  }
+  if (it.cap) {
+    const m = await pickMon(`Use the ${it.name} on which mon?`, x => G.STATS.some(s => x.ivs[s] < 31), null, 'Its potential is already maxed out!'); if (!m) return false;
+    if (it.cap >= 6) { for (const s of G.STATS) m.ivs[s] = 31; }
+    else {
+      const opts = G.STATS.filter(s => m.ivs[s] < 31);
+      const k = await G.choose(opts.map(s => ({ label: G.STAT_NAMES[s], right: 'IV ' + m.ivs[s] })).concat([{ label: 'Cancel' }]), { x: 150, y: 50, w: 120, cancel: opts.length });
+      if (k < 0 || k >= opts.length) return false; m.ivs[opts[k]] = 31;
+    }
+    G.bag.remove(id); const f = m.hp / G.mon.maxHP(m); m.hp = Math.max(1, Math.round(G.mon.maxHP(m) * f)); G.audio && G.audio.sfx('heal');
+    await G.say(`${G.mon.name(m)} reached its full potential! (Hyper Training)`); return false;
+  }
+  // medicine & berries
+  const m = await pickMon(`Use the ${it.name} on which mon?`, x => G.itemUsefulOn(id, x), x => G.itemLabelFor(id, x), 'It won\'t have any effect.');
+  if (!m) return false;
+  const n = G.mon.name(m), max = G.mon.maxHP(m);
+  if (it.revive) {
+    if (G.save.settings.nuzlocke && m.dead) { await G.say('Fallen mons cannot be revived.'); return false; }
+    m.hp = Math.max(1, Math.floor(max * it.revive)); m.status = null; G.bag.remove(id); G.audio && G.audio.sfx('heal'); await G.say(`${n} was revived!`); return false;
+  }
+  if (it.level) {
+    G.bag.remove(id);
+    const cap = G.capMonLevel();
+    if (m.lvl >= cap) { G.bag.add(id); await G.say(`${n} can't grow past the level cap (Lv ${cap}) yet.`); return false; }
+    const old = G.mon.stats(m);
+    const ups = G.mon.addExp(m, G.mon.expFor(G.SPECIES[m.sp].growth, m.lvl + 1) - m.exp, cap);
+    G.audio && G.audio.jingle('levelup');
+    await G.say(`${n} grew to Lv. ${m.lvl}!`);
+    for (const lv of ups) for (const mv of G.mon.movesAt(m.sp, lv)) await G.learnWithPrompt(m, mv);
+    await G.checkEvolution(m, { trigger: 'level' });
+    return false;
+  }
+  if (it.expc) {
+    G.bag.remove(id);
+    const cap = G.capMonLevel();
+    const amt = Math.max(200, Math.floor(G.mon.expFor(G.SPECIES[m.sp].growth, Math.min(100, m.lvl + 2)) - m.exp) / 2);
+    const ups = G.mon.addExp(m, Math.floor(amt), cap);
+    await G.say(`${n} gained ${Math.floor(amt)} EXP!${ups.length ? ` It grew to Lv. ${m.lvl}!` : ''}`);
+    for (const lv of ups) for (const mv of G.mon.movesAt(m.sp, lv)) await G.learnWithPrompt(m, mv);
+    if (ups.length) await G.checkEvolution(m, { trigger: 'level' });
+    return false;
+  }
+  if (it.ev) { G.bag.remove(id); G.mon.addEVs(m, { [it.ev]: 10 }); m.bond = Math.min(255, m.bond + 3); await G.say(`${n}'s base ${G.STAT_NAMES[it.ev]} rose!`); return false; }
+  if (it.evreset) { G.bag.remove(id); for (const s of G.STATS) m.evs[s] = 0; m.bond = Math.max(0, m.bond - 5); await G.say(`${n}'s effort values were reset. It made a sour face.`); return false; }
+  if (it.ppup) {
+    const opts = m.moves.filter(x => (x.ppup || 0) < 3);
+    const k = await G.choose(opts.map(x => ({ label: G.MOVES[x.id].name, right: `${G.mon.maxPP(x)} PP` })).concat([{ label: 'Cancel' }]), { x: 150, y: 50, w: 130, cancel: opts.length });
+    if (k < 0 || k >= opts.length) return false;
+    opts[k].ppup = (opts[k].ppup || 0) + 1; opts[k].pp = G.mon.maxPP(opts[k]); G.bag.remove(id); await G.say(`${G.MOVES[opts[k].id].name}'s PP rose!`); return false;
+  }
+  if (it.pp) {
+    let targets = m.moves;
+    if (!it.ppAll) { const k = await G.choose(m.moves.map(x => ({ label: G.MOVES[x.id].name, right: `${x.pp}/${G.mon.maxPP(x)}` })).concat([{ label: 'Cancel' }]), { x: 150, y: 50, w: 130, cancel: m.moves.length }); if (k < 0 || k >= m.moves.length) return false; targets = [m.moves[k]]; }
+    for (const x of targets) x.pp = Math.min(G.mon.maxPP(x), x.pp + it.pp);
+    G.bag.remove(id); G.audio && G.audio.sfx('heal'); await G.say(`${n}'s PP was restored.`); return false;
+  }
+  let did = [];
+  if ((it.heal || it.healPct) && m.hp < max) { const b = m.hp; m.hp = Math.min(max, m.hp + (it.healPct ? Math.floor(max * it.healPct) : it.heal)); did.push(`${n}'s HP was restored by ${m.hp - b} points.`); }
+  if (it.cure && m.status && (it.cure === 'all' || it.cure.includes(m.status))) { m.status = null; m.slp = 0; did.push(`${n} was cured of its condition.`); }
+  if (did.length) { G.bag.remove(id); G.audio && G.audio.sfx('heal'); await G.say(did.join('\\p')); }
+  return false;
+};

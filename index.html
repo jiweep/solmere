@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Solmere: Tidelight</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='7' fill='%23e8484a'/><rect x='1' y='7' width='14' height='2' fill='%23222'/><circle cx='8' cy='8' r='2.5' fill='%23fff' stroke='%23222'/></svg>">
+<style>
+  html, body { margin: 0; padding: 0; background: #000; overflow: hidden; height: 100%; }
+  canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+  #boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: #8af0e0; font: 600 18px "Avenir Next", sans-serif; letter-spacing: .1em; }
+</style>
+</head>
+<body>
+<div id="boot">SOLMERE · loading…</div>
+<canvas id="game"></canvas>
+<script src="js/engine/core.js"></script>
+<script src="js/engine/input.js"></script>
+<script src="js/engine/gfx.js"></script>
+<script src="js/engine/audio.js"></script>
+<script src="js/data/music_manifest.js"></script>
+<script src="js/data/types.js"></script>
+<script src="js/data/moves.js"></script>
+<script src="js/data/abilities.js"></script>
+<script src="js/data/items.js"></script>
+<script src="js/data/species.js"></script>
+<script src="js/art/tiles.js"></script>
+<script src="js/art/charart.js"></script>
+<script src="js/art/monart.js"></script>
+<script src="js/art/monart_species1.js"></script>
+<script src="js/art/monart_species2.js"></script>
+<script src="js/art/monart_species3.js"></script>
+<script src="js/battle/mon.js"></script>
+<script src="js/battle/engine.js"></script>
+<script src="js/battle/ai.js"></script>
+<script src="js/ui/dialog.js"></script>
+<script src="js/world/state.js"></script>
+<script src="js/world/world.js"></script>
+<script src="js/world/overworld.js"></script>
+<script src="js/world/script.js"></script>
+<script src="js/battle/scene.js"></script>
+<script src="js/battle/anims.js"></script>
+<script src="js/battle/ui.js"></script>
+<script src="js/battle/flow.js"></script>
+<script src="js/ui/party.js"></script>
+<script src="js/ui/bag.js"></script>
+<script src="js/ui/menus.js"></script>
+<script src="js/ui/pcshopdex.js"></script>
+<script src="js/ui/title.js"></script>
+<script src="js/story/common.js"></script>
+<script src="js/story/builder.js"></script>
+<script src="js/story/trainers.js"></script>
+<script src="js/story/maps_south.js"></script>
+<script src="js/story/maps_north.js"></script>
+<script src="js/story/maps_east.js"></script>
+<script src="js/story/maps_league.js"></script>
+<script src="js/story/scripts.js"></script>
+<script src="js/net/net.js"></script>
+<script src="js/engine/game.js"></script>
+<script>
+  (function () {
+    try {
+      G.persist.globalSettings();
+      G.gfx.fill = !!G.settings.fill;
+      G.boot();
+      G.push(new G.TitleScene());
+      document.getElementById('boot').remove();
+      window.addEventListener('beforeunload', () => { try { G.persist.saveSettings(); } catch (e) {} });
+    } catch (e) {
+      document.getElementById('boot').textContent = 'Failed to start: ' + e.message;
+      console.error(e);
+    }
+  })();
+</script>
+</body>
+</html>

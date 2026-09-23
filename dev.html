@@ -1,0 +1,64 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Solmere art gallery (dev)</title>
+<style>body{background:#222;color:#ddd;font:12px sans-serif;margin:8px} canvas{image-rendering:pixelated;display:block} h3{margin:10px 0 4px}</style></head>
+<body>
+<h3>Mons</h3><canvas id="mons"></canvas>
+<h3>Tiles</h3><canvas id="tiles"></canvas>
+<h3>Characters</h3><canvas id="chars"></canvas>
+<script src="js/engine/core.js"></script>
+<script src="js/engine/gfx.js"></script>
+<script src="js/data/types.js"></script><script src="js/data/moves.js"></script><script src="js/data/abilities.js"></script><script src="js/data/items.js"></script><script src="js/data/species.js"></script>
+<script src="js/art/tiles.js"></script><script src="js/art/charart.js"></script><script src="js/art/monart.js"></script>
+<script src="js/art/monart_species1.js"></script>
+<script src="js/art/monart_species2.js" onerror="0"></script>
+<script src="js/art/monart_species3.js" onerror="0"></script>
+<script>
+const Z = 2;
+const params = new URLSearchParams(location.search);
+const only = params.get('mons');
+function sheet(id, w, h) { const c = document.getElementById(id); c.width = w * Z; c.height = h * Z; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.scale(Z, Z); return x; }
+// mons
+let ids = G.DEX.filter(id => G.MONDRAW[id]);
+if (only) ids = only.split(',');
+const cols = 6, cw = 96 * 2 + 50, ch = 110;
+let mx = sheet('mons', cols * cw, Math.ceil(ids.length / cols) * ch);
+mx.fillStyle = '#9ec7a8'; mx.fillRect(0, 0, cols * cw, 9999);
+ids.forEach((id, i) => {
+  const x = (i % cols) * cw, y = Math.floor(i / cols) * ch;
+  mx.fillStyle = 'rgba(0,0,0,.08)'; mx.fillRect(x + 2, y + 2, cw - 4, ch - 4);
+  mx.drawImage(G.monArt.front(id, false, 0), x, y);
+  mx.drawImage(G.monArt.front(id, true, 1), x + 96, y);
+  mx.drawImage(G.monArt.icon(id, false, 0), x + 192, y);
+  mx.drawImage(G.monArt.overworld(id, false, 'down', 0), x + 192, y + 40);
+  mx.drawImage(G.monArt.back(id, false, 0), x + 192 - 10, y + 60, 52, 52);
+  mx.fillStyle = '#123'; mx.font = '9px sans-serif'; mx.fillText(G.SPECIES[id].name, x + 4, y + 104);
+});
+// tiles
+const tx = sheet('tiles', 16 * 40, 16 * 12);
+const T = G.tiles; const draws = [];
+const add = (fn, w = 16, h = 16) => draws.push({ img: T.get('dev' + draws.length, w, h, fn), w, h });
+for (const th of ['grass', 'snow', 'ash', 'dusk', 'beach']) {
+  add(p => T.grass(p, 0, th)); add(p => T.grass(p, 3, th)); add(p => T.flowers(p, 1, th, 0)); add(p => T.tallgrass(p, 0, th, 0));
+  add(p => T.path(p, 0, th)); add(p => T.path(p, 5, th)); add(p => T.path(p, 255, th)); add(p => T.water(p, 0, 0, th, 'sand')); add(p => T.water(p, 255, 1, th, 'grass'));
+  add(p => T.cliff(p, 4, th, 'cliff')); add(p => T.cliff(p, 1, th, 'cliff')); add(p => T.ledge(p, 0, th)); add(p => { T.grass(p, 0, th); T.hedge(p, 10, th); }); add(p => T.fence(p, 10, th));
+  add(p => T.tree(p, 0, th, 'broad'), 16, 32); add(p => T.tree(p, 1, th, 'broad'), 16, 32); add(p => T.tree(p, 0, th, 'pine'), 16, 32); add(p => T.rock(p, 'rock', th)); add(p => T.rock(p, 'crack', th)); add(p => T.smallTree(p, th));
+}
+for (const k of ['counter', 'pc', 'shelf', 'bed', 'table', 'tv', 'plant', 'healer', 'crate', 'barrel', 'machine', 'statue', 'sign', 'mailbox', 'bench', 'flowerpot', 'grave', 'lanternpost', 'snowman', 'fountain', 'tent', 'stall', 'orbball', 'desk']) add(p => T.furniture(p, k, 0));
+for (const k of ['wood', 'tilefloor', 'carpet', 'cave', 'crystalfloor', 'ice', 'lava', 'metal', 'bridge', 'mat', 'snow', 'ash']) add(p => T.simple(p, k, 0, 0, 'grass'));
+add(p => T.wall(p, 0, 'cream')); add(p => T.wall(p, 1, 'cream')); add(p => T.wall(p, 2, 'blue')); add(p => T.lamp(p, 'grass'), 16, 32); add(p => T.crystal(p, 0)); add(p => T.crystal(p, 1));
+let cx = 0, cy = 0;
+for (const d of draws) { tx.drawImage(d.img, cx, cy); cx += 16; if (cx >= 16 * 40) { cx = 0; cy += 32; } }
+const b1 = T.building('house', 5, 4, { roof: 'red' }), b2 = T.building('haven', 6, 4, { roof: 'red' }), b3 = T.building('mart', 5, 4, { roof: 'blue' }), b4 = T.building('gym', 8, 5, { roof: 'green', accent: '#6ccc52' }), b5 = T.building('lab', 7, 4, { roof: 'teal' });
+let bx = 0; for (const b of [b1, b2, b3, b4, b5]) { tx.drawImage(b.img, bx, 16 * 6 + 10); bx += b.img.width + 6; }
+// chars
+const looks = Object.keys(G.LOOKS);
+const chx = sheet('chars', 20 * 20, Math.ceil(looks.length / 4) * 92 + 30);
+chx.fillStyle = '#8ab87a'; chx.fillRect(0, 0, 9999, 9999);
+looks.forEach((k, i) => {
+  const s = G.chars.sheet(G.LOOKS[k]);
+  const x = (i % 4) * 100, y = Math.floor(i / 4) * 92;
+  ['down', 'up', 'left', 'right'].forEach((dd, j) => chx.drawImage(s[dd][j % 3], x + j * 16, y));
+  chx.drawImage(G.chars.portrait(G.LOOKS[k], 'stand'), x + 2, y + 24, 36, 44);
+  chx.fillStyle = '#123'; chx.font = '8px sans-serif'; chx.fillText(k, x + 44, y + 40);
+});
+</script></body></html>
