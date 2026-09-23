@@ -5,6 +5,8 @@ Fellowship, a leviathan under a lighthouse, the Conclave and a postgame.
 
 ## Play
 
+- **Online (single player):** https://jiweep.github.io/solmere/
+
 - **Mac:** double-click `Play.command`. It starts the local server and opens the game in your browser.
 - **Anywhere with Node:** `node server.js`, then open `http://localhost:8080`.
 - Opening `index.html` directly works for solo play, but the pre-rendered soundtrack needs the server
