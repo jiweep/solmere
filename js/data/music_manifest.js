@@ -131,6 +131,18 @@ G.MUSIC_FILES = {
 "worked": 1790344209,
 "hidden": true
 },
+"aud19": {
+"file": "music/aud19.mp3",
+"loop": true,
+"loopStart": 12.50544,
+"loopEnd": 88.10544,
+"duration": 89.60544,
+"bpm": 100.0,
+"title": "Audition 19 - Letter Home II",
+"intro": 3.6,
+"worked": 1790347729,
+"hidden": true
+},
 "aud2": {
 "file": "music/aud2.mp3",
 "loop": true,
@@ -141,6 +153,30 @@ G.MUSIC_FILES = {
 "title": "Audition 2 - Hop",
 "intro": 3.80952,
 "worked": 1790340092,
+"hidden": true
+},
+"aud20": {
+"file": "music/aud20.mp3",
+"loop": true,
+"loopStart": 7.9966,
+"loopEnd": 59.9966,
+"duration": 61.4966,
+"bpm": 120.0,
+"title": "Audition 20 - Sunlight",
+"intro": 4.0,
+"worked": 1790347724,
+"hidden": true
+},
+"aud21": {
+"file": "music/aud21.mp3",
+"loop": true,
+"loopStart": 9.06463,
+"loopEnd": 66.8424,
+"duration": 68.3424,
+"bpm": 108.0,
+"title": "Audition 21 - Lamplight",
+"intro": 4.44444,
+"worked": 1790347722,
 "hidden": true
 },
 "aud3": {
