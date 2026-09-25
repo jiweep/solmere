@@ -221,6 +221,26 @@
     await S.say(`Oh, and the Professor says your Dex tracks every area\'s wild mons. Check "Encounters" in the menu! Now... race you to Fernwick! Loser buys the Sun Berries!`, WREN());
     await S.fadeOut(10); S.remove('r1w'); await S.fadeIn(10);
     S.set('route1_tut');
+    // a real race: the clock only runs while you're walking the route (battles pause it)
+    await S.say('{k}Race to Fernwick! Reach the town entrance before the timer runs out. Hold Shift to run!{w}');
+    G.setVar('raceLeft', 60 * 22); S.set('race_active');
+    G.audio && G.audio.sfx('exclaim');
+  };
+  SC.race_finish = async (S) => {
+    const won = G.flag('race_active');
+    S.set('race_done'); G.clearFlag ? G.clearFlag('race_active') : (G.save.flags.race_active = false);
+    await S.approach('rw', 'wren', { prefer: ['up', 'left', 'right'] });
+    if (won) {
+      await S.emote('rw', '!');
+      await S.say(`Huff... huff... No way! You actually beat me?! I took a shortcut and everything!`, WREN());
+      await S.say('Fine, a deal\'s a deal. Sun Berries, as promised. Give one to your partner to hold. It\'ll patch them up mid-battle.', WREN());
+      await S.give('sunberry', 2);
+      G.save.stats.raceWins = (G.save.stats.raceWins || 0) + 1;
+    } else {
+      await S.say(`Hah! Too slow, ${P()}! You owe me Sun Berries! ...I\'ll put it on your tab.`, WREN());
+    }
+    await S.say('The gym\'s at the top of town. Warden Juniper\'s tough. See you in there!', WREN());
+    await S.fadeOut(10); S.remove('rw'); await S.fadeIn(10);
   };
   SC.hollis = async (S) => {
     S.facePlayer('hollis');

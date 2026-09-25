@@ -138,6 +138,7 @@
     D({ id: 'fernwick', name: 'Fernwick Town', subtitle: 'Petals on every breeze', town: 'fernwick', area: 'fernwick', music: 'fernwick', weather: 'petals', grid: m.done(),
       conn: { s: { map: 'route1', off: 4 }, e: { map: 'route2', off: 8 } },
       objs: [
+        { type: 'trigger', x: 13, y: 24, w: 4, h: 1, script: 'race_finish', cond: ['route1_tut', '!race_done'] },
         G.haven(4, 4), G.mart(21, 4), G.bld('gym', 11, 2, 8, 5, { roof: 'green', accent: '#6ccc52', door: 4, to: 'fernwick_gym', tx: 7, ty: 13 }),
         G.house(3, 11, 'fern_house1', 'orange', { door: 2 }), G.house(20, 11, 'fern_house2', 'purple'),
         { type: 'sign', x: 17, y: 7, text: '{g}FERNWICK GYM{w}\\nWarden: Juniper\\n"Gentle roots, unbreakable bloom."' },

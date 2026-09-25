@@ -187,6 +187,12 @@ G.WorldScene = class {
     if (this.shake > 0) this.shake--;
     if (G.audio && G.audio.ambience && this.frame % 60 === 0) G.audio.ambience(this.ambienceFor(this.map));   // after audio unlocks; follows day/night
     this.updateWeather();
+    // race clock (Route 1): ticks only while the world is in control
+    if (G.flag('race_active') && top && !this.busy) {
+      const v = (G.save.vars.raceLeft || 0) - 1; G.save.vars.raceLeft = v;
+      if (v === 60 * 5) G.audio && G.audio.sfx('exclaim');
+      if (v <= 0) { G.save.flags.race_active = false; G.toast(`${G.save.rival || 'Wren'} got to Fernwick first!`); G.audio && G.audio.sfx('buzz'); }
+    }
     if (G.net) G.net.tick();
     this.tickAutosave(top);
   }
@@ -319,6 +325,9 @@ G.WorldScene = class {
     if (this.checkTrainers()) return;
     // encounters
     if (this.checkEncounter(c)) return;
+    // rustling grass stepped on: a guaranteed, livelier encounter
+    const ri = (this.rustles || []).findIndex(r => r.x === p.x && r.y === p.y && r.map === m.id);
+    if (ri >= 0) { this.rustles.splice(ri, 1); G.run(() => G.startWild('grass', { rustle: true })); return; }
     // echo sparkle stepped on
     if (this.sparkle && this.sparkle.x === p.x && this.sparkle.y === p.y && this.sparkle.map === m.id) { const sp = this.sparkle; this.sparkle = null; G.run(() => G.startWild(null, { echo: true, table: sp.table })); return; }
     this.maybeSpawnSparkle();
@@ -335,6 +344,29 @@ G.WorldScene = class {
     if (has && await G.yesno(`The repellent wore off! Use another ${G.ITEMS[has].name}?`)) { G.bag.remove(has); G.save.repel = G.ITEMS[has].repel; G.audio && G.audio.sfx('item'); }
     else if (!has) await G.say('The repellent wore off!');
     this.busy--;
+  }
+  // visible encounters: a couple of tall-grass patches near the player shake now and then; stepping
+  // into one always starts a battle, and the mon in it is stronger and more often a rare one
+  updateRustles() {
+    const m = this.map;
+    this.rustles = (this.rustles || []).filter(r => r.map === m.id && ++r.t < 1500);
+    if (m.type === 'indoor' || !m.def.enc || !m.def.enc.grass || this.frame % 90 !== 0 || this.rustles.length >= 2) return;
+    if (G.rand() > .5) return;
+    const p = this.player, cand = [];
+    for (let y = p.y - 5; y <= p.y + 5; y++) for (let x = p.x - 8; x <= p.x + 8; x++) { const c = m.cell(x, y); if (c && c.g === 'tall' && Math.abs(x - p.x) + Math.abs(y - p.y) > 2 && !this.rustles.some(r => r.x === x && r.y === y)) cand.push([x, y]); }
+    if (!cand.length) return;
+    const [x, y] = G.pick(cand); this.rustles.push({ x, y, map: m.id, t: 0 });
+  }
+  drawRustles(b, ox, oy) {
+    for (const r of this.rustles || []) {
+      if (r.map !== this.map.id) continue;
+      if (Math.sin(this.frame / 16 + r.x * 1.7) < .1) continue;   // bursts of shaking every second or so
+      const x = r.x * 16 - ox, y = r.y * 16 - oy, j = (this.frame >> 2) % 2 ? 1 : -1;
+      const c = this.map.cell(r.x, r.y), lt = c && G.liveTile(this.map, c, 0);
+      if (lt && lt.img) { b.drawImage(lt.img, x + j, y + lt.oy - 1); b.drawImage(lt.img, x - j, y + lt.oy + 1); }
+      b.fillStyle = 'rgba(255,255,220,.55)'; b.fillRect(x + 4 + j, y + 1, 1, 3); b.fillRect(x + 10 - j, y + 2, 1, 3);
+      if (this.frame % 20 === 0) { this.fx.add({ x: r.x * 16 + 8 + (G.rand() - .5) * 8, y: r.y * 16 + 4, vx: (G.rand() - .5), vy: -1.1, ay: .07, life: 22, type: 'leaf', size: 1.5, rot: G.rand() * 6, vr: .2, color: '#6ab84a' }); if (Math.abs(r.x - this.player.x) + Math.abs(r.y - this.player.y) < 7) G.audio && G.audio.sfx('rustle'); }
+    }
   }
   maybeSpawnSparkle() {
     if (this.sparkle || this.map.type === 'indoor' || !this.map.def.enc || !this.map.def.enc.grass) return;
@@ -631,6 +663,7 @@ G.WorldScene = class {
     }
     if (this.lightning > 0) this.lightning--;
     if (this.sparkle) this.sparkle.t++;
+    this.updateRustles();
   }
   // ---------------------------------------------------------- drawing
   draw(b) {
@@ -707,6 +740,7 @@ G.WorldScene = class {
     sprites.push({ y: this.player.py + 15.5, d: () => this.drawEnt(b, this.player, ox, oy) });
     sprites.sort((a, c) => a.y - c.y);
     for (const s of sprites) s.d();
+    this.drawRustles(b, ox, oy);
     // sparkle
     if (this.sparkle && this.sparkle.map === m.id) {
       const s = this.sparkle, k = (s.t % 40) / 40;
@@ -891,6 +925,11 @@ G.WorldScene = class {
   }
   drawUI(c) {
     const S = G.gfx.S, U = G.ui;
+    if (G.flag('race_active')) {
+      const v = Math.max(0, G.save.vars.raceLeft || 0), sec = (v / 60).toFixed(1), low = v < 60 * 5;
+      U.panel(G.W / 2 - 34, 4, 68, 16, low ? 'red' : 'dark', { r: 4 });
+      U.text('RACE  ' + sec + 's', G.W / 2, 7.5, { size: 7.4, weight: 800, align: 'center', color: '#fff', alpha: low && Math.floor(G.realTime * 6) % 2 ? .6 : 1 });
+    }
     const L = this.lightSources();
     if (L.length) {
       c.save(); c.globalCompositeOperation = 'lighter';

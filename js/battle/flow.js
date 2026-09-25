@@ -261,6 +261,11 @@ G.startWild = async function (table, o = {}) {
       const rare = (w.map.def.enc.rare || T).list; const pick = G.pick(rare); enc = { sp: pick[0], lvl: T.lv[1] + 1 };
       await G.say('The grass is sparkling with a strange light...!');
     } else enc = G.rollEncounter(w.map, table || 'grass');
+    if (enc && o.rustle) {
+      const T = G.encounterTable(w.map, 'grass');
+      if (T && w.map.def.enc.rare && G.rand() < .3) enc = { sp: G.pick(w.map.def.enc.rare.list)[0], lvl: enc.lvl };
+      enc.lvl += 2;
+    }
     if (!enc) return;
     const lead = G.party.lead();
     if (!o.species && !o.echo && G.save.repel > 0 && lead && enc.lvl < lead.lvl) return;
