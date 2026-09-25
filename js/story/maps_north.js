@@ -6,51 +6,62 @@
   const D = G.defMap;
   // -------------------------------------------------------- GALVAN HARBOR
   (function () {
-    // two tiers: the harbour quarter up on the seawall (docks, Crane tower, museum, gym plaza, the
-    // road to Route 3) and the market town below, crossed by a canal, reached by a grand staircase
-    const m = new G.MB(34, 28, '=', 61);
-    m.rect(0, 0, 34, 4, '~'); m.rect(6, 1, 2, 3, 'I'); m.rect(25, 1, 2, 3, 'I');
-    m.forest(1, 'T', { skip: (x, y) => y < 4 || (y >= 10 && y <= 11 && x >= 32) || (x >= 14 && x <= 17 && y >= 26) });
-    m.rect(0, 4, 34, 1, '='); m.put(0, 4, 'T'); m.put(33, 4, 'T');
+    // A port city in two tiers. Up on the seawall: three piers, the quay promenade, the Crane Dynamics
+    // tower, the museum, the fountain plaza where Crane speaks, the Gym on its own square and the
+    // boulevard east to Route 3. A grand staircase (and a service ramp) drop to the market town: a round
+    // garden plaza with radial walks, the Haven, Mart, bike shop and houses, a canal with three bridges,
+    // a small park, and the south road to Whisperwood.
+    const m = new G.MB(46, 38, '=', 61);
+    m.rect(0, 0, 46, 4, '~'); m.rect(6, 1, 2, 3, 'I'); m.rect(22, 1, 2, 3, 'I'); m.rect(37, 1, 2, 3, 'I');
+    m.forest(1, 'T', { skip: (x, y) => y < 4 || (x >= 44 && y >= 13 && y <= 14) || (x >= 20 && x <= 23 && y >= 36) });
+    m.put(0, 4, 'T'); m.put(45, 4, 'T');
     // harbour quarter
-    m.put(17, 7, 'o'); m.put(14, 11, 'l'); m.put(20, 11, 'l'); m.put(9, 11, 'u'); m.put(24, 11, 'u'); m.put(16, 5, 'y'); m.put(19, 5, 'y');
-    m.text(28, 5, ['QO', 'O ']);
-    // the seawall: a grand staircase in the middle, a service ramp to the east
-    m.rect(1, 12, 32, 2, '#'); m.rect(15, 12, 4, 2, '='); m.rect(29, 12, 2, 2, '=');
-    // market town
-    m.put(14, 14, 'l'); m.put(19, 14, 'l'); m.text(1, 19, ['Q', 'O']);
-    m.rect(1, 20, 32, 1, '~'); m.rect(4, 20, 2, 1, 'b'); m.rect(15, 20, 4, 1, 'b'); m.rect(28, 20, 2, 1, 'b');
-    m.put(8, 19, 'y'); m.put(25, 19, 'y');
-    m.rect(9, 22, 16, 4, '.'); m.rect(10, 23, 4, 2, 'f'); m.rect(20, 23, 4, 2, 'f'); m.put(9, 22, 'T'); m.put(24, 22, 'T'); m.put(9, 25, 'T'); m.put(24, 25, 'T');
-    m.rect(1, 26, 32, 1, '='); m.rect(15, 21, 4, 5, '='); m.rect(14, 26, 4, 2, ':'); m.put(10, 26, 'y'); m.put(23, 26, 'y'); m.put(12, 22, 'u'); m.put(21, 22, 'u');
+    for (const x of [4, 12, 28, 34, 42]) m.put(x, 5, 'l');
+    m.put(22, 9, 'o'); m.put(19, 8, 'y'); m.put(25, 8, 'y'); m.put(18, 11, 'u'); m.put(26, 11, 'u');
+    m.rect(9, 12, 4, 1, 'f'); m.rect(27, 12, 3, 1, 'f'); m.text(40, 6, ['QO', 'O ']); m.put(29, 9, 'T'); m.put(39, 10, 'T');
+    for (const x of [8, 16, 28, 36, 42]) m.put(x, 15, 'l');
+    // the seawall: grand staircase in the middle, a service ramp in the east
+    m.rect(1, 16, 44, 2, '#'); m.rect(20, 16, 4, 2, '='); m.rect(40, 16, 2, 2, '=');
+    // market town: the round garden plaza
+    m.blob(22, 23, 3.2, 2.2, 'f'); m.put(22, 23, 'o'); m.put(18, 21, 'T'); m.put(26, 21, 'T'); m.put(18, 25, 'T'); m.put(26, 25, 'T');
+    m.put(16, 23, 'u'); m.put(28, 23, 'u'); m.put(15, 20, 'l'); m.put(29, 20, 'l'); m.put(15, 26, 'l'); m.put(29, 26, 'l');
+    m.put(2, 24, 'Q'); m.put(2, 25, 'O'); m.put(9, 25, 'y'); m.put(35, 25, 'y');
+    // the canal and its bridges
+    m.rect(1, 28, 44, 1, '~'); m.rect(4, 28, 2, 1, 'b'); m.rect(20, 28, 4, 1, 'b'); m.rect(38, 28, 2, 1, 'b');
+    // south: a park and the road out
+    m.rect(11, 30, 8, 5, '.'); m.rect(12, 31, 3, 2, 'f'); m.put(11, 30, 'T'); m.put(18, 30, 'T'); m.put(11, 34, 'T'); m.put(18, 34, 'T'); m.put(16, 32, 'u');
+    m.rect(26, 30, 8, 5, '.'); m.rect(29, 31, 3, 2, 'f'); m.put(26, 30, 'T'); m.put(33, 30, 'T'); m.put(26, 34, 'T'); m.put(33, 34, 'T');
+    m.rect(20, 29, 4, 9, ':');
     D({ id: 'galvan', name: 'Galvan Harbor', subtitle: 'City of sparks and sails', town: 'galvan', area: 'galvan', music: 'galvan', env: 'city', borders: { n: 'water' }, grid: m.done(),
-      conn: { s: { map: 'whisperwood', off: -5 }, e: { map: 'route3', off: 0 } },
+      conn: { s: { map: 'whisperwood', off: 1 }, e: { map: 'route3', off: 3 } },
       enc: { surf: { lv: [15, 20], list: [['flopfin', 50], ['clawdle', 30], ['jellume', 20]] }, fish: { lv: [10, 18], list: [['flopfin', 70], ['clawdle', 30]] }, fishpro: { lv: [18, 26], list: [['clawdle', 40], ['jellume', 35], ['flopfin', 20], ['riptalon', 5]] } },
       objs: [
-        G.bld('tower', 2, 5, 6, 5, { door: 3, to: 'crane_lobby', tx: 6, ty: 7 }),
-        G.bld('lab', 10, 6, 6, 4, { roof: 'brown', door: 3, to: 'museum', tx: 6, ty: 7 }),
-        G.bld('gym', 20, 5, 8, 5, { roof: 'orange', accent: '#f4d040', door: 4, to: 'galvan_gym', tx: 7, ty: 15 }),
-        G.haven(3, 15), G.mart(9, 15),
-        G.bld('house', 21, 15, 5, 4, { roof: 'teal', door: 2, to: 'bikeshop', tx: 5, ty: 6 }),
-        G.house(27, 15, 'galvan_house1', 'gray'), G.house(2, 22, 'galvan_house2', 'brown'), G.house(27, 22, 'galvan_house3', 'blue'),
-        { type: 'sign', x: 13, y: 14, text: '{b}GALVAN HARBOR{w}\\n"Where the current carries you."' },
-        { type: 'sign', x: 26, y: 10, text: '{y}GALVAN GYM{w}\\nWarden: Ione\\n"Feel the current, drop the beat!"' },
-        { type: 'sign', x: 8, y: 10, text: '{c}CRANE DYNAMICS{w} — Galvan Office\\n"Bonds Built to Last."' },
-        { type: 'sign', x: 16, y: 10, text: 'Galvan Harbor Museum of Natural History. Fossil Revival Lab inside!' },
-        { type: 'sign', x: 19, y: 25, text: '↓ Whisperwood    → Route 3' },
+        G.bld('tower', 2, 7, 6, 5, { door: 3, to: 'crane_lobby', tx: 6, ty: 7 }),
+        G.bld('lab', 10, 8, 6, 4, { roof: 'brown', door: 3, to: 'museum', tx: 6, ty: 7 }),
+        G.bld('gym', 31, 7, 8, 5, { roof: 'orange', accent: '#f4d040', door: 4, to: 'galvan_gym', tx: 7, ty: 15 }),
+        G.haven(3, 19), G.mart(10, 19),
+        G.bld('house', 30, 19, 5, 4, { roof: 'teal', door: 2, to: 'bikeshop', tx: 5, ty: 6 }),
+        G.house(37, 19, 'galvan_house1', 'gray'), G.house(3, 30, 'galvan_house2', 'brown'), G.house(38, 30, 'galvan_house3', 'blue'),
+        { type: 'sign', x: 19, y: 19, text: '{b}GALVAN HARBOR{w}\\n"Where the current carries you."' },
+        { type: 'sign', x: 39, y: 12, text: '{y}GALVAN GYM{w}\\nWarden: Ione\\n"Feel the current, drop the beat!"' },
+        { type: 'sign', x: 8, y: 12, text: '{c}CRANE DYNAMICS{w} — Galvan Office\\n"Bonds Built to Last."' },
+        { type: 'sign', x: 16, y: 12, text: 'Galvan Harbor Museum of Natural History. Fossil Revival Lab inside!' },
+        { type: 'sign', x: 24, y: 34, text: '↓ Whisperwood    → Route 3' },
+        { type: 'sign', x: 30, y: 27, text: '{c}THE OLD CANAL{w}\\nPaper-boat races every Sunday. No mons in the water, please.' },
         { type: 'npc', id: 'gv_marv', x: 7, y: 3, look: 'fisher', dir: 'up', script: 'old_salt_marv' },
-        { type: 'npc', id: 'gv_rhoda', x: 7, y: 26, look: 'oldwoman', dir: 'left', script: 'rhoda' },
-        { type: 'npc', id: 'gv_w1', x: 12, y: 19, look: 'worker', dir: 'right', move: 'wander', radius: 3, text: 'Crane Dynamics built the power plant, the new docks, the tram line... this city runs on Crane.' },
-        { type: 'npc', id: 'gv_w2', x: 30, y: 9, look: 'woman', dir: 'left', move: 'look', text: 'They say Director Crane was a brilliant scientist before she ran the company. She hardly ever smiles in photos, though.' },
-        { type: 'npc', id: 'gv_kid', x: 19, y: 23, look: 'kid', dir: 'down', move: 'wander', radius: 2, text: 'Zipsquee glide between the power poles at night! Their cheeks glow like fireflies!' },
-        { type: 'npc', id: 'gv_canal', x: 24, y: 19, look: 'sailor', dir: 'down', move: 'look', text: 'The canal runs from the old tide-mill to the sea. Kids race paper boats down it every Sunday. Crane wants to pave it over.' },
-        { type: 'npc', id: 'gv_vsr', x: 6, y: 19, look: 'officer', dir: 'right', script: 'vsrecorder_npc' },
-        { type: 'trainer', id: 'gv_sailor_e', x: 25, y: 3, look: 'sailor', dir: 'down', sight: 1, trainer: 'gv_sailor' },
-        { type: 'trainer', id: 'gv_worker_e', x: 31, y: 19, look: 'worker', dir: 'left', sight: 3, trainer: 'gv_worker' },
-        { type: 'trigger', x: 12, y: 10, w: 10, h: 2, script: 'crane_speech', cond: '!crane_speech' },
-        { type: 'item', id: 'gv_h1', x: 33, y: 5, item: 'magnet', hidden: true },
-        { type: 'item', id: 'gv_i1', x: 29, y: 6, item: 'xspeed', qty: 2 },
-      ], spawn: [16, 14] });
+        { type: 'npc', id: 'gv_rhoda', x: 9, y: 34, look: 'oldwoman', dir: 'left', script: 'rhoda' },
+        { type: 'npc', id: 'gv_w1', x: 13, y: 25, look: 'worker', dir: 'right', move: 'wander', radius: 3, text: 'Crane Dynamics built the power plant, the new docks, the tram line... this city runs on Crane.' },
+        { type: 'npc', id: 'gv_w2', x: 41, y: 9, look: 'woman', dir: 'left', move: 'look', text: 'They say Director Crane was a brilliant scientist before she ran the company. She hardly ever smiles in photos, though.' },
+        { type: 'npc', id: 'gv_kid', x: 22, y: 32, look: 'kid', dir: 'down', move: 'wander', radius: 2, text: 'Zipsquee glide between the power poles at night! Their cheeks glow like fireflies!' },
+        { type: 'npc', id: 'gv_canal', x: 27, y: 27, look: 'sailor', dir: 'down', move: 'look', text: 'The canal runs from the old tide-mill to the sea. Kids race paper boats down it every Sunday. Crane wants to pave it over.' },
+        { type: 'npc', id: 'gv_vsr', x: 8, y: 24, look: 'officer', dir: 'right', script: 'vsrecorder_npc' },
+        { type: 'npc', id: 'gv_quay', x: 30, y: 5, look: 'gentleman', dir: 'up', move: 'look', text: 'The ferries used to run to the Tidelight. Nobody\'s gone out there in twelve years.' },
+        { type: 'trainer', id: 'gv_sailor_e', x: 23, y: 3, look: 'sailor', dir: 'down', sight: 1, trainer: 'gv_sailor' },
+        { type: 'trainer', id: 'gv_worker_e', x: 42, y: 24, look: 'worker', dir: 'left', sight: 3, trainer: 'gv_worker' },
+        { type: 'trigger', x: 14, y: 13, w: 18, h: 2, script: 'crane_speech', cond: '!crane_speech' },
+        { type: 'item', id: 'gv_h1', x: 44, y: 6, item: 'magnet', hidden: true },
+        { type: 'item', id: 'gv_i1', x: 40, y: 10, item: 'xspeed', qty: 2 },
+      ], spawn: [22, 19] });
   })();
   G.defHouse('galvan_house1', 'Galvan House', 0, [{ type: 'npc', id: 'gh1', x: 2, y: 5, look: 'scientist', dir: 'right', script: 'ev_trainer' }]);
   G.defHouse('galvan_house2', 'Galvan House', 2, [{ type: 'npc', id: 'gh2', x: 6, y: 4, look: 'woman', dir: 'down', script: 'move_tutor' }]);
@@ -121,7 +132,7 @@
     m.scatter('T', 10, 3, 7, 38, 13); m.scatter(',', 10, 3, 6, 38, 14);
     m.put(12, 4, 'Y'); m.put(33, 5, 'Y'); m.put(40, 4, 'Y');
     D({ id: 'route3', name: 'Route 3', subtitle: 'The Sunward Cliffs', area: 'route3', music: 'route3', theme: 'beach', env: 'beach', grid: m.done(),
-      conn: { w: { map: 'galvan', off: 0 } },
+      conn: { w: { map: 'galvan', off: -3 } },
       warps: [{ x: 44, y: 13, to: 'glimmercave', tx: 2, ty: 15, dir: 'right', kind: 'cave' }],
       enc: {
         grass: { lv: [14, 17], list: [['clawdle', 18], ['gustling', 16], ['digmole', 18], ['zipsquee', 16], ['lillipad', 14], ['pipwing', 10], ['stingle', 8]] },

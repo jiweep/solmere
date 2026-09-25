@@ -273,7 +273,7 @@
     m.rect(19, 0, 3, 2, ':');
     m.put(12, 8, 't'); m.put(19, 20, '.');
     D({ id: 'whisperwood', name: 'Whisperwood', subtitle: 'The forest remembers', area: 'whisperwood', music: 'forest', env: 'forest', weather: 'leaves', grid: m.done(),
-      conn: { w: { map: 'route2', off: 0 }, n: { map: 'galvan', off: 5 } },
+      conn: { w: { map: 'route2', off: 0 }, n: { map: 'galvan', off: -1 } },
       enc: {
         grass: { lv: [8, 12], list: [['grubbit', 18], ['cocoonet', 10], ['beetlet', 16], ['shroomie', 16], ['stingle', 14], ['glimmer', 8], ['mossbun', 10], ['oddowl', 8]] },
         night: { lv: [9, 12], list: [['wispurr', 22], ['oddowl', 22], ['shroomie', 16], ['rascoon', 16], ['duskbat', 12], ['glimmer', 12]] },
