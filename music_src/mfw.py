@@ -528,7 +528,9 @@ class Song:
 
 # ------------------------------------------------------------------ generators
 def _rng(part, sec, salt=''):
-    return random.Random(f'{part.song.id}|{part.name}|{sec.name}|{salt}|{part.song.variant}')
+    # seed_id lets a retake regenerate a kept passage note for note (it seeds as the song it came from)
+    sid = getattr(part.song, 'seed_id', part.song.id)
+    return random.Random(f'{sid}|{part.name}|{sec.name}|{salt}|{part.song.variant}')
 
 
 def bass_line(part, sec, style='walk', lo=31, hi=55, vel=92, octave_pop=True, approach=True, pattern=None, stacc=False):

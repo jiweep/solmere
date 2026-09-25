@@ -88,7 +88,7 @@ def compile_song(song):
             if p < 0 or p > 127: continue
             # humanize deterministically from the note's position in the loop, so both passes are identical
             tm = t if (not loop or t < I) else I + ((t - I) % L)
-            rnd = random.Random(f'{song.id}|{part.name}|{song.variant}|{tm:.4f}|{p}')
+            rnd = random.Random(f'{getattr(song, "seed_id", song.id)}|{part.name}|{song.variant}|{tm:.4f}|{p}')
             t0 = to_sec(song, t) + lag
             t1 = to_sec(song, t + d) + lag
             if not part.kit:
@@ -312,12 +312,20 @@ def mix_song(song, stems, length_sec, wdir):
             # whole number of LFO cycles per loop, so the modulation is identical on every pass
             Ls = song.loop_len * 60 / song.bpm if song.loop else 0
             rate = max(1, round(.8 * Ls)) / Ls if Ls else .8
+            rate = getattr(part, 'chorus_hz', None) or rate
             x = chorus(x, mix=part.chorus, rate=rate)
         proc[nm] = x
     # auto-mix: set each part so its active loudness sits at its role target relative to the lead
     loud = {nm: active_loudness(x) for nm, x in proc.items()}
     leads = [loud[nm] for nm, st in stems.items() if song.parts[st['part']].role in ('lead', 'solo') and st['layer'] == 0]
     ref = max(leads) if leads else max(loud.values())
+    # song.pin_gains = {stem: dB}: those stems keep a level from an earlier render (a kept intro); the
+    # reference is recovered from them so everything else is mixed against the same level as before
+    pin = {nm: g for nm, g in (getattr(song, 'pin_gains', None) or {}).items() if nm in stems and loud[nm] > -110}
+    if pin:
+        refs = [g + loud[nm] - mfw.ROLE_TARGET.get(song.parts[stems[nm]['part']].role, -8) - song.parts[stems[nm]['part']].vol
+                for nm, g in pin.items()]
+        ref = sum(refs) / len(refs)
     gains = {}
     for nm, st in stems.items():
         part = song.parts[st['part']]
@@ -326,6 +334,7 @@ def mix_song(song, stems, length_sec, wdir):
             g_db = max(-40, min(30, tgt - loud[nm])) if loud[nm] > -110 else 0
         else:
             g_db = part.vol - (2 if st['layer'] else 0)
+        if nm in pin: g_db = pin[nm]
         gains[nm] = g_db
     song._gains = gains
     for nm, st in stems.items():

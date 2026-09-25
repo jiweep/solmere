@@ -359,6 +359,42 @@ G.MUSIC_FILES = {
 "worked": 1790359355,
 "hidden": true
 },
+"aud36": {
+"file": "music/aud36.mp3",
+"loop": true,
+"loopStart": 16.3802,
+"loopEnd": 80.99557,
+"duration": 82.49558,
+"bpm": 104.00002,
+"title": "Audition 36 - Neon Pier II",
+"intro": 9.23077,
+"worked": 1790361685,
+"hidden": true
+},
+"aud37": {
+"file": "music/aud37.mp3",
+"loop": true,
+"loopStart": 10.93764,
+"loopEnd": 124.27098,
+"duration": 125.77098,
+"bpm": 72.0,
+"title": "Audition 37 - Keepsake Piano II",
+"intro": 6.66667,
+"worked": 1790361773,
+"hidden": true
+},
+"aud38": {
+"file": "music/aud38.mp3",
+"loop": true,
+"loopStart": 9.18069,
+"loopEnd": 69.18069,
+"duration": 70.68068,
+"bpm": 104.0,
+"title": "Audition 38 - Rooftop II",
+"intro": 4.61538,
+"worked": 1790361953,
+"hidden": true
+},
 "aud4": {
 "file": "music/aud4.mp3",
 "loop": true,
