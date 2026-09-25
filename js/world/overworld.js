@@ -823,6 +823,14 @@ G.WorldScene = class {
       b.fillStyle = 'rgba(255,255,220,.6)'; b.fillRect(Math.round(q.x - 4 + j), Math.round(q.y - 16), 1, 3); b.fillRect(Math.round(q.x + 2 - j), Math.round(q.y - 15), 1, 3);
       if (this.frame % 20 === 0) { this.fx.add({ x: r.x * 16 + 8 + (G.rand() - .5) * 8, y: r.y * 16 + 4, vx: (G.rand() - .5), vy: -1.1, ay: .07, life: 22, type: 'leaf', size: 1.5, rot: G.rand() * 6, vr: .2, color: '#6ab84a' }); if (Math.abs(r.x - this.player.x) + Math.abs(r.y - this.player.y) < 7) G.audio && G.audio.sfx('rustle'); }
     }
+    // ripples around swimmers
+    for (const e of this.ents) {
+      if (!e.visible || e.hidden || !e.look) continue;
+      const c = this.map.cell(e.x, e.y); if (!c || !c.water || c.g === 'bridge' || c.g === 'bridgev') continue;
+      const q = ground(e.px + 8, e.py + 12); if (!q) continue;
+      b.strokeStyle = 'rgba(230,248,255,.55)'; b.lineWidth = 1; b.beginPath(); b.ellipse(q.x, q.y, 8 + Math.sin(this.frame / 10) * 1, 2.6, 0, 0, Math.PI * 2); b.stroke();
+      if (this.frame % 26 === 0) this.fx.add({ x: e.px + 8, y: e.py + 12, life: 26, type: 'ring', size: 4, grow: 2.2, color: 'rgba(255,255,255,.5)', lw: .8 });
+    }
     // hidden-item sparkle
     if (this.sparkle && this.sparkle.map === this.map.id) {
       const sp = this.sparkle, k = (sp.t % 40) / 40, q = ground(sp.x * 16 + 8, sp.y * 16 + 10);
@@ -895,6 +903,17 @@ G.WorldScene = class {
     let x = Math.round(e.px - ox + 8 - img.width / 2), y = Math.round(e.py - oy + 16 - img.height - (e.hop || 0)) - step;
     if (surf) y = Math.round(e.py - oy + 16 - 22);
     const c = this.cellAt(e.x, e.y);
+    // swimmers (anyone standing on open water): only the upper body shows, bobbing, with ripples
+    if (!surf && e !== this.player && c && c.water && c.g !== 'bridge' && c.g !== 'bridgev') {
+      const bob = Math.sin(this.frame / 14 + e.x) * 1;
+      const cut = Math.round(img.height * .52);
+      b.drawImage(img, 0, 0, img.width, cut, x, y + 7 + bob, img.width, cut);
+      const wy = y + 7 + cut + bob;
+      b.fillStyle = 'rgba(210,240,255,.55)'; b.fillRect(x + 2, wy - 1, img.width - 4, 1);
+      b.strokeStyle = 'rgba(230,248,255,.5)'; b.lineWidth = 1; b.beginPath(); b.ellipse(x + img.width / 2, wy, 8 + Math.sin(this.frame / 10) * 1, 2.4, 0, 0, Math.PI * 2); b.stroke();
+      if (this.frame % 26 === 0) this.fx.add({ x: e.px + 8, y: e.py + 12, life: 26, type: 'ring', size: 4, grow: 2.2, color: 'rgba(255,255,255,.5)', lw: .8 });
+      return;
+    }
     // reflection in water / ice directly below
     const below = this.cellAt(e.tx, e.ty + 1);
     if (below && (below.water || below.ice) && !surf) {

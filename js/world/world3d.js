@@ -11,8 +11,10 @@
 G.W3 = (function () {
   const T = window.THREE;
   const LEVEL_H = 1.1;          // height of one cliff level, in tiles
-  const RES = 2;                // internal resolution multiplier over 384x216
+  let bufW = 0, bufH = 0;       // drawing buffer follows the display (native resolution, MSAA)
   let camY = null, night = 0;
+  const SUN_OFF = [-10, 22, 6];
+  const _d = T ? new T.Vector3() : null, _r = T ? new T.Vector3() : null, _u = T ? new T.Vector3() : null, _p = T ? new T.Vector3() : null;
   let R = null, cv = null, scene, camera, sun, hemi, cache = new Map(), cur = null, ok = !!T;
 
   // ------------------------------------------------------------- setup
@@ -20,14 +22,14 @@ G.W3 = (function () {
     if (R || !ok) return !!R;
     try {
       cv = document.createElement('canvas'); cv.id = 'w3';
-      Object.assign(cv.style, { position: 'fixed', left: '0', top: '0', zIndex: '0', imageRendering: 'pixelated', display: 'none' });
+      Object.assign(cv.style, { position: 'fixed', left: '0', top: '0', zIndex: '0', display: 'none' });
       document.body.insertBefore(cv, document.body.firstChild);
-      R = new T.WebGLRenderer({ canvas: cv, antialias: false, alpha: false, powerPreference: 'high-performance' });
-      R.setPixelRatio(1); R.setSize(G.W * RES, G.H * RES, false);
+      R = new T.WebGLRenderer({ canvas: cv, antialias: true, alpha: false, powerPreference: 'high-performance' });
+      R.setPixelRatio(1);
       R.shadowMap.enabled = true; R.shadowMap.type = T.PCFShadowMap;
       R.outputColorSpace = T.SRGBColorSpace;
       scene = new T.Scene();
-      camera = new T.PerspectiveCamera(26, G.W / G.H, .5, 200);
+      camera = new T.PerspectiveCamera(26, G.W / G.H, 8, 140);
       hemi = new T.HemisphereLight(0xdfeeff, 0x4a5a3a, .9); scene.add(hemi);
       sun = new T.DirectionalLight(0xfff0d8, 1.7);
       sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
@@ -37,7 +39,7 @@ G.W3 = (function () {
       return true;
     } catch (e) { console.warn('3D unavailable', e); ok = false; R = null; return false; }
   }
-  const tex = (canvas) => { const t = new T.CanvasTexture(canvas); t.magFilter = T.NearestFilter; t.minFilter = T.NearestFilter; t.generateMipmaps = false; t.colorSpace = T.SRGBColorSpace; return t; };
+  const tex = (canvas) => { const t = new T.CanvasTexture(canvas); t.magFilter = T.NearestFilter; t.minFilter = T.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = R ? Math.min(8, R.capabilities.getMaxAnisotropy()) : 1; t.colorSpace = T.SRGBColorSpace; return t; };
 
   // ------------------------------------------------------------- heights
   // Levels come from the cliffs: cliff cells separate regions, the region north of a cliff is one
@@ -147,6 +149,18 @@ G.W3 = (function () {
   // ------------------------------------------------------------- terrain mesh
   function buildTerrain(map, hv, group) {
     const CT = G.terrain.CT, W = map.w, H = map.h, PADT = 14;
+    // water sits a little lower than land. A vertex drops only when all four cells around it are water,
+    // so shores slope down instead of leaving a crack; cells past the edge come from the connected map
+    const wcache = new Map();
+    const isWater = (x, y) => {
+      const key = x + ',' + y; if (wcache.has(key)) return wcache.get(key);
+      let c;
+      if (x >= 0 && y >= 0 && x < W && y < H) c = map.cell(x, y);
+      else { const rr = map.resolve(x, y); c = rr ? rr.map.cells[rr.y * rr.map.w + rr.x] : G.borderCell(map, x, y); }
+      const v = !!(c && c.water && c.g !== 'bridge' && c.g !== 'bridgev'); wcache.set(key, v); return v;
+    };
+    const vdrop = (vx, vy) => (isWater(vx - 1, vy - 1) && isWater(vx, vy - 1) && isWater(vx - 1, vy) && isWater(vx, vy)) ? -.14 : 0;
+    group.userData.vdrop = vdrop;
     // chunks cover the map plus a border ring of trees/water
     for (let cy = Math.floor(-PADT / CT); cy <= Math.floor((H + PADT) / CT); cy++) for (let cx = Math.floor(-PADT / CT); cx <= Math.floor((W + PADT) / CT); cx++) {
       const ch = G.terrain.chunk(map, cx, cy);
@@ -166,10 +180,8 @@ G.W3 = (function () {
           else if (x >= 0 && x < W) { const w = hv.at(xw, Y), e = hv.at(xe, Y); h = [w, e, w, e]; }
           else h.fill(hv.at(X, Y));
         }
-        const c = inside ? map.cell(x, y) : G.borderCell(map, x, y);
-        const wdrop = c && c.water ? -.14 : 0;
         const b = pos.length / 3;
-        pos.push(x, h[0] + wdrop, y, x + 1, h[1] + wdrop, y, x, h[2] + wdrop, y + 1, x + 1, h[3] + wdrop, y + 1);
+        pos.push(x, h[0] + vdrop(x, y), y, x + 1, h[1] + vdrop(x + 1, y), y, x, h[2] + vdrop(x, y + 1), y + 1, x + 1, h[3] + vdrop(x + 1, y + 1), y + 1);
         uv.push(i / CT, 1 - j / CT, (i + 1) / CT, 1 - j / CT, i / CT, 1 - (j + 1) / CT, (i + 1) / CT, 1 - (j + 1) / CT);
         idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3);
       }
@@ -184,8 +196,8 @@ G.W3 = (function () {
         const inside = x >= 0 && y >= 0 && x < W && y < H, rr = inside ? null : map.resolve(x, y);
         const c = inside ? map.cell(x, y) : rr ? rr.map.cells[rr.y * rr.map.w + rr.x] : G.borderCell(map, x, y);
         if (!c || !c.water) continue;
-        const h = hv.at(G.clamp(x + .5, 0, W - .01), G.clamp(y + .5, 0, H - .01)) - .13, b = wp.length / 3;
-        wp.push(x, h, y, x + 1, h, y, x, h, y + 1, x + 1, h, y + 1);
+        const hh = (vx, vy) => hv.at(G.clamp(vx, .01, W - .01), G.clamp(vy, .01, H - .01)) + vdrop(vx, vy) + .012, b = wp.length / 3;
+        wp.push(x, hh(x, y), y, x + 1, hh(x + 1, y), y, x, hh(x, y + 1), y + 1, x + 1, hh(x + 1, y + 1), y + 1);
         wu.push(x / 4, -y / 4, (x + 1) / 4, -y / 4, x / 4, -(y + 1) / 4, (x + 1) / 4, -(y + 1) / 4);
         wi.push(b, b + 2, b + 1, b + 1, b + 2, b + 3);
       }
@@ -253,9 +265,10 @@ G.W3 = (function () {
   // upright sprite whose bottom-centre sits on the ground; tilted back to face the camera so the
   // pixel art reads exactly as drawn
   const PITCH = .8;   // radians the camera looks down from horizontal
+  const PITCH_CAM = .8;
   function billboard(img, opts = {}) {
     const t = tex(img);
-    const mat = new T.MeshLambertMaterial({ map: t, alphaTest: .5, transparent: false, side: T.DoubleSide });
+    const mat = new T.MeshLambertMaterial({ map: t, alphaTest: .5, alphaToCoverage: true, transparent: false, side: T.DoubleSide });
     const g = new T.PlaneGeometry(img.width / 16, img.height / 16); g.translate(0, img.height / 32, 0);
     const m = new T.Mesh(g, mat);
     m.rotation.x = -(Math.PI / 2 - PITCH) * (opts.lean === undefined ? .55 : opts.lean);
@@ -332,10 +345,10 @@ G.W3 = (function () {
         sc.fillStyle = `rgb(${col[0] * .82 | 0},${col[1] * .82 | 0},${col[2] * .82 | 0})`; sc.fillRect(0, 0, 8, 16);
         sc.fillStyle = `rgb(${col[0] * .6 | 0},${col[1] * .6 | 0},${col[2] * .6 | 0})`; sc.fillRect(0, 13, 8, 3);
       }
-      const wallH = Math.min(1.9, wallPx / 16), roofH = Math.min(1.5, roofPx / 16 * .6), depth = zF - zB, ridgeZ = zB + depth * .18;
-      const mFac = new T.MeshLambertMaterial({ map: tex(facade), alphaTest: .4, side: T.DoubleSide });
+      const wallH = Math.min(1.9, wallPx / 16), depth = zF - zB;
+      const mFac = new T.MeshLambertMaterial({ map: tex(facade), alphaTest: .4, alphaToCoverage: true, side: T.DoubleSide });
       const mSide = new T.MeshLambertMaterial({ map: tex(side) });
-      const mRoof = new T.MeshLambertMaterial({ map: tex(roof), alphaTest: .4, side: T.DoubleSide });
+      const mRoof = new T.MeshLambertMaterial({ map: tex(roof), alphaTest: .4, alphaToCoverage: true, side: T.DoubleSide });
       // body
       const body = new T.Mesh(new T.BoxGeometry(b.w - .1, wallH, depth - .05), [mSide, mSide, mSide, mSide, mFac, mSide]);
       body.position.set(x0 + b.w / 2, baseY + wallH / 2, zB + depth / 2); body.castShadow = body.receiveShadow = true; g.add(body);
@@ -345,19 +358,24 @@ G.W3 = (function () {
         slab.position.set(x0 + b.w / 2, baseY + wallH + .16, zB + depth / 2); slab.castShadow = slab.receiveShadow = true; g.add(slab);
         continue;
       }
-      // roof: two slopes meeting at a ridge, overhanging the walls a little
-      const ov = .25, geo = new T.BufferGeometry();
-      const X0 = x0 - ov, X1 = x1 + ov, Y0 = baseY + wallH, Y1 = Y0 + roofH, ZF = zF + ov, ZB = zB - ov;
-      const P = [X0, Y0, ZF, X1, Y0, ZF, X0, Y1, ridgeZ, X1, Y1, ridgeZ,  X0, Y1, ridgeZ, X1, Y1, ridgeZ, X0, Y0, ZB, X1, Y0, ZB];
-      const U = [0, 0, 1, 0, 0, 1, 1, 1,  0, 1, 1, 1, 0, .4, 1, .4];
-      geo.setAttribute('position', new T.Float32BufferAttribute(P, 3)); geo.setAttribute('uv', new T.Float32BufferAttribute(U, 2));
-      geo.setIndex([0, 1, 2, 1, 3, 2, 4, 5, 6, 5, 7, 6]); geo.computeVertexNormals();
-      const rm = new T.Mesh(geo, mRoof); rm.castShadow = rm.receiveShadow = true; g.add(rm);
-      // gable ends
-      const gab = new T.BufferGeometry();
-      gab.setAttribute('position', new T.Float32BufferAttribute([X0 + ov, Y0, ZF - ov, X0 + ov, Y1 - .05, ridgeZ, X0 + ov, Y0, ZB + ov, X1 - ov, Y0, ZF - ov, X1 - ov, Y0, ZB + ov, X1 - ov, Y1 - .05, ridgeZ], 3));
-      gab.setIndex([0, 1, 2, 3, 4, 5]); gab.computeVertexNormals();
-      const gm = new T.Mesh(gab, new T.MeshLambertMaterial({ map: tex(side), side: T.DoubleSide })); gm.castShadow = true; g.add(gm);
+      // one closed wedge: a single roof plane from the front eave up to the back ridge carries the whole
+      // roof art; its rise is solved so that, seen from the camera, it is as tall as the art draws it.
+      // Triangular gables and a back wall close it, so every edge meets another face.
+      const want = roofPx / 16, sp = Math.sin(PITCH_CAM), cp = Math.cos(PITCH_CAM);
+      const rise = G.clamp((want - depth * sp) / cp, .35, 2.6);
+      const ov = .14, X0 = x0 + .05 - ov, X1 = x1 - .05 + ov, Y0 = baseY + wallH, Y1 = Y0 + rise, ZF = zF - .025 + ov, ZB = zB + .025;
+      const quad = (P, U, mat, shadow = true) => {
+        const g2 = new T.BufferGeometry(); g2.setAttribute('position', new T.Float32BufferAttribute(P, 3)); g2.setAttribute('uv', new T.Float32BufferAttribute(U, 2));
+        g2.setIndex(P.length === 12 ? [0, 2, 1, 1, 2, 3] : [0, 1, 2]); g2.computeVertexNormals();
+        const m = new T.Mesh(g2, mat); m.castShadow = shadow; m.receiveShadow = true; g.add(m); return m;
+      };
+      // roof (eave at the front, overhanging a little on three sides)
+      quad([X0, Y0 - ov * .45, ZF, X1, Y0 - ov * .45, ZF, X0, Y1, ZB - .02, X1, Y1, ZB - .02], [0, 0, 1, 0, 0, 1, 1, 1], mRoof);
+      // gables: triangles under the roof plane on both sides, and the back wall up to the ridge
+      const gx0 = x0 + .05, gx1 = x1 - .05, gzF = zF - .025, gzB = zB + .025;
+      quad([gx0, Y0, gzF, gx0, Y0, gzB, gx0, Y1 - .01, gzB], [0, 0, 1, 0, 1, 1], mSide);
+      quad([gx1, Y0, gzF, gx1, Y1 - .01, gzB, gx1, Y0, gzB], [0, 0, 1, 1, 1, 0], mSide);
+      quad([gx0, Y0, gzB, gx1, Y0, gzB, gx0, Y1 - .01, gzB, gx1, Y1 - .01, gzB], [0, 0, 1, 0, 0, 1, 1, 1], mSide);
     }
   }
 
@@ -436,7 +454,12 @@ G.W3 = (function () {
       const fx = px / 16 + .5, fz = py / 16 + 1;
       m.position.set(fx, H.at(G.clamp(fx, 0, H.W - .01), G.clamp(fz - .5, 0, H.H - .01)) + lift / 16, fz - .3);
     };
-    for (const e of w.ents) if (e.visible && !e.hidden) place('e:' + e.id + ':' + e.x0id, entImage(w, e), e.px, e.py, e.hop || 0);
+    for (const e of w.ents) if (e.visible && !e.hidden) {
+      // swimmers sink to the chest: the opaque water surface hides the rest
+      const c = w.map.cell(e.x, e.y), swim = c && c.water && c.g !== 'bridge' && c.g !== 'bridgev';
+      const img = entImage(w, e);
+      place('e:' + e.id + ':' + e.x0id, img, e.px, e.py, swim && img ? -img.height * .5 + Math.sin(w.frame / 14 + e.x) : (e.hop || 0));
+    }
     if (w.player) place('player', entImage(w, w.player), w.player.px, w.player.py, w.player.hop || 0);
     const f = w.follower; if (f && !f.hidden) place('follower', G.monArt.overworld(f.mon.sp, f.mon.shiny, f.dir, Math.floor(w.frame / 10) % 2), f.px, f.py, f.hop || 0);
     for (const [k, m] of E.sprites) if (!seen.has(k)) m.visible = false;
@@ -475,9 +498,17 @@ G.W3 = (function () {
     camY = camY === null || Math.abs(camY - fy) > 4 ? fy : camY + (fy - camY) * .12;
     const dist = 30, cy = Math.sin(PITCH) * dist, cz = Math.cos(PITCH) * dist;
     camera.position.set(fx, camY + cy, fz + cz); camera.lookAt(fx, camY + .6, fz);
-    sun.position.set(fx - 10, fy + 22, fz + 6); sun.target.position.set(fx, fy, fz);
-    // canvas placed exactly over the game viewport
+    // shadow camera snapped to its own texel grid, so shadows don't crawl as the player moves
+    { const off = SUN_OFF, dir = _d.set(off[0], off[1], off[2]).normalize();
+      const rt = _r.set(0, 1, 0).cross(dir).normalize(), up = _u.copy(dir).cross(rt).normalize();
+      const P = _p.set(fx, fy, fz), texel = 44 / 2048;
+      const a = Math.round(P.dot(rt) / texel) * texel, b = Math.round(P.dot(up) / texel) * texel, c = P.dot(dir);
+      P.copy(rt).multiplyScalar(a).addScaledVector(up, b).addScaledVector(dir, c);
+      sun.position.set(P.x + off[0], P.y + off[1], P.z + off[2]); sun.target.position.copy(P); }
+    // canvas placed exactly over the game viewport, drawn at the display's native resolution
     const S = G.gfx.S, dpr = window.devicePixelRatio || 1;
+    const bw = Math.round(G.W * S), bh = Math.round(G.H * S);
+    if (bw !== bufW || bh !== bufH) { bufW = bw; bufH = bh; R.setSize(bw, bh, false); }
     Object.assign(cv.style, { display: 'block', left: (G.gfx.ox / dpr) + 'px', top: (G.gfx.oy / dpr) + 'px', width: (G.W * S / dpr) + 'px', height: (G.H * S / dpr) + 'px' });
     R.render(scene, camera);
     return true;
