@@ -28,7 +28,8 @@ G.TitleScene = class {
       const items = [];
       if (has) items.push({ id: 'cont', label: 'Continue' });
       items.push({ id: 'new', label: 'New Game' }, { id: 'showcase', label: 'Showcase' }, { id: 'opts', label: 'Options' }, { id: 'music', label: 'Music Room' }, { id: 'import', label: 'Import Save File' }, { id: 'help', label: 'How to Play' }, { id: 'credits', label: 'Credits' });
-      const k = await G.choose(items, { x: G.W / 2 - 50, y: 124, w: 100, cancel: -1 });
+      // menu on the left, clear of the sea where Orrelume breaches
+      const k = await G.choose(items, { x: 18, y: 96, w: 100, cancel: -1 });
       if (k < 0) { this.stage = 'press'; return; }
       const id = items[k].id;
       if (id === 'cont') { const s = await G.pickSlot('Continue which journey?', true); if (s) { await G.startFromSave(G.persist.read(s)); return; } }
@@ -230,7 +231,7 @@ G.musicRoom = function () {
     draw(b) { G.menuBG(b, '#1f4f7a', '#0b0c16', this.t / 60); },
     toggleNight() {
       if (!(this.playing && F[this.playing + '@night'])) { G.audio && G.audio.sfx('buzz'); return; }
-      this.night = !this.night; if (G.audio) G.audio.forceVariant = this.night ? 'night' : 'day'; G.audio && G.audio.sfx('cursor');
+      this.night = !this.night; if (G.audio) { G.audio.forceVariant = this.night ? 'night' : 'day'; G.audio.switchVariantNow && G.audio.switchVariantNow(); } G.audio && G.audio.sfx('cursor');
     },
     drawUI() {
       const U = G.ui, t = this.t, ease = G.ease;

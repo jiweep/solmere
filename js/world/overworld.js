@@ -564,10 +564,10 @@ G.WorldScene = class {
       if (e.kind === 'trainer' && e.defeated) {
         const tr = G.TRAINERS[e.trainer];
         if (G.canRematch(e.trainer)) { if (await G.yesno((tr.rematchLine || 'Want a rematch? I\'ve been training!') + '\\p(Rematch this trainer?)')) { await G.trainerBattleFromEnt(e, true); return; } }
-        await G.say(tr && tr.after ? tr.after : '...', { speaker: tr ? tr.name : null }); return;
+        await G.say(tr && tr.after ? tr.after : '...', { speaker: tr ? tr.name : null, look: e.look }); return;
       }
       if (e.script) await G.runScript(e.script, { ent: e });
-      else if (e.text) await G.say(e.text, { speaker: e.name });
+      else if (e.text) await G.say(e.text, { speaker: e.name, look: e.look });
     }
   }
   async pickItem(e) {

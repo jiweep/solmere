@@ -48,7 +48,7 @@ G.update = function () {
   const list = G.scenes.slice();
   for (const s of list) { if (s.update) s.update(s === top); }
   for (let i = G.toasts.length - 1; i >= 0; i--) if (++G.toasts[i].t > G.toasts[i].life) G.toasts.splice(i, 1);
-  if (G.banner && ++G.banner.t > 200) G.banner = null;
+  if (G.banner && ++G.banner.t > 230) G.banner = null;
   if (G.audio) G.audio.update();
 };
 
@@ -118,15 +118,9 @@ G.render = function () {
 };
 G.drawOverlays = function () {
   const U = G.ui;
-  // area banner
-  if (G.banner) {
-    const b = G.banner, k = b.t < 20 ? b.t / 20 : b.t > 170 ? (200 - b.t) / 30 : 1;
-    const y = -30 + 38 * G.ease.outCubic(G.clamp(k, 0, 1));
-    const w = Math.max(110, U.measure(b.text, 9, 800) + 40);
-    U.panel(G.W / 2 - w / 2, y, w, 26, 'paper', { r: 6, alpha: G.clamp(k * 1.2, 0, 1) });
-    U.text(b.text, G.W / 2, y + 5, { size: 9, weight: 800, align: 'center', color: '#4a3a20', alpha: G.clamp(k, 0, 1) });
-    if (b.sub) U.text(b.sub, G.W / 2, y + 16, { size: 5.5, weight: 600, align: 'center', color: '#8a7550', alpha: G.clamp(k, 0, 1) });
-  }
+  // area sign: a wooden board on two chains drops in from the top, bounces to a stop and swings on its
+  // chains (a damped pendulum with a little lingering sway), then is hauled back up
+  if (G.banner) G.drawAreaSign(G.banner);
   // toasts
   // toasts stack down from the top-right so they never cover the dialogue box
   let ty = G.net && G.net.connected ? 30 : 18;
@@ -155,6 +149,42 @@ G.drawOverlays = function () {
 G.ERR_BOX = { x: 10, y: 10, w: 364, h: 28 };
 G.errSeen = new Set(); G.errT = 0;
 G.dismissErrors = function () { G.errors.length = 0; };
+G.drawAreaSign = function (b) {
+  const U = G.ui, c = U.c, t = b.t, S = G.gfx.S, X = v => U.X(v), Y = v => U.Y(v);
+  const w = Math.max(128, U.measure(b.text, 9.5, 900) + 48), h = b.sub ? 32 : 25, cx = G.W / 2, pivot = -2;
+  // vertical: a spring drop onto its chains, then out
+  const rest = 12, fall = t < 60 ? rest - (rest + h + 16) * Math.exp(-t / 7) * Math.cos(t * .32) : rest;
+  const y = t > 196 ? rest - Math.pow((t - 196) / 34, 2) * (rest + h + 30) : fall;
+  // angle: a pendulum knocked by the stop, dying away into a slow breeze sway
+  const ang = .2 * Math.exp(-t / 38) * Math.sin(t * .17 + .5) + .012 * Math.sin(t * .05) + (t > 196 ? (t - 196) * .003 : 0);
+  c.save();
+  c.translate(X(cx), Y(pivot)); c.rotate(ang); c.translate(-X(cx), -Y(pivot));
+  // chains
+  const chain = (x0) => {
+    for (let yy = pivot; yy < y + 3; yy += 3) {
+      c.fillStyle = (yy / 3) % 2 < 1 ? '#3a3a44' : '#6a6a78';
+      c.fillRect(X(x0 - .9), Y(yy), .9 * 2 * S, 2.4 * S);
+    }
+  };
+  chain(cx - w / 2 + 12); chain(cx + w / 2 - 12);
+  // board: planks with grain, a darker frame, nails, a soft shadow
+  const bx = cx - w / 2, by = y + 2;
+  c.fillStyle = 'rgba(0,0,0,.28)'; c.fillRect(X(bx + 2), Y(by + 3), w * S, h * S);
+  c.fillStyle = '#5a3a22'; c.fillRect(X(bx - 1.5), Y(by - 1.5), (w + 3) * S, (h + 3) * S);
+  const planks = b.sub ? 3 : 2, ph = h / planks;
+  for (let i = 0; i < planks; i++) {
+    const py = by + i * ph, g = c.createLinearGradient(0, Y(py), 0, Y(py + ph));
+    g.addColorStop(0, i % 2 ? '#c89058' : '#d49c62'); g.addColorStop(1, i % 2 ? '#a8733f' : '#b57f48');
+    c.fillStyle = g; c.fillRect(X(bx), Y(py), w * S, ph * S);
+    c.fillStyle = 'rgba(90,56,30,.35)'; for (let k = 0; k < 5; k++) { const gx = bx + ((i * 37 + k * 29) % Math.floor(w - 10)) + 5; c.fillRect(X(gx), Y(py + ph * .35 + (k % 3)), (8 + k * 3) * S, .5 * S); }
+    c.fillStyle = 'rgba(40,24,12,.6)'; c.fillRect(X(bx), Y(py + ph - .6), w * S, .6 * S);
+  }
+  c.fillStyle = 'rgba(255,236,200,.35)'; c.fillRect(X(bx), Y(by), w * S, .7 * S);
+  for (const nx of [bx + 12, bx + w - 12]) { c.fillStyle = '#2a2a30'; c.beginPath(); c.arc(X(nx), Y(by + 3), 1.3 * S, 0, 7); c.fill(); c.fillStyle = '#9a9aa8'; c.beginPath(); c.arc(X(nx - .3), Y(by + 2.7), .5 * S, 0, 7); c.fill(); }
+  U.text(b.text, cx, by + 4.5, { size: 9.5, weight: 900, align: 'center', color: '#fff6e4', outline: '#4a2a14' });
+  if (b.sub) U.text(b.sub, cx, by + 19, { size: 5.8, weight: 700, align: 'center', color: '#fff0d4', outline: 'rgba(60,36,18,.8)' });
+  c.restore();
+};
 G.reportError = function (e) {
   let msg = e && e.message ? e.message : String(e);
   // where it came from (file:line of the first frame), so a screenshot of the box is enough to fix it

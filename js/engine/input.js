@@ -67,7 +67,15 @@ G.input = (function () {
       if (e.button === 0) M.click = true; else if (e.button === 2) M.rclick = true;
     });
     window.addEventListener('contextmenu', e => { if (e.target && e.target.tagName === 'CANVAS') e.preventDefault(); });
-    window.addEventListener('wheel', e => { M.wheel += Math.sign(e.deltaY); }, { passive: true });
+    // wheel and trackpad: accumulate the real scroll distance and step once per notch-sized amount, so a
+    // trackpad's stream of tiny deltas (and its momentum tail) scrolls at a controlled pace, not a blur
+    window.addEventListener('wheel', e => {
+      const k = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 240 : 1, d = e.deltaY * k;
+      if (Math.sign(d) !== Math.sign(M.wheelAcc || 0)) M.wheelAcc = 0;
+      M.wheelAcc = (M.wheelAcc || 0) + d;
+      const step = 46;
+      while (Math.abs(M.wheelAcc) >= step) { M.wheel += Math.sign(M.wheelAcc); M.wheelAcc -= Math.sign(M.wheelAcc) * step; }
+    }, { passive: true });
   }
   const M = { x: -1, y: -1, moved: false, click: false, rclick: false, wheel: 0, active: false };
   I.mouse = M;
@@ -88,7 +96,8 @@ G.input = (function () {
       else if (top && !top.isWorld && !top.noClickConfirm && !top.menu) tapQ.a = true;   // click anywhere: advance / confirm
     }
     if (M.rclick) tapQ.b = true;
-    if (M.wheel) { tapQ[M.wheel > 0 ? 'down' : 'up'] = true; M.wheel = 0; }
+    // one step every other frame (a press needs a release between), with a short backlog at most
+    if (M.wheel && !M.wheelHold) { const n = Math.sign(M.wheel); tapQ[n > 0 ? 'down' : 'up'] = true; M.wheel -= n; if (Math.abs(M.wheel) > 3) M.wheel = n * 3; M.wheelHold = true; } else M.wheelHold = false;
     M.moved = M.click = M.rclick = false;
   }
   I.poll = function () {

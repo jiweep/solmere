@@ -14,9 +14,10 @@ G.TextBox = class {
     this.style = o.style || 'light'; this.size = o.size || 8.4; this.lh = o.lh || 11.6; this.maxLines = o.lines || 3;
     this.pages = []; this.page = 0; this.chars = 0; this.speaker = null; this.state = 'idle'; this.color = o.color;
   }
-  set(text, speaker) {
+  set(text, speaker, look) {
     text = G.fmtText(text);
-    this.speaker = speaker || null;
+    if (this.speaker !== (speaker || null)) this.pt = 0;
+    this.speaker = speaker || null; this.look = look || G.lookForSpeaker(speaker);
     const parts = text.split('\\p');
     this.pages = [];
     for (const part of parts) {
@@ -62,10 +63,11 @@ G.TextBox = class {
     } else U.panel(this.x, this.y, this.w, this.h, this.style, { r: 5 });
     // inner decorative line
     if (this.style === 'light') { U.rrect(this.x + 3, this.y + 3, this.w - 6, this.h - 6, 3); U.c.lineWidth = G.gfx.S * .45; U.c.strokeStyle = 'rgba(42,48,64,.18)'; U.c.stroke(); }
+    const por = this.drawPortrait();
     if (this.speaker) {
       // slanted name tag that snaps in with a little overshoot
       const c = U.c, X = v => U.X(v), Y = v => U.Y(v), nm = this.speaker.toUpperCase();
-      const e = G.ease.outBack(Math.min(1, (this.t || 0) / 9)), sw = U.measure(nm, 7.2, 900) + 20, tx = this.x + 6 - (1 - e) * 30, ty = this.y - 11;
+      const e = G.ease.outBack(Math.min(1, (this.t || 0) / 9)), sw = U.measure(nm, 7.2, 900) + 20, tx = this.x + 6 + (por ? 62 : 0) - (1 - e) * 30, ty = this.y - 11;
       const para = (px, py, pw, ph, sk, f) => { c.fillStyle = f; c.beginPath(); c.moveTo(X(px + sk), Y(py)); c.lineTo(X(px + pw + sk), Y(py)); c.lineTo(X(px + pw), Y(py + ph)); c.lineTo(X(px), Y(py + ph)); c.closePath(); c.fill(); };
       para(tx + 2, ty + 2, sw, 13, 5, '#07060c');
       para(tx, ty, sw, 13, 5, '#ff3b4e');
@@ -87,6 +89,32 @@ G.TextBox = class {
       const c = U.c, S = G.gfx.S;
       c.fillStyle = '#e8484a'; c.beginPath(); c.moveTo(U.X(ax - 3.5), U.Y(ay)); c.lineTo(U.X(ax + 3.5), U.Y(ay)); c.lineTo(U.X(ax), U.Y(ay + 4)); c.fill();
     }
+  }
+  // the speaker's bust on a slanted card beside the box: their animated battle sprite (idle loop, blinks)
+  // when they have one, otherwise their drawn portrait; it slides in when a new speaker starts talking
+  drawPortrait() {
+    const a = this.look && G.LOOKS[this.look];
+    if (!a || this.noPortrait) return false;
+    this.pt = (this.pt || 0) + 1;
+    const SEQ = [0, 1, 1, 0, 3, 3, 0, 0, 1, 1, 0, 0, 2, 0], k = G.chars.hasBattle(a, 'n0') ? 'n' + SEQ[Math.floor(G.realTime * 5) % SEQ.length] : 'i';
+    const key = this.look + '|' + k; G._bust = G._bust || {};
+    let bust = G._bust[key];
+    if (!bust) {
+      const spr = (G.chars.hasBattle(a, k) && G.chars.battleSprite(a, k)) || G.chars.portrait(a);
+      if (!spr) return false;
+      const h = Math.round(spr.height * .58), cv = G.makeCanvas(spr.width, h), c2 = cv.getContext('2d'); c2.imageSmoothingEnabled = false;
+      c2.drawImage(spr, 0, 0, spr.width, h, 0, 0, spr.width, h); bust = G._bust[key] = cv;
+    }
+    const U = G.ui, c = U.c, e = G.ease.outCubic(Math.min(1, this.pt / 10)), W = 58, H = 56, x0 = this.x + 2 - (1 - e) * 40, y0 = this.y - H + 2;
+    const X = v => U.X(v), Y = v => U.Y(v);
+    const card = (px, py, sk, col, hh = H) => { const k = sk * hh / H; c.beginPath(); c.moveTo(X(px + k), Y(py)); c.lineTo(X(px + W + k), Y(py)); c.lineTo(X(px + W), Y(py + hh)); c.lineTo(X(px), Y(py + hh)); c.closePath(); c.fillStyle = col; c.fill(); };
+    c.save(); c.globalAlpha = e;
+    card(x0 + 2, y0 + 2, 8, '#07060c'); card(x0, y0, 8, '#1a1c2a'); card(x0, y0 + H - 3, 8, '#ff3b4e', 3);
+    c.beginPath(); c.moveTo(X(x0 + 8), Y(y0)); c.lineTo(X(x0 + W + 8), Y(y0)); c.lineTo(X(x0 + W), Y(y0 + H - 3)); c.lineTo(X(x0), Y(y0 + H - 3)); c.closePath(); c.clip();
+    const g = c.createLinearGradient(0, Y(y0), 0, Y(y0 + H)); g.addColorStop(0, 'rgba(255,255,255,.08)'); g.addColorStop(1, 'rgba(255,59,78,.18)'); c.fillStyle = g; c.fillRect(X(x0), Y(y0), X(x0 + W + 10) - X(x0), Y(y0 + H) - Y(y0));
+    U.img(bust, x0 + 4 + W / 2 - bust.width / 2, y0 + H - 3 - bust.height);
+    c.restore();
+    return true;
   }
   static cut(line, n) {
     let out = '', cnt = 0;
@@ -167,7 +195,7 @@ G.DialogScene = class {
     this.o = o || {}; this.res = res; this.lowres = false;
     this.box = new G.TextBox(this.o.box || {});
     const arr = Array.isArray(text) ? text : [text];
-    this.queue = arr.slice(); this.box.set(this.queue.shift(), this.o.speaker);
+    this.queue = arr.slice(); this.box.set(this.queue.shift(), this.o.speaker, this.o.look);
     this.menu = null; this.t = 0;
   }
   update(top) {
@@ -186,11 +214,22 @@ G.DialogScene = class {
     }
     if (this.o.auto && this.box.typed() && this.box.lastPage() && this.t > this.o.auto) { G.pop(this); this.res(); return; }
     if (done) {
-      if (this.queue.length) { this.box.set(this.queue.shift(), this.o.speaker); return; }
+      if (this.queue.length) { this.box.set(this.queue.shift(), this.o.speaker, this.o.look); return; }
       G.pop(this); this.res();
     }
   }
   drawUI() { this.box.draw(!this.menu); if (this.menu) this.menu.draw(); }
+};
+// who is talking: the cast by name, trainers by their name, or a look of the same name
+G.lookForSpeaker = function (name) {
+  if (!name) return null;
+  if (!G._speakerLooks) {
+    const L = G._speakerLooks = { hale: 'hale', 'professor hale': 'hale', 'prof. hale': 'hale', wren: 'wren', mom: 'mom', sable: 'sable', crane: 'crane', 'vesper crane': 'crane', grey: 'grey', lark: 'lark' };
+    for (const id in G.TRAINERS || {}) { const t = G.TRAINERS[id], lk = t && (typeof t.look === 'string' ? t.look : typeof t.sprite === 'string' ? t.sprite : null); if (t && t.name && lk && !L[t.name.toLowerCase()]) L[t.name.toLowerCase()] = lk; }
+  }
+  const n = String(name).toLowerCase().replace(/[^a-z .]/g, '').trim();
+  const id = G._speakerLooks[n] || (G.LOOKS && G.LOOKS[n] ? n : null) || G._speakerLooks[n.split(' ').pop()];
+  return id && G.LOOKS && G.LOOKS[id] ? id : null;
 };
 G.say = function (text, o = {}) {
   if (typeof o === 'string') o = { speaker: o };

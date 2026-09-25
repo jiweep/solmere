@@ -293,12 +293,12 @@ G.audio = (function () {
     return p;
   }
   // both arrangements share the same score, so map the musical position across and crossfade slowly
-  function syncSwitch(newId) {
-    if (!buffers.has(newId)) { load(newId).catch(() => { }); return; }
+  function syncSwitch(newId, fade = 3.0) {
+    if (!buffers.has(newId)) { load(newId).then(() => { if (fade < 1 && track && variantFor(curId) === newId) syncSwitch(newId, fade); }).catch(() => { }); return; }
     const m1 = track.meta, m2 = MF()[newId];
     const p = position(track) + .02, I = m1.intro || 0, L = m1.loopEnd - m1.loopStart;
     const q = p < I ? p : (m2.intro || 0) + ((p - I) % L);
-    startTrack(newId, touch(newId), q, 3.0);
+    startTrack(newId, touch(newId), q, fade);
   }
   function playJingle(buf) {
     const t = ctx.currentTime + .02, d = buf.duration;
@@ -374,12 +374,20 @@ G.audio = (function () {
         if (buffers.has(want)) { startTrack(want, touch(want), 0, .3); return; }
         if (track) { fadeOutTrack(track, .35); track = null; }
         pending = want;
+        const other = want.endsWith('@night') ? id : id + '@night';
+        if (MF()[other] && A.forceVariant) load(other).catch(() => { });
         load(want).then(buf => { if (ticket !== musicTicket) return; pending = null; startTrack(want, buf, 0, .25); })
           .catch(() => { if (ticket !== musicTicket) return; pending = null; synthMusic(id); });
         return;
       }
       if (track) { fadeOutTrack(track, .35); track = null; }
       synthMusic(id);
+    },
+    // swap day/night arrangements right now (Music Room), same bar and beat, with a short crossfade
+    switchVariantNow() {
+      if (!ctx || !track || !curId) return;
+      const want = variantFor(curId);
+      if (want !== track.id) syncSwitch(want, .25);
     },
     stopMusic() { musicTicket++; pending = null; if (track) { fadeOutTrack(track, .5); track = null; } stopSynth(); curId = null; },
     currentMusic: () => curId,
