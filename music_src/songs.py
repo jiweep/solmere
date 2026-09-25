@@ -15,3 +15,4 @@ if _os.environ.get('SOLMERE_AUDITION'):
     import s_audition5  # noqa: F401
     import s_audition6  # noqa: F401
     import s_audition7  # noqa: F401
+    import s_audition8  # noqa: F401

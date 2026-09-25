@@ -251,6 +251,30 @@ G.MUSIC_FILES = {
 "worked": 1790357513,
 "hidden": true
 },
+"aud28": {
+"file": "music/aud28.mp3",
+"loop": true,
+"loopStart": 11.67268,
+"loopEnd": 90.42268,
+"duration": 91.92268,
+"bpm": 96.0,
+"title": "Audition 28 - Evening Waltz",
+"intro": 3.75,
+"worked": 1790358368,
+"hidden": true
+},
+"aud29": {
+"file": "music/aud29.mp3",
+"loop": true,
+"loopStart": 10.04422,
+"loopEnd": 115.04422,
+"duration": 116.54422,
+"bpm": 96.0,
+"title": "Audition 29 - Rooftop",
+"intro": 5.0,
+"worked": 1790358373,
+"hidden": true
+},
 "aud3": {
 "file": "music/aud3.mp3",
 "loop": true,
@@ -261,6 +285,18 @@ G.MUSIC_FILES = {
 "title": "Audition 3 - Tide",
 "intro": 4.8,
 "worked": 1790340094,
+"hidden": true
+},
+"aud30": {
+"file": "music/aud30.mp3",
+"loop": true,
+"loopStart": 6.70952,
+"loopEnd": 90.70952,
+"duration": 92.20952,
+"bpm": 120.0,
+"title": "Audition 30 - Bossa Street",
+"intro": 4.0,
+"worked": 1790358367,
 "hidden": true
 },
 "aud4": {
