@@ -111,7 +111,7 @@ G.W3 = (function () {
 
   // ------------------------------------------------------------- terrain mesh
   function buildTerrain(map, hv, group) {
-    const CT = G.terrain.CT, W = map.w, H = map.h, PADT = 10;
+    const CT = G.terrain.CT, W = map.w, H = map.h, PADT = 14;
     // chunks cover the map plus a border ring of trees/water
     for (let cy = Math.floor(-PADT / CT); cy <= Math.floor((H + PADT) / CT); cy++) for (let cx = Math.floor(-PADT / CT); cx <= Math.floor((W + PADT) / CT); cx++) {
       const ch = G.terrain.chunk(map, cx, cy);
@@ -193,13 +193,15 @@ G.W3 = (function () {
 
   // ------------------------------------------------------------- props
   function buildProps(map, hv, group) {
-    const W = map.w, H = map.h, PADT = 6;
+    const W = map.w, H = map.h, PADT = 12;
     for (let y = -PADT; y < H + PADT; y++) for (let x = -PADT; x < W + PADT; x++) {
       const inside = x >= 0 && y >= 0 && x < W && y < H;
-      const c = inside ? map.cell(x, y) : G.borderCell(map, x, y);
+      // beyond the edge: the connected map's own cell if there is one, otherwise the border fill
+      const rr = inside ? null : map.resolve(x, y);
+      const c = inside ? map.cell(x, y) : rr ? rr.map.cells[rr.y * rr.map.w + rr.x] : G.borderCell(map, x, y);
       if (c && (c.g === 'tall' || c.g === 'flowers' || c.g === 'hedge')) {
         // live ground (tall grass, flower beds, hedges) stands up out of the terrain
-        let lt = null; try { lt = c.g === 'hedge' ? G.tiles.hedgeSprite(map, c) : G.liveTile(map, c, 0); } catch (e) { }
+        let lt = null; const cm = rr ? rr.map : map; try { lt = c.g === 'hedge' ? G.tiles.hedgeSprite(cm, c) : G.liveTile(cm, c, 0); } catch (e) { }
         if (lt && lt.img) {
           const m = billboard(lt.img, { lean: c.g === 'hedge' ? .6 : .85, shadow: c.g !== 'flowers' });
           const bz = y + (16 + (lt.oy || 0) + lt.img.height - 16) / 16;
@@ -210,7 +212,7 @@ G.W3 = (function () {
       }
       if (!c || !c.o || c.o === 'table' || c.o === 'bed' || c.o === 'rug') continue;
       if (c.cut || c.smash || c.push || c.solidIf) continue;   // stateful props stay dynamic (drawn as ents below)
-      let oi; try { oi = G.objImg(map, c, 0); } catch (e) { oi = null; }
+      let oi; try { oi = G.objImg(rr ? rr.map : map, c, 0); } catch (e) { oi = null; }
       if (!oi || !oi.img || oi.flat) continue;
       const m = billboard(oi.img);
       const bx = x + ((oi.ox || 0) + oi.img.width / 2) / 16, bz = y + ((oi.oy || 0) + oi.img.height) / 16;
@@ -223,7 +225,9 @@ G.W3 = (function () {
   // a box body plus a pitched roof, textured by cutting the building's art into facade and roof
   const WALL = { house: .44, haven: .48, mart: .48, lab: .46, gym: .5 };
   function buildBuildings(map, hv, group) {
-    for (const b of map.buildings) {
+    const list = map.buildings.map(b => b);
+    for (const cn of map.conns) { const nm = cn.map; if (nm) for (const b of nm.buildings) list.push({ ...b, x: b.x + cn.ox, y: b.y + cn.oy }); }
+    for (const b of list) {
       const bi = G.tiles.building(b.kind, b.w, b.h, { roof: b.roof, door: b.door, accent: b.accent, label: b.label });
       const img = bi.img, ax = bi.atlas ? G.bldAlign(b) : 0;
       const baseY = hv.at(b.x + b.w / 2, Math.min(map.h - .01, b.y + b.h - .5));
@@ -245,7 +249,7 @@ G.W3 = (function () {
         sc.fillStyle = `rgb(${col[0] * .82 | 0},${col[1] * .82 | 0},${col[2] * .82 | 0})`; sc.fillRect(0, 0, 8, 16);
         sc.fillStyle = `rgb(${col[0] * .6 | 0},${col[1] * .6 | 0},${col[2] * .6 | 0})`; sc.fillRect(0, 13, 8, 3);
       }
-      const wallH = Math.min(1.9, wallPx / 16), roofH = Math.min(1.5, roofPx / 16 * .6), depth = zF - zB, ridgeZ = zB + depth * .45;
+      const wallH = Math.min(1.9, wallPx / 16), roofH = Math.min(1.5, roofPx / 16 * .6), depth = zF - zB, ridgeZ = zB + depth * .18;
       const mFac = new T.MeshLambertMaterial({ map: tex(facade), alphaTest: .4, side: T.DoubleSide });
       const mSide = new T.MeshLambertMaterial({ map: tex(side) });
       const mRoof = new T.MeshLambertMaterial({ map: tex(roof), alphaTest: .4, side: T.DoubleSide });
