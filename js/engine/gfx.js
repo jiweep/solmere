@@ -3,11 +3,27 @@
 //  Graphics: canvas management, low-res world buffer, crisp native-res UI,
 //  pixel-art sprite pipeline ("pixelizer"), particles, fades.
 // ============================================================================
-G.FONT = '"Pixelify Sans", "Avenir Next", "Avenir", "Nunito", "Segoe UI", "Helvetica Neue", Arial, sans-serif';
-// the bundled pixel font must be decoded before the first canvas text is drawn
+// UI type: SolPix, Latin subsets of the Galmuri pixel font (OFL, fonts/OFL-Galmuri.txt), one face per pixel grid
+// (em 8/10/12/15 px, capitals 7/9/11/14 px). Text is set at a whole multiple of a face's grid, so each font pixel
+// is a square block of screen pixels: no smeared or merged letters at any window size.
+G.FONT_FALLBACK = '"Avenir Next", "Avenir", "Nunito", "Segoe UI", "Helvetica Neue", Arial, sans-serif';
+G.FONT = '"SolPix11", ' + G.FONT_FALLBACK;
+G.PIXFACES = [{ fam: 'SolPix7', em: 8, cap: 7 }, { fam: 'SolPix9', em: 10, cap: 9 }, { fam: 'SolPix11', em: 12, cap: 11, bold: 'SolPix11B' }, { fam: 'SolPix14', em: 15, cap: 14 }];
+// where the old type sat: the alphabetic baseline below each textBaseline anchor, per unit of size (sizes and
+// layouts across the UI were tuned to it); capitals are sized to .68 of the requested size
+G.FONT_BASE = { top: .767, hanging: .736, middle: .267, alphabetic: 0, bottom: -.233, ideographic: -.233 };
+G.pixFace = function (px, bold) {
+  const want = px * .68; let best = null;
+  for (const f of G.PIXFACES) for (let m = 1; m <= 12; m++) {
+    const cost = Math.abs(Math.log(m * f.cap / want)) + (f.bold ? 0 : .04) + (bold && !f.bold ? .06 : 0);
+    if (!best || cost < best.cost) best = { cost, m, fam: bold && f.bold ? f.bold : f.fam, em: f.em };
+  }
+  return best;
+};
+// the bundled pixel fonts must be decoded before the first canvas text is drawn
 G.loadFonts = function () {
   if (typeof document === 'undefined' || !document.fonts) return Promise.resolve();
-  return Promise.all([400, 500, 600, 700].map(w => document.fonts.load(`${w} 16px "Pixelify Sans"`).catch(() => null)));
+  return Promise.all(['SolPix7', 'SolPix9', 'SolPix11', 'SolPix11B', 'SolPix14'].map(f => document.fonts.load(`16px "${f}"`).catch(() => null)));
 };
 G.MONO = '"SF Mono", Menlo, Consolas, monospace';
 
@@ -124,11 +140,17 @@ G.ui = {
   },
   X(x) { return G.gfx.ox + x * G.gfx.S; },
   Y(y) { return G.gfx.oy + y * G.gfx.S; },
+  // sets the canvas font; the default UI family snaps to a pixel face (this.pm = screen pixels per font pixel)
   font(size, weight = 600, fam = G.FONT) {
     const k = size + '|' + weight + '|' + fam + '|' + G.gfx.S;
-    let f = G.gfx._fontCache && G.gfx._fontCache[k];
-    if (!f) { f = `${weight} ${(size * G.gfx.S).toFixed(1)}px ${fam}`; if (G.gfx._fontCache) G.gfx._fontCache[k] = f; }
-    this.c.font = f; return f;
+    const cache = G.gfx._fontCache || (G.gfx._fontCache = {});
+    let f = cache[k];
+    if (!f) {
+      if (fam === G.FONT) { const p = G.pixFace(size * G.gfx.S, weight >= 700); f = { css: `${p.m * p.em}px "${p.fam}", "SolPix11", ${G.FONT_FALLBACK}`, pm: p.m }; }
+      else f = { css: `${weight} ${(size * G.gfx.S).toFixed(1)}px ${fam}`, pm: 0 };
+      cache[k] = f;
+    }
+    this.c.font = f.css; this.pm = f.pm; return f.css;
   },
   measure(str, size = 8, weight = 600) { this.font(size, weight); return this.c.measureText(str).width / G.gfx.S; },
   COLORS: {
@@ -139,15 +161,24 @@ G.ui = {
     const c = this.c, S = G.gfx.S;
     const size = o.size || 8, weight = o.weight || 600;
     this.font(size, weight, o.mono ? G.MONO : G.FONT);
-    c.textAlign = o.align || 'left'; c.textBaseline = o.base || 'top';
-    const px = this.X(x), py = this.Y(y);
+    const pm = this.pm;
+    c.textAlign = o.align || 'left';
+    let px = this.X(x), py = this.Y(y);
+    // pixel type: drawn on its baseline at whole screen pixels, so the font's pixels stay square
+    if (pm) { c.textBaseline = 'alphabetic'; px = Math.round(px); py = Math.round(py + (G.FONT_BASE[o.base || 'top'] || 0) * size * S); }
+    else c.textBaseline = o.base || 'top';
     if (o.alpha !== undefined) c.globalAlpha = o.alpha;
     if (o.outline) {
-      c.lineJoin = 'round'; c.lineWidth = o.outlineW ? o.outlineW * S : S * 1.4; c.strokeStyle = o.outline; c.strokeText(str, px, py);
+      if (pm) {   // a hard outline one font pixel (or the requested width) around every glyph pixel
+        const k = Math.max(pm, Math.round((o.outlineW ? o.outlineW * S : S * 1.4) / 2)); c.fillStyle = o.outline;
+        for (const [dx, dy] of [[-k, 0], [k, 0], [0, -k], [0, k], [-k, -k], [k, -k], [-k, k], [k, k]]) c.fillText(str, px + dx, py + dy);
+      } else { c.lineJoin = 'round'; c.lineWidth = o.outlineW ? o.outlineW * S : S * 1.4; c.strokeStyle = o.outline; c.strokeText(str, px, py); }
     }
     if (o.shadow !== false) {
+      // the handheld drop shadow: one font pixel down and to the right
+      const d = pm || S * .55;
       c.fillStyle = o.shadow || (o.color && this.isLight(o.color) ? 'rgba(0,0,0,.45)' : 'rgba(0,0,0,.14)');
-      c.fillText(str, px + S * .55, py + S * .55);
+      c.fillText(str, px + d, py + d);
     }
     c.fillStyle = o.color || '#283040';
     c.fillText(str, px, py);

@@ -1140,6 +1140,7 @@ G.tiles = (function () {
 
   // ------------------------------------------------------------- icons ---
   function itemIcon(kind, col) {
+    if (kind === 'orb' && G.orbArt) return G.orbArt('orb', 16);   // the game's own capture orb, never a red-and-white ball
     return get('icon|' + kind + '|' + col, 16, 16, p => {
       const c = P(col), d = G.col.parse(G.col.dark(col, .35)), l = G.col.parse(G.col.light(col, .45)), O = P('#1e1a24'), Wh = P('#ffffff');
       switch (kind) {

@@ -6,10 +6,12 @@
 <title>Solmere: Tidelight</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='7' fill='%23e8484a'/><rect x='1' y='7' width='14' height='2' fill='%23222'/><circle cx='8' cy='8' r='2.5' fill='%23fff' stroke='%23222'/></svg>">
 <style>
-  @font-face { font-family: 'Pixelify Sans'; font-weight: 400; src: url(fonts/PixelifySans-400.ttf) format('truetype'); }
-  @font-face { font-family: 'Pixelify Sans'; font-weight: 500; src: url(fonts/PixelifySans-500.ttf) format('truetype'); }
-  @font-face { font-family: 'Pixelify Sans'; font-weight: 600; src: url(fonts/PixelifySans-600.ttf) format('truetype'); }
-  @font-face { font-family: 'Pixelify Sans'; font-weight: 700; src: url(fonts/PixelifySans-700.ttf) format('truetype'); }
+  /* SolPix: Latin subsets of the Galmuri pixel font (OFL; see fonts/OFL-Galmuri.txt, tools/build_fonts.py) */
+  @font-face { font-family: 'SolPix7'; src: url(fonts/SolPix7.woff2) format('woff2'); font-display: block; }
+  @font-face { font-family: 'SolPix9'; src: url(fonts/SolPix9.woff2) format('woff2'); font-display: block; }
+  @font-face { font-family: 'SolPix11'; src: url(fonts/SolPix11.woff2) format('woff2'); font-display: block; }
+  @font-face { font-family: 'SolPix11B'; src: url(fonts/SolPix11B.woff2) format('woff2'); font-display: block; }
+  @font-face { font-family: 'SolPix14'; src: url(fonts/SolPix14.woff2) format('woff2'); font-display: block; }
   html, body { margin: 0; padding: 0; background: #000; overflow: hidden; height: 100%; }
   #game { position: relative; z-index: 1; }
   canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
