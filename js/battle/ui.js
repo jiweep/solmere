@@ -93,7 +93,7 @@
     draw() {
       const U = G.ui, c = U.c, t = this.t;
       const X = x => U.X(x), Y = y => U.Y(y);
-      const para = (x, y, w, h, sk, fill) => { c.fillStyle = fill; c.beginPath(); c.moveTo(X(x + sk), Y(y)); c.lineTo(X(x + w + sk), Y(y)); c.lineTo(X(x + w), Y(y + h)); c.lineTo(X(x), Y(y + h)); c.closePath(); c.fill(); };
+      const para = (px, py, w, h, sk, f, o) => U.para(px, py, w, h, sk, f, o);
       // prompt: a slanted black slab with the mon's name set big, sliding in from the left
       const pk = G.ease.outCubic(Math.min(1, t / 10)), px = -150 + 150 * pk;
       c.globalAlpha = .9; para(px - 10, G.H - 31, 176, 26, 6, '#0e1019'); c.globalAlpha = 1;
@@ -111,7 +111,7 @@
         const bx = 262 + k * 6 + (1 - e) * 160 - (sel ? 10 : 0), by = G.H - 50 + k * 11.5, w = sel ? 124 : 112, h = 10;
         U.hot(bx, by, w, h, () => { if (this.i !== k) { this.i = k; G.audio && G.audio.sfx('cursor'); } }, () => { this.i = k; G.input.tap('a'); });
         if (sel) { para(bx - 3, by - 1.5, w + 6, h + 3, 8, '#07060c'); para(bx + 2 + Math.sin(t / 5), by + 2, w, h, 8, 'rgba(0,0,0,.35)'); }
-        para(bx, by, w, h, 8, sel ? COL[cm.id] : dis ? '#2a2a34' : '#12131c');
+        para(bx, by, w, h, 8, sel ? COL[cm.id] : dis ? '#2a2a34' : '#12131c', sel ? { stroke: 'rgba(255,255,255,.85)', lw: .45 } : {});
         if (!sel) para(bx, by + h - 1.5, w, 1.5, 1, COL[cm.id]);
         const jit = sel ? Math.round(Math.sin(t / 3)) * .5 : 0;
         U.text(cm.label, bx + 15 + jit, by + (sel ? 1 : 2), { size: sel ? 8.2 : 6.4, weight: 900, color: dis ? '#6a6a78' : '#fff', shadow: sel ? 'rgba(0,0,0,.5)' : false });
@@ -149,10 +149,10 @@
         // slanted type-coloured card; the selected one lifts and gets a hard black offset shadow
         this.t2 = (this.t2 || 0) + (k === 0 ? 1 : 0);
         const lift = sel ? 2 : 0, cx = U.c, X = v => U.X(v), Y = v => U.Y(v);
-        const para = (px, py, w, h, sk, f) => { cx.fillStyle = f; cx.beginPath(); cx.moveTo(X(px + sk), Y(py)); cx.lineTo(X(px + w + sk), Y(py)); cx.lineTo(X(px + w), Y(py + h)); cx.lineTo(X(px), Y(py + h)); cx.closePath(); cx.fill(); };
+        const para = (px, py, w, h, sk, f, o) => U.para(px, py, w, h, sk, f, o);
         if (sel) para(x + 3, y + 3 - lift, 124, 21, 6, '#07060c');
-        para(x, y - lift, 124, 21, 6, sel ? G.col.light(col, .12) : G.col.dark(col, .28));
-        para(x, y - lift, 124, 6, 6, G.col.light(col, sel ? .35 : .08));
+        para(x, y - lift, 124, 21, 6, sel ? G.col.light(col, .12) : G.col.dark(col, .28), { stroke: sel ? 'rgba(255,255,255,.9)' : 'rgba(0,0,0,.35)', lw: sel ? .5 : .4 });
+        para(x + .5, y - lift + .5, 123, 6, 6, G.col.light(col, sel ? .35 : .08), { shade: false });
         if (sel) para(x - 1, y + 19 - lift, 124, 2, 1, '#ffffff');
         U.text(m.name, x + 7, y + 3, { size: 7.6, weight: 800, color: '#fff', shadow: 'rgba(0,0,0,.4)' });
         const ppc = mv.pp === 0 ? '#ffb0b0' : mv.pp <= mv.maxpp / 4 ? '#ffe08a' : '#eef4ff';

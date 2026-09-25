@@ -68,7 +68,7 @@ G.TextBox = class {
       // slanted name tag that snaps in with a little overshoot
       const c = U.c, X = v => U.X(v), Y = v => U.Y(v), nm = this.speaker.toUpperCase();
       const e = G.ease.outBack(Math.min(1, (this.t || 0) / 9)), sw = U.measure(nm, 7.2, 900) + 20, tx = this.x + 6 + (por ? 62 : 0) - (1 - e) * 30, ty = this.y - 11;
-      const para = (px, py, pw, ph, sk, f) => { c.fillStyle = f; c.beginPath(); c.moveTo(X(px + sk), Y(py)); c.lineTo(X(px + pw + sk), Y(py)); c.lineTo(X(px + pw), Y(py + ph)); c.lineTo(X(px), Y(py + ph)); c.closePath(); c.fill(); };
+      const para = (px, py, pw, ph, sk, f) => U.para(px, py, pw, ph, sk, f);
       para(tx + 2, ty + 2, sw, 13, 5, '#07060c');
       para(tx, ty, sw, 13, 5, '#ff3b4e');
       para(tx, ty + 10, sw, 3, 5, '#07060c');

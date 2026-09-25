@@ -48,9 +48,12 @@ G.gfx = {
     const cw = Math.floor(window.innerWidth * dpr), ch = Math.floor(window.innerHeight * dpr);
     this.canvas.width = cw; this.canvas.height = ch;
     this.canvas.style.width = window.innerWidth + 'px'; this.canvas.style.height = window.innerHeight + 'px';
+    const mobile = G.touch && G.touch.on;
     let S = Math.min(cw / G.W, ch / G.H);
-    if (!this.fill) S = Math.max(1, Math.floor(S));
+    if (!this.fill && !mobile) S = Math.max(1, Math.floor(S));   // phones use every pixel of width
     this.S = S; this.ox = Math.floor((cw - G.W * S) / 2); this.oy = Math.floor((ch - G.H * S) / 2);
+    // phone held upright: the game sits near the top, the controls get the space below it
+    if (mobile && ch > cw) this.oy = Math.floor(Math.min(this.oy, 52 * dpr));
     this.cx.imageSmoothingEnabled = false;
     this._fontCache = {};
   },
@@ -225,56 +228,68 @@ G.ui = {
     if (o.sub) this.text(o.sub, x + w + 8, y + size / 2 + 1, { size: 6, weight: 800, color: 'rgba(255,255,255,.8)' });
     return w;
   },
-  // skewed parallelogram (Persona-style slab): top edge shifted right by sk
-  para(x, y, w, h, sk, fill) {
-    const c = this.c; c.fillStyle = fill; c.beginPath();
-    c.moveTo(this.X(x + sk), this.Y(y)); c.lineTo(this.X(x + w + sk), this.Y(y)); c.lineTo(this.X(x + w), this.Y(y + h)); c.lineTo(this.X(x), this.Y(y + h)); c.closePath(); c.fill();
+  // skewed parallelogram (Persona-style slab): top edge shifted right by sk. Smooth, slightly rounded corners;
+  // a coloured slab gets a soft top-to-bottom shade and a bright hairline along its top edge
+  para(x, y, w, h, sk, fill, o = {}) {
+    const c = this.c, S = G.gfx.S;
+    const pts = [[x + sk, y], [x + w + sk, y], [x + w, y + h], [x, y + h]].map(([a, b]) => [this.X(a), this.Y(b)]);
+    const rad = Math.min(o.r !== undefined ? o.r * S : S * 1.1, Math.abs(h) * S * .3, Math.abs(w) * S * .3);
+    this.polyPath(pts, rad);
+    const hex = typeof fill === 'string' && /^#[0-9a-f]{6}$/i.test(fill);
+    const lum = hex ? (() => { const [r, g, b] = G.col.parse(fill); return r * .3 + g * .59 + b * .11; })() : 0;
+    if (hex && lum > 45 && h >= 4 && o.shade !== false) {
+      const g = c.createLinearGradient(0, this.Y(y), 0, this.Y(y + h)); g.addColorStop(0, G.col.light(fill, .1)); g.addColorStop(1, G.col.dark(fill, .1));
+      c.fillStyle = g; c.fill();
+      c.save(); c.clip(); c.fillStyle = 'rgba(255,255,255,.28)'; c.fillRect(Math.min(pts[3][0], pts[0][0]), pts[0][1], Math.abs(pts[1][0] - pts[3][0]) + S * Math.abs(sk), Math.max(1, S * .35)); c.restore();
+    } else { c.fillStyle = fill; c.fill(); }
+    if (o.stroke) { this.polyPath(pts, rad); c.lineJoin = 'round'; c.lineWidth = Math.max(1, (o.lw || .5) * S); c.strokeStyle = o.stroke; c.stroke(); }
   },
-  // pixel-art rounded rectangle: world-pixel aligned, corners cut in 1px steps (DS window style)
+  // a closed polygon (screen coords) with every corner rounded by rad
+  polyPath(pts, rad) {
+    const c = this.c, n = pts.length;
+    c.beginPath();
+    if (rad <= .5) { c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < n; i++) c.lineTo(pts[i][0], pts[i][1]); c.closePath(); return; }
+    c.moveTo((pts[n - 1][0] + pts[0][0]) / 2, (pts[n - 1][1] + pts[0][1]) / 2);
+    for (let i = 0; i < n; i++) { const p = pts[i], q = pts[(i + 1) % n]; c.arcTo(p[0], p[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2, rad); }
+    c.closePath();
+  },
+  // smooth rounded rectangle path (game units)
   rrect(x, y, w, h, r) {
     const c = this.c, S = G.gfx.S;
-    x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
-    const k = r >= 3 ? 2 : r >= 1 ? 1 : 0, steps = k === 2 ? [2, 1] : k === 1 ? [1] : [];
-    const P = (px, py) => [this.X(px), this.Y(py)];
-    const pts = [];
-    // top-left -> top-right -> bottom-right -> bottom-left, stepping around each corner
-    pts.push(P(x + (steps[0] || 0), y));
-    pts.push(P(x + w - (steps[0] || 0), y));
-    steps.forEach((st, i) => { pts.push(P(x + w - st, y + i + 1)); pts.push(P(x + w - (steps[i + 1] || 0), y + i + 1)); });
-    pts.push(P(x + w, y + h - steps.length));
-    for (let i = steps.length - 1; i >= 0; i--) { pts.push(P(x + w - (steps[i + 1] || 0), y + h - i - 1)); pts.push(P(x + w - steps[i], y + h - i - 1)); }
-    pts.push(P(x + w - (steps[0] || 0), y + h)); pts.push(P(x + (steps[0] || 0), y + h));
-    steps.forEach((st, i) => { pts.push(P(x + st, y + h - i - 1)); pts.push(P(x + (steps[i + 1] || 0), y + h - i - 1)); });
-    pts.push(P(x, y + steps.length));
-    for (let i = steps.length - 1; i >= 0; i--) { pts.push(P(x + (steps[i + 1] || 0), y + i + 1)); pts.push(P(x + steps[i], y + i + 1)); }
-    c.beginPath(); c.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
-    c.closePath();
+    const X0 = Math.round(this.X(x)), Y0 = Math.round(this.Y(y)), X1 = Math.round(this.X(x + w)), Y1 = Math.round(this.Y(y + h));
+    const rad = Math.max(0, Math.min(r * S, (X1 - X0) / 2, (Y1 - Y0) / 2));
+    c.beginPath();
+    if (c.roundRect) c.roundRect(X0, Y0, X1 - X0, Y1 - Y0, rad);
+    else { c.moveTo(X0 + rad, Y0); c.arcTo(X1, Y0, X1, Y1, rad); c.arcTo(X1, Y1, X0, Y1, rad); c.arcTo(X0, Y1, X0, Y0, rad); c.arcTo(X0, Y0, X1, Y0, rad); c.closePath(); }
   },
   fillRect(x, y, w, h, col, a) {
     const c = this.c; if (a !== undefined) c.globalAlpha = a;
     c.fillStyle = col; c.fillRect(this.X(x), this.Y(y), w * G.gfx.S, h * G.gfx.S); c.globalAlpha = 1;
   },
-  // themed panel
+  // themed panel: a bold smooth outline, a soft shadow under it, a gradient body with a gloss sheen and a
+  // hairline highlight inside the edge (clean vector shapes against the pixel art)
   panel(x, y, w, h, style = 'light', o = {}) {
-    const c = this.c, r = o.r !== undefined ? o.r : 4;
+    const c = this.c, S = G.gfx.S, r = o.r !== undefined ? o.r : 4;
     const T = G.ui.THEMES[style] || G.ui.THEMES.light;
-    x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
     if (o.alpha !== undefined) c.globalAlpha = o.alpha;
     // Persona framing: a leaning black slab behind the sheet
     if (o.slab) this.para(x - 5, y + 4, w + 6, h, 6, '#07060c');
-    // hard drop shadow, 1px down-right
-    if (!o.noShadow) { this.rrect(x + 1, y + 1, w, h, r); c.fillStyle = 'rgba(0,0,0,.32)'; c.fill(); }
-    // dark outline, then a bevel: light top/left edge, shaded bottom/right edge
+    if (!o.noShadow) {   // a soft shadow from two stacked translucent shapes (a blur costs too much per frame)
+      this.rrect(x - .8, y + .4, w + 1.6, h + 1.8, r + 1); c.fillStyle = 'rgba(0,0,0,.12)'; c.fill();
+      this.rrect(x - .2, y + .6, w + .4, h + 1, r + .3); c.fillStyle = 'rgba(0,0,0,.22)'; c.fill();
+    }
     this.rrect(x, y, w, h, r); c.fillStyle = T.border; c.fill();
-    if (w > 4 && h > 4) {
-      this.rrect(x + 1, y + 1, w - 2, h - 2, r - 1); c.fillStyle = T.hi || G.col.light(T.top.startsWith('rgba') ? '#3a4660' : T.top, .5); c.fill();
-      this.rrect(x + 2, y + 2, w - 3, h - 3, r - 2); c.fillStyle = T.lo || (T.bot.startsWith('rgba') ? 'rgba(0,0,0,.4)' : G.col.dark(T.bot, .16)); c.fill();
-      this.rrect(x + 2, y + 2, w - 4, h - 4, r - 2); c.fillStyle = T.bot; c.fill();
-      // flat two-tone body: the upper band a step lighter
-      c.save(); this.rrect(x + 2, y + 2, w - 4, h - 4, r - 2); c.clip();
-      c.fillStyle = T.top; c.fillRect(this.X(x + 2), this.Y(y + 2), (w - 4) * G.gfx.S, Math.round((h - 4) * .55) * G.gfx.S);
+    if (w > 3 && h > 3) {
+      const bw = w > 12 && h > 12 ? .9 : .6;
+      const g = c.createLinearGradient(0, this.Y(y), 0, this.Y(y + h)); g.addColorStop(0, T.top); g.addColorStop(1, T.bot);
+      this.rrect(x + bw, y + bw, w - bw * 2, h - bw * 2, Math.max(0, r - bw)); c.fillStyle = g; c.fill();
+      c.save(); c.clip();
+      const gh = Math.min(h * .5, 16), gl = c.createLinearGradient(0, this.Y(y), 0, this.Y(y + gh));
+      gl.addColorStop(0, `rgba(255,255,255,${T.gloss !== undefined ? T.gloss : .18})`); gl.addColorStop(1, 'rgba(255,255,255,0)');
+      c.fillStyle = gl; c.fillRect(this.X(x), this.Y(y), w * S, gh * S);
       c.restore();
+      const k = bw + .45;
+      this.rrect(x + k, y + k, w - k * 2, h - k * 2, Math.max(0, r - k)); c.lineWidth = Math.max(1, S * .33); c.strokeStyle = T.inner; c.stroke();
     }
     c.globalAlpha = 1;
   },
@@ -295,21 +310,24 @@ G.ui = {
   cursor(x, y, col = '#e8484a') {
     const c = this.c, S = G.gfx.S, b = Math.sin(G.realTime * 8) * .8;
     const px = this.X(x + b), py = this.Y(y);
-    c.fillStyle = 'rgba(0,0,0,.3)';
-    c.beginPath(); c.moveTo(px + S * .5, py - 3 * S + S * .5); c.lineTo(px + 4 * S + S * .5, py + S * .5); c.lineTo(px + S * .5, py + 3 * S + S * .5); c.fill();
-    c.fillStyle = col;
-    c.beginPath(); c.moveTo(px, py - 3 * S); c.lineTo(px + 4 * S, py); c.lineTo(px, py + 3 * S); c.fill();
+    const tri = (dx, dy) => this.polyPath([[px + dx, py - 3 * S + dy], [px + 4.2 * S + dx, py + dy], [px + dx, py + 3 * S + dy]], S * .6);
+    tri(S * .3, S * .6); c.fillStyle = 'rgba(0,0,0,.28)'; c.fill();
+    tri(0, 0); c.fillStyle = col; c.fill();
+    c.lineJoin = 'round'; c.lineWidth = Math.max(1, S * .45); c.strokeStyle = G.col.dark(col, .45); c.stroke();
+    tri(0, 0); c.save(); c.clip(); c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(px, py - 3 * S, 4.2 * S, 2.2 * S); c.restore();
   },
+  // a rounded capsule gauge with a glossy fill
   bar(x, y, w, h, frac, col, bg = '#39414f', o = {}) {
-    const c = this.c, S = G.gfx.S;
-    x = Math.round(x * 2) / 2; y = Math.round(y * 2) / 2;
-    if (o.border !== false) { c.fillStyle = 'rgba(20,24,34,.85)'; c.fillRect(this.X(x - .5), this.Y(y - .5), (w + 1) * S, (h + 1) * S); }
-    c.fillStyle = bg; c.fillRect(this.X(x), this.Y(y), w * S, h * S);
+    const c = this.c, S = G.gfx.S, r = h / 2;
+    if (o.border !== false) { this.rrect(x - .6, y - .6, w + 1.2, h + 1.2, r + .6); c.fillStyle = 'rgba(14,18,28,.9)'; c.fill(); }
+    this.rrect(x, y, w, h, r); c.fillStyle = bg; c.fill();
     if (frac > 0) {
-      const fw = Math.max(.5, w * G.clamp(frac, 0, 1));
-      c.fillStyle = G.col.dark(col, .22); c.fillRect(this.X(x), this.Y(y), fw * S, h * S);
-      c.fillStyle = col; c.fillRect(this.X(x), this.Y(y), fw * S, h * .62 * S);
-      c.fillStyle = G.col.light(col, .45); c.fillRect(this.X(x), this.Y(y), fw * S, Math.min(h * .25, .5) * S);
+      const fw = Math.max(Math.min(w, h * .8), w * G.clamp(frac, 0, 1));
+      c.save(); this.rrect(x, y, w, h, r); c.clip();
+      const g = c.createLinearGradient(0, this.Y(y), 0, this.Y(y + h)); g.addColorStop(0, G.col.light(col, .3)); g.addColorStop(.55, col); g.addColorStop(1, G.col.dark(col, .28));
+      this.rrect(x, y, fw, h, Math.min(r, fw / 2)); c.fillStyle = g; c.fill();
+      if (h >= 2) { c.fillStyle = 'rgba(255,255,255,.4)'; c.fillRect(this.X(x + Math.min(r, fw / 2)), this.Y(y + h * .16), Math.max(0, fw - Math.min(r, fw / 2) * 2) * S, Math.max(1, h * .18 * S)); }
+      c.restore();
     }
   },
   hpColor(f) { return f > .5 ? '#3ed16b' : f > .2 ? '#f5c02b' : '#ef4b4b'; },

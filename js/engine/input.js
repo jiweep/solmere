@@ -41,7 +41,8 @@ G.input = (function () {
       return best;
     },
   };
-  const kbState = {}, padState = {}, tapQ = {};   // tapQ latches keydowns so sub-frame taps still register
+  const kbState = {}, padState = {}, tapQ = {}, touchState = {};   // touchState: the on-screen buttons (touch.js)
+  I.touchState = touchState;   // tapQ latches keydowns so sub-frame taps still register
   if (typeof window !== 'undefined') {
     window.addEventListener('keydown', e => {
       if (textListener && !e.metaKey && !e.ctrlKey) {
@@ -64,7 +65,7 @@ G.input = (function () {
     };
     window.addEventListener('mousemove', e => { const p = toGame(e); if (p) { M.x = p[0]; M.y = p[1]; M.moved = true; M.active = true; I.lastDevice = 'mouse'; } });
     window.addEventListener('mousedown', e => {
-      if (e.target && e.target.id === 'ff') return;
+      if (e.target && (e.target.id === 'ff' || (e.target.closest && e.target.closest('#touch')))) return;
       const p = toGame(e); if (!p) return; M.x = p[0]; M.y = p[1]; M.active = true;
       if (e.button === 0) { M.click = true; M.down = true; } else if (e.button === 2) M.rclick = true;
     });
@@ -129,7 +130,7 @@ G.input = (function () {
     I.anyKeyThisFrame = false;
     for (const b of BTN) {
       prev[b] = down[b];
-      down[b] = !!(kbState[b] || padState[b] || tapQ[b]); tapQ[b] = false;
+      down[b] = !!(kbState[b] || padState[b] || touchState[b] || tapQ[b]); tapQ[b] = false;
       held[b] = down[b] ? (held[b] || 0) + 1 : 0;
       pressedQ[b] = down[b] && !prev[b];
       if (pressedQ[b]) I.anyKeyThisFrame = true;
