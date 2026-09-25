@@ -64,6 +64,7 @@ G.W3 = (function () {
     return bases[id] || 0;
   }
   function levels(map, raw) {
+    const vertical = !!(map.def && (map.def.town || map.def.env === 'city'));
     const W = map.w, H = map.h, N = W * H;
     const cliff = c => c && (c.g === 'cliff' || c.g === 'cavewall' || c.g === 'crystalwall');
     const isRamp = (x, y) => { const c = map.cell(x, y); if (!c || cliff(c) || c.solid && !c.ledge) return false; return cliff(map.cell(x - 1, y)) || cliff(map.cell(x + 1, y)) || (cliff(map.cell(x - 2, y)) && !cliff(map.cell(x - 1, y)) && isRampLine(x - 1, y)) || (cliff(map.cell(x + 2, y)) && isRampLine(x + 1, y)); };
@@ -133,7 +134,9 @@ G.W3 = (function () {
       let top = y; while (top > 0 && kind[(top - 1) * W + x] === kind[i]) top--;
       let bot = y; while (bot < H - 1 && kind[(bot + 1) * W + x] === kind[i]) bot++;
       const [u, d] = upDn(x, top), n = bot - top + 1, a = (y - top) / n, b = (y - top + 1) / n;
-      const hn = u + (d - u) * a, hs = u + (d - u) * b;
+      let hn = u + (d - u) * a, hs = u + (d - u) * b;
+      // towns: retaining walls stand vertical (flat top, sheer front face); stairs keep their slope
+      if (vertical && kind[i] === 1) hn = hs = Math.max(u, d);
       corner[i * 4] = corner[i * 4 + 1] = hn; corner[i * 4 + 2] = corner[i * 4 + 3] = hs;
     }
     const at = (fx, fy) => {   // smooth elevation at a fractional tile position
@@ -161,16 +164,37 @@ G.W3 = (function () {
     };
     const vdrop = (vx, vy) => (isWater(vx - 1, vy - 1) && isWater(vx, vy - 1) && isWater(vx - 1, vy) && isWater(vx, vy)) ? -.14 : 0;
     group.userData.vdrop = vdrop;
+    const stairs = !!(map.def.town || map.def.env === 'city');
     // chunks cover the map plus a border ring of trees/water
     for (let cy = Math.floor(-PADT / CT); cy <= Math.floor((H + PADT) / CT); cy++) for (let cx = Math.floor(-PADT / CT); cx <= Math.floor((W + PADT) / CT); cx++) {
       const ch = G.terrain.chunk(map, cx, cy);
       const cvs = G.makeCanvas(ch.gnd.width, ch.gnd.height), c2 = cvs.getContext('2d');
       c2.drawImage(ch.gnd, 0, 0); if (ch.shadow) { c2.globalAlpha = .55; c2.drawImage(ch.shadow, 0, 0); }
       const t = tex(cvs);
-      const pos = [], uv = [], idx = [];
+      const pos = [], uv = [], idx = [], col = [];
       for (let j = 0; j < CT; j++) for (let i = 0; i < CT; i++) {
         const x = cx * CT + i, y = cy * CT + j;
         const inside = x >= 0 && y >= 0 && x < W && y < H;
+        // town stairs: a ramp cell becomes treads and risers instead of a smooth slope
+        if (stairs && inside && hv.kind[y * W + x] === 2) {
+          const k = (y * W + x) * 4, hn = (hv.corner[k] + hv.corner[k + 1]) / 2, hs = (hv.corner[k + 2] + hv.corner[k + 3]) / 2;
+          if (Math.abs(hn - hs) > .05) {
+            const n = Math.max(2, Math.round(Math.abs(hn - hs) / .16)), u0 = i / CT, u1 = (i + 1) / CT;
+            for (let s2 = 0; s2 < n; s2++) {
+              const z0 = y + s2 / n, z1 = y + (s2 + 1) / n, ht = hn + (hs - hn) * (s2 + 1) / n, hp = hn + (hs - hn) * s2 / n;
+              const v0 = 1 - (j + s2 / n) / CT, v1 = 1 - (j + (s2 + 1) / n) / CT;
+              let b = pos.length / 3;   // riser (vertical face at the front of the previous tread)
+              pos.push(x, hp, z0, x + 1, hp, z0, x, ht, z0, x + 1, ht, z0);
+              uv.push(u0, v0, u1, v0, u0, v0 - .002, u1, v0 - .002); col.push(.5, .5, .56, .5, .5, .56, .38, .38, .44, .38, .38, .44);
+              idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3);
+              b = pos.length / 3;       // tread
+              pos.push(x, ht, z0, x + 1, ht, z0, x, ht, z1, x + 1, ht, z1);
+              uv.push(u0, v0, u1, v0, u0, v1, u1, v1); col.push(1, 1, 1, 1, 1, 1, .9, .9, .9, .9, .9, .9);
+              idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3);
+            }
+            continue;
+          }
+        }
         let h = [0, 0, 0, 0];
         if (inside) { const k = (y * W + x) * 4; h = [hv.corner[k], hv.corner[k + 1], hv.corner[k + 2], hv.corner[k + 3]]; }
         else {   // outside: follow the nearest edge column/row so level changes stay continuous (no gaps)
@@ -180,14 +204,14 @@ G.W3 = (function () {
           else if (x >= 0 && x < W) { const w = hv.at(xw, Y), e = hv.at(xe, Y); h = [w, e, w, e]; }
           else h.fill(hv.at(X, Y));
         }
-        const b = pos.length / 3;
+        const b = pos.length / 3; col.push(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
         pos.push(x, h[0] + vdrop(x, y), y, x + 1, h[1] + vdrop(x + 1, y), y, x, h[2] + vdrop(x, y + 1), y + 1, x + 1, h[3] + vdrop(x + 1, y + 1), y + 1);
         uv.push(i / CT, 1 - j / CT, (i + 1) / CT, 1 - j / CT, i / CT, 1 - (j + 1) / CT, (i + 1) / CT, 1 - (j + 1) / CT);
         idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3);
       }
       const g = new T.BufferGeometry();
-      g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
-      const mesh = new T.Mesh(g, new T.MeshLambertMaterial({ map: t }));
+      g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); g.setAttribute('color', new T.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
+      const mesh = new T.Mesh(g, new T.MeshLambertMaterial({ map: t, vertexColors: true }));
       mesh.receiveShadow = true; group.add(mesh);
     }
     // water shimmer: a scrolling layer of pixel glints and wave dashes over every water cell
@@ -379,6 +403,53 @@ G.W3 = (function () {
     }
   }
 
+  // ------------------------------------------------------------- railings
+  // towns get dark iron railings along every retaining-wall top (leaving the stair openings free)
+  // and down both sides of each staircase: posts every tile, a top rail and a mid rail
+  function buildRailings(map, hv, group) {
+    if (!(map.def.town || map.def.env === 'city')) return;
+    const W = map.w, H = map.h, K = hv.kind;
+    const walk = (x, y) => { const c = map.cell(x, y); return c && !c.solid; };
+    const pos = [], idx = [];
+    const box = (x0, y0, z0, x1, y1, z1) => {
+      const b = pos.length / 3;
+      pos.push(x0, y0, z0, x1, y0, z0, x1, y1, z0, x0, y1, z0, x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1);
+      idx.push(b, b + 1, b + 2, b, b + 2, b + 3, b + 5, b + 4, b + 7, b + 5, b + 7, b + 6, b + 4, b, b + 3, b + 4, b + 3, b + 7,
+               b + 1, b + 5, b + 6, b + 1, b + 6, b + 2, b + 3, b + 2, b + 6, b + 3, b + 6, b + 7);
+    };
+    // a rail between two points (sloped rails for stairs): a chain of short boxes
+    const rail = (xa, ya, za, xb, yb, zb, r) => {
+      const n = Math.max(1, Math.ceil(Math.hypot(xb - xa, zb - za) * 4));
+      for (let k = 0; k < n; k++) {
+        const t0 = k / n, t1 = (k + 1) / n;
+        const x0 = xa + (xb - xa) * t0, x1 = xa + (xb - xa) * t1, z0 = za + (zb - za) * t0, z1 = za + (zb - za) * t1, y0 = ya + (yb - ya) * t0, y1 = ya + (yb - ya) * t1;
+        box(Math.min(x0, x1) - r, Math.min(y0, y1) - r, Math.min(z0, z1) - r, Math.max(x0, x1) + r, Math.max(y0, y1) + r, Math.max(z0, z1) + r);
+      }
+    };
+    const post = (x, y, z) => box(x - .035, y, z - .035, x + .035, y + .5, z + .035);
+    for (let y = 1; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      // wall top: a cliff cell with walkable upper ground directly north
+      if (K[i] === 1 && K[i - W] === 0 && walk(x, y - 1)) {
+        const h = hv.corner[(y * W + x) * 4], z = y + .06;
+        post(x + .02, h, z); rail(x, h + .48, z, x + 1, h + .48, z, .028); rail(x, h + .26, z, x + 1, h + .26, z, .018);
+        if (!(K[i + 1] === 1 && K[i + 1 - W] === 0)) post(x + .98, h, z);
+      }
+      // stair sides: a ramp cell next to a wall cell
+      if (K[i] === 2) for (const [dx, ex] of [[-1, .06], [1, .94]]) {
+        const nb = K[i + dx];
+        if (x + dx < 0 || x + dx >= W || nb !== 1) continue;
+        const k = i * 4, hn = hv.corner[k + (dx < 0 ? 0 : 1)], hs = hv.corner[k + (dx < 0 ? 2 : 3)];
+        const xx = x + ex;
+        post(xx, hn, y + .05); post(xx, hs, y + .95);
+        rail(xx, hn + .48, y, xx, hs + .48, y + 1, .028); rail(xx, hn + .26, y, xx, hs + .26, y + 1, .018);
+      }
+    }
+    if (!pos.length) return;
+    const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+    const m = new T.Mesh(g, new T.MeshLambertMaterial({ color: 0x2c303c })); m.castShadow = true; m.receiveShadow = true; group.add(m);
+  }
+
   // ------------------------------------------------------------- lights
   // every lamp, lantern, crystal and lava cell gets an additive glow sprite (faded in by night, lava
   // always on); a small pool of point lights follows the nearest ones so they light the ground
@@ -424,6 +495,7 @@ G.W3 = (function () {
     buildTerrain(map, hv, group);
     buildProps(map, hv, group);
     buildBuildings(map, hv, group);
+    buildRailings(map, hv, group);
     buildGlows(group);
     const dyn = new T.Group(); group.add(dyn);
     const entry = { map, group, hv, dyn, sprites: new Map() };

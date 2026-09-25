@@ -8,7 +8,7 @@
 G.showcase = false;
 G.SHOWCASE = {
   towns: [
-    ['Brinehollow (hometown)', 'brinehollow', 12, 9], ['Route 1', 'route1', 10, 30], ['Fernwick Town', 'fernwick', 14, 20], ['Route 2', 'route2', 10, 10],
+    ['Brinehollow (hometown)', 'brinehollow', 18, 9], ['Route 1', 'route1', 10, 30], ['Fernwick Town', 'fernwick', 14, 20], ['Route 2', 'route2', 10, 10],
     ['Whisperwood', 'whisperwood', 12, 14], ['Galvan Harbor', 'galvan', 16, 14], ['Route 3', 'route3', 10, 10], ['Glimmer Cave', 'glimmercave', 5, 5],
     ['Cindervale', 'cindervale', 14, 13], ['Route 4', 'route4', 10, 10], ['Duskmere', 'duskmere', 14, 12], ['Route 5', 'route5', 10, 10],
     ['Frostpeak', 'frostpeak', 12, 12], ['Skyreach', 'skyreach', 15, 16], ['Route 6', 'route6', 10, 10], ['The Tidelight', 'tidelight', 12, 12],
@@ -85,7 +85,7 @@ G.showcaseBattles = async function () {
   const b = L[k][1];
   const hadSave = G.save;
   G.showcaseSave();
-  if (!G.world.scene) { G.maps.reset(); const w = new G.WorldScene(); w.enterMap('brinehollow', 12, 9, 'down', { noScript: true, noBanner: true }); w.hiddenForShowcase = true; G.push(w); }
+  if (!G.world.scene) { G.maps.reset(); const w = new G.WorldScene(); w.enterMap('brinehollow', 18, 9, 'down', { noScript: true, noBanner: true }); w.hiddenForShowcase = true; G.push(w); }
   G.save.vars.forceHour = b.phase === 'night' ? 22 : b.phase === 'dusk' ? 18 : 12;
   try {
     if (b.trainer) await G.storyBattle(b.trainer, { canLose: true, env: b.env });

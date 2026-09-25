@@ -14,18 +14,18 @@
     ], spawn: [3, 4], noFollower: true });
   D({ id: 'home1f', name: 'Your House', type: 'indoor', wall: 'cream', music: 'home', canRun: true,
     grid: ['WwWWWWpWWwW', 'WWWWWWWWWWW', 'QQ.KK..Z..^', '...........', '...YY......', '...YY....V.', '...........', '.....M.....'],
-    warps: [{ x: 10, y: 2, to: 'home2f', tx: 7, ty: 2, dir: 'left' }, { x: 5, y: 7, to: 'brinehollow', tx: 5, ty: 8, dir: 'down' }],
+    warps: [{ x: 10, y: 2, to: 'home2f', tx: 7, ty: 2, dir: 'left' }, { x: 5, y: 7, to: 'brinehollow', tx: 10, ty: 8, dir: 'down' }],
     objs: [{ type: 'npc', id: 'mom', x: 6, y: 4, look: 'mom', dir: 'left', script: 'mom' }],
     spawn: [5, 6] });
   D({ id: 'wrenhouse', name: 'Wren\'s House', type: 'indoor', wall: 'green', music: 'home',
-    grid: G.tpl.house(1), warps: [{ x: 5, y: 7, to: 'brinehollow', tx: 20, ty: 8, dir: 'down' }],
+    grid: G.tpl.house(1), warps: [{ x: 5, y: 7, to: 'brinehollow', tx: 26, ty: 8, dir: 'down' }],
     objs: [
       { type: 'npc', id: 'wrenmom', x: 7, y: 4, look: 'woman', dir: 'left', script: 'wren_mom' },
       { type: 'sign', x: 5, y: 2, invisible: true, text: 'A framed photo: a young Wren on the shoulders of their older sibling Sable, both grinning. The frame says "Future Champions!"' },
     ], spawn: [5, 6] });
   D({ id: 'lab', name: 'Hale Lab', type: 'indoor', wall: 'lab', music: 'lab', floor: '#dfe6ee', canRun: true,
     grid: ['WWwWWWWWWwWW', 'WWWWWWWWWWWW', 'QQQ.qq.dd.QQ', '............', '....YYYY....', '....YYYY....', '............', 'V.,,,,,,,,.V', ',,,,,,,,,,,,', '.....M......'],
-    warps: [{ x: 5, y: 9, to: 'brinehollow', tx: 18, ty: 17, dir: 'down' }],
+    warps: [{ x: 5, y: 9, to: 'brinehollow', tx: 25, ty: 28, dir: 'down' }],
     objs: [
       { type: 'npc', id: 'hale', x: 6, y: 3, look: 'hale', dir: 'down', script: 'hale' },
       { type: 'npc', id: 'wren_lab', x: 3, y: 6, look: 'wren', dir: 'right', script: 'wren_lab', cond: '!got_starter' },
@@ -36,48 +36,57 @@
       { type: 'sign', x: 10, y: 2, invisible: true, text: 'Research notes: "Resonance field strength rises near the Tidelight each spring. Correlation with bond intensity: 0.91. V. Crane\'s old calibration data attached."' },
     ], spawn: [5, 8], onEnter: 'lab_enter' });
   // --------------------------------------------------------- BRINEHOLLOW -
-  D({ id: 'brinehollow', name: 'Brinehollow', subtitle: 'Where the tide begins', town: 'brinehollow', area: 'brinehollow', music: 'brinehollow', theme: 'beach', env: 'beach',
-    grid: [
-      'TTTTTTTTTTT::::TTTTTTTTTTT',
-      'TTT.P.,..,.::::.,....P.TTT',
-      'TTP....f...::::....f...PTT',
-      'TT..........::ff........TT',
-      'TT..........::ff........TT',
-      'TT..........::..........TT',
-      'TTl.........::.........lTT',
-      'TT..........::..........TT',
-      'TT.ff::::::::::::::::ff.TT',
-      'TT..y.......::.......y..TT',
-      'TT......u...::...u......TT',
-      'TT##v###v#::::##########TT',
-      'TYssssssss::::~~~~~~~~~~RT',
-      'Tsspsspssl::::~bbbbbbb~~RT',
-      'Tsssssssss::::~bbbbbbb~~RT',
-      'TssQOsssss::::~bbbbbbb~~RT',
-      'TYsssssQOs::::~bbbbbbb~~RT',
-      'TsOssssssl:::bbbbbbbbbbbRT',
-      'Tsssssssss::::~~~~~~~~b~RT',
-      'TsRsssRsssssss~~~~~~A~b~RT',
-      'T~~~~~~~~~~~~~~~~~~~~~b~RT',
-      'T~~~~~~~~~~~~~~~~~~~~~~~RT',
-      'T~~~~~~~~~~~~~~~~~~~~~~~RT',
-      'T~~~~~~~~~~~~~~~~~~~~~~~RT'],
-    conn: { n: { map: 'route1', off: 2 } },
-    objs: [
-      G.house(3, 4, 'home1f', 'red'), G.bld('house', 18, 4, 5, 4, { roof: 'green', door: 2, to: 'wrenhouse', tx: 5, ty: 6 }),
-      G.bld('lab', 15, 13, 7, 4, { roof: 'teal', door: 3, to: 'lab', tx: 5, ty: 8 }),
-      { type: 'sign', x: 10, y: 9, text: '{b}Brinehollow{w}\\n"Where the tide begins."' },
-      { type: 'sign', x: 13, y: 16, text: '{c}HALE RESONANCE LAB{w}\\nProf. Marisol Hale — Visitors welcome (knock loudly, she\'s usually underwater)' },
-      { type: 'sign', x: 5, y: 12, text: '{o}HARBOUR MARKET{w}\\nFresh catch at dawn · Shells, charms & bad jokes all day' },
-      { type: 'npc', id: 'bh_girl', x: 9, y: 5, look: 'girl', dir: 'down', move: 'wander', radius: 2, text: 'Professor Hale studies how mons and people bond. She says the Tidelight lighthouse out on the Mere is the key to everything!' },
-      { type: 'npc', id: 'bh_fisher', x: 22, y: 20, look: 'fisher', dir: 'down', script: 'bh_fisher' },
-      { type: 'npc', id: 'bh_old', x: 3, y: 16, look: 'oldman', dir: 'right', move: 'look', text: 'Every spring the Tidelight glows brighter... but last year it flickered. Old bones like mine notice these things.' },
-      { type: 'npc', id: 'bh_boy', x: 16, y: 10, look: 'boy', dir: 'left', move: 'wander', radius: 2, text: 'Did you know? If you hold Shift you can run! And Tab makes EVERYTHING faster! You can even click menus!' },
-      { type: 'npc', id: 'bh_vendor', x: 6, y: 14, look: 'woman', dir: 'up', move: 'look', text: 'Shells! Lucky charms! ...No, I don\'t sell Orbs, love. Kids these days want everything.' },
-      { type: 'npc', id: 'bh_sailor', x: 16, y: 17, look: 'sailor', dir: 'down', move: 'look', text: 'See the ledges on the bluff? Hop down \'em for a shortcut to the harbour. Getting back up\'s the hard part — use the ramp.' },
-      { type: 'trigger', x: 11, y: 0, w: 4, h: 1, script: 'bh_block', cond: '!got_starter' },
-      { type: 'item', id: 'bh_hidden1', x: 1, y: 19, item: 'pearl', hidden: true },
-    ], spawn: [12, 12] });
+  // Three tiers down to the sea: Seacliff Heights (homes, the fountain plaza, the road north), a
+  // stone wall and grand staircase down to Market Row (stalls, the café, a little park), and a second
+  // wall with two stairways down to the harbour: a sandy cove, the lab on the quay, and the pier.
+  (function () {
+    const m = new G.MB(38, 34, '.', 17);
+    m.forest(2, 'T', { skip: (x, y) => (x >= 17 && x <= 20 && y <= 1) || y >= 24 });
+    // Seacliff Heights
+    m.rect(2, 2, 34, 11, '.'); m.rect(17, 0, 4, 13, ':'); m.rect(3, 9, 32, 2, ':');
+    m.rect(15, 10, 8, 3, '='); m.put(18, 11, 'o'); m.put(15, 12, 'u'); m.put(22, 12, 'u'); m.put(14, 11, 'l'); m.put(23, 11, 'l');
+    m.rect(3, 3, 4, 3, 'f'); m.rect(31, 3, 4, 3, 'f'); m.put(14, 3, 'T'); m.put(30, 7, 'T'); m.put(7, 8, 'y'); m.put(29, 8, 'y'); m.put(33, 11, 'u');
+    // wall + grand staircase
+    m.rect(2, 13, 34, 2, '#'); m.rect(17, 13, 4, 2, '=');
+    // Market Row
+    m.rect(2, 15, 34, 7, '.'); m.rect(3, 17, 32, 2, ':'); m.rect(17, 15, 4, 7, ':');
+    m.put(5, 16, 'p'); m.put(8, 16, 'p'); m.put(11, 16, 'p'); m.text(3, 20, ['QO', 'O ']); m.put(16, 16, 'l'); m.put(21, 16, 'l');
+    m.rect(30, 19, 4, 2, 'f'); m.put(29, 16, 'T'); m.put(34, 16, 'T'); m.put(31, 16, 'u'); m.put(13, 20, 'y');
+    // second wall: stairs to the beach (west) and to the quay (east)
+    m.rect(2, 22, 34, 2, '#'); m.rect(8, 22, 2, 2, ':'); m.rect(28, 22, 2, 2, '=');
+    // harbour
+    m.rect(0, 24, 38, 5, 's'); m.rect(20, 24, 18, 5, '=');
+    m.rect(0, 29, 38, 5, '~'); m.rect(30, 29, 2, 4, 'I'); m.rect(20, 28, 18, 1, 'b');
+    m.put(2, 25, 'Y'); m.put(13, 25, 'Y'); m.put(6, 27, 'Y'); m.put(0, 28, 'R'); m.put(15, 28, 'R'); m.put(10, 25, 'p');
+    m.put(26, 31, 'A'); m.put(35, 30, 'A'); m.put(21, 25, 'l'); m.put(34, 25, 'l'); m.text(35, 26, ['QO']);
+    D({ id: 'brinehollow', name: 'Brinehollow', subtitle: 'Where the tide begins', town: 'brinehollow', area: 'brinehollow', music: 'brinehollow', theme: 'beach', env: 'beach',
+      grid: m.done(), borders: { s: 'water', w: 'water', e: 'water' },
+      conn: { n: { map: 'route1', off: 8 } },
+      objs: [
+        G.house(8, 4, 'home1f', 'red'), G.bld('house', 24, 4, 5, 4, { roof: 'green', door: 2, to: 'wrenhouse', tx: 5, ty: 6 }),
+        G.house(24, 15, 'bh_cafe', 'teal'),
+        G.bld('lab', 22, 24, 7, 4, { roof: 'teal', door: 3, to: 'lab', tx: 5, ty: 8 }),
+        { type: 'sign', x: 16, y: 11, text: '{b}Brinehollow{w}\\n"Where the tide begins."' },
+        { type: 'sign', x: 21, y: 27, text: '{c}HALE RESONANCE LAB{w}\\nProf. Marisol Hale — Visitors welcome (knock loudly, she\'s usually underwater)' },
+        { type: 'sign', x: 3, y: 15, text: '{o}MARKET ROW{w}\\nFresh catch at dawn · Shells, charms & bad jokes all day' },
+        { type: 'sign', x: 23, y: 18, text: '{c}THE DRIFTWOOD CAFÉ{w}\\nSea-salt cocoa and the best view in town.' },
+        { type: 'npc', id: 'bh_girl', x: 20, y: 10, look: 'girl', dir: 'down', move: 'wander', radius: 2, text: 'Professor Hale studies how mons and people bond. She says the Tidelight lighthouse out on the Mere is the key to everything!' },
+        { type: 'npc', id: 'bh_fisher', x: 31, y: 32, look: 'fisher', dir: 'down', script: 'bh_fisher' },
+        { type: 'npc', id: 'bh_old', x: 4, y: 26, look: 'oldman', dir: 'right', move: 'look', text: 'Every spring the Tidelight glows brighter... but last year it flickered. Old bones like mine notice these things.' },
+        { type: 'npc', id: 'bh_boy', x: 11, y: 10, look: 'boy', dir: 'left', move: 'wander', radius: 2, text: 'Did you know? If you hold Shift you can run! And Tab makes EVERYTHING faster! You can even click menus!' },
+        { type: 'npc', id: 'bh_vendor', x: 8, y: 15, look: 'woman', dir: 'down', move: 'look', text: 'Shells! Lucky charms! ...No, I don\'t sell Orbs, love. Kids these days want everything.' },
+        { type: 'npc', id: 'bh_sailor', x: 20, y: 26, look: 'sailor', dir: 'right', move: 'look', text: 'Stairs by the market run down to the cove, and the big ones to the quay. Mind the gulls, they steal sandwiches.' },
+        { type: 'npc', id: 'bh_look', x: 33, y: 10, look: 'lady', dir: 'down', move: 'look', text: 'On a clear day you can see the Tidelight from this bench. Just a speck of light, way out on the Mere.' },
+        { type: 'npc', id: 'bh_kid2', x: 10, y: 26, look: 'kid', dir: 'up', move: 'wander', radius: 2, text: 'I found a shell shaped like a Sealet! ...Okay, it\'s shaped like a rock. But a Sealet-ish rock!' },
+        { type: 'trigger', x: 17, y: 0, w: 4, h: 1, script: 'bh_block', cond: '!got_starter' },
+        { type: 'item', id: 'bh_hidden1', x: 1, y: 27, item: 'pearl', hidden: true },
+        { type: 'item', id: 'bh_park', x: 33, y: 20, item: 'oranberry' },
+      ], spawn: [18, 9] });
+  })();
+  G.defHouse('bh_cafe', 'The Driftwood Café', 2, [
+    { type: 'npc', id: 'cafe_owner', x: 9, y: 4, look: 'clerk', dir: 'left', text: 'Welcome in! Sea-salt cocoa is on the house for anyone starting their journey. ...What, you haven\'t started yet? Then it\'s on the house twice.' },
+    { type: 'npc', id: 'cafe_old', x: 2, y: 5, look: 'oldwoman', dir: 'right', text: 'I watched your mother set out from this very table, you know. She ordered two cocoas and forgot to drink either.' },
+  ], { wall: 'wood', music: 'house' });
   // ------------------------------------------------------------- ROUTE 1 -
   (function () {
     const m = new G.MB(22, 40, '.', 21);
@@ -92,7 +101,7 @@
     m.scatter('T', 8, 2, 13, 6, 18); m.scatter(',', 10, 2, 2, 18, 36);
     m.rect(7, 17, 2, 1, '.'); m.put(18, 6, '"');
     D({ id: 'route1', name: 'Route 1', subtitle: 'Brinehollow ↔ Fernwick', area: 'route1', music: 'route1', grid: m.done(),
-      conn: { s: { map: 'brinehollow', off: -2 }, n: { map: 'fernwick', off: -4 } },
+      conn: { s: { map: 'brinehollow', off: -8 }, n: { map: 'fernwick', off: -4 } },
       enc: {
         grass: { lv: [2, 4], list: [['pipwing', 35], ['nibbit', 35], ['mossbun', 22], ['grubbit', 8]] },
         night: { lv: [2, 4], list: [['nibbit', 45], ['oddowl', 20], ['pipwing', 15], ['grubbit', 10], ['rascoon', 10]] },
