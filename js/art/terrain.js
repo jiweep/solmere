@@ -144,6 +144,7 @@ G.terrain = (function () {
           let k = v < .36 ? 3 : v < .6 ? 4 : 5;
           if (m === M.SNOW) k += 1;
           if (lowN) k = 1; else if (low2 === 2) k = Math.min(RR.length - 1, k + 2); else if (low2 === 1) k = 2;
+          if (MB(x, y - 1) === M.PAVE || MB(x - 1, y) === M.PAVE || MB(x + 1, y) === M.PAVE || MB(x, y + 1) === M.PAVE) k = Math.max(1, k - 1);
           col = RR[k];
           break;
         }
@@ -157,6 +158,7 @@ G.terrain = (function () {
           if (dL[p] < 12 && dL[p] > 0) k = Math.max(1, k - (dL[p] <= 4 ? 2 : 1));
           if (lowN) k = Math.max(1, k - 1);
           if (raisedAbove) k = Math.max(0, k - (raisedAbove === 1 ? 3 : raisedAbove === 2 ? 2 : 1));
+          if (MB(x, y - 1) === M.PAVE || MB(x - 1, y) === M.PAVE || MB(x + 1, y) === M.PAVE || MB(x, y + 1) === M.PAVE) k = Math.max(1, k - 1);
           col = RR[k];
           break;
         }
@@ -174,8 +176,15 @@ G.terrain = (function () {
           let k = 4 + (sid < .3 ? -1 : sid > .8 ? 1 : 0);
           if (u === 7 || v === 7) k = 1; else if (u === 0 || v === 0) k = Math.min(7, k + 2); else if (u === 6 || v === 6) k -= 1;
           if (nFine > .96 && u > 0 && v > 0 && u < 6 && v < 6) k -= 1;
+          // a kerb where paving meets natural ground: a dark joint on the outside, a worn light top inside,
+          // with a seam between kerb stones every 12 px; soil and grass creep over it here and there
+          let kerb = 0;
+          for (let dd = 1; dd <= 2 && !kerb; dd++) for (const [ex, ey] of [[0, -dd], [dd, 0], [0, dd], [-dd, 0]]) { const q = MB(x + ex, y + ey); if (q !== M.PAVE && q !== M.STRUCT && q !== M.WATER) { kerb = dd; break; } }
+          if (kerb === 1) k = ((wx + wy) % 12 === 0) ? 0 : 1; else if (kerb === 2) k = 6 - (nFine > .7 ? 1 : 0);
           if (raisedAbove) k = Math.max(0, k - (raisedAbove === 1 ? 3 : raisedAbove === 2 ? 2 : 1));
-          col = RR[G.clamp(k, 0, 7)]; break;
+          col = RR[G.clamp(k, 0, 7)];
+          if (kerb && nFine > .86) { const q0 = [MB(x, y - 1), MB(x + 1, y), MB(x, y + 1), MB(x - 1, y)].find(q => q === M.GRASS || q === M.PATH || q === M.SAND); if (q0 === M.GRASS) col = GR[3]; else if (q0 === M.PATH) col = RAMPS.path[3]; else if (q0 === M.SAND) col = RAMPS.sand[4]; }
+          break;
         }
         case M.WATER: {
           const RR = RAMPS.water, dist = dW[p] / 3;

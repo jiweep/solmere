@@ -902,10 +902,7 @@ G.WorldScene = class {
     for (const r of this.rustles || []) {
       if (r.map !== this.map.id) continue;
       if (Math.sin(this.frame / 16 + r.x * 1.7) < .1) continue;
-      const q = ground(r.x * 16 + 8, r.y * 16 + 15); if (!q) continue;
-      const j = (this.frame >> 2) % 2 ? 1 : -1, c = this.map.cell(r.x, r.y), lt = c && G.liveTile(this.map, c, 0);
-      if (lt && lt.img) { b.drawImage(lt.img, Math.round(q.x - 8 + j), Math.round(q.y - 15 + lt.oy - 1)); b.drawImage(lt.img, Math.round(q.x - 8 - j), Math.round(q.y - 15 + lt.oy + 1)); }
-      b.fillStyle = 'rgba(255,255,220,.6)'; b.fillRect(Math.round(q.x - 4 + j), Math.round(q.y - 16), 1, 3); b.fillRect(Math.round(q.x + 2 - j), Math.round(q.y - 15), 1, 3);
+      // the tuft itself shakes in the 3D grass (world3d feeds these to the grass shader), so trees in front hide it
       if (this.frame % 20 === 0) { this.fx.add({ x: r.x * 16 + 8 + (G.rand() - .5) * 8, y: r.y * 16 + 4, vx: (G.rand() - .5), vy: -1.1, ay: .07, life: 22, type: 'leaf', size: 1.5, rot: G.rand() * 6, vr: .2, color: '#6ab84a' }); if (Math.abs(r.x - this.player.x) + Math.abs(r.y - this.player.y) < 7) G.audio && G.audio.sfx('rustle'); }
     }
     // ripples around swimmers

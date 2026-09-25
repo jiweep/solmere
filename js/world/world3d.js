@@ -39,7 +39,7 @@ G.W3 = (function () {
       return true;
     } catch (e) { console.warn('3D unavailable', e); ok = false; R = null; return false; }
   }
-  const U3 = T ? { uTime: { value: 0 }, uWind: { value: 0 } } : null;   // shared by every swaying / animated material
+  const U3 = T ? { uTime: { value: 0 }, uWind: { value: 0 }, uRustle: { value: [new T.Vector4(), new T.Vector4(), new T.Vector4(), new T.Vector4()] } } : null;   // shared by every swaying / animated material
   const texPx = (canvas) => { const t = new T.CanvasTexture(canvas); t.magFilter = T.NearestFilter; t.minFilter = T.NearestFilter; t.generateMipmaps = false; t.colorSpace = T.SRGBColorSpace; return t; };
   const tex = (canvas) => { const t = new T.CanvasTexture(canvas); t.magFilter = T.NearestFilter; t.minFilter = T.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = R ? Math.min(8, R.capabilities.getMaxAnisotropy()) : 1; t.colorSpace = T.SRGBColorSpace; return t; };
 
@@ -233,8 +233,10 @@ G.W3 = (function () {
         const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(wp, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(wu, 2));
         g.setAttribute('shore', new T.Float32BufferAttribute(ws, 1)); g.setIndex(wi);
         const m = new T.Mesh(g, waterMaterial()); m.renderOrder = 1; group.add(m);
+        { const ys = []; for (let i = 1; i < wp.length; i += 3) ys.push(wp[i]); ys.sort((a, b) => a - b); group.userData.waterY = ys[ys.length >> 1]; group.userData.waterMeshes = [m]; }
         // a faint layer of pixel glints keeps some of the DS sparkle on top
         const gt = glintTexture(1), gm = new T.Mesh(g, new T.MeshBasicMaterial({ map: gt, transparent: true, opacity: .3, blending: T.AdditiveBlending, depthWrite: false })); gm.renderOrder = 2; group.add(gm);
+        group.userData.waterMeshes.push(gm);
         group.userData.water = [gt];
       }
     }
@@ -278,14 +280,24 @@ G.W3 = (function () {
   // It is translucent over the painted water below, so each map's water colour still shows.
   const WU = T ? { uSky: { value: new T.Color(0x9cc8f0) }, uSun: { value: new T.Color(0xfff0d8) }, uSunDir: { value: new T.Vector3(-.35, .55, -.76).normalize() }, uCam: { value: new T.Vector3() }, uNight: { value: 0 }, uDeep: { value: new T.Color(0x1c5a8a) } } : null;
   let waterMat = null;
-  function waterMaterial() {
+  // Planar reflections: each frame the scene is rendered once more from a camera mirrored in the water
+  // plane (at half resolution, everything below the water clipped away); the water samples it through a
+  // projective texture matrix, rippled by the wave normals, and blends it in by a Fresnel term.
+  const REFL = T ? { uRefl: { value: null }, uTexMat: { value: new T.Matrix4() }, uReflOn: { value: 0 } } : null;
+  let reflRT = null, mirrorCam = null, waterPlain = null;
+  function waterMaterial(plain) {
+    if (plain) { if (!waterPlain) waterPlain = makeWater(true); return waterPlain; }
     if (waterMat) return waterMat;
-    waterMat = new T.ShaderMaterial({
-      uniforms: Object.assign({}, WU, { uTime: U3.uTime }), transparent: true, depthWrite: false,
-      vertexShader: `attribute float shore; varying float vShore; varying vec3 vW;
-        void main() { vShore = shore; vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+    return (waterMat = makeWater(false));
+  }
+  function makeWater(plain) {
+    return new T.ShaderMaterial({
+      uniforms: Object.assign({}, WU, { uTime: U3.uTime }, plain ? { uRefl: { value: null }, uTexMat: { value: new T.Matrix4() }, uReflOn: { value: 0 } } : REFL), transparent: true, depthWrite: false,
+      vertexShader: `attribute float shore; uniform mat4 uTexMat; varying float vShore; varying vec3 vW; varying vec4 vRefl;
+        void main() { vShore = shore; vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; vRefl = uTexMat * w; gl_Position = projectionMatrix * viewMatrix * w; }`,
       fragmentShader: `uniform float uTime; uniform vec3 uSky; uniform vec3 uSun; uniform vec3 uSunDir; uniform vec3 uCam; uniform float uNight; uniform vec3 uDeep;
-        varying float vShore; varying vec3 vW;
+        uniform sampler2D uRefl; uniform float uReflOn;
+        varying float vShore; varying vec3 vW; varying vec4 vRefl;
         vec2 wave(vec2 p, vec2 d, float f, float sp, float a) { float ph = dot(p, d) * f + uTime * sp; return d * cos(ph) * a * f; }
         float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
         void main() {
@@ -306,17 +318,25 @@ G.W3 = (function () {
           float caust = pow(clamp(1.0 - abs(ca) * .45, 0.0, 1.0), 3.0);
           float fn = sin(p.x * 4.3 + uTime * 1.7) * sin(p.y * 3.7 - uTime * 1.3) * .5 + .5;
           float foam = .6 * smoothstep(.8, 1.0, vShore + (fn - .5) * .2) * (.6 + .4 * sin(uTime * 2.0 + p.x * 2.0 + p.y));
-          vec3 col = mix(uDeep, uSky, .35 + fr * .65);
+          // the body of the water: turquoise over the shallows, deep blue further out
+          vec3 body = mix(uDeep, mix(uDeep, vec3(.16, .62, .66), .75), clamp(vShore * .8, 0.0, 1.0) * (1.0 - uNight * .6));
+          vec3 col = mix(body, uSky, .2 + fr * .5);
+          if (uReflOn > .5) {
+            vec4 uvw = vRefl; uvw.xy += n.xz * .09 * uvw.w;
+            vec3 refl = texture2DProj(uRefl, uvw).rgb;
+            float rk = .38 + .5 * pow(1.0 - max(dot(n, V), 0.0), 2.0);
+            col = mix(body, refl * vec3(.86, .94, 1.0), rk);
+          }
           col *= 1.0 + .07 * sin(dot(p, vec2(.35, .9)) * .9 - uTime * .6);   // long swells rolling in
           col += caust * .07 * (1.0 - uNight);
           col += uSun * (sp * 1.6 + glit * 2.6) * (1.0 - uNight * .7);
           col = mix(col, vec3(.95, .98, 1.0), foam * .85);
           float a = clamp(.22 + fr * .45 + caust * .04 + foam * .55 + sp, 0.0, .92);
+          if (uReflOn > .5) a = clamp(.72 + fr * .2 + foam * .3 + sp, 0.0, .96);
           gl_FragColor = vec4(col, a);
           #include <colorspace_fragment>
         }`,
     });
-    return waterMat;
   }
   let lavaMat = null;
   function lavaMaterial() {
@@ -376,8 +396,8 @@ G.W3 = (function () {
   // ------------------------------------------------------------- billboards
   // upright sprite whose bottom-centre sits on the ground; tilted back to face the camera so the
   // pixel art reads exactly as drawn
-  const PITCH = .8;   // radians the camera looks down from horizontal
-  const PITCH_CAM = .8;
+  const PITCH = .95;   // radians the camera looks down from horizontal (steep, like the DS games)
+  const PITCH_CAM = PITCH;
   function billboard(img, opts = {}) {
     const t = tex(img);
     const mat = new T.MeshLambertMaterial({ map: t, alphaTest: .5, alphaToCoverage: true, transparent: false, side: T.DoubleSide });
@@ -395,13 +415,16 @@ G.W3 = (function () {
     const u = { uSway: { value: amt }, uH: { value: Math.max(.3, h) } };
     mat.onBeforeCompile = sh => {
       Object.assign(sh.uniforms, U3, u);
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uTime; uniform float uWind; uniform float uSway; uniform float uH;')
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uTime; uniform float uWind; uniform float uSway; uniform float uH; uniform vec4 uRustle[4];')
         .replace('#include <begin_vertex>', `#include <begin_vertex>
           { vec4 o = modelMatrix * vec4(0.0, 0.0, 0.0, 1.0); float ph = o.x * .71 + o.z * .43;
             float k = clamp(position.y / uH, 0.0, 1.0); k *= k;
             float gust = 1.0 + 1.1 * max(0.0, sin(uTime * .8 - (o.x * .9 + o.z * .5) * .22));   // gusts rolling across the field
             float s = (sin(uTime * 1.6 + ph) * .55 + sin(uTime * 3.7 + ph * 2.3) * .2) * gust + uWind * (.8 + .4 * sin(uTime * .9 + ph));
-            transformed.x += s * uSway * k; transformed.z += cos(uTime * 1.3 + ph) * uSway * .25 * k; }`);
+            transformed.x += s * uSway * k; transformed.z += cos(uTime * 1.3 + ph) * uSway * .25 * k;
+            // a tuft being rustled (something moving in it, or someone walking through) shakes hard
+            float rs = 0.0; for (int i = 0; i < 4; i++) { vec2 d = o.xz - uRustle[i].xy; rs += uRustle[i].w * exp(-dot(d, d) * 6.0); }
+            if (uSway > .05) { transformed.x += sin(uTime * 38.0 + ph) * .07 * rs * k; transformed.y += abs(sin(uTime * 31.0)) * .02 * rs * k; } }`);
     };
     mat.customProgramCacheKey = () => 'sway';
   }
@@ -413,12 +436,15 @@ G.W3 = (function () {
   // lit like the ground they stand on (Lambert with an upward-facing normal, receiving the sun's
   // shadows and the lamps' light), and the silhouette gets a little rounding: faces turned toward the
   // sun (estimated from the alpha edges) are a touch brighter, the feet a touch darker.
-  const STRETCH = 1 / Math.cos(.8), ENT_SC = .74;
+  // Characters share the world's pixel grid: one sprite pixel is exactly one world texel wide, and the
+  // camera squashes it vertically by the same sin(pitch) as the ground and the walls (the plane stands
+  // tan(pitch)/16 per pixel), so a person and the house behind them read as one piece of pixel art
+  const STRETCH = Math.tan(PITCH), ENT_SC = 1;
   let blobMat = null, blobGeo = null;
   function blob() {
     if (!blobMat) {
       const c = G.makeCanvas(32, 32), x = c.getContext('2d'), g = x.createRadialGradient(16, 16, 0, 16, 16, 16);
-      g.addColorStop(0, 'rgba(0,0,0,.5)'); g.addColorStop(.55, 'rgba(0,0,0,.26)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      g.addColorStop(0, 'rgba(0,0,0,.55)'); g.addColorStop(.62, 'rgba(0,0,0,.5)'); g.addColorStop(.8, 'rgba(0,0,0,.22)'); g.addColorStop(1, 'rgba(0,0,0,0)');
       x.fillStyle = g; x.fillRect(0, 0, 32, 32);
       const t = new T.CanvasTexture(c);
       blobMat = new T.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, color: 0x101828 });
@@ -428,28 +454,16 @@ G.W3 = (function () {
   }
   function entGeo(img) {
     const w = img.width / 16 * ENT_SC, h = img.height / 16 * ENT_SC * STRETCH, g = new T.PlaneGeometry(w, h); g.translate(0, h / 2, 0);
-    const n = g.attributes.normal; for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, .82, .57);   // lit like the ground, a little toward the camera
+    const n = g.attributes.normal; for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0);   // lit exactly like the ground they stand on
     return g;
   }
   function entSprite(img) {
     const t = texPx(img);
     const u = { uTexel: { value: new T.Vector2(1 / img.width, 1 / img.height) } };
     const mat = new T.MeshLambertMaterial({ map: t, alphaTest: .5, side: T.DoubleSide });
-    mat.onBeforeCompile = sh => {
-      Object.assign(sh.uniforms, u);
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec2 uTexel;')
-        .replace('#include <alphatest_fragment>', `#include <alphatest_fragment>
-          { vec2 d = uTexel * 1.6;
-            float aL = texture2D(map, vMapUv - vec2(d.x, 0.0)).a, aR = texture2D(map, vMapUv + vec2(d.x, 0.0)).a;
-            float aU = texture2D(map, vMapUv + vec2(0.0, d.y)).a, aD = texture2D(map, vMapUv - vec2(0.0, d.y)).a;
-            vec3 n = normalize(vec3(aL - aR, aD - aU, 1.1));
-            float lit = dot(n, normalize(vec3(-.62, .5, .6)));
-            float foot = mix(.84, 1.0, smoothstep(0.0, .3, vMapUv.y));
-            diffuseColor.rgb *= (.96 + .18 * lit) * foot; }`);
-    };
-    mat.customProgramCacheKey = () => 'entspr2';
+
     const m = new T.Mesh(entGeo(img), mat);
-    m.castShadow = true; m.receiveShadow = true;
+    m.castShadow = false; m.receiveShadow = true;   // a round contact shadow instead of a card's long one
     m.customDepthMaterial = new T.MeshDepthMaterial({ depthPacking: T.RGBADepthPacking, map: t, alphaTest: .5 });
     const b = blob(); m.add(b); m.userData.blob = b;
     m.userData.u = u; m.userData.tex = t; m.userData.img = img; m.userData.w = img.width; m.userData.h = img.height; m.userData.ent = true;
@@ -669,7 +683,7 @@ G.W3 = (function () {
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uPlayer; uniform vec3 uCamP; varying vec3 vWP;')
         .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
           { vec3 toC = normalize(uCamP - uPlayer), toP = vWP - (uPlayer + vec3(0.0, .6, 0.0)); float al = dot(toP, toC);
-            float d = length(toP - toC * al), occ = step(.4, al) * (1.0 - smoothstep(1.0, 1.9, d));
+            float d = length(toP - toC * al), occ = step(.8, al) * (1.0 - smoothstep(.65, 1.3, d));
             float ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715))));
             if (ign < occ * .78) discard; }`);
     };
@@ -747,14 +761,14 @@ G.W3 = (function () {
     add(oct(1.1, 1.1, .1), K.st, .41);
     const inner = new T.Mesh(oct(.92, .92, .5), K.stD); inner.position.y = .2; inner.scale.set(-1, 1, 1); g.add(inner);
     const bed = new T.Mesh(new T.CircleGeometry(.92, 8, Math.PI / 8), K.bed); bed.rotation.x = -Math.PI / 2; bed.position.y = .12; g.add(bed);
-    const w = new T.Mesh(new T.CircleGeometry(.92, 8, Math.PI / 8), waterMaterial()); w.rotation.x = -Math.PI / 2; w.position.y = .33; w.renderOrder = 1; g.add(w);
+    const w = new T.Mesh(new T.CircleGeometry(.92, 8, Math.PI / 8), waterMaterial(true)); w.rotation.x = -Math.PI / 2; w.position.y = .33; w.renderOrder = 1; g.add(w);
     // pedestal and two bowls turned on a lathe
     add(oct(.24, .2, .12), K.st, .38);
     add(new T.CylinderGeometry(.12, .16, .72, 12), K.st, .78);
     const bowl = (r, yb, h) => {
       const pr = [new T.Vector2(.08, 0), new T.Vector2(r * .45, h * .15), new T.Vector2(r * .85, h * .55), new T.Vector2(r, h), new T.Vector2(r * .92, h * 1.05), new T.Vector2(r * .85, h * .7), new T.Vector2(.05, h * .55)];
       const m = add(new T.LatheGeometry(pr, 16), K.st, yb); m.material = K.st;
-      const wa = new T.Mesh(new T.CircleGeometry(r * .86, 16), waterMaterial()); wa.rotation.x = -Math.PI / 2; wa.position.y = yb + h * .9; wa.renderOrder = 1; g.add(wa);
+      const wa = new T.Mesh(new T.CircleGeometry(r * .86, 16), waterMaterial(true)); wa.rotation.x = -Math.PI / 2; wa.position.y = yb + h * .9; wa.renderOrder = 1; g.add(wa);
       return m;
     };
     bowl(.62, 1.12, .2); add(new T.CylinderGeometry(.07, .09, .36, 10), K.st, 1.48); bowl(.3, 1.64, .14);
@@ -1319,6 +1333,11 @@ G.W3 = (function () {
     }
     updateLights(cur, fx, fz);
     updateDoors(w, cur.group);
+    { const R = U3.uRustle.value; let n = 0;
+      for (const r of w.rustles || []) { if (n >= 3 || r.map !== w.map.id) continue; const on = Math.sin(w.frame / 16 + r.x * 1.7) >= .1 ? 1 : 0; R[n++].set(r.x + .5, r.y + 1, 0, on); }
+      const p = w.player, pc = p && w.map.cell(p.x, p.y);
+      if (p && pc && pc.g === 'tall') R[n++].set(p.px / 16 + .5, p.py / 16 + 1, 0, p.moving ? 1 : .35);
+      for (; n < 4; n++) R[n].w = 0; }
     const wt = cur.group.userData.water; if (wt) { const tt = G.realTime; wt[0].offset.set((tt * .05) % 1, (Math.sin(tt * .4) * .03)); }
     U3.uTime.value = G.realTime; U3.uWind.value = G.wind ? G.wind(w.frame) : 0;
     camY = camY === null || Math.abs(camY - fy) > 4 ? fy : camY + (fy - camY) * .12;
@@ -1339,8 +1358,31 @@ G.W3 = (function () {
     const bw = Math.round(G.W * S), bh = Math.round(G.H * S);
     if (bw !== bufW || bh !== bufH) { bufW = bw; bufH = bh; R.setSize(bw, bh, false); }
     Object.assign(cv.style, { display: 'block', left: (G.gfx.ox / dpr) + 'px', top: (G.gfx.oy / dpr) + 'px', width: (G.W * S / dpr) + 'px', height: (G.H * S / dpr) + 'px' });
+    renderReflection();
     R.render(scene, camera);
     return true;
+  }
+  const _plane = T ? new T.Plane(new T.Vector3(0, 1, 0), 0) : null, _tgt = T ? new T.Vector3() : null;
+  const BIAS = T ? new T.Matrix4().set(.5, 0, 0, .5, 0, .5, 0, .5, 0, 0, .5, .5, 0, 0, 0, 1) : null;
+  function renderReflection() {
+    const ud = cur && cur.group.userData, wy = ud && ud.waterY;
+    REFL.uReflOn.value = 0;
+    if (wy === undefined || G.settings.fancy === false || G.settings.reflections === false) return;
+    if (!reflRT) { reflRT = new T.WebGLRenderTarget(2, 2, { type: T.HalfFloatType }); mirrorCam = camera.clone(); }
+    const w = Math.max(2, bufW >> 1), h = Math.max(2, bufH >> 1);
+    if (reflRT.width !== w || reflRT.height !== h) reflRT.setSize(w, h);
+    camera.updateMatrixWorld();
+    mirrorCam.projectionMatrix.copy(camera.projectionMatrix); mirrorCam.projectionMatrixInverse.copy(camera.projectionMatrixInverse);
+    mirrorCam.position.set(camera.position.x, 2 * wy - camera.position.y, camera.position.z);
+    camera.getWorldDirection(_tgt); _tgt.multiplyScalar(10).add(camera.position); _tgt.y = 2 * wy - _tgt.y;
+    mirrorCam.up.set(0, -1, 0); mirrorCam.lookAt(_tgt); mirrorCam.updateMatrixWorld();
+    REFL.uTexMat.value.copy(BIAS).multiply(mirrorCam.projectionMatrix).multiply(mirrorCam.matrixWorldInverse);
+    const hide = ud.waterMeshes || []; for (const m of hide) m.visible = false;
+    const rv = rays && rays.visible; if (rays) rays.visible = false;
+    _plane.constant = -(wy - .02);
+    R.clippingPlanes = [_plane]; R.setRenderTarget(reflRT); R.render(scene, mirrorCam); R.setRenderTarget(null); R.clippingPlanes = [];
+    for (const m of hide) m.visible = true; if (rays) rays.visible = rv;
+    REFL.uRefl.value = reflRT.texture; REFL.uReflOn.value = 1;
   }
   function hide() { if (cv) cv.style.display = 'none'; }
   // world pixel position -> screen position in game units (for UI overlays such as emotes)
