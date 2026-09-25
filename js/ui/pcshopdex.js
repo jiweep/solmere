@@ -226,36 +226,37 @@ G.DexScene = class {
     const U = G.ui, d = G.dexCount();
     const id = G.DEX[this.i], sp = G.SPECIES[id], seen = G.save.dex.seen[id], caught = G.save.dex.caught[id];
     if (!this.detail) {
-      U.panel(8, 8, 150, 200, 'light', { r: 6 });
-      U.text(`Seen ${d.seen}   Caught ${d.caught}   / ${d.total}`, 83, 12, { size: 6, weight: 800, align: 'center', color: '#6a7080' });
+      U.panel(10, 22, 148, 186, 'light', { r: 6, slab: true });
+      U.pHeader('DEX', 6, 4, { sub: `Seen ${d.seen} · Caught ${d.caught} / ${d.total}` });
       G.DEX.slice(this.scroll, this.scroll + 11).forEach((sid, k) => {
-        const i = k + this.scroll, y = 24 + k * 16.4, sel = i === this.i, S2 = G.SPECIES[sid], sn = G.save.dex.seen[sid], ct = G.save.dex.caught[sid];
-        if (sel) { U.rrect(12, y - 1.5, 142, 15, 3); U.c.fillStyle = 'rgba(232,72,74,.16)'; U.c.fill(); }
-        U.text(String(S2.num).padStart(3, '0'), 18, y + 2, { size: 6.4, weight: 800, color: '#8a90a0' });
+        const i = k + this.scroll, y = 28 + k * 16, sel = i === this.i, S2 = G.SPECIES[sid], sn = G.save.dex.seen[sid], ct = G.save.dex.caught[sid];
+        if (sel) { U.para(15, y, 144, 13.5, 3, '#07060c'); U.para(12, y - 1.5, 144, 13.5, 3, '#ff3b4e'); }
+        U.hot(12, y - 1.5, 144, 15, () => { if (this.i !== i) { this.i = i; G.audio && G.audio.sfx('cursor'); } }, () => { this.i = i; G.input.tap('a'); });
+        U.text(String(S2.num).padStart(3, '0'), 18, y + 2, { size: 6.4, weight: 800, color: sel ? '#ffe0e4' : '#8a90a0', shadow: false });
         if (ct) U.img(G.tiles.itemIcon('orb', '#e8484a'), 38, y + 1, { scale: .55 });
-        U.text(sn ? S2.name : '— — —', 50, y + 1.6, { size: 7, weight: 700, color: sn ? '#283040' : '#aab' });
+        U.text(sn ? S2.name : '— — —', 50, y + 1.6, { size: 7, weight: sel ? 800 : 700, color: sel ? '#fff' : sn ? '#283040' : '#aab', shadow: sel ? '#7a0f1c' : false });
         if (G.save.dex.shiny[sid]) U.text('★', 150, y + 1.6, { size: 6, color: '#d99a14', align: 'right' });
       });
-      U.panel(164, 8, 212, 200, 'light', { r: 6 });
+      U.panel(170, 22, 206, 186, 'light', { r: 6, slab: true });
       if (seen) {
-        U.img(G.monArt.front(id, false, Math.floor(this.t / 14) % 4), 222, 18);
-        U.text(sp.name, 270, 118, { size: 10, weight: 900, align: 'center' });
-        U.text(`The ${sp.cat} Mon`, 270, 131, { size: 6.4, color: '#6a7080', align: 'center' });
-        U.typeBadge(sp.types[0], sp.types[1] ? 234 : 253, 142, 34, 9); if (sp.types[1]) U.typeBadge(sp.types[1], 272, 142, 34, 9);
-        U.text(caught ? 'Press Z for details' : 'Catch it to learn more!', 270, 160, { size: 6, color: '#8a90a0', align: 'center' });
-      } else { U.img(G.monArt.silhouette(id, '#3a3a48'), 222, 18); U.text('???', 270, 118, { size: 10, weight: 900, align: 'center', color: '#8a90a0' }); }
+        U.img(G.monArt.front(id, false, Math.floor(this.t / 14) % 4), 222, 24 + Math.sin(this.t / 20) * 1.5);
+        U.para(196, 118, 156, 16, 6, '#07060c'); U.text(sp.name, 276, 120, { size: 10, weight: 800, align: 'center', color: '#fff' });
+        U.text(`The ${sp.cat} Mon`, 272, 138, { size: 6.4, color: '#6a7080', align: 'center' });
+        U.typeBadge(sp.types[0], sp.types[1] ? 234 : 253, 148, 34, 9); if (sp.types[1]) U.typeBadge(sp.types[1], 272, 148, 34, 9);
+        U.text(caught ? 'Press Z for details' : 'Catch it to learn more!', 272, 166, { size: 6, color: '#8a90a0', align: 'center' });
+      } else { U.img(G.monArt.silhouette(id, '#3a3a48'), 222, 24); U.text('???', 272, 122, { size: 10, weight: 900, align: 'center', color: '#8a90a0' }); }
       return;
     }
     // detail pages
-    U.panel(8, 8, 150, 200, 'light', { r: 6 });
+    U.panel(8, 8, 150, 200, 'light', { r: 6, slab: true });
     U.img(G.monArt.front(id, this.shiny, Math.floor(this.t / 14) % 4), 35, 14);
     U.text(`#${String(sp.num).padStart(3, '0')} ${sp.name}${this.shiny ? ' ★' : ''}`, 83, 112, { size: 8.6, weight: 900, align: 'center' });
     U.typeBadge(sp.types[0], sp.types[1] ? 47 : 66, 124, 34, 9); if (sp.types[1]) U.typeBadge(sp.types[1], 85, 124, 34, 9);
     U.text(`Ht ${sp.h} m   Wt ${sp.w} kg`, 83, 138, { size: 6.4, align: 'center', color: '#5a6070' });
     const tabs = ['Entry', 'Stats', 'Evolution', 'Moves'];
-    tabs.forEach((t, k) => { U.panel(14 + k * 35, 152, 33, 12, this.page === k ? 'select' : 'dark', { r: 3 }); U.text(t, 30.5 + k * 35, 154.4, { size: 5.2, weight: 800, align: 'center', color: this.page === k ? '#3a2800' : '#dde' }); });
+    tabs.forEach((t, k) => { const sel = this.page === k; if (sel) U.para(16 + k * 35, 153.5, 33, 12, 3, '#07060c'); U.para(14 + k * 35, 152 - (sel ? 1 : 0), 33, 12, 3, sel ? '#ff3b4e' : '#12131c'); U.text(t, 32 + k * 35, 154.4 - (sel ? 1 : 0), { size: 5.2, weight: 800, align: 'center', color: sel ? '#fff' : '#b8bccb', shadow: false }); U.hot(14 + k * 35, 152, 33, 12, null, () => { this.page = k; G.audio && G.audio.sfx('page'); }); });
     U.text('◀ ▶ pages · ▲ ▼ browse' + (G.save.dex.shiny[id] ? ' · Z shiny' : ' · Z cry'), 83, 196, { size: 5, align: 'center', color: '#8a90a0' });
-    U.panel(164, 8, 212, 200, 'paper', { r: 6 });
+    U.panel(166, 8, 210, 200, 'paper', { r: 6, slab: true });
     const X = 172; let y = 16;
     if (!caught && this.page > 0) { U.text('Catch this mon to unlock this page.', 270, 100, { size: 6.6, color: '#8a7550', align: 'center' }); return; }
     if (this.page === 0) {

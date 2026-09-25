@@ -83,8 +83,8 @@ G.openTrainerCard = function () {
     draw(b) { G.menuBG(b, '#2f6fd6', '#12305e', this.t / 60); const img = G.chars.portrait(G.LOOKS[G.save.look], 'hip'); b.drawImage(img, 290 - (img.width - 72) / 2, 60); },
     drawUI() {
       const U = G.ui, s = G.save, d = G.dexCount();
-      U.panel(10, 10, 270, 196, 'light', { r: 8 });
-      U.panel(10, 10, 270, 20, 'blue', { r: 8 }); U.text('TAMER CARD', 20, 14.5, { size: 8, weight: 900, color: '#fff' });
+      U.panel(10, 10, 270, 196, 'light', { r: 8, slab: true });
+      U.para(4, 8, 282, 20, 6, '#07060c'); U.para(4, 26, 282, 2, 6, '#ff3b4e'); U.text('TAMER CARD', 20, 11.5, { size: 10, weight: 800, color: '#fff' });
       U.text(`ID No. ${String(s.otId).padStart(5, '0')}`, 270, 15, { size: 6.4, weight: 800, color: '#fff', align: 'right' });
       if (this.page === 0) {
         const rows = [['Name', s.name], ['Money', '$' + s.money.toLocaleString()], ['Dex', `${d.caught} caught / ${d.seen} seen`], ['Time', G.fmtTime(s.playtime)], ['Difficulty', G.DIFF[s.settings.difficulty].name + (s.settings.nuzlocke ? ' · Nuzlocke' : '') + (s.settings.randomizer && s.settings.randomizer.on ? ' · Random' : '')], ['Started', new Date(s.created).toLocaleDateString()]];
@@ -124,7 +124,7 @@ G.openOptions = function () {
     { k: 'fill', label: 'Screen Scaling', vals: [false, true], names: ['Pixel-perfect', 'Fill window'] },
   ];
   return new Promise(res => G.push({
-    opaque: true, i: 0, t: 0,
+    opaque: true, i: 0, t: 0, scroll: 0,
     val(o) { return o.get ? o.get() : S[o.k]; },
     set(o, v) { if (o.apply) o.apply(v); else S[o.k] = v; if (o.k === 'music' || o.k === 'sfx') G.audio && G.audio.setVolumes(); if (o.k === 'fill') { G.gfx.fill = v; G.gfx.resize(); } G.persist.saveSettings(); },
     update(top) {
@@ -136,19 +136,23 @@ G.openOptions = function () {
       if (I.repeat('right') || I.pressed('a')) { I.consume('a'); this.set(o, o.vals[(vi + 1) % o.vals.length]); G.audio && G.audio.sfx('cursor'); }
       if (I.pressed('b')) { I.consume('b'); G.audio && G.audio.sfx('back'); G.pop(this); res(); }
     },
-    draw(b) { G.menuBG(b, '#6e44d6', '#2a1560', this.t / 60); },
+    draw(b) { G.menuBG(b, '#4a2a8a', '#0b0c16', this.t / 60); },
     drawUI() {
-      const U = G.ui;
-      U.panel(20, 8, G.W - 40, 200, 'light', { r: 8 });
-      U.text('Options', G.W / 2, 13, { size: 9, weight: 900, align: 'center' });
-      opts.forEach((o, k) => {
-        const y = 27 + k * 12.2, sel = k === this.i;
-        if (sel) { U.rrect(26, y - 1.5, G.W - 52, 11.6, 3); U.c.fillStyle = 'rgba(155,93,229,.18)'; U.c.fill(); }
-        U.text(o.label, 34, y + .6, { size: 7, weight: 700 });
+      const U = G.ui, ROWS = 13;
+      if (this.i < this.scroll) this.scroll = this.i; if (this.i >= this.scroll + ROWS) this.scroll = this.i - ROWS + 1;
+      U.panel(24, 26, G.W - 44, 182, 'light', { r: 6, slab: true });
+      U.pHeader('OPTIONS', 8, 5, { sub: `${this.i + 1} / ${opts.length}` });
+      opts.slice(this.scroll, this.scroll + ROWS).forEach((o, j) => {
+        const k = j + this.scroll, y = 32 + j * 12.6, sel = k === this.i;
+        if (sel) { U.para(30, y - 1, G.W - 58, 11.4, 3, '#07060c'); U.para(27, y - 2, G.W - 58, 11.4, 3, '#ff3b4e'); }
+        U.text(o.label, 36, y + .4, { size: 7, weight: sel ? 800 : 700, color: sel ? '#fff' : '#283040', shadow: sel ? '#7a0f1c' : false });
         const vi = Math.max(0, o.vals.indexOf(this.val(o)));
-        U.text('◀  ' + o.names[vi] + '  ▶', G.W - 36, y + .6, { size: 7, weight: 800, align: 'right', color: sel ? '#6e44d6' : '#4a5060' });
+        U.text('◀  ' + o.names[vi] + '  ▶', G.W - 38, y + .4, { size: 7, weight: 800, align: 'right', color: sel ? '#fff' : '#4a5060', shadow: false });
+        U.hot(27, y - 2, G.W - 58, 12, () => { if (this.i !== k) { this.i = k; G.audio && G.audio.sfx('cursor'); } }, () => { this.i = k; G.input.tap('a'); });
       });
-      U.text('Settings save automatically.  ◀ ▶ change · X back', G.W / 2, 199, { size: 5.4, color: '#8a90a0', align: 'center' });
+      if (this.scroll > 0) U.text('▲', G.W / 2, 27, { size: 5, align: 'center', color: '#ff3b4e' });
+      if (this.scroll + ROWS < opts.length) U.text('▼', G.W / 2, 196, { size: 5, align: 'center', color: '#ff3b4e' });
+      U.text('Settings save automatically.  ◀ ▶ change · X back', G.W / 2, 200, { size: 5.4, color: '#8a90a0', align: 'center' });
     },
   }));
 };
@@ -172,23 +176,24 @@ G.openQuests = function () {
     draw(b) { G.menuBG(b, '#b0892a', '#4a3410', this.t / 60); },
     drawUI() {
       const U = G.ui;
-      U.panel(8, 8, 150, 200, 'paper', { r: 7 });
-      U.text('Tamer\'s Journal', 83, 13, { size: 8.4, weight: 900, align: 'center', color: '#4a3a20' });
+      U.panel(10, 20, 148, 188, 'paper', { r: 6, slab: true });
+      U.pHeader('JOURNAL', 6, 4, { sub: `${list.length} entries` });
       if (!list.length) U.text('No entries yet.', 83, 100, { size: 7, color: '#8a7550', align: 'center' });
       list.slice(0, 13).forEach((id, k) => {
-        const Q = G.QUESTS[id], dn = G.save.quests[id].step === 'done', y = 28 + k * 13.5, sel = k === this.i;
-        if (sel) { U.rrect(12, y - 1.5, 142, 12.5, 3); U.c.fillStyle = 'rgba(176,137,42,.25)'; U.c.fill(); }
-        U.text((dn ? '✓ ' : Q.main ? '★ ' : '• ') + Q.name, 18, y + .5, { size: 6.6, weight: 700, color: dn ? '#8a9a70' : Q.main ? '#8a3a20' : '#4a3a20' });
+        const Q = G.QUESTS[id], dn = G.save.quests[id].step === 'done', y = 30 + k * 13.2, sel = k === this.i;
+        if (sel) { U.para(14, y - 1, 144, 11.5, 3, '#07060c'); U.para(11, y - 2, 144, 11.5, 3, '#ff3b4e'); }
+        U.text((dn ? '✓ ' : Q.main ? '★ ' : '• ') + Q.name, 18, y + .3, { size: 6.6, weight: sel ? 800 : 700, color: sel ? '#fff' : dn ? '#8a9a70' : Q.main ? '#8a3a20' : '#4a3a20', shadow: sel ? '#7a0f1c' : false });
+        U.hot(11, y - 2, 144, 12.5, () => { this.i = k; }, null);
       });
       const id = list[this.i];
-      U.panel(164, 8, 212, 200, 'paper', { r: 7 });
+      U.panel(170, 20, 206, 188, 'paper', { r: 6, slab: true });
       if (id) {
         const Q = G.QUESTS[id], st = G.save.quests[id].step;
-        U.text(Q.name, 172, 14, { size: 8.4, weight: 900, color: '#4a3a20' });
-        U.text(Q.main ? 'Main story' : 'Side quest' + (Q.giver ? ' · from ' + Q.giver : ''), 172, 26, { size: 5.6, color: '#8a7550' });
+        U.para(166, 24, 214, 14, 5, '#07060c'); U.text(Q.name, 178, 26.5, { size: 8, weight: 800, color: '#fff' });
+        U.text(Q.main ? 'Main story' : 'Side quest' + (Q.giver ? ' · from ' + Q.giver : ''), 178, 41, { size: 5.6, color: '#8a7550' });
         const txt = st === 'done' ? (Q.doneText || 'Completed!') : (Q.steps && Q.steps[st]) || Q.desc;
-        G.ui.wrap(txt, 196, 6.4).slice(0, 12).forEach((l, k) => U.text(l, 172, 40 + k * 10, { size: 6.4, color: '#5a4a30' }));
-        if (Q.reward && st !== 'done') U.text('Reward: ' + Q.reward, 172, 190, { size: 6, color: '#2a7a4a', weight: 800 });
+        G.ui.wrap(txt, 190, 6.4).slice(0, 13).forEach((l, k) => U.text(l, 178, 52 + k * 10, { size: 6.4, color: '#5a4a30' }));
+        if (Q.reward && st !== 'done') U.text('Reward: ' + Q.reward, 178, 194, { size: 6, color: '#2a7a4a', weight: 800 });
       }
     },
   }));
@@ -203,11 +208,11 @@ G.openEncounters = function () {
     draw(b) { G.menuBG(b, '#2aa86a', '#0f4a26', this.t / 60); },
     drawUI() {
       const U = G.ui;
-      U.panel(8, 8, G.W - 16, 200, 'light', { r: 7 });
-      U.text(`Encounters — ${m.name}`, G.W / 2, 13, { size: 8.4, weight: 900, align: 'center' });
-      if (G.save.settings.nuzlocke) { const e = G.save.nuz.enc[G.nuzArea(m)]; U.text(e ? `Nuzlocke: used (${G.SPECIES[e.sp].name} — ${e.result})` : 'Nuzlocke: first encounter still available!', G.W / 2, 24, { size: 6, align: 'center', weight: 800, color: e ? '#c83a3a' : '#2aa86a' }); }
+      U.panel(12, 20, G.W - 22, 188, 'light', { r: 6, slab: true });
+      U.pHeader('ENCOUNTERS', 6, 4, { sub: m.name });
+      if (G.save.settings.nuzlocke) { const e = G.save.nuz.enc[G.nuzArea(m)]; U.text(e ? `Nuzlocke: used (${G.SPECIES[e.sp].name} — ${e.result})` : 'Nuzlocke: first encounter still available!', G.W / 2, 26, { size: 6, align: 'center', weight: 800, color: e ? '#c83a3a' : '#2aa86a' }); }
       if (!tables.length) U.text('No wild mons live here.', G.W / 2, 100, { size: 7.4, align: 'center', color: '#8a90a0' });
-      let y = 34;
+      let y = 36;
       for (const [k, label] of tables) {
         const T = E[k]; U.text(`${label}  (Lv ${T.lv[0]}–${T.lv[1]})`, 18, y, { size: 6.4, weight: 800, color: '#3a6a4a' }); y += 9;
         const tot = T.list.reduce((a, e) => a + e[1], 0);

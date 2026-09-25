@@ -182,6 +182,14 @@ G.ui = {
     }
     return out;
   },
+  // screen title: a red skewed slab with a hard black shadow; returns its width
+  pHeader(title, x = 6, y = 4, o = {}) {
+    const size = o.size || 10, w = this.measure(title, size, 800) + 26;
+    this.para(x + 3, y + 3, w, size + 7, 6, '#07060c'); this.para(x, y, w, size + 7, 6, o.color || '#ff3b4e');
+    this.text(title, x + 12, y + 3.2, { size, weight: 800, color: '#fff', shadow: '#07060c' });
+    if (o.sub) this.text(o.sub, x + w + 8, y + size / 2 + 1, { size: 6, weight: 800, color: 'rgba(255,255,255,.8)' });
+    return w;
+  },
   // skewed parallelogram (Persona-style slab): top edge shifted right by sk
   para(x, y, w, h, sk, fill) {
     const c = this.c; c.fillStyle = fill; c.beginPath();
@@ -218,6 +226,8 @@ G.ui = {
     const T = G.ui.THEMES[style] || G.ui.THEMES.light;
     x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
     if (o.alpha !== undefined) c.globalAlpha = o.alpha;
+    // Persona framing: a leaning black slab behind the sheet
+    if (o.slab) this.para(x - 5, y + 4, w + 6, h, 6, '#07060c');
     // hard drop shadow, 1px down-right
     if (!o.noShadow) { this.rrect(x + 1, y + 1, w, h, r); c.fillStyle = 'rgba(0,0,0,.32)'; c.fill(); }
     // dark outline, then a bevel: light top/left edge, shaded bottom/right edge
