@@ -55,6 +55,20 @@ G.WorldMap = class {
       if (ch === 'x' && !e.g) cell.g = this.ground;
       this.cells.push(cell);
     }
+    // props without their own ground stand on whatever surrounds them (sand, paving, snow...), not the map default
+    if (this.type === 'outdoor') {
+      const walkG = new Set(['grass', 'path', 'pave', 'sand', 'snow', 'ash', 'cave']);
+      for (const c of this.cells) {
+        if (!c.o || c.ch === 'T' || c.ch === 'P' || c.ch === 'Y' || L[c.ch] && (L[c.ch].g || L[c.ch].gnd)) continue;
+        const cnt = {};
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) {
+          const n = this.cells[(c.y + dy) * this.w + c.x + dx];
+          if (n && !n.o && walkG.has(n.g) && Math.abs(dx) + Math.abs(dy) > 0 && n.x === c.x + dx) cnt[n.g] = (cnt[n.g] || 0) + (dx && dy ? 1 : 2);
+        }
+        const best = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
+        if (best) c.g = best;
+      }
+    }
     this.objs = (def.objs || []).map(o => ({ ...o }));
     this.buildings = this.objs.filter(o => o.type === 'building');
     this.warps = (def.warps || []).map(w => ({ ...w }));
