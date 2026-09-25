@@ -11,7 +11,7 @@
 //  splash crown and rings.
 // ============================================================================
 (function () {
-  const AW = 768, AH = 432, HZ = 262;
+  const AW = 768, AH = 432, HZ = 262, M = 72;   // M: margin painted beyond each side (the 3D camera drifts)
   const hex = h => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
   const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
   const shade = (a, k) => k >= 0 ? mix(a, [255, 255, 255], k) : mix(a, [0, 0, 0], -k);
@@ -19,9 +19,10 @@
 
   // RGBA layer with coverage blending
   class Layer {
-    constructor(w = AW, h = AH) { this.w = w; this.h = h; this.d = new Uint8ClampedArray(w * h * 4); }
+    constructor(w = AW, h = AH, ox = 0) { this.ox = ox; this.w = w + ox * 2; this.h = h; this.d = new Uint8ClampedArray(this.w * h * 4); }
+    copy() { const L = new Layer(this.w - this.ox * 2, this.h, this.ox); L.d.set(this.d); return L; }
     set(x, y, c, a = 1) {
-      x |= 0; y |= 0; if (x < 0 || y < 0 || x >= this.w || y >= this.h || a <= 0) return;
+      x = (x | 0) + this.ox; y |= 0; if (x < 0 || y < 0 || x >= this.w || y >= this.h || a <= 0) return;
       const i = (y * this.w + x) * 4, d = this.d, da = d[i + 3] / 255, oa = a + da * (1 - a);
       if (oa <= 0) return;
       d[i] = (c[0] * a + d[i] * da * (1 - a)) / oa; d[i + 1] = (c[1] * a + d[i + 1] * da * (1 - a)) / oa; d[i + 2] = (c[2] * a + d[i + 2] * da * (1 - a)) / oa; d[i + 3] = oa * 255;
@@ -34,10 +35,10 @@
   function skyAt(u) { u = Math.min(1, Math.max(0, u)); for (let i = 1; i < SKY.length; i++) if (u <= SKY[i][0]) { const [k0, c0] = SKY[i - 1], [k1, c1] = SKY[i]; return mix(c0, c1, (u - k0) / (k1 - k0)); } return SKY[SKY.length - 1][1]; }
   const SUN = [540, HZ - 4], SUNR = 30;
   function paintSky() {
-    const L = new Layer();
+    const L = new Layer(AW, AH, M);
     for (let y = 0; y < AH; y++) {
       const u = Math.pow(Math.min(1, y / HZ), 1.15);
-      for (let x = 0; x < AW; x++) {
+      for (let x = -M; x < AW + M; x++) {
         let c = skyAt(u);
         const d = Math.hypot((x - SUN[0]) / 1.7, (y - SUN[1]) * 1.2);
         c = mix(c, hex('#ffd9a0'), Math.max(0, .5 - d / 380) * 1.3);
@@ -46,7 +47,7 @@
     }
     const rng = new G.RNG(71);
     for (let i = 0; i < 520; i++) {
-      const x = rng.int(0, AW - 1), y = rng.int(0, HZ - 60), b = rng.next(), fade = 1 - sst(40, HZ - 90, y);
+      const x = rng.int(-M, AW + M - 1), y = rng.int(0, HZ - 60), b = rng.next(), fade = 1 - sst(40, HZ - 90, y);
       if (fade <= .02) continue;
       L.set(x, y, b > .8 ? [255, 250, 235] : [200, 210, 255], (.3 + b * .7) * fade);
       if (b > .96) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) L.set(x + dx, y + dy, [200, 210, 255], .45 * fade);
@@ -87,7 +88,7 @@
   }
   // far islands, the harbour town on the right and the horizon haze
   function paintFar() {
-    const L = new Layer(), haze = hex('#e08a86');
+    const L = new Layer(AW, AH, M), haze = hex('#e08a86');
     const ridge = (base, amp, freq, seed, col, x0, x1) => {
       for (let x = x0; x < x1; x++) {
         const t = (x - x0) / (x1 - x0), env = Math.sin(t * Math.PI) ** .6;
@@ -97,7 +98,7 @@
     };
     ridge(HZ, 44, 120, 3, hex('#6a4a86'), 240, 520);
     ridge(HZ, 26, 70, 9, hex('#4e3a74'), 300, 470);
-    ridge(HZ, 60, 150, 5, hex('#5a3e7c'), 590, 800);
+    ridge(HZ, 60, 150, 5, hex('#5a3e7c'), 590, AW + M);
     // the town climbing the right-hand hill: stepped houses with pitched roofs and warm windows
     const rng = new G.RNG(17);
     for (let i = 0; i < 26; i++) {
@@ -114,11 +115,11 @@
   }
   // the headland: faceted cliff, grass cap, pines, cottage and the Tidelight
   const LAMP = [152, 58];
-  function paintHead() {
-    const L = new Layer(), rng = new G.RNG(5);
+  function paintHead(bare) {
+    const L = new Layer(AW, AH, M), rng = new G.RNG(5);
     const R = [hex('#171228'), hex('#2a2040'), hex('#3c2e54'), hex('#5a4064'), hex('#a0607a')];
     const topAt = x => x < 200 ? 214 + (G.fbm(x / 40, 2, 2, 3) - .5) * 10 : 214 + Math.pow((x - 200) / 70, 2.2) * 60 + (G.fbm(x / 30, 2, 2, 3) - .5) * 10;
-    for (let x = 0; x < 300; x++) {
+    for (let x = -M; x < 300; x++) {
       const tp = Math.round(topAt(x)); if (tp >= AH) continue;
       for (let y = tp; y < AH; y++) {
         // a sea cliff: tall narrow facets (vertical jointing) cut by horizontal strata, lit on the
@@ -153,7 +154,7 @@
       }
       for (let y = base - 4; y < base + 1; y++) { L.set(cx, y, hex('#2a1a1a')); L.set(cx + 1, y, hex('#2a1a1a')); }
     };
-    pine(22, 218, 70); pine(44, 216, 52); pine(8, 222, 48); pine(262, 236, 46); pine(284, 246, 38);
+    pine(22, 218, 70); pine(44, 216, 52); pine(8, 222, 48); pine(262, 236, 46); pine(284, 246, 38); pine(-30, 220, 58); pine(-56, 224, 44);
     // keeper's cottage: plastered walls, a steep slate roof, a chimney, warm windows
     { const x0 = 60, x1 = 112, base = 214, wallTop = 190;
       for (let y = wallTop; y < base; y++) for (let x = x0; x < x1; x++) L.set(x, y, x > 98 ? hex('#8a6a7a') : hex('#c8a8a0'));
@@ -161,6 +162,14 @@
       for (let y = 160; y < 176; y++) for (let x = 96; x < 102; x++) L.set(x, y, hex('#4a3040'));
       for (const wx of [68, 84]) { for (let y = 196; y < 205; y++) for (let x = wx; x < wx + 8; x++) L.set(x, y, (x === wx + 3 || y === 200) ? hex('#6a4430') : hex('#ffcf7a')); }
       for (let y = 200; y < 214; y++) for (let x = 102; x < 108; x++) L.set(x, y, hex('#4a3040')); }
+    // path down from the cottage and a little fence
+    for (let x = 112; x < 142; x += 6) for (let y = 204; y < 214; y++) L.set(x, y, hex('#3a2a30'));
+    for (let x = 112; x < 142; x++) { L.set(x, 207, hex('#6a4a4a')); L.set(x, 210, hex('#4a3438')); }
+    if (!bare) paintLighthouse(L);
+    return L;
+  }
+  // the painted Tidelight (the flat title, and what the 3D sea reflects)
+  function paintLighthouse(L) {
     // the Tidelight: octagonal tapered tower, red and white bands, lit facets toward the sun
     const bx = LAMP[0], base = 216, top = 84;
     for (let y = top; y < base; y++) {
@@ -188,15 +197,12 @@
     for (let y = 30; y < 48; y++) { const hw = (y - 30) * .75 + 1; for (let x = Math.floor(bx - hw); x <= bx + hw; x++) L.set(x, y, x > bx + 2 ? hex('#a03a44') : x > bx - 3 ? hex('#7a2a38') : hex('#4a1a2a')); }
     for (let y = 24; y < 30; y++) for (let x = bx - 2; x <= bx + 2; x++) L.set(x, y, hex('#2a2230'));
     for (let y = 12; y < 24; y++) L.set(bx, y, hex('#1c1a26')); for (let x = bx - 6; x <= bx + 5; x++) L.set(x, 16, hex('#1c1a26'));
-    // path down from the cottage and a little fence
-    for (let x = 112; x < 142; x += 6) for (let y = 204; y < 214; y++) L.set(x, y, hex('#3a2a30'));
-    for (let x = 112; x < 142; x++) { L.set(x, 207, hex('#6a4a4a')); L.set(x, 210, hex('#4a3438')); }
-    return L.canvas();
+    return L;
   }
   // foreground: a timber pier from the right with lamp posts, and dark rocks framing the bottom corners
   const PIER_LAMP = [610, 348];
   function paintFore() {
-    const L = new Layer();
+    const L = new Layer(AW, AH, M);
     // pier deck in perspective
     for (let y = 356; y < AH; y++) {
       const t = (y - 356) / (AH - 356), x0 = 600 - t * 180, x1 = 640 + t * 40;
@@ -215,7 +221,7 @@
         L.set(x, y, lit > .45 ? hex('#8a5068') : lit > 0 ? hex('#3a2c48') : hex('#1a1428'));
       }
     };
-    rock(350, 424, 60, 22); rock(720, 420, 80, 34); rock(700, 404, 34, 20);
+    rock(350, 424, 60, 22); rock(720, 420, 80, 34); rock(700, 404, 34, 20); rock(800, 430, 60, 40);
     return L.canvas();
   }
 
@@ -256,13 +262,21 @@
 
   // ------------------------------------------------------------- runtime
   let L0 = null;
-  function layers() { if (!L0) L0 = { sky: paintSky(), far: paintFar(), head: paintHead(), fore: paintFore(), cf: paintClouds(11, 7, 40, 150, .8), cn: paintClouds(29, 5, 90, 200, 1.15) }; return L0; }
+  function layers() {
+    if (!L0) {
+      const bare = paintHead(true), lit = paintLighthouse(bare.copy());
+      L0 = { sky: paintSky(), far: paintFar(), headBare: bare.canvas(), head: lit.canvas(), fore: paintFore(), cf: paintClouds(11, 7, 40, 150, .8), cn: paintClouds(29, 5, 90, 200, 1.15) };
+    }
+    return L0;
+  }
   const gulls = Array.from({ length: 7 }, (_, i) => ({ x: 300 + i * 70, y: 110 + (i * 37) % 70, s: .6 + (i % 3) * .25, ph: i * 1.7, v: .18 + (i % 4) * .05 }));
   const P = new G.Particles();
   G.titleHD = {
-    prewarm() { layers(); },
+    K: { AW, AH, HZ, M, SUN, SUNR, LAMP, PIER_LAMP, skyAt, hex, mix }, layers, P, gulls,
+    prewarm() { layers(); if (G.title3d) G.title3d.prewarm(); },
     // st: { t, lamp (0..1), breach: null | { p, glow } , night }
     draw(c, st) {
+      if (G.title3d && G.settings.title3d !== false && G.title3d.draw(c, st)) return;
       const Ls = layers(), gx = G.gfx, S = gx.S, t = st.t;
       const k = G.W * S / AW;
       // intro: fade from black and a slow settle of the camera
@@ -271,7 +285,7 @@
       c.beginPath(); c.rect(gx.ox, gx.oy, G.W * S, G.H * S); c.clip();
       c.translate(gx.ox + G.W * S / 2, gx.oy + G.H * S * .6); c.scale(k * zoom, k * zoom); c.translate(-AW / 2 + pan, -AH * .6);
       c.imageSmoothingEnabled = true;
-      c.drawImage(Ls.sky, 0, 0);
+      c.drawImage(Ls.sky, -M, 0);
       // sun glow breathing, slow crepuscular rays
       c.globalCompositeOperation = 'lighter';
       const gl = c.createRadialGradient(SUN[0], SUN[1], 4, SUN[0], SUN[1], 220); gl.addColorStop(0, `rgba(255,220,160,${.35 + .05 * Math.sin(t / 40)})`); gl.addColorStop(1, 'rgba(255,160,120,0)');
@@ -287,7 +301,7 @@
       // clouds (two parallax layers wrapping around)
       const cloudDraw = (cv, v, y0, a) => { const x = -((t * v) % cv.width); c.globalAlpha = a; c.drawImage(cv, x, y0); c.drawImage(cv, x + cv.width, y0); c.globalAlpha = 1; };
       cloudDraw(Ls.cf, .05, -20, .85);
-      c.drawImage(Ls.far, 0, 0);
+      c.drawImage(Ls.far, -M, 0);
       // the sea
       c.drawImage(drawSea(t, st.night || 0), 0, HZ);
       // horizon mist
@@ -303,7 +317,7 @@
       // Orrelume breaching
       if (st.breach) this.breach(c, st.breach, t);
       // headland, then the beam over it
-      c.drawImage(Ls.head, 0, 0);
+      c.drawImage(Ls.head, -M, 0);
       // surf breaking at the foot of the cliff
       for (let i = 0; i < 30; i++) { const y = HZ + 2 + i * 5.6, x = 200 + 70 * Math.pow(Math.max(0, (y - 214) / 60), 1 / 2.2) + 4 + Math.sin(t / 30 + i) * 3 + (i % 3) * 3, a = Math.max(0, Math.sin(t / 22 + i * 1.3)); if (a > .15) { c.fillStyle = `rgba(240,236,255,${(a * .7).toFixed(2)})`; c.fillRect(x, y, 4 + a * 5, 1.4); } }
       const lamp = st.lamp === undefined ? 1 : st.lamp;
@@ -329,7 +343,7 @@
         const x = ((gu.x + t * gu.v) % (AW + 80)) - 40, y = gu.y + Math.sin(t / 60 + gu.ph) * 8, fl = Math.sin(t / 7 + gu.ph) * 3 * gu.s, s = 5 * gu.s;
         c.beginPath(); c.moveTo(x - s, y - fl); c.quadraticCurveTo(x - s * .4, y - fl * .2 - 1, x, y); c.quadraticCurveTo(x + s * .4, y - fl * .2 - 1, x + s, y - fl); c.stroke();
       }
-      c.drawImage(Ls.fore, 0, 0);
+      c.drawImage(Ls.fore, -M, 0);
       // pier lamp
       c.globalCompositeOperation = 'lighter';
       const pl = c.createRadialGradient(PIER_LAMP[0], PIER_LAMP[1] - 4, 1, PIER_LAMP[0], PIER_LAMP[1] - 4, 40); pl.addColorStop(0, 'rgba(255,220,150,.7)'); pl.addColorStop(1, 'rgba(255,200,120,0)');
