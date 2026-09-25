@@ -75,8 +75,7 @@ def aud22(v):
     hv.write('A2', HM_HARM_A2, vel=64)
     cl = s.part('clarinet', CLARINET, rev=.4, role='lead', pan=-.12); cl.autovib = True
     cl.write('B', HM_B, vel=88)
-    mr = s.part('marimba', MARIMBA, rev=.3, role='counter', pan=.3)
-    mr.write('A', HM_OST_A, vel=50); mr.write('A2', HM_OST_A2, vel=46)
+    # (the marimba ostinato was cut after round-6 feedback: too present, too busy)
     pn = s.part('piano', PIANO, rev=.3, role='comp', pan=.12)
     pn.gen('I A A2 B T', comp, style='charleston', lo=53, hi=70, n=4, vel=46)
     st = s.part('strings', STRINGS, rev=.44, role='pad', width=1.2)

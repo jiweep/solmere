@@ -182,13 +182,13 @@ G.MUSIC_FILES = {
 "aud22": {
 "file": "music/aud22.mp3",
 "loop": true,
-"loopStart": 12.60936,
-"loopEnd": 66.40247,
-"duration": 67.90247,
+"loopStart": 12.51956,
+"loopEnd": 66.31267,
+"duration": 67.81268,
 "bpm": 115.99999,
 "title": "Audition 22 - Harbor Morning",
 "intro": 4.13793,
-"worked": 1790356777,
+"worked": 1790357551,
 "hidden": true
 },
 "aud23": {
@@ -213,6 +213,42 @@ G.MUSIC_FILES = {
 "title": "Audition 24 - Clocktower Lane",
 "intro": 4.0,
 "worked": 1790356775,
+"hidden": true
+},
+"aud25": {
+"file": "music/aud25.mp3",
+"loop": true,
+"loopStart": 8.49728,
+"loopEnd": 70.89728,
+"duration": 72.39728,
+"bpm": 100.0,
+"title": "Audition 25 - Morning Tide",
+"intro": 4.8,
+"worked": 1790357512,
+"hidden": true
+},
+"aud26": {
+"file": "music/aud26.mp3",
+"loop": true,
+"loopStart": 10.60598,
+"loopEnd": 83.2983,
+"duration": 84.7983,
+"bpm": 103.99999,
+"title": "Audition 26 - Little Waltz",
+"intro": 3.46154,
+"worked": 1790357515,
+"hidden": true
+},
+"aud27": {
+"file": "music/aud27.mp3",
+"loop": true,
+"loopStart": 11.5941,
+"loopEnd": 61.91668,
+"duration": 63.41669,
+"bpm": 123.99999,
+"title": "Audition 27 - Bossa Lane",
+"intro": 3.87097,
+"worked": 1790357513,
 "hidden": true
 },
 "aud3": {
