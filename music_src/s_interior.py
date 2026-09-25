@@ -43,12 +43,28 @@ def lab(v):
 
 @song('haven')
 def haven(v):
-    s = Song('haven', bpm=96, swing=.6, title='Tamer Haven', room=1.6, loudness=-18.0)
-    s.section('A', 16, 'Fmaj9 | Dm9 | Gm9 | C13 | Am7 | D7b9 | Gm9 | C9sus4 C7b9 | Fmaj9 | F9 | Bbmaj9 | Bbm6 | Am7 | D7alt | Gm9 C13 | Fmaj9')
-    ld = s.part('lead', VIBES, rev=.32, layer=[FLUTE]); ld.layer_gain = .5
-    ld.write('A', 'c5:8 f5:8 a5:8 c6:8 e6:2 | d6:4. c6:8 a5:4 e5:4 | bb4:8 d5:8 f5:8 a5:8 bb5:2 | a5:4. g5:8 e5:4 bb4:4 | c5:8 e5:8 g5:8 b5:8 c6:2 | c6:4. a5:8 f#5:4 eb5:4 | d5:4 f5:4 a5:4 bb5:4 | g5:2 e5:4 db5:4 |'
-                  'c5:8 f5:8 a5:8 c6:8 e6:2 | eb6:4. c6:8 a5:4 g5:4 | d6:4 c6:4 a5:4 f5:4 | db6:2. g5:4 | c6:4 a5:4 e5:4 g5:4 | f#5:4 eb5:4 c5:4 bb4:4 | a4:4 bb4:4 e5:4 a5:4 | f5:2. r:4', vel=86)
-    band(s, 'A', bass='walk', bass_prog=ACBASS, keys=(EPIANO, 'swingcomp'), kit=(KIT_BRUSH, 'soft'), pad=WARMPAD, drum_vel=72, fills=8)
+    # the Pokémon Center rule (Masuda): a simple, instantly identifiable tune. C, 108, straight.
+    # 8 bars stated twice: to a half cadence (V7/vi, V7/V on the way), then home via the minor iv.
+    s = Song('haven', bpm=108, swing=.5, title='Tamer Haven', room=1.6, loudness=-18.0, key='C')
+    s.no_push = True
+    s.section('A', 8, 'C | Am7 | Dm7 | G7 | Cmaj7 | E7/G# | Am7 D7 | Dm7 G7')
+    s.section('A2', 8, 'C | Am7 | Fmaj7 | Fm6 | Em7 | A7 | Dm7 G7 | C')
+    A = 'e5:8 g5:8 c6:4 b5:8 a5:8 g5:4 | a5:4 e5:4 c5:2 | f5:8 a5:8 d6:4 c6:8 b5:8 a5:4 | g5:2. r:4 |' \
+        'e5:8 g5:8 c6:4 d6:8 c6:8 b5:4 | b5:4 g#5:4 e5:2 | a5:8 b5:8 c6:4 d6:4 f#5:4 | a5:4 f5:4 g5:4 d5:4'
+    A2 = 'e5:8 g5:8 c6:4 b5:8 a5:8 g5:4 | a5:4 e5:4 c5:2 | f5:8 a5:8 c6:4 e6:8 d6:8 c6:4 | ab5:2. r:4 |' \
+         'g5:8 b5:8 e6:4 d6:8 c6:8 b5:4 | c#6:4 a5:4 e5:2 | d6:4 a5:4 b5:4 f5:4 | c6:2. r:4'
+    ld = s.part('lead', VIBES, rev=.3, layer=[FLUTE]); ld.layer_gain = .55
+    ld.write('A', A, vel=86); ld.write('A2', A2, vel=88)
+    gl = s.part('bell', GLOCK, rev=.4, role='sparkle', pan=.25)
+    gl.write('A2', A2, transpose=12, vel=46)
+    pn = s.part('piano', BRIGHT, rev=.2, role='comp', pan=-.2)
+    pn.gen('A A2', comp, style='offbeat', lo=55, hi=72, n=3, vel=56)
+    st = s.part('strings', STRINGS, rev=.4, role='pad', width=1.2)
+    st.gen('A2', pads, lo=55, hi=74, n=3, vel=50)
+    bs = s.part('bass', ACBASS, rev=.06)
+    bs.gen('A A2', bass_line, style='two', vel=86, approach=True)
+    dr = s.drums(kit=KIT_STD, rev=.14, vol=-4)
+    dr.gen('A A2', groove, name='soft', fills=8, fill='snare', vel=64, crash=False)
     return s
 
 

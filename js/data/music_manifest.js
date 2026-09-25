@@ -23,22 +23,22 @@ G.MUSIC_FILES = {
 "brinehollow": {
 "file": "music/brinehollow.mp3",
 "loop": true,
-"loopStart": 4.6551,
-"loopEnd": 60.03973,
-"duration": 60.63973,
-"bpm": 103.99998,
+"loopStart": 11.75125,
+"loopEnd": 103.17982,
+"duration": 103.77982,
+"bpm": 84.0,
 "title": "Brinehollow",
-"intro": 0.0
+"intro": 5.71429
 },
 "brinehollow@night": {
 "file": "music/brinehollow_night.mp3",
 "loop": true,
-"loopStart": 8.09229,
-"loopEnd": 63.47692,
-"duration": 64.07692,
-"bpm": 103.99998,
+"loopStart": 8.5585,
+"loopEnd": 99.98707,
+"duration": 100.58707,
+"bpm": 84.0,
 "title": "Brinehollow",
-"intro": 0.0
+"intro": 5.71429
 },
 "cave": {
 "file": "music/cave.mp3",
@@ -203,20 +203,20 @@ G.MUSIC_FILES = {
 "fernwick": {
 "file": "music/fernwick.mp3",
 "loop": true,
-"loopStart": 3.61746,
-"loopEnd": 53.27263,
-"duration": 53.87263,
-"bpm": 116.00001,
+"loopStart": 7.30907,
+"loopEnd": 75.8805,
+"duration": 76.48048,
+"bpm": 112.0,
 "title": "Fernwick Town",
 "intro": 0.0
 },
 "fernwick@night": {
 "file": "music/fernwick_night.mp3",
 "loop": true,
-"loopStart": 3.60748,
-"loopEnd": 53.26265,
-"duration": 53.86265,
-"bpm": 116.00001,
+"loopStart": 4.93447,
+"loopEnd": 73.5059,
+"duration": 74.1059,
+"bpm": 112.0,
 "title": "Fernwick Town",
 "intro": 0.0
 },
@@ -313,10 +313,10 @@ G.MUSIC_FILES = {
 "haven": {
 "file": "music/haven.mp3",
 "loop": true,
-"loopStart": 2.5,
-"loopEnd": 42.5,
-"duration": 43.1,
-"bpm": 96.0,
+"loopStart": 4.70499,
+"loopEnd": 40.26054,
+"duration": 40.86054,
+"bpm": 108.0,
 "title": "Tamer Haven",
 "intro": 0.0
 },
@@ -523,22 +523,22 @@ G.MUSIC_FILES = {
 "route1": {
 "file": "music/route1.mp3",
 "loop": true,
-"loopStart": 13.94632,
-"loopEnd": 69.59849,
-"duration": 70.19848,
-"bpm": 137.99999,
+"loopStart": 12.12775,
+"loopEnd": 70.30956,
+"duration": 70.90955,
+"bpm": 132.00001,
 "title": "Route 1 \u2014 First Steps",
-"intro": 6.95652
+"intro": 3.63636
 },
 "route1@night": {
 "file": "music/route1_night.mp3",
 "loop": true,
-"loopStart": 10.47421,
-"loopEnd": 66.12639,
-"duration": 66.72637,
-"bpm": 137.99999,
+"loopStart": 7.33863,
+"loopEnd": 65.52045,
+"duration": 66.12043,
+"bpm": 132.00001,
 "title": "Route 1 \u2014 First Steps",
-"intro": 6.95652
+"intro": 3.63636
 },
 "route2": {
 "file": "music/route2.mp3",

@@ -4,50 +4,103 @@ from motifs import TIDE, CRANE
 
 
 # ============================================================================ BRINEHOLLOW (hometown)
-# Bb major, 100, gentle 16th swing. Nylon guitar, flute, soft piano; the iv-minor (Ebm6) sigh in
-# bar 12 is the "home" feeling that returns in the credits.
-# one 2-bar idea (dotted rise, a note held over the barline, a sigh down) stated, sequenced up, answered
-BRINE_A = ('d5:4. c5:8 d5:8 f5:4. | -:4 a5:4 g5:2 | g5:4. f5:8 g5:8 bb5:4. | -:4 c6:4 a5:2 |'
-           'f5:4. e5:8 f5:8 a5:4. | -:4 bb5:4 g5:2 | eb5:4. d5:8 eb5:8 g5:4. | -:4 f5:4 c5:2 |'
-           'd5:4. c5:8 d5:8 f5:4. | -:4 ab5:4 f5:2 | g5:4. f5:8 g5:8 bb5:4. | -:4 c6:4 gb5:2 |'
-           'a5:4. g5:8 e5:8 f5:4. | -:4 b5:4 ab5:2 | g5:4 eb5:4 d5:4 c5:4 | d5:2. r:4')
-BRINE_CH_A = 'Bbmaj9 | Gm9 | Ebmaj9 | F13sus4 F13 | Dm7 | Gm7 | Cm9 | F7sus4 F7 | Bbmaj9 | Bb7 | Ebmaj7 | Ebm6 | Dm7 | G7b9 | Cm9 F13 | Bb6'
+# Written to STYLE_DP.md (Go Ichinose / Twinleaf-Sandgem idiom): D major, 84, straight eighths.
+# The melody is plain and singable, about one note per beat, one motif ("3-2-3-5, then a sigh down");
+# the colour is in the chords: V7/ii, the bII+ that slides into IV64, the borrowed minor iv, a
+# chromatic bass walking down, and a B section that jumps up a minor third (to F) for the climax,
+# coming home through Eb7-Bb7-A7 (Sandgem's bII7-bVI7-V7).
+BRINE_A1 = ('f#5:4 e5:8 f#5:8 a5:2 | a5:4. g5:8 f#5:2 | g5:4 f#5:8 g5:8 b5:2 | b5:4. a5:8 g5:2 |'
+            'a5:8 b5:8 d6:4 b5:4 g5:4 | a5:8 bb5:8 d6:4 bb5:4 g5:8 e6:8 | -:2 d6:8 c#6:8 b5:4 | a5:2. g5:8 e5:8')
+BRINE_A2 = ('f#5:4 e5:8 f#5:8 a5:2 | c#6:4. b5:8 a#5:2 | b5:4 a5:8 b5:8 d6:2 | c6:4. b5:8 a5:2 |'
+            'b5:4 d6:8 e6:8 f#6:2 | e6:4. d6:8 bb5:2 | a5:4 f#5:4 g5:4 e5:4 | d5:2. r:4')
+BRINE_A3 = BRINE_A2.rsplit('|', 1)[0] + '| d5:2 r:8 a4:8 d5:8 e5:8'
+BRINE_B = ('d6:2. c6:4 | c6:4 bb5:8 a5:8 g5:2 | e6:2. d6:4 | c6:4 a5:4 f5:2 |'
+           'd6:4 f6:4 a6:2 | g6:4. f6:8 db6:2 | eb6:4 db6:4 d6:4 ab5:4 | g5:2 e5:4 c#5:4')
+BRINE_CH1 = 'Dadd9 | B7/D# | Em9 | Ebaug | G/D | Gm6/D | Em7/A | A7sus4 A7'
+BRINE_CH2 = 'Dadd9 | F#7/A# | Bm9 | D7/C | Gmaj9/B | Gm6/Bb | D/A A7 | D6'
+BRINE_CHB = 'Bbmaj7 | C/Bb | Am7 | Dm7 | Gm9 | Bbm6 | Eb7 Bb7 | A7sus4 A7'
+# 16-bar statement reused by the credits medley
+BRINE_A = BRINE_A1 + ' | ' + BRINE_A2
+BRINE_CH_A = BRINE_CH1 + ' | ' + BRINE_CH2
 
 
 @song('brinehollow', variants=('day', 'night'))
 def brinehollow(v):
     night = v == 'night'
-    s = Song('brinehollow', bpm=104, swing=.61, title='Brinehollow', room=1.9)
-    s.section('A', 16, BRINE_CH_A)
-    s.section('B', 8, 'Ebmaj9 | Dm7 | Cm9 | Bbmaj7 | Ebmaj9 | Dm7 G7 | Cm9 | F7sus4')
-    ld = s.part('lead', FLUTE if not night else OCARINA, rev=.34, delay=.12); ld.autovib = True
-    ld.write('A', BRINE_A, vel=88)
-    gl = s.part('glock', GLOCK if not night else MUSICBOX, rev=.45, role='sparkle')
-    gl.write('A', BRINE_A, transpose=12, vel=62)
-    cl = s.part('lead2', CLARINET if not night else HORN, rev=.36, role='lead'); cl.autovib = True
-    cl.write('B', 'bb5:2. g5:8 bb5:8 | c6:2 a5:4 f5:4 | g5:2. d5:4 | f5:1 | g5:2. bb5:8 d6:8 | c6:4 a5:4 b5:4 f5:4 | eb5:4 g5:4 bb5:4 d6:4 | c6:2. bb5:4', transpose=-12, vel=86)
-    band(s, 'A B', night, bass='two', bass_prog=ACBASS, nbass='two', nbass_prog=ACBASS, keys=(PIANO, 'charleston'), nkeys=(EPIANO, 'block'),
-         guitar=(NYLON, 'arp'), nguitar=(NYLON, 'arp'), kit=(KIT_BRUSH, 'soft'), nkit=(KIT_BRUSH, 'soft'), fills=8, drum_vel=80)
+    s = Song('brinehollow', bpm=84, swing=.5, title='Brinehollow', room=1.9, key='D')
+    s.no_push = True
+    s.section('I', 2, 'Gmaj9 | A7sus4 A7', intro=True)
+    s.section('A1', 8, BRINE_CH1); s.section('A2', 8, BRINE_CH2); s.section('B', 8, BRINE_CHB); s.section('A3', 8, BRINE_CH2)
+    s.shape = {'A1': -8, 'A2': 0, 'B': 6, 'A3': 2}
+    ld = s.part('lead', FLUTE if not night else OCARINA, rev=.36, delay=.1); ld.autovib = True
+    ld.write('A1', BRINE_A1, vel=84); ld.write('A2', BRINE_A2, vel=88); ld.write('B', BRINE_B, vel=90); ld.write('A3', BRINE_A3, vel=88)
+    # music box sparkle doubles the tune an octave up on the second statement only
+    mb = s.part('sparkle', MUSICBOX if not night else CELESTA, rev=.5, role='sparkle', pan=.25)
+    mb.write('A2', BRINE_A2, transpose=12, vel=50)
+    # the B climax gets body: violins an octave under the flute
+    vn = s.part('violin', VIOLIN if not night else VIOLA, rev=.45, role='counter', pan=-.2); vn.autovib = True
+    vn.write('B', BRINE_B, transpose=-12, vel=70)
+    # last A: a slow countermelody on guide tones under the tune
+    ct = s.part('counter', CLARINET if not night else HORN, rev=.4, role='counter', pan=-.25); ct.autovib = True
+    ct.write('A3', 'a4:2 d5:2 | c#5:1 | d5:2 f#4:2 | a4:2 f#4:2 | g4:1 | g4:2 e4:2 | f#4:2 e4:2 | f#4:2. r:4', vel=66)
+    # broken-chord piano (harp at night) through the whole loop
+    pn = s.part('piano', PIANO if not night else HARP, rev=.3, role='arp', pan=-.1)
+    pn.gen('I A1 A2 B A3', comp, style='arp', arp='updown8', lo=50, hi=71, vel=52)
+    # round bass in halves; slash chords give the walking-down line (B C B Bb A in A2)
+    bs = s.part('bass', ACBASS, rev=.08)
+    bs.gen('I A1 A2 B A3', bass_line, style='two', vel=84, approach=False)
+    # pizzicato heartbeat from the second statement, string pad for B and the last A
+    pz = s.part('pizz', PIZZ, rev=.3, role='comp', pan=.3)
+    pz.gen('A2 B A3', comp, style='pulse4', lo=55, hi=69, n=2, vel=46)
+    st = s.part('strings', STRINGS if not night else WARMPAD, rev=.45, role='pad', width=1.25)
+    st.gen('B A3', pads, lo=55, hi=76, n=3, vel=54, spread=False)
+    dr = s.drums(kit=KIT_BRUSH, rev=.2, vol=-2)
+    dr.gen('A2 B A3', groove, name='soft', fills=8, fill='brush', vel=64 if not night else 48, crash=False)
     return s
 
 
 # ============================================================================ FERNWICK
+# Written to STYLE_DP.md (Floaroma / Eterna idiom): F major, 112, straight and light.
+# Motif: a rising arpeggio, a turn, a fall (bar 1-2), sequenced a third down over a chromatic bass
+# (F E D Db C, the Bbm6 is the borrowed iv). A': V7/IV and the bVI (Dbmaj7) climbing to the climax
+# on D7 (V7/ii). B moves up a minor third to Ab and slides home through Db7-C7.
+FW_A1 = ('c5:8 f5:8 a5:4 g5:4. f5:8 | e5:2 c5:2 | a4:8 d5:8 f5:4 e5:4. d5:8 | f5:2 db5:2 |'
+         'c5:8 f5:8 a5:4 c6:4. a5:8 | f#5:2 a5:4 c6:4 | bb5:4. a5:8 g5:4 d5:4 | f5:2 e5:4 r:4')
+FW_A2 = ('c5:8 f5:8 a5:4 g5:4. f5:8 | eb5:2 c5:2 | d5:8 f5:8 bb5:4 a5:4. f5:8 | ab5:2 c6:2 |'
+         'c6:8 d6:8 f6:4 e6:4. c6:8 | f#6:2. d6:4 | d6:4 bb5:4 c6:4 e5:4 | f5:2. r:4')
+FW_B = ('f5:4 ab5:4 c6:2 | bb5:2. g5:4 | g5:4 bb5:4 eb6:2 | c6:2. ab5:4 |'
+        'db6:4 f6:2 eb6:4 | db6:4 bb5:4 g5:4 eb5:4 | ab5:2. eb5:4 | b5:2 bb5:2')
+FW_CH1 = 'F | Fmaj7/E | Dm7 | Bbm6/Db | F/C | D7 | Gm7 | C7sus4 C7'
+FW_CH2 = 'F | F7/Eb | Bbmaj7/D | Dbmaj7 | Fmaj7/C | D7 | Gm7 C7 | F'
+
+
 @song('fernwick', variants=('day', 'night'))
 def fernwick(v):
     night = v == 'night'
-    s = Song('fernwick', bpm=116, swing=.58, title='Fernwick Town', room=1.8)
-    s.section('A', 16, 'Fmaj9 | Fmaj9 | Gm9 | C13 | Am7 | D7b9 | Gm9 | C7sus4 C7 | Fmaj9 | F7 | Bbmaj7 | Bbm6 | Am7 | Abdim7 | Gm9 C13 | Fmaj9')
-    s.section('B', 8, 'Dm9 | G13 | Cmaj9 | A7alt | Dm9 | G13 | Gm9 | C7sus4')
-    mA = ('a5:4. g5:8 a5:4 c6:4 | e5:2. g5:4 | bb5:4. a5:8 bb5:4 d6:4 | e5:2. a5:4 | c6:4. b5:8 c6:4 e6:4 | f#5:2. eb6:4 | d6:4. c6:8 bb5:4 a5:4 | f5:2 e5:2 |'
-          'a5:4. g5:8 a5:4 c6:4 | eb6:2. c6:4 | d6:4. c6:8 bb5:4 f5:4 | db6:2. g5:4 | c6:4. b5:8 a5:4 e5:4 | f5:2. b5:4 | bb5:4 a5:4 e5:4 g5:4 | f5:2. r:4')
-    ld = s.part('lead', FLUTE if not night else VIBES, rev=.32, delay=.1); ld.autovib = True
-    ld.write('A', mA, vel=88)
-    cl = s.part('lead2', CLARINET if not night else FLUTE, rev=.34, role='lead'); cl.autovib = True
-    cl.write('B', 'f5:2. e5:8 f5:8 | e5:2 b4:4 d5:4 | d5:2. e5:4 | c#5:2 bb4:4 g4:4 | a5:2. e5:8 f5:8 | e5:2 f5:4 b5:4 | a5:2 bb5:4 d6:4 | c6:2. bb5:4', vel=86)
-    mb = s.part('marimba', MARIMBA, rev=.3, role='arp', pan=.3)
-    mb.gen('A', ostinato, pattern='0 . 1 2 . 1 3 .', lo=64, vel=64, rate=.5)
-    band(s, 'A B', night, bass='bossa', bass_prog=ACBASS, nbass='bossa', nbass_prog=FRETLESS, keys=(None, None), nkeys=(EPIANO, 'block'),
-         guitar=(NYLON, 'bossa'), nguitar=(NYLON, 'bossa'), kit=(KIT_STD, 'bossa'), nkit=(KIT_BRUSH, 'bossa'), fills=8, drum_vel=82)
+    s = Song('fernwick', bpm=112, swing=.5, title='Fernwick Town', room=1.8, key='F')
+    s.no_push = True
+    s.section('A1', 8, FW_CH1); s.section('A2', 8, FW_CH2)
+    s.section('B', 8, 'Dbmaj7 | Eb/Db | Cm7 | Fm7 | Bbm9 | Eb7 | Abmaj7 | Db7 C7')
+    s.section('A3', 8, FW_CH2)
+    s.shape = {'A1': -6, 'A2': 0, 'B': 5, 'A3': 2}
+    ld = s.part('lead', RECORDER if not night else VIBES, rev=.34, delay=.1, layer=[GLOCK] if not night else []); ld.autovib = True; ld.layer_gain = .35
+    ld.write('A1', FW_A1, vel=86); ld.write('A2', FW_A2, vel=90); ld.write('A3', FW_A2, vel=90)
+    vn = s.part('violin', VIOLIN if not night else FLUTE, rev=.42, role='lead', pan=-.15); vn.autovib = True
+    vn.write('B', FW_B, vel=88)
+    # the last A: clarinet answers under the tune on guide tones
+    cl = s.part('counter', CLARINET if not night else HORN, rev=.38, role='counter', pan=-.25); cl.autovib = True
+    cl.write('A3', 'a4:2 c5:2 | g4:1 | f4:2 d5:2 | c5:2 ab4:2 | a4:1 | c5:2 a4:2 | bb4:2 bb4:2 | a4:2. r:4', vel=64)
+    mb = s.part('marimba', MARIMBA if not night else HARP, rev=.3, role='arp', pan=.3)
+    mb.gen('A1 A2 B A3', comp, style='arp', arp='updown8', lo=55, hi=74, vel=54)
+    pz = s.part('pizz', PIZZ, rev=.28, role='comp', pan=-.3)
+    pz.gen('A2 B A3', comp, style='pulse4', lo=53, hi=67, n=2, vel=48)
+    st = s.part('strings', STRINGS if not night else WARMPAD, rev=.42, role='pad', width=1.2)
+    st.gen('B A3', pads, lo=55, hi=76, n=3, vel=54)
+    bs = s.part('bass', ACBASS if not night else FRETLESS, rev=.06)
+    bs.gen('A1 A2 B A3', bass_line, style='two', vel=86, approach=False)
+    dr = s.drums(kit=KIT_STD if not night else KIT_BRUSH, rev=.16, vol=-3)
+    dr.gen('A2 B A3', groove, name='soft', fills=8, fill='snare' if not night else 'brush', vel=70 if not night else 54, crash=False,
+           tamb=None if night else '--x---x---x---x-')
     return s
 
 
