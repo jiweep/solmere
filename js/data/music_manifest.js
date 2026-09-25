@@ -71,6 +71,66 @@ G.MUSIC_FILES = {
 "worked": 1790341734,
 "hidden": true
 },
+"aud14": {
+"file": "music/aud14.mp3",
+"loop": true,
+"loopStart": 10.0763,
+"loopEnd": 66.3263,
+"duration": 67.8263,
+"bpm": 128.0,
+"title": "Audition 14 - Tidewalk, retold",
+"intro": 3.75,
+"worked": 1790344211,
+"hidden": true
+},
+"aud15": {
+"file": "music/aud15.mp3",
+"loop": true,
+"loopStart": 8.60159,
+"loopEnd": 72.8873,
+"duration": 74.3873,
+"bpm": 112.0,
+"title": "Audition 15 - Porch Talk",
+"intro": 4.28571,
+"worked": 1790344213,
+"hidden": true
+},
+"aud16": {
+"file": "music/aud16.mp3",
+"loop": true,
+"loopStart": 12.48866,
+"loopEnd": 69.63152,
+"duration": 71.13152,
+"bpm": 126.0,
+"title": "Audition 16 - Errand Day",
+"intro": 7.61905,
+"worked": 1790344213,
+"hidden": true
+},
+"aud17": {
+"file": "music/aud17.mp3",
+"loop": true,
+"loopStart": 12.74989,
+"loopEnd": 88.34989,
+"duration": 89.84989,
+"bpm": 100.0,
+"title": "Audition 17 - Letter Home",
+"intro": 3.6,
+"worked": 1790344214,
+"hidden": true
+},
+"aud18": {
+"file": "music/aud18.mp3",
+"loop": true,
+"loopStart": 8.78189,
+"loopEnd": 60.95581,
+"duration": 62.4558,
+"bpm": 137.99997,
+"title": "Audition 18 - Market Chatter",
+"intro": 3.47826,
+"worked": 1790344209,
+"hidden": true
+},
 "aud2": {
 "file": "music/aud2.mp3",
 "loop": true,
