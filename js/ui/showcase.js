@@ -113,3 +113,104 @@ G.showcaseEvents = async function () {
   if (id === 'race') { Object.assign(G.save.flags, { intro_done: true, mom_talk: true, got_starter: true, rival1_done: true, lab_intro: true, parcel_given: false }); G.save.party = [G.mon.create('kindlet', 6)]; G.save.vars.starter = 'kindlet'; G.defineRivals(); w.enterMap('route1', 10, 38, 'up', { noScript: true }); }
   return true;
 };
+
+// ============================================================================
+//  Quick tour: the showcase opens as a short run of live slides (title, towns
+//  at different hours, a night scene, an interior, battles with moves going
+//  off) that you flip through with ◀ ▶ or a click. The last slide opens the
+//  full free-roam showcase menu above.
+// ============================================================================
+G.TOUR = [
+  { k: 'title', label: 'Title screen' },
+  { k: 'map', id: 'brinehollow', x: 18, y: 10, hour: 10, label: 'Brinehollow · the hometown' },
+  { k: 'map', id: 'fernwick', x: 21, y: 21, hour: 13, label: 'Fernwick Town · Blossom Square' },
+  { k: 'map', id: 'galvan', x: 22, y: 8, hour: 18, label: 'Galvan Harbor · dusk on the quay' },
+  { k: 'map', id: 'route1', x: 12, y: 20, hour: 11, label: 'Route 1 · tall grass and the pond' },
+  { k: 'battle', env: 'grass', phase: 'day', mine: 'kindlet', foe: 'mossbun', moves: ['ember', 'vinewhip'], label: 'Wild battle · meadow' },
+  { k: 'map', id: 'cindervale', x: 21, y: 20, hour: 16, label: 'Cindervale · lava channels and the hot spring' },
+  { k: 'map', id: 'brinehollow', x: 14, y: 10, hour: 22, label: 'Night · lamps, fireflies, the sea' },
+  { k: 'map', id: 'tidelight', x: 12, y: 12, hour: 19, label: 'The Tidelight' },
+  { k: 'map', id: 'home1f', x: 5, y: 5, hour: 12, label: 'Indoors · your house' },
+  { k: 'battle', env: 'crystal', phase: 'day', mine: 'solarynx', foe: 'glimmer', moves: ['flamethrower', 'watergun'], label: 'Crystal cave battle' },
+  { k: 'battle', env: 'league', phase: 'day', mine: 'galeclaw', foe: 'stormhound', trainer: 'sable', moves: ['thunderbolt', 'flamethrower'], label: 'Champion Sable · the League hall' },
+  { k: 'free', label: 'Free explore · every town, route, battle and story scene' },
+];
+G.runTour = async function () {
+  G.showcase = true;
+  let i = 0;
+  const tour = new G.TourScene();
+  const show = async (k) => {
+    i = (k + G.TOUR.length) % G.TOUR.length;
+    const s = G.TOUR[i];
+    tour.i = i; tour.t = 0;
+    await G.fadeOut(8);
+    for (const sc of G.scenes.slice()) G.pop(sc);
+    G.showcaseSave(); if (s.hour !== undefined) G.save.vars.forceHour = s.hour;
+    if (s.k === 'title') { G.save = null; G.push(new G.TitleScene()); }
+    else if (s.k === 'map') {
+      G.maps.reset(); const w = new G.WorldScene(); G.push(w);
+      const m = G.maps.get(s.id);
+      let best = [s.x, s.y], bd = 1e9;
+      for (let yy = 0; yy < m.h; yy++) for (let xx = 0; xx < m.w; xx++) { const c = m.cell(xx, yy); if (!c || c.solid || c.water || c.door) continue; const d = Math.abs(xx - s.x) + Math.abs(yy - s.y); if (d < bd) { bd = d; best = [xx, yy]; } }
+      w.enterMap(s.id, best[0], best[1], 'down', { noScript: true });
+    } else if (s.k === 'battle') {
+      const sc = new G.BattleScene({ env: s.env, phase: s.phase, format: 'single' });
+      sc.hudShow = { 0: 1, 1: 1 }; sc.tour = s; sc.intro = 1; G.tween(sc, { intro: 0 }, 38, G.ease.outCubic);
+      const mk = (sp, side) => { const m = G.mon.create(sp, 40); const P = sc.pos(side, 0, 1); return Object.assign({}, m, P, { name: G.mon.name(m), lvl: m.lvl, dispHp: Math.round(m.hp * (side ? .62 : .88)), maxhp: m.hp, visible: true, scale: 1, alpha: 1, offx: 0, offy: 0, flash: 0, shake: 0, frame: 0, side, slot: 0, anim: 0 }); };
+      sc.slots['0:0'] = mk(s.mine, 0); sc.slots['1:0'] = mk(s.foe, 1);
+      if (s.trainer) { const T = G.TRAINERS[s.trainer]; sc.trainers = [{ side: 1, look: T && (T.look || T.sprite) || s.trainer, x: 292, y: 143, alpha: 1, off: 54, backed: true, name: T ? T.name : '' }]; }
+      G.push(sc);
+      // moves go off on their own every few seconds, each side in turn
+      let turn = 0;
+      sc.tourTimer = setInterval(() => {
+        if (!G.scenes.includes(sc)) { clearInterval(sc.tourTimer); return; }
+        const side = turn++ % 2, mv = s.moves[side];
+        sc.play([{ t: 'move', move: mv, ref: { s: side, i: 0 }, targets: [{ s: 1 - side, i: 0 }] }, { t: 'hit', ref: { s: 1 - side, i: 0 }, eff: 1 }]);
+      }, 3200);
+    } else if (s.k === 'free') {
+      G.push(new G.TitleScene());
+    }
+    G.push(tour);
+    await G.fadeIn(8);
+  };
+  tour.go = d => {
+    if (tour.busy) { tour.queued = (tour.queued || 0) + d; return; }   // quick presses during a fade still count
+    tour.busy = true;
+    show(i + d).finally(() => { tour.busy = false; const q = tour.queued; tour.queued = 0; if (q) tour.go(q); });
+  };
+  tour.pick = async () => {
+    if (G.TOUR[i].k !== 'free') { tour.go(1); return; }
+    G.pop(tour); G.save = null;
+    await G.openShowcase();
+  };
+  await show(0);
+};
+G.TourScene = class {
+  constructor() { this.i = 0; this.t = 0; this.noTurbo = true; this.noGhost = true; }
+  update(top) {
+    this.t++;
+    if (!top) return;
+    const I = G.input;
+    if (I.pressed('right') || I.pressed('r')) { I.consume('right'); this.go(1); }
+    else if (I.pressed('left') || I.pressed('l')) { I.consume('left'); this.go(-1); }
+    else if (I.pressed('a')) { I.consume('a'); this.pick(); }
+    else if (I.pressed('b')) {
+      I.consume('b'); G.showcase = false;
+      G.run(async () => { await G.fadeOut(8); for (const s of G.scenes.slice()) G.pop(s); G.save = null; G.push(new G.TitleScene()); await G.fadeIn(8); });
+    }
+  }
+  drawUI() {
+    const U = G.ui, s = G.TOUR[this.i], n = G.TOUR.length, k = Math.min(1, this.t / 12);
+    const y = G.H - 22 + (1 - G.ease.outCubic(k)) * 24, w = Math.max(200, U.measure(s.label, 7, 800) + 90), x = G.W / 2 - w / 2;
+    U.c.globalAlpha = .88; U.para(x, y, w, 17, 6, '#0e1019'); U.c.globalAlpha = 1; U.para(x, y + 15.5, w, 1.5, 6, '#ff3b4e');
+    U.text(s.label, G.W / 2, y + 2.5, { size: 7, weight: 800, align: 'center', color: '#fff', shadow: false });
+    U.text(`${this.i + 1} / ${n}   ·   ◀ ▶ or click   ·   ${s.k === 'free' ? 'Z to open' : 'Z next'}   ·   Esc to leave`, G.W / 2, y + 10.2, { size: 4.6, weight: 700, align: 'center', color: '#9aa0b8', shadow: false });
+    const arrow = (ax, dir) => {
+      const hov = U.hot(ax - 9, y - 1, 18, 19, null, () => this.go(dir));
+      U.para(ax - 8, y, 16, 17, 4, '#ff3b4e');
+      U.text(dir < 0 ? '◀' : '▶', ax, y + 4, { size: 8, weight: 900, align: 'center', color: '#fff', shadow: false });
+    };
+    arrow(x - 14, -1); arrow(x + w + 14, 1);
+    if (s.k === 'free') U.hot(x, y, w, 17, null, () => this.pick());
+  }
+};

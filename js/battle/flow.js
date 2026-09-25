@@ -101,7 +101,7 @@ G.playerTrainer = function (scene) {
 G.envForMap = function (map) {
   if (map.def.env) return map.def.env;
   if (map.type === 'cave') return map.theme === 'snow' ? 'snow' : map.def.crystal ? 'crystal' : map.theme === 'ash' ? 'volcano' : 'cave';
-  if (map.type === 'indoor') return 'gym';
+  if (map.type === 'indoor') return /gym/.test(map.id) ? 'gym' : /lab|hq|crane/.test(map.id) ? 'lab' : 'room';
   return { grass: 'grass', snow: 'snow', ash: 'volcano', dusk: 'dusk', beach: 'beach' }[map.theme] || 'grass';
 };
 // ------------------------------------------------------- core run battle

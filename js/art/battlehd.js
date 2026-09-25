@@ -388,7 +388,7 @@
         let c;
         if (L) { const ck = (Math.floor(u) + Math.floor(z * 2)) & 1; c = ck ? hex('#d8d0e4') : hex('#4a3e5e'); }
         else if (H) { c = (Math.floor(u * 4) + Math.floor(z * 8)) % 2 ? hex('#2a3640') : hex('#34444e'); if ((u * 4) % 1 < .06 || (z * 8) % 1 < .08) c = hex('#1a2228'); }
-        else { c = mix(hex('#b88a56'), hex('#d8aa70'), G.h2(Math.floor(u * 5), 0, 3) * .4); if ((u * 5) % 1 < .04) c = shade(c, -.15); }
+        else { c = mix(hex('#b88a56'), hex('#d8aa70'), G.h2(Math.floor(u * 5), 0, 3) * .4); if (((u * 5) % 1 + 1) % 1 < .04) c = shade(c, -.15); }
         c = mix(c, [0, 0, 0], Math.max(0, .3 - t * .4));
         // the painted battlefield: a white border and a centre line with a circle
         if (!H) { const cu = Math.abs(u), line = (Math.abs(cu - 3.1) < .05 && z > .9 && z < 7) || (Math.abs(z - 1.05) < .05 && cu < 3.1) || (Math.abs(z - 3.4) < .04 && cu < 3.1) || Math.abs(Math.hypot(u, (z - 3.4) * 1.1) - .9) < .05; if (line) c = L ? hex('#e8c46a') : [244, 244, 236]; }
@@ -439,9 +439,77 @@
       foreground(p, { }, Pn, rng);
       return p.canvas();
     }
+    if (env === 'lab' || env === 'room') {
+      const lab = env === 'lab', fy = 236;
+      // back wall: lab in cool white panels over a teal dado, a home in warm plaster over wood panelling
+      const W = lab ? [hex('#b8c8cc'), hex('#d4e0e2'), hex('#e8f0f0')] : [hex('#c8a882'), hex('#dcc09a'), hex('#ead2ae')];
+      const D = lab ? [hex('#2e6a6e'), hex('#3c8286'), hex('#5aa4a4')] : [hex('#5a3c28'), hex('#704c32'), hex('#8a6040')];
+      for (let y = 0; y < fy; y++) for (let x = 0; x < AW; x++) {
+        let c;
+        if (y < 150) { c = W[1]; const px = x % (lab ? 128 : 64); if (px < 2) c = W[0]; else if (px === 2) c = W[2]; if (!lab && G.h2(x >> 3, y >> 3, 21) > .97) c = W[0]; }
+        else if (y < 156) c = y < 152 ? D[2] : D[0];
+        else { const px = x % 48; c = px < 2 ? D[0] : px < 4 ? D[2] : D[1]; if (y > fy - 6) c = D[0]; }
+        p.q(x, y, mix(c, [0, 0, 0], Math.max(0, .35 - y / fy * .4)), 30);
+      }
+      const box = (x0, y0, w, h, C) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) { const e = x < x0 + 3 ? 2 : x > x0 + w - 4 ? 0 : y > y0 + h - 4 ? 0 : 1; p.set(x, y, C[e]); } };
+      const win = (cx, y0, w, h, frame) => {
+        for (let y = y0; y < y0 + h; y++) for (let x = cx - w / 2; x < cx + w / 2; x++) {
+          let c = mix(hex('#bfe4ff'), hex('#fff4d6'), (y - y0) / h);
+          if (Math.abs(x - cx) < 2 || Math.abs(y - y0 - h / 2) < 2 || x < cx - w / 2 + 4 || x > cx + w / 2 - 5 || y < y0 + 4 || y > y0 + h - 5) c = frame;
+          p.set(x, y, c);
+        }
+        beam(p, cx, y0 + h, cx - w * .3, cx + w * 1.6, AH, [255, 246, 220], .08);
+      };
+      const shelf = (x0, y0, w, h, rng2) => {
+        box(x0, y0, w, h, lab ? [hex('#6a7a80'), hex('#8a9ca2'), hex('#aabcc0')] : [hex('#4a3020'), hex('#643e28'), hex('#7c5034')]);
+        for (let r = y0 + 8; r < y0 + h - 12; r += 26) {
+          for (let x = x0 + 5; x < x0 + w - 6;) {
+            const bw = rng2.int(4, 8), bh = rng2.int(14, 21), col = [[190, 70, 60], [70, 110, 170], [220, 190, 90], [90, 150, 100], [150, 90, 150], [230, 230, 220]][rng2.int(0, 5)];
+            for (let y = r + 22 - bh; y < r + 22; y++) for (let xx = x; xx < x + bw && xx < x0 + w - 6; xx++) p.set(xx, y, xx === x ? shade(col, .2) : xx === x + bw - 1 ? shade(col, -.3) : col);
+            x += bw + (rng2.next() > .85 ? 5 : 0);
+          }
+          for (let x = x0 + 3; x < x0 + w - 3; x++) { p.set(x, r + 22, shade(hex(lab ? '#aabcc0' : '#8a6040'), .1)); p.set(x, r + 23, hex(lab ? '#4a5a60' : '#3a2418')); }
+        }
+      };
+      if (lab) {
+        win(150, 40, 110, 84, hex('#e8f0f0'));
+        win(610, 40, 110, 84, hex('#e8f0f0'));
+        shelf(250, 70, 120, 166, rng);
+        // the big machine: a console with screens and blinking lights, and a capsule tube
+        box(400, 96, 150, 140, [hex('#586870'), hex('#7a8c94'), hex('#9cb0b8')]);
+        for (let i = 0; i < 3; i++) { const x = 414 + i * 44; for (let y = 110; y < 146; y++) for (let xx = x; xx < x + 36; xx++) p.set(xx, y, (y < 112 || y > 143 || xx < x + 2 || xx > x + 33) ? hex('#1a2428') : (G.h2(xx >> 1, y >> 1, i + 40) > .82 ? hex('#aaffe8') : hex('#2a7a70'))); glow(p, x + 18, 128, 34, [120, 240, 220], .1); }
+        for (let i = 0; i < 12; i++) { const x = 414 + i * 11, y = 160 + (i % 3) * 10; p.set(x, y, [[255, 90, 80], [120, 240, 120], [255, 220, 90]][i % 3]); p.set(x + 1, y, [255, 255, 255], .6); }
+        for (let y = 60; y < 236; y++) for (let x = 690; x < 740; x++) { const u = (x - 715) / 25; if (y < 70 || y > 222) { p.set(x, y, hex(Math.abs(u) > .8 ? '#4a5a60' : '#8a9ca2')); continue; } p.set(x, y, mix(hex('#aee8ff'), hex('#e8ffff'), Math.max(0, 1 - Math.abs(u + .4) * 2)), .75); }
+        glow(p, 715, 150, 60, [170, 240, 255], .12);
+        for (const [x, y] of [[60, 190], [96, 196]]) { for (let yy = y; yy < y + 44; yy++) for (let xx = x - 10; xx < x + 10; xx++) p.set(xx, yy, hex(Math.abs(xx - x) > 7 ? '#4a5a60' : '#6a7a80')); for (let r = 0; r < 20; r++) for (let a = 0; a < 6.3; a += .3) p.set(x + Math.cos(a) * r * .8, y - 8 - r * .7 + Math.sin(a) * r * .3, [70 + r * 3, 150, 80], .8); }
+      } else {
+        win(200, 44, 120, 90, hex('#6a4a30'));
+        shelf(330, 64, 110, 172, rng);
+        // a clock, a framed picture and a potted plant
+        for (let y = 60; y < 110; y++) for (let x = 520; x < 590; x++) { const e = x < 524 || x > 585 || y < 64 || y > 105; p.set(x, y, e ? hex('#8a5a2a') : mix(hex('#8cc4e8'), hex('#8ac070'), Math.max(0, (y - 64) / 40 - Math.sin(x / 9) * .15))); }
+        for (let a = 0; a < 6.3; a += .05) for (let r = 0; r < 16; r++) p.set(660 + Math.cos(a) * r, 80 + Math.sin(a) * r, r > 13 ? hex('#6a4a30') : hex('#f4ecd8'));
+        for (let k = 0; k < 10; k++) { p.set(660, 80 - k, [40, 30, 20]); p.set(660 + k * .6, 80, [40, 30, 20]); }
+        for (let y = 200; y < 236; y++) for (let x = 90; x < 124; x++) p.set(x, y, hex(x < 96 || y > 232 ? '#8a4a2a' : '#b86a3c'));
+        for (let r = 0; r < 34; r++) for (let a = 0; a < 6.3; a += .25) p.set(107 + Math.cos(a) * r * .7, 196 - r * .9 + Math.sin(a) * r * .35, [60 + r * 2, 130 + r, 70], .85);
+      }
+      floorPersp(p, fy, (u, z, x, y, t) => {
+        let c;
+        if (lab) { c = (Math.floor(u * 2) + Math.floor(z * 3)) & 1 ? hex('#d8e0e0') : hex('#c4ced0'); if (((u * 2) % 1 + 1) % 1 < .03 || (z * 3) % 1 < .05) c = hex('#a4b0b2'); }
+        else { const plank = Math.floor(u * 3); c = mix(hex('#a0683c'), hex('#b87c48'), G.h2(plank, Math.floor(z * 1.5 + G.h2(plank, 0, 5) * 3), 8) * .6); if (((u * 3) % 1 + 1) % 1 < .05) c = hex('#6a4024'); }
+        c = mix(c, [0, 0, 0], Math.max(0, .25 - t * .35));
+        const e = stageEllipse(x, y, fy);
+        if (!lab && e < 1.05) { c = e > .92 ? hex('#e8d4a0') : e > .86 ? hex('#a83a3a') : mix(hex('#c85a4a'), hex('#d87060'), G.h2(Math.floor(u * 10), Math.floor(z * 6), 2) * .4); c = mix(c, [0, 0, 0], Math.max(0, .15 - t * .2)); }
+        if (lab && Math.abs(Math.sqrt(e) - .9) < .02) c = hex('#5aa4a4');
+        return c;
+      });
+      if (lab) for (let y = fy; y < fy + 80; y++) for (let x = 0; x < AW; x++) { const src = 2 * fy - y; if (src < 0) continue; p.set(x, y, p.get(x, src), (1 - (y - fy) / 80) * .12); }
+      // no boulders indoors: a soft vignette pulls the eye to the stage instead
+      for (let y = 0; y < AH; y++) for (let x = 0; x < AW; x++) { const dx = (x - AW / 2) / (AW / 2), dy = (y - AH * .6) / (AH * .6), v = dx * dx * .6 + dy * dy * .5 - .35; if (v > 0) p.set(x, y, [20, 14, 10], Math.min(.45, v * .5)); }
+      return p.canvas();
+    }
     return null;
   }
-  const SPECIAL = ['cave', 'crystal', 'gym', 'league', 'hq', 'ruins', 'lighthouse', 'sky'];
+  const SPECIAL = ['cave', 'crystal', 'gym', 'league', 'hq', 'ruins', 'lighthouse', 'sky', 'lab', 'room'];
 
   // ----------------------------------------------------------- compose
   function paint(env, phase) {

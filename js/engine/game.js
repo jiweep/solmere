@@ -12,7 +12,7 @@ G.pop = function (s) {
   const i = s ? G.scenes.lastIndexOf(s) : G.scenes.length - 1;
   if (i < 0) return null;
   const [r] = G.scenes.splice(i, 1); if (r && r.exit) r.exit();
-  if (r && r._born !== undefined && !r.opaque && r.drawUI && G.realTime - r._born > .05) G.ghosts.push({ s: r, t0: G.realTime });
+  if (r && r._born !== undefined && !r.opaque && !r.noGhost && r.drawUI && G.realTime - r._born > .05) G.ghosts.push({ s: r, t0: G.realTime });
   return r;
 };
 G.top = () => G.scenes[G.scenes.length - 1];

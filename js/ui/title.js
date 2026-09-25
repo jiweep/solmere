@@ -38,7 +38,7 @@ G.TitleScene = class {
       if (id === 'import') await G.importSave();
       if (id === 'help') await G.howToPlay();
       if (id === 'credits') await G.rollCredits(false);
-      if (id === 'showcase') { await G.openShowcase(); if (!G.findScene(G.TitleScene)) return; }
+      if (id === 'showcase') { await G.runTour(); return; }
       if (id === 'music') { await G.musicRoom(); G.audio && G.audio.music('title'); }
     }
   }

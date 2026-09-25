@@ -19,8 +19,8 @@ G.BattleScene = class {
     const mine = s === this.persp;
     // the foe stands well into the meadow (a third of the way down from the horizon), not on the horizon
     // line, so the ground between the two sides reads as depth
-    if (n === 1) return mine ? { x: 122, y: 192, sc: .84, back: true } : { x: 268, y: 153, sc: .92, back: false };
-    if (mine) return i === 0 ? { x: 96, y: 192, sc: .72, back: true } : { x: 172, y: 198, sc: .72, back: true };
+    if (n === 1) return mine ? { x: 112, y: 180, sc: .84, back: true } : { x: 268, y: 150, sc: .92, back: false };
+    if (mine) return i === 0 ? { x: 88, y: 180, sc: .72, back: true } : { x: 166, y: 186, sc: .72, back: true };
     return i === 0 ? { x: 236, y: 154, sc: .84, back: false } : { x: 306, y: 147, sc: .8, back: false };
   }
   key(r) { return r.s + ':' + r.i; }
@@ -116,7 +116,7 @@ G.BattleScene = class {
     const myTr = e.sides[this.persp].trainers;
     this.trainers = [];
     foeTr.forEach((t, k) => this.trainers.push({ side: 1 - this.persp, look: t.sprite, x: foeTr.length > 1 ? 262 + k * 52 : 292, y: 149, alpha: 1, off: 0, name: t.name, cls: t.cls }));
-    myTr.forEach((t, k) => this.trainers.push({ side: this.persp, look: t.sprite, x: myTr.length > 1 ? 40 + k * 60 : 58, y: 232, alpha: 1, off: 0, back: true, name: t.name }));
+    myTr.forEach((t, k) => this.trainers.push({ side: this.persp, look: t.sprite, x: myTr.length > 1 ? 44 + k * 60 : 64, y: 206, alpha: 1, off: 0, back: true, name: t.name }));
     this.balls = e.wild ? null : e.sides.map(s => s.trainers.reduce((a, t) => ({ count: a.count + t.count, alive: a.alive + t.alive }), { count: 0, alive: 0 }));
     // slide in
     this.intro = 1;
@@ -136,7 +136,7 @@ G.BattleScene = class {
     // the player's back sprite leaves the frame; the opponent steps back behind their mon and stays in view
     for (const t of this.trainers) if (t.side === e.ref.s && t.alpha > 0) {
       if (mine) G.tween(t, { off: -120, alpha: 0 }, 22, G.ease.inQuad);
-      else if (!t.backed) { t.backed = true; t.act = 24; const two = this.trainers.filter(q => !q.back).length > 1; G.tween(t, { off: two ? 40 : 54, y: t.y - 6 }, 30, G.ease.outCubic); }
+      else if (!t.backed) { t.backed = true; t.act = 24; const two = this.trainers.filter(q => !q.back).length > 1; G.tween(t, { off: two ? 34 : 42, y: t.y - 6 }, 30, G.ease.outCubic); }
     }
     this.hudShow[e.ref.s] = 1;
     if (e.wild && e.initial) {
@@ -254,13 +254,13 @@ G.BattleScene = class {
   // half the rate (parallax), so the field reads as a deep space rather than a flat card
   camFocus(s, z, frames) { if (!s) return; this.camF = { x: s.x, y: s.y - 30 * (s.sc || 1), z, until: this.t + frames }; }
   updateCam() {
-    const C = this.cam || (this.cam = { x: 0, y: 0, z: 1, cx: G.W / 2, cy: G.H * .55 });
+    const C = this.cam || (this.cam = { x: 0, y: 0, z: 1.075, cx: G.W / 2, cy: G.H * .56 });
     let tx, ty, tz, tcx, tcy;
     const F = this.camF && this.t < this.camF.until ? this.camF : null;
-    if (F) { tcx = F.x; tcy = F.y; tz = F.z; tx = (G.W / 2 - F.x) * .18; ty = (G.H * .5 - F.y) * .12; }
+    if (F) { tcx = F.x; tcy = F.y; tz = F.z + .04; tx = (G.W / 2 - F.x) * .18; ty = (G.H * .5 - F.y) * .12; }
     else {
       const t = this.t, calm = this.menu ? .5 : 1;
-      tcx = G.W / 2; tcy = G.H * .55; tz = 1.025 + Math.sin(t / 330) * .015 * calm;
+      tcx = G.W / 2 + Math.sin(t / 520) * 40 * calm; tcy = G.H * .56; tz = 1.075 + Math.sin(t / 330) * .018 * calm;
       tx = Math.sin(t / 260) * 7 * calm; ty = Math.sin(t / 410) * 2 * calm;
     }
     const k = F ? .09 : .035;
@@ -303,11 +303,11 @@ G.BattleScene = class {
     const E0 = G.BATTLE_ENVS[this.env] || {};
     const plat = (x, y, w, mine) => {
       // outdoors there is no platform at all: the mons stand in the field with a soft contact shadow
-      if (!E0.indoor) { const ox2 = mine ? ioff : -ioff; for (let i = 0; i < 3; i++) { b.fillStyle = `rgba(10,20,10,${.1 + i * .05})`; b.beginPath(); b.ellipse(x + ox2, y + 2, w * .32 * (1 - i * .22), w * .07 * (1 - i * .22), 0, 0, Math.PI * 2); b.fill(); } return; }
+      if (!E0.indoor) { if (!Object.values(this.slots).some(q => q.visible && q.scale > .05 && (q.side === this.persp) === mine)) return; const ox2 = mine ? ioff : -ioff; for (let i = 0; i < 3; i++) { b.fillStyle = `rgba(10,20,10,${.1 + i * .05})`; b.beginPath(); b.ellipse(x + ox2, y + 2, w * .32 * (1 - i * .22), w * .07 * (1 - i * .22), 0, 0, Math.PI * 2); b.fill(); } return; }
       const img = G.battlePlatform(this.env, w, mine);
       b.drawImage(img, Math.round(x - img.width / 2 + (mine ? ioff : -ioff)), Math.round(y - img.height / 2 + 2));
     };
-    { const F = this.pos(1 - this.persp, 0, 1), M = this.pos(this.persp, 0, 1); plat(F.x, F.y - 2, 150, false); plat(M.x, M.y - 2, 196, true); }
+    { const F = this.pos(1 - this.persp, 0, 1), M = this.pos(this.persp, 0, 1); plat(F.x, F.y - 2, 124, false); plat(M.x, M.y - 2, 150, true); }
     // hazards (rocks float near foe platform)
     for (const side of [0, 1]) {
       const h = this.hazards[side]; const mine = side === this.persp; const bx = mine ? 96 : 282, by = mine ? 166 : 106;
@@ -397,7 +397,7 @@ G.BattleScene = class {
     this.applyCam(c, .5);
     const dx = Math.sin(this.t / 700) * 6, dy = Math.sin(this.t / 900) * 2, sc = 1.08;
     c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
-    const blur = this.cam ? Math.max(0, (this.cam.z - 1.04) * 30) : 0;
+    const blur = this.cam ? Math.max(0, (this.cam.z - 1.02) * 26) : 0;
     if (blur > .15) c.filter = `blur(${(blur * S / 3).toFixed(2)}px)`;
     c.drawImage(hd, -G.W * (sc - 1) / 2 + dx, -G.H * (sc - 1) / 2 + dy, G.W * sc, G.H * sc);
     c.filter = 'none';

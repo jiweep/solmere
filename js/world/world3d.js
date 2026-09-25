@@ -818,15 +818,34 @@ G.W3 = (function () {
   const SIDES = new Set();   // building side walls: lifted out of the black by an emissive fill that follows daylight
   const WALL = { house: .44, haven: .48, mart: .48, lab: .46, gym: .5, tower: .78 };
   const FLAT_ROOF = new Set(['lab', 'tower']);
+  function occluder(mat) {
+    const prev = mat.onBeforeCompile;
+    mat.onBeforeCompile = (sh, r) => {
+      if (prev) prev(sh, r);
+      Object.assign(sh.uniforms, TU);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWPo;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\n vWPo = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uPlayer; uniform vec3 uCamP; varying vec3 vWPo;')
+        .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+          { vec3 toC = normalize(uCamP - uPlayer), toP = vWPo - (uPlayer + vec3(0.0, .7, 0.0)); float al = dot(toP, toC);
+            float d = length(toP - toC * al), occ = step(.9, al) * (1.0 - smoothstep(.9, 1.7, d));
+            float ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715))));
+            if (ign < occ * .72) discard; }`);
+    };
+    mat.customProgramCacheKey = () => 'occ' + (mat.map ? 1 : 0) + (mat.vertexColors ? 1 : 0) + (mat.alphaTest ? 1 : 0) + (mat.emissiveMap ? 1 : 0);
+    return mat;
+  }
   function buildBuildings(map, hv, group) {
     const list = map.buildings.map(b => b);
     for (const cn of map.conns) { const nm = cn.map; if (nm) for (const b of nm.buildings) list.push({ ...b, x: b.x + cn.ox, y: b.y + cn.oy }); }
+    const done = new Set(), bgroups = [];
+    const occludeGroup = g => g.traverse(o => { if (!o.isMesh) return; for (const m of (Array.isArray(o.material) ? o.material : [o.material])) if (m && !done.has(m) && !m.isShaderMaterial) { done.add(m); occluder(m); } });
     for (const b of list) {
       const bi = G.tiles.building(b.kind, b.w, b.h, { roof: b.roof, door: b.door, accent: b.accent, label: b.label });
       const img = bi.img, ax = bi.atlas ? G.bldAlign(b) : 0;
       const baseY = hv.at(b.x + b.w / 2, Math.min(map.h - .01, b.y + b.h - .5));
       const x0 = b.x + ax / 16, x1 = x0 + b.w, zF = b.y + b.h;
-      const g = new T.Group(); group.add(g);
+      const g = new T.Group(); group.add(g); bgroups.push(g);
       if (b.kind === 'lighthouse') { g.add(latheLandmark(img, x0 + b.w / 2, baseY, zF - img.width / 32)); continue; }
       if (b.kind === 'tower') { g.add(stackLandmark(img, x0, baseY, zF, Math.min(b.h - .2, 1.5))); continue; }
       const f = WALL[b.kind] || .45, wallPx = Math.round(img.height * f), roofPx = img.height - wallPx;
@@ -835,7 +854,13 @@ G.W3 = (function () {
       // roof's depth equals the roof art's height in tiles and its pitch just hides the back slope, so the
       // ridge is the top of the silhouette and nothing rises above the sprite.
       const TANP = Math.tan(PITCH_CAM);
-      const zB = zF - Math.max(1, Math.min(b.h - .12, roofPx / 16));
+      // the drawn roofline: the first art row (from the top) that the roof covers across most of its width;
+      // rows above it (a chimney, peaks, a sign) stand on the ridge as a thin cut-out crest
+      let crestPx = 0; {
+        const d = img.getContext ? img.getContext('2d').getImageData(0, 0, img.width, roofPx).data : null;
+        if (d) for (let y = 0; y < roofPx; y++) { let n = 0; for (let x = 0; x < img.width; x++) if (d[(y * img.width + x) * 4 + 3] > 128) n++; if (n > img.width * .55) { crestPx = y; break; } }
+      }
+      const zB = zF - Math.max(1, Math.min(b.h - .12, (roofPx - crestPx) / 16));
       const facade = G.makeCanvas(img.width, wallPx); facade.getContext('2d').drawImage(img, 0, roofPx, img.width, wallPx, 0, 0, img.width, wallPx);
       const roof = G.makeCanvas(img.width, roofPx); roof.getContext('2d').drawImage(img, 0, 0, img.width, roofPx, 0, 0, img.width, roofPx);
       // side walls: the facade's typical wall colour (the most common light tone, not the average of
@@ -892,7 +917,7 @@ G.W3 = (function () {
       mRoof.userData = { depth: new T.MeshDepthMaterial({ depthPacking: T.RGBADepthPacking, map: roofT, alphaTest: .5 }) };
       const wt2 = tex(wside); wt2.wrapS = T.RepeatWrapping; wt2.repeat.set(Math.max(1, Math.round(depth)), 1);
       const mWall = new T.MeshLambertMaterial({ map: wt2, emissive: 0xffffff }); mWall.emissiveMap = wt2; SIDES.add(mWall);
-      const body = new T.Mesh(new T.BoxGeometry(b.w - .1, wallH, depth), [mWall, mWall, mSide, mSide, mFac, mSide]);
+      const body = new T.Mesh(new T.BoxGeometry(b.w - .1, wallH, depth), [mWall, mWall, FLAT_ROOF.has(b.kind) ? mSide : mRoofEnd, mSide, mFac, mSide]);
       body.position.set(x0 + b.w / 2, baseY + wallH / 2, zB + depth / 2); body.castShadow = body.receiveShadow = true; g.add(body);
       if (FLAT_ROOF.has(b.kind)) {
         // modern flat roof: a shallow slab carrying the roof art on top, with a lit parapet edge
@@ -907,7 +932,7 @@ G.W3 = (function () {
       // slope is mostly hidden, so the art's top sliver lands there and the ridge falls where it's drawn).
       const sp = Math.sin(PITCH_CAM), cp = Math.cos(PITCH_CAM), half = depth / 2, R = Math.max(.3, half * TANP * 1.04);
       const ov = .16, X0 = x0 + .05 - ov, X1 = x1 - .05 + ov, Y0 = baseY + wallH, YR = Y0 + R, zM = zB + half, ZF = zF + ov, ZB = zB - ov;
-      const hF = half * sp + R * cp, hB = Math.max(0, half * sp - R * cp), vr = hF / (hF + hB);
+      const hF = half * sp + R * cp, hB = Math.max(0, half * sp - R * cp), vr = (roofPx - crestPx) / roofPx * hF / (hF + hB);
       const quad = (P, U, mat, shadow = true) => {
         const g2 = new T.BufferGeometry(); g2.setAttribute('position', new T.Float32BufferAttribute(P, 3)); g2.setAttribute('uv', new T.Float32BufferAttribute(U, 2));
         g2.setIndex(P.length === 12 ? [0, 2, 1, 1, 2, 3] : [0, 1, 2]); g2.computeVertexNormals();
@@ -915,7 +940,11 @@ G.W3 = (function () {
       };
       const dropF = ov * R / half, dropB = ov * R / half;   // eaves continue the slope past the walls
       quad([X0, Y0 - dropF, ZF, X1, Y0 - dropF, ZF, X0, YR, zM, X1, YR, zM], [0, 0, 1, 0, 0, vr, 1, vr], mRoof);   // front slope
-      quad([X0, YR, zM, X1, YR, zM, X0, Y0 - dropB, ZB, X1, Y0 - dropB, ZB], [0, vr, 1, vr, 0, 1, 1, 1], mRoof);   // back slope
+      quad([X0, YR, zM, X1, YR, zM, X0, Y0 - dropB, ZB, X1, Y0 - dropB, ZB], [0, 0, (X1 - X0), 0, 0, half * 1.6, (X1 - X0), half * 1.6], mRoofEnd);   // back slope: plain shingles
+      if (crestPx > 1) {   // the crest: art above the roofline, upright on the ridge
+        const ch = crestPx / 16 * TANP;
+        quad([X0 + ov, YR + ch, zM, X1 - ov, YR + ch, zM, X0 + ov, YR, zM, X1 - ov, YR, zM], [0, 1, 1, 1, 0, vr, 1, vr], mRoof);
+      }
       // gable ends: wall-coloured triangles closing the roof at both sides
       const gx0 = x0 + .05, gx1 = x1 - .05, rv = R;
       quad([gx0, Y0, zF, gx0, YR, zM, gx0, Y0, zB], [0, 0, .5, rv / wallH, 1, 0], mWall);
@@ -931,7 +960,7 @@ G.W3 = (function () {
           if (sat < 40 && Math.abs(r - roofAvg[0]) + Math.abs(gg - roofAvg[1]) + Math.abs(bb - roofAvg[2]) > 90) { sx += (i / 4) % roof.width; n++; }
         }
         if (n > 8) {
-          const cxw = x0 + .05 + (sx / n) / roof.width * (b.w - .1), cz = zM + .35, top = YR + .45;
+          const cxw = x0 + .05 + (sx / n) / roof.width * (b.w - .1), cz = zM - .12, top = YR + Math.max(.3, crestPx / 16 * TANP);
           const ch = new T.Mesh(new T.BoxGeometry(.42, top - Y0, .42), new T.MeshLambertMaterial({ color: 0x8a847c }));
           ch.position.set(cxw, (top + Y0) / 2, cz); ch.castShadow = ch.receiveShadow = true; g.add(ch);
           const capm = new T.Mesh(new T.BoxGeometry(.52, .1, .52), new T.MeshLambertMaterial({ color: 0x5e5850 })); capm.position.set(cxw, top + .05, cz); g.add(capm);
@@ -939,6 +968,7 @@ G.W3 = (function () {
         }
       }
     }
+    for (const g of bgroups) occludeGroup(g);
   }
   // a door leaf in a trimmed frame with a stone step: it swings (houses, double doors for gyms) or slides
   // apart (glass doors) as someone walks up to it; the doorway behind it is dark
