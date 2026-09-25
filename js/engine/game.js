@@ -59,6 +59,12 @@ G.render = function () {
   let start = 0;
   for (let i = G.scenes.length - 1; i >= 0; i--) if (G.scenes[i].opaque) { start = i; break; }
   G.ui._hotNext = [];
+  // draw moving things between the last two ticks (smooth on 120 Hz screens and through vsync jitter)
+  const lerpUndo = G.scenes[start] && G.scenes[start].lerpBegin ? G.scenes[start].lerpBegin(G.alpha == null ? 1 : G.alpha) : null;
+  try { G.renderScenes(start); } finally { if (lerpUndo) lerpUndo(); }
+};
+G.renderScenes = function (start) {
+  const gx = G.gfx, c = gx.cx, S = gx.S;
   // 3D world: the WebGL canvas sits under this one; leave the viewport transparent over it
   const w3 = G.W3 && G.W3.active(G.scenes[start]);
   if (w3) { if (G.W3.render(G.scenes[start])) c.clearRect(gx.ox, gx.oy, G.W * S, G.H * S); } else if (G.W3) G.W3.hide();
@@ -215,10 +221,15 @@ G.boot = function () {
   const loop = async (now) => {
     if (stepping) { requestAnimationFrame(loop); return; }
     if (document.hidden && bgWanted()) { last = now; acc = 0; requestAnimationFrame(loop); return; }   // the worker clock is driving
-    const dt = Math.min(.1, (now - last) / 1000); last = now; acc += dt; G.realTime += dt;
+    let dt = Math.min(.1, (now - last) / 1000); last = now;
+    // vsync jitter: a frame that is a hair off one tick (or half a tick at 120 Hz) counts as exactly that,
+    // so the tick count per frame stays even instead of flickering between 0 and 2
+    if (Math.abs(dt - step) < .0015) dt = step; else if (Math.abs(dt - step / 2) < .0008) dt = step / 2;
+    acc += dt; G.realTime += dt;
     let n = 0, count = 0;
     while (acc >= step && n < 4) { count += reps(); acc -= step; n++; }
     if (n >= 4) acc = 0;
+    G.alpha = G.turbo ? 1 : acc / step;   // how far between the last two ticks this frame is drawn
     try { if (count) await runUpdates(count); G.render(); } catch (e) { G.reportError(e); }
     requestAnimationFrame(loop);
   };

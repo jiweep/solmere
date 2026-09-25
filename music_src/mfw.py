@@ -924,6 +924,24 @@ def finalize(song):
                 if d < .2: continue
             out.append((t, d, p, v, a))
         part.notes = out
+    # 2b. the bass: a passing or approach note (not in the chord) a semitone under a melody note that
+    #     sounds with it moves to the nearest chord tone; a tension the chord spells (the b9 of a 7b9)
+    #     is left alone, that rub is the chord
+    bp = song.parts.get('bass')
+    if bp is not None and not bp.kit and mel:
+        mstarts = [m[0] for m in mel]
+        out = []
+        for (t, d, p, v, a) in bp.notes:
+            c, _ = chord_at_beat(song, t + 1e-4)
+            if c is not None and p % 12 not in set(c.pcs()) | {c.bass}:
+                j = bisect.bisect_right(mstarts, t + d * .6)
+                hit = [mp for (m0, m1, mp) in mel[max(0, j - 40):j] if m1 > t + 1e-6 and (mp - p) % 12 == 1 and mp > p]
+                if hit:
+                    cands = [q for q in range(p - 4, p + 5) if q % 12 in {c.bass, c.root, c.pc(5) if c.pc(5) is not None else c.root, c.pc(3) if c.pc(3) is not None else c.root}
+                             and all((mp - q) % 12 != 1 for mp in hit)]
+                    if cands: p = min(cands, key=lambda q: (abs(q - p), q % 12 != c.bass))
+            out.append((t, d, p, v, a))
+        bp.notes = out
     rank = {'pad': 0, 'comp': 1, 'arp': 2}
     acc = sorted([p for p in song.parts.values() if not p.kit and p.role in ACC_ROLES], key=lambda p: rank[p.role])
     for k, part in enumerate(acc):

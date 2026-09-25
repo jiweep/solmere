@@ -430,16 +430,18 @@ G.W3 = (function () {
   }
 
   // ------------------------------------------------------------- characters
-  // Characters stand upright (so they never sink into a wall behind them), at DS proportions: a person
-  // is about as tall as a tile is wide on screen, a house wall two to three people tall. The plane is
-  // stretched by the camera's foreshortening so the pixel art reads as drawn, sampled nearest. They are
-  // lit like the ground they stand on (Lambert with an upward-facing normal, receiving the sun's
-  // shadows and the lamps' light), and the silhouette gets a little rounding: faces turned toward the
-  // sun (estimated from the alpha edges) are a touch brighter, the feet a touch darker.
-  // Characters share the world's pixel grid: one sprite pixel is exactly one world texel wide, and the
-  // camera squashes it vertically by the same sin(pitch) as the ground and the walls (the plane stands
-  // tan(pitch)/16 per pixel), so a person and the house behind them read as one piece of pixel art
-  const STRETCH = Math.tan(PITCH), ENT_SC = 1;
+  // Characters are drawn the DS way: the sprite faces the screen with square pixels, one sprite pixel
+  // one ground texel wide, exactly as drawn wherever it stands on screen (an upright card would be
+  // foreshortened more near the bottom of the view than the top, so people changed shape as they
+  // walked). Only the depth comes from an upright card at the feet (1/cos(pitch) tall per screen unit),
+  // so a head never sinks into the wall behind. Lighting is subtle: half the colour is lit like the
+  // ground (sun, shade under trees, lamps at night), half is the sprite's own colour dimmed by daylight.
+  const UP = 1 / Math.cos(PITCH);
+  const ENT_MATS = new Set();
+  let FOG = null;
+  // one texture per sprite frame, shared and kept: switching walk frames only rebinds, no re-upload
+  const ENT_TEX = new WeakMap();
+  const entTex = img => { let t = ENT_TEX.get(img); if (!t) { t = texPx(img); ENT_TEX.set(img, t); } return t; };
   let blobMat = null, blobGeo = null;
   function blob() {
     if (!blobMat) {
@@ -453,15 +455,25 @@ G.W3 = (function () {
     const m = new T.Mesh(blobGeo, blobMat); m.renderOrder = 2; return m;
   }
   function entGeo(img) {
-    const w = img.width / 16 * ENT_SC, h = img.height / 16 * ENT_SC * STRETCH, g = new T.PlaneGeometry(w, h); g.translate(0, h / 2, 0);
-    const n = g.attributes.normal; for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0);   // lit exactly like the ground they stand on
+    const w = img.width / 16, h = img.height / 16, g = new T.PlaneGeometry(w, h); g.translate(0, h / 2, 0);   // screen units: square pixels
+    const n = g.attributes.normal; for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0);   // lit like the ground they stand on
     return g;
   }
   function entSprite(img) {
-    const t = texPx(img);
+    const t = entTex(img);
     const u = { uTexel: { value: new T.Vector2(1 / img.width, 1 / img.height) } };
-    const mat = new T.MeshLambertMaterial({ map: t, alphaTest: .5, side: T.DoubleSide });
-
+    const mat = new T.MeshLambertMaterial({ map: t, alphaTest: .5, side: T.DoubleSide, color: 0x9a9a9a, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: .45 });
+    mat.onBeforeCompile = sh => {
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\n  transformed.y *= ' + UP.toFixed(5) + ';')
+        .replace('#include <project_vertex>', `vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );
+          vec4 cU = projectionMatrix * mvPosition;                        // the upright card: depth only
+          vec4 mvF = modelViewMatrix * vec4( 0.0, 0.0, 0.0, 1.0 );         // the feet
+          vec4 cF = projectionMatrix * vec4( mvF.xy + position.xy, mvF.z, 1.0 );   // the screen-facing sprite
+          gl_Position = vec4( cF.xy, cU.z / cU.w * cF.w, cF.w );`);
+    };
+    mat.customProgramCacheKey = () => 'entbb';
+    ENT_MATS.add(mat);
     const m = new T.Mesh(entGeo(img), mat);
     m.castShadow = false; m.receiveShadow = true;   // a round contact shadow instead of a card's long one
     m.customDepthMaterial = new T.MeshDepthMaterial({ depthPacking: T.RGBADepthPacking, map: t, alphaTest: .5 });
@@ -472,11 +484,14 @@ G.W3 = (function () {
 
   function setBillboardImage(m, img) {
     if (m.userData.img === img) return;
-    const ent = m.userData.ent, t = ent ? texPx(img) : tex(img);
-    if (ent) m.userData.u.uTexel.value.set(1 / img.width, 1 / img.height);
-    m.material.map = t; m.material.needsUpdate = true; m.customDepthMaterial.map = t; m.customDepthMaterial.needsUpdate = true;
+    const ent = m.userData.ent, t = ent ? entTex(img) : tex(img);
+    if (ent) { m.userData.u.uTexel.value.set(1 / img.width, 1 / img.height); m.material.emissiveMap = t; }
+    // swapping one map for another is a uniform change; only a map appearing or vanishing needs a recompile
+    const had = !!m.material.map;
+    m.material.map = t; if (!had) m.material.needsUpdate = true;
+    m.customDepthMaterial.map = t;
     if (m.userData.w !== img.width || m.userData.h !== img.height) { m.geometry.dispose(); if (ent) m.geometry = entGeo(img); else { m.geometry = new T.PlaneGeometry(img.width / 16, img.height / 16); m.geometry.translate(0, img.height / 32, 0); } m.userData.w = img.width; m.userData.h = img.height; }
-    if (m.userData.tex) m.userData.tex.dispose(); m.userData.tex = t; m.userData.img = img;
+    if (m.userData.tex && !ent) m.userData.tex.dispose(); m.userData.tex = t; m.userData.img = img;
   }
 
   // ------------------------------------------------------------- props
@@ -1170,7 +1185,8 @@ G.W3 = (function () {
       const lift = Math.max(0, p.z0 - p.y) / 16, Z = (p.z0 + Math.max(0, p.y - p.z0) * .5) / 16, X = p.x / 16;
       const s = p.grow ? p.size * (1 + p.grow * p.t / p.life) : p.size;
       const kind = p.type in KIND ? KIND[p.type] : 5, add = p.blend === 'lighter' || p.glow;
-      pushP(PB[add ? 1 : 0], X, hAt(X, Z) + lift + (kind === 1 ? .03 : .12), Z, p.color, a, s * 2 * (kind === 1 ? 2 : 1.2), kind, p.rot);
+      const wy = p.water && cur.group.userData.waterY != null ? cur.group.userData.waterY : null;   // swim effects ride the surface
+      pushP(PB[add ? 1 : 0], X, (wy !== null ? wy + .02 : hAt(X, Z)) + lift + (kind === 1 ? .03 : wy !== null ? .04 : .12), Z, p.color, a, s * 2 * (kind === 1 ? 2 : 1.2), kind, p.rot);
     }
     // drifting life (leaves, petals, pollen, butterflies, fireflies, snow): each floats at its own height
     for (const p of w.parts.list) {
@@ -1290,7 +1306,7 @@ G.W3 = (function () {
     if (cache.size > 4) { const k = cache.keys().next().value; if (k !== map.id) { dispose(cache.get(k).group); cache.delete(k); } }
     return entry;
   }
-  function dispose(obj) { obj.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { SIDES.delete(m); if (m.map) m.map.dispose(); m.dispose(); }); }); }
+  function dispose(obj) { obj.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { SIDES.delete(m); ENT_MATS.delete(m); if (m.map) m.map.dispose(); m.dispose(); }); }); }
 
   // ------------------------------------------------------------- per-frame
   function entImage(w, e) {
@@ -1311,18 +1327,18 @@ G.W3 = (function () {
       if (!m) { m = entSprite(img); E.sprites.set(key, m); E.dyn.add(m); }
       setBillboardImage(m, img); m.visible = true;
       const fx = px / 16 + .5, fz = py / 16 + 1, gy = H.at(G.clamp(fx, 0, H.W - .01), G.clamp(fz - .5, 0, H.H - .01));
-      m.position.set(fx, gy + lift / 16 * ENT_SC, fz - .45);
+      m.position.set(fx, gy + lift / 16 * UP, fz - .45);
       // contact shadow stays on the ground (hops lift the figure, not the shadow)
-      const bl = m.userData.blob; bl.position.set(0, gy - m.position.y + .03, .05); const bw = img.width / 16 * .7 * ENT_SC; bl.scale.set(bw, 1, bw * .55); bl.visible = lift > -2;
+      const bl = m.userData.blob; bl.position.set(0, gy - m.position.y + .03, .05); const bw = img.width / 16 * .7; bl.scale.set(bw, 1, bw * .55); bl.visible = lift > -2;
     };
     for (const e of w.ents) if (e.visible && !e.hidden) {
       // swimmers sink to the chest: the opaque water surface hides the rest
       const c = w.map.cell(e.x, e.y), swim = c && c.water && c.g !== 'bridge' && c.g !== 'bridgev';
       const img = entImage(w, e);
-      place('e:' + e.id + ':' + e.x0id, img, e.px, e.py, swim && img ? -img.height * .5 * STRETCH + Math.sin(w.frame / 14 + e.x) : (e.hop || 0));
+      place('e:' + e.id + ':' + e.x0id, img, e.px, e.py, swim && img ? -img.height * .5 + Math.sin(w.frame / 14 + e.x) : (e.hop || 0));
     }
     if (w.player) place('player', entImage(w, w.player), w.player.px, w.player.py, w.player.hop || 0);
-    const f = w.follower; if (f && !f.hidden) place('follower', G.monArt.overworld(f.mon.sp, f.mon.shiny, f.dir, Math.floor(w.frame / 10) % 2), f.px, f.py, f.hop || 0);
+    const f = w.follower; if (f && !f.hidden) place('follower', G.monArt.overworld(f.mon.sp, f.mon.shiny, f.dir, f.animF || 0), f.px, f.py, f.hop || 0);
     for (const [k, m] of E.sprites) if (!seen.has(k)) m.visible = false;
   }
   const entTint = T ? new T.Color(1, 1, 1) : null, entRim = T ? new T.Color() : null;
@@ -1337,12 +1353,18 @@ G.W3 = (function () {
     sun.intensity = (.35 + 1.45 * day) * cl; sun.color.set(dusk ? 0xffb070 : day > .5 ? 0xfff0d8 : 0x9ab0ff);
     hemi.intensity = .45 + .55 * day; hemi.color.set(day > .3 ? 0xdfeeff : 0x5a6aa8); hemi.groundColor.set(day > .3 ? 0x4a5a3a : 0x1a1e30);
     const sky = indoor ? 0x08080e : dusk ? 0xe8a88a : day > .3 ? 0x9cc8f0 : 0x0a1030;
-    scene.background = new T.Color(sky);
+    // one Color and one Fog, updated in place: a new Fog object every frame makes three.js re-derive the
+    // shader program of every fogged material every frame (string keys, garbage, GC hitches)
+    if (!scene.background || !scene.background.isColor) scene.background = new T.Color();
+    scene.background.set(sky);
     for (const m of SIDES) m.emissiveIntensity = .34 * day + .04;
+    for (const m of ENT_MATS) m.emissiveIntensity = indoor ? .5 : .42 * day + .1;
     for (const m of LAMP_GLASS) m.emissiveIntensity = .15 + 1.6 * night;
     WU.uSky.value.set(dusk ? 0xffc8a0 : day > .3 ? 0xcfe8ff : 0x28386a); WU.uSun.value.copy(sun.color).multiplyScalar(day > .1 ? 1 : .35);
     WU.uNight.value = night; WU.uDeep.value.set(day > .3 ? 0x1c5a8a : 0x0c1a38);
-    scene.fog = indoor ? null : new T.Fog(sky, 26, 60);
+    if (!FOG) FOG = new T.Fog(sky, 26, 60);
+    FOG.color.set(sky);
+    const fogWant = indoor ? null : FOG; if (scene.fog !== fogWant) scene.fog = fogWant;
   }
   function render(w) {
     if (!init()) return false;
@@ -1350,6 +1372,9 @@ G.W3 = (function () {
     if (!cur || cur.map !== map) { if (cur) scene.remove(cur.group); cur = build(map); scene.add(cur.group); }
     syncEnts(w, cur);
     lighting(w);
+    // compile every shader the new map needs now, while the screen is fading in, instead of the first
+    // time each one comes into view (a hitch in the same spot on the first walk past it)
+    if (!cur.compiled) { cur.compiled = true; try { R.compile(scene, camera); } catch (e) { /* compiled lazily instead */ } }
     // camera: behind and above the player, a fixed DS-like pitch
     const p = w.player, fx = p.px / 16 + .5, fz = p.py / 16 + .5, fy = cur.hv.at(G.clamp(fx, 0, map.w - .01), G.clamp(fz, 0, map.h - .01));
     // tall props standing between the camera and the player fade out, so a lower tier stays readable

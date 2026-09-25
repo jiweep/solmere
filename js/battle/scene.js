@@ -298,16 +298,8 @@ G.BattleScene = class {
     this.applyCam(b, 1);
     if (!this._hd) b.drawImage(G.battleBG(this.env, this.o.phase || 'day'), 0, 0);
     this.drawAmbience(b);
-    // platforms
+    // no platforms: the mons stand on the backdrop's own floor, grounded by a tight contact shadow (drawMon)
     const n = this.nSlots(), ioff = this.intro * 260;
-    const E0 = G.BATTLE_ENVS[this.env] || {};
-    const plat = (x, y, w, mine) => {
-      // outdoors there is no platform at all: the mons stand in the field with a soft contact shadow
-      if (!E0.indoor) { if (!Object.values(this.slots).some(q => q.visible && q.scale > .05 && (q.side === this.persp) === mine)) return; const ox2 = mine ? ioff : -ioff; for (let i = 0; i < 3; i++) { b.fillStyle = `rgba(10,20,10,${.1 + i * .05})`; b.beginPath(); b.ellipse(x + ox2, y + 2, w * .32 * (1 - i * .22), w * .07 * (1 - i * .22), 0, 0, Math.PI * 2); b.fill(); } return; }
-      const img = G.battlePlatform(this.env, w, mine);
-      b.drawImage(img, Math.round(x - img.width / 2 + (mine ? ioff : -ioff)), Math.round(y - img.height / 2 + 2));
-    };
-    { const F = this.pos(1 - this.persp, 0, 1), M = this.pos(this.persp, 0, 1); plat(F.x, F.y - 2, 124, false); plat(M.x, M.y - 2, 150, true); }
     // hazards (rocks float near foe platform)
     for (const side of [0, 1]) {
       const h = this.hazards[side]; const mine = side === this.persp; const bx = mine ? 96 : 282, by = mine ? 166 : 106;
@@ -441,7 +433,10 @@ G.BattleScene = class {
     b.save();
     b.globalAlpha = s.alpha;
     // shadow
-    b.fillStyle = 'rgba(0,0,0,.2)'; b.beginPath(); b.ellipse(s.x + s.offx, s.y - 2, 26 * s.sc * s.scale, 6 * s.sc * s.scale, 0, 0, Math.PI * 2); b.fill();
+    // contact shadow: tight under the feet (a grounding, not a platform), softer at the edge
+    { const rw = Math.max(9, (w || 52) * .26) * s.scale, k = s.scale;
+      b.fillStyle = 'rgba(0,0,0,.13)'; b.beginPath(); b.ellipse(s.x + s.offx, s.y - 2, rw, rw * .2, 0, 0, Math.PI * 2); b.fill();
+      b.fillStyle = 'rgba(0,0,0,.16)'; b.beginPath(); b.ellipse(s.x + s.offx, s.y - 2, rw * .6, rw * .12 + .5 * k, 0, 0, Math.PI * 2); b.fill(); }
     if (s.resonant) {
       const pulse = .5 + .5 * Math.sin(this.t / 8);
       b.globalCompositeOperation = 'lighter';

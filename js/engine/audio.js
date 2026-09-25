@@ -454,6 +454,7 @@ G.audio = (function () {
         case 'fs_wood': tone(170, .05, 'tri', .07, { slide: 120 }); noise(.03, 'bandpass', 1200, .03); break;
         case 'fs_stone': tone(420, .025, 'tri', .035); noise(.03, 'highpass', 3500, .025); break;
         case 'fs_snow': noise(.12, 'lowpass', 900, .05, { to: 400 }); break;
+        case 'fs_water': noise(.16, 'bandpass', 900, .05, { to: 2400 }); noise(.08, 'highpass', 4000, .02, { at: .05 }); break;   // a swimming stroke
         case 'rustle': noise(.18, 'bandpass', 3200, .09, { to: 1800 }); noise(.1, 'highpass', 5000, .04, { at: .06 }); break;
         case 'select': tone(990, .04, 'sq25', .08); tone(1480, .06, 'sq25', .08, { at: .04 }); break;
         case 'back': tone(880, .04, 'sq25', .07); tone(660, .06, 'sq25', .07, { at: .04 }); break;

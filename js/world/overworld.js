@@ -39,8 +39,11 @@ G.Ent = class {
     const t = this.prog / (this.jump ? this.jump.d * 16 : 16);
     // DS cycle: each tile shows one stride (alternating feet) framed by the standing pose;
     // running and biking hold the stride longer so the legs read as a quicker gait
-    const lo = this.speed >= 4 ? .05 : this.speed >= 2 ? .12 : .25, hi = this.speed >= 4 ? .9 : this.speed >= 2 ? .8 : .75;
-    return t > lo && t < hi ? (this.stepN % 2 ? 1 : 2) : 0;
+    // walking: stand, stride, stand each tile (BW). Running and cycling hold one stride for the whole tile and
+    // alternate feet tile by tile, without flashing the standing frame between strides (that doubled the
+    // leg flicker at run speed)
+    if (this.speed >= 2) return this.stepN % 2 ? 1 : 2;
+    return t > .22 && t < .72 ? (this.stepN % 2 ? 1 : 2) : 0;
   }
 };
 
@@ -164,13 +167,36 @@ G.WorldScene = class {
     return false;
   }
   // ---------------------------------------------------------- update
+  // render interpolation: moving things are drawn between their last two tick positions (G.alpha of the
+  // way), so a 60 Hz simulation looks even on 120 Hz screens and through vsync jitter. Only while this
+  // scene is ticking; teleports and warps (a jump of more than half a tile) are never smeared.
+  lerpBegin(a) {
+    if (this._tick !== G.frame || a >= 1) return null;
+    const saved = [];
+    for (const e of [...this.ents, this.player, this.follower]) {
+      if (!e || e._lx === undefined) continue;
+      const dx = e.px - e._lx, dy = e.py - e._ly;
+      if ((!dx && !dy) || Math.abs(dx) > 8 || Math.abs(dy) > 8) continue;
+      saved.push(e, e.px, e.py); e.px = e._lx + dx * a; e.py = e._ly + dy * a;
+    }
+    const cx = this.cam.x, cy = this.cam.y, lx = this._lcx, ly = this._lcy;
+    if (lx !== undefined && Math.abs(cx - lx) < 8 && Math.abs(cy - ly) < 8) { this.cam.x = lx + (cx - lx) * a; this.cam.y = ly + (cy - ly) * a; }
+    return () => { for (let i = 0; i < saved.length; i += 3) { saved[i].px = saved[i + 1]; saved[i].py = saved[i + 2]; } this.cam.x = cx; this.cam.y = cy; };
+  }
   update(top) {
+    for (const e of [...this.ents, this.player, this.follower]) if (e) { e._lx = e.px; e._ly = e.py; }
+    this._lcx = this.cam.x; this._lcy = this.cam.y; this._tick = G.frame;
     this.frame++;
     if (G.save) G.save.playtime += 1 / 60;
     this.parts.update(); this.fx.update();
     for (let i = this.footprints.length - 1; i >= 0; i--) if (++this.footprints[i].t > 240) this.footprints.splice(i, 1);
     for (const e of this.ents) { this.updateNPC(e, top); e.update(); }
-    if (this.follower) { if (this.follower.update()) { } }
+    if (this.surfing && this.player) this.swimFx(this.player);
+    if (this.follower) {
+      const f = this.follower; f.update();
+      // the follower's two-frame hop: a lazy sway at rest, one hop a half-tile when walking, twice that running
+      f.animT = (f.animT || 0) + (f.moving ? f.speed : .45); f.animF = Math.floor(f.animT / 12) % 2;
+    }
     if (this.partner) this.partner.updateNet();
     const p = this.player;
     const arrived = p.update();
@@ -212,12 +238,13 @@ G.WorldScene = class {
     this.tryStep(d);
   }
   moveSpeed() {
-    // DS pacing, a touch brisker: walk 13 frames/tile, run & surf 7, bike 4
-    if (this.surfing) return 16 / 7;
-    if (this.biking) return 4;
+    // BW pacing (the same as DP/HGSS) at 60 fps: walk 16 frames a tile (3.75 tiles/s), run 8, bike 6;
+    // swimming is an unhurried 12, and holding run swims fast (8)
     const run = G.settings.autoRun ? !G.input.isDown('run') : G.input.isDown('run');
-    if (run && this.map.type !== 'indoor' || run && this.map.def.canRun) return 16 / 7;
-    return G.save.god.speed ? 8 : 16 / 13;
+    if (this.surfing) return run ? 2 : 16 / 12;
+    if (this.biking) return 16 / 6;
+    if (run && this.map.type !== 'indoor' || run && this.map.def.canRun) return 2;
+    return G.save.god.speed ? 8 : 1;
   }
   tryStep(d) {
     const p = this.player; const [dx, dy] = G.DIRS[d]; const nx = p.x + dx, ny = p.y + dy;
@@ -411,7 +438,7 @@ G.WorldScene = class {
   drawUI3d(c) {
     const U = G.ui;
     for (const e of [...this.ents, this.player, this.follower].filter(Boolean)) if (e.emote) {
-      const q = G.W3.project(e.px + 8, e.py + 16, 2.2); if (!q) continue;
+      const q = G.W3.project(e.px + 8, e.py + 16, 2.7); if (!q) continue;
       const k = Math.min(1, e.emoteT / 6); U.img(G.EMOTES(e.emote), q.x - 6.5, q.y - 12 - k * 4);
     }
     if (G.flag('race_active')) {
@@ -433,6 +460,17 @@ G.WorldScene = class {
     if (g === 'tall') for (let i = 0; i < 5; i++) this.fx.add({ x: fx + (G.rand() - .5) * 10, y: fy - 4, vx: (G.rand() - .5) * 1.2, vy: -.8 - G.rand() * .8, ay: .08, life: 22, type: 'leaf', size: 1.4, rot: G.rand() * 6, vr: .2, color: G.pick(['#3a8a3a', '#5aa84a', '#2a6a30']) });
     if (p.speed >= 2 && !this.surfing && (g === 'path' || g === 'sand' || g === 'ash' || g === 'snow'))
       for (let i = 0; i < 2; i++) this.fx.add({ x: fx - G.DIRS[p.dir][0] * 6 + (G.rand() - .5) * 4, y: fy + 1, vx: -G.DIRS[p.dir][0] * .3 + (G.rand() - .5) * .3, vy: -.25, life: 18, type: 'circle', size: 2 + G.rand() * 1.5, grow: .06, color: g === 'snow' ? 'rgba(255,255,255,1)' : 'rgba(214,190,150,1)', alpha: .5 });
+  }
+  // swimming: ripples spread from you, a foam wake trails behind while you move and each stroke splashes
+  // (fast swimming churns more). Spawned here so the 2D and 3D views show the same water.
+  swimFx(p) {
+    const cx = p.px + 8, cy = p.py + 13, fast = p.moving && p.speed >= 2, f = this.frame;
+    if (f % (p.moving ? (fast ? 9 : 14) : 26) === 0) this.fx.add({ x: cx, y: cy, life: 30, type: 'ring', size: 3, grow: 2.6, color: 'rgba(235,250,255,.7)', lw: .8, water: true });
+    if (!p.moving) return;
+    const [dx, dy] = G.DIRS[p.dir], sx = -dy, sy = dx;   // sideways, for the two arms of the wake
+    if (f % (fast ? 2 : 4) === 0) for (const side of [-1, 1]) this.fx.add({ x: cx - dx * 5 + sx * side * 3, y: cy - dy * 4 + sy * side * 2, vx: -dx * .15 + sx * side * .35, vy: -dy * .1 + sy * side * .25, life: fast ? 26 : 34, type: 'square', size: 1 + (G.rand() < .4 ? 1 : 0), color: 'rgba(240,252,255,1)', alpha: fast ? .85 : .7, water: true });
+    if (f % (fast ? 8 : 16) === 0) for (let i = 0; i < (fast ? 5 : 3); i++) this.fx.add({ x: cx + (G.rand() - .5) * 8 + dx * 3, y: cy - 2, vx: (G.rand() - .5) * .8 + dx * .3, vy: -1.1 - G.rand() * .9, ay: .12, life: 20, type: 'square', size: 1, color: 'rgba(255,255,255,1)', alpha: .9, water: true });
+    if (f % (fast ? 16 : 24) === 4 && G.audio) G.audio.sfx('fs_water');
   }
   ambienceFor(m) {
     if (m.type === 'cave') return 'cave';
@@ -1006,7 +1044,6 @@ G.WorldScene = class {
       const bw = G.tiles.get('surfboard|' + e.dir, 16, 16, p => { const cb = G.col.parse('#f4f0e8'), cd = G.col.parse('#3a82e0'); if (e.dir === 'left' || e.dir === 'right') { p.ell(8, 10, 8, 3.2, cd); p.ell(8, 9.5, 7, 2.2, cb); } else { p.ell(8, 9, 4, 7, cd); p.ell(8, 8.5, 3, 6, cb); } p.outline(G.col.parse('#1e3a6a')); });
       b.drawImage(bw, Math.round(e.px - ox), Math.round(e.py - oy) + 4 + bob);
       b.drawImage(img, x, y + bob);
-      if (this.frame % 20 === 0) this.fx.add({ x: e.px + 8, y: e.py + 14, life: 24, type: 'ring', size: 3, grow: 2.5, color: 'rgba(255,255,255,.6)', lw: .8 });
       return;
     }
     if (e === this.player && this.biking) {
@@ -1022,7 +1059,7 @@ G.WorldScene = class {
     }
   }
   drawFollower(b, f, ox, oy) {
-    const img = G.monArt ? G.monArt.overworld(f.mon.sp, f.mon.shiny, f.dir, Math.floor(this.frame / 10) % 2) : null;
+    const img = G.monArt ? G.monArt.overworld(f.mon.sp, f.mon.shiny, f.dir, f.animF || 0) : null;
     if (!img) return;
     const hop = f.moving ? Math.abs(Math.sin(f.prog / 16 * Math.PI)) * 2 : 0;
     const x = Math.round(f.px - ox + 8 - img.width / 2), y = Math.round(f.py - oy + 16 - img.height - hop - (f.hop || 0));
