@@ -154,8 +154,28 @@ G.chars = (function () {
     const A = G.WALK_ATLAS, [x0, y0] = A.rects[id], fw = A.fw, fh = A.fh;
     const fr = k => { const cv = G.makeCanvas(fw, fh); cv.getContext('2d').drawImage(WA.img, x0 + k * fw, y0, fw, fh, 0, 0, fw, fh); return cv; };
     const S = {}, dirs = ['down', 'left', 'right', 'up'];
+    // generated sheets are not perfectly consistent: pick the true standing pose (narrowest stance at
+    // the feet) and align every frame on the head so the body doesn't wobble while walking
+    const metrics = cv => {
+      const d = cv.getContext('2d').getImageData(0, 0, fw, fh).data, rows = [];
+      for (let y = 0; y < fh; y++) { let a = -1, b = -1; for (let x = 0; x < fw; x++) if (d[(y * fw + x) * 4 + 3] > 0) { if (a < 0) a = x; b = x; } rows.push([a, b]); }
+      const filled = rows.map((r, y) => r[0] >= 0 ? y : -1).filter(y => y >= 0);
+      const top = filled[0] || 0, bot = filled[filled.length - 1] || fh - 1;
+      let feet = 0, n = 0; for (let y = bot - 3; y <= bot; y++) if (rows[y] && rows[y][0] >= 0) { feet += rows[y][1] - rows[y][0]; n++; }
+      let head = 0, hn = 0; for (let y = top; y < top + 8 && y < fh; y++) if (rows[y][0] >= 0) { head += (rows[y][0] + rows[y][1]) / 2; hn++; }
+      return { feet: n ? feet / n : 0, head: hn ? head / hn : fw / 2 };
+    };
+    const shift = (cv, dx) => { if (!dx) return cv; const o = G.makeCanvas(fw, fh); o.getContext('2d').drawImage(cv, dx, 0); return o; };
     dirs.forEach((d, i) => {
-      S[d] = [fr(i * 3), fr(i * 3 + 1), fr(i * 3 + 2)];
+      let F = [fr(i * 3), fr(i * 3 + 1), fr(i * 3 + 2)];
+      try {
+        const M = F.map(metrics);
+        const si = d === 'left' || d === 'right' ? M.reduce((bi, m, k) => m.feet < M[bi].feet ? k : bi, 0) : 0;
+        const order = [si, ...[0, 1, 2].filter(k => k !== si)];
+        const hx = M[si].head;
+        F = order.map(k => shift(F[k], Math.round(hx - M[k].head)));
+      } catch (e) { /* keep sheet order */ }
+      S[d] = F;
       // surfing: upper body only, from the standing frame
       const cv = G.makeCanvas(fw, fh - 10); cv.getContext('2d').drawImage(S[d][0], 0, 0, fw, fh - 10, 0, 0, fw, fh - 10); S[d + '_surf'] = [cv];
     });

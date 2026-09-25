@@ -122,6 +122,7 @@ G.ListMenu = class {
     rows.forEach((it, k) => {
       const i = k + this.scroll, y = this.y + 4 + k * this.rowH;
       const label = typeof it === 'string' ? it : it.label;
+      U.hot(this.x + 2, y, this.w - 4, this.rowH, () => { if (this.i !== i) { this.i = i; G.audio && G.audio.sfx('cursor'); } }, () => { this.i = i; G.input.tap('a'); });
       if (i === this.i) { U.rrect(this.x + 3, y, this.w - 6, this.rowH - 1, 3); U.c.fillStyle = 'rgba(59,130,224,.16)'; U.c.fill(); U.cursor(this.x + 5, y + this.rowH / 2 - .5); }
       U.text(label, this.x + 13, y + 2.4, { size: 7.5, weight: 700, color: it.disabled ? '#9aa0aa' : (this.o.style === 'dark' ? '#eef' : '#283040') });
       if (it.right) U.text(it.right, this.x + this.w - 7, y + 2.8, { size: 6.5, weight: 700, align: 'right', color: '#6a7080' });

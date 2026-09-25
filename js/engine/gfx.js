@@ -43,7 +43,7 @@ G.gfx = {
   present25(o = {}) {
     const c = this.cx, S = this.S, W = G.W, H = G.H, buf = this.buf;
     c.imageSmoothingEnabled = false; this._persp = true;
-    const MAG = o.tilt === undefined ? .22 : o.tilt;
+    const MAG = 0;   // row-stretch perspective retired: it made pixels swim while scrolling
     if (!this._rows || this._rowsKey !== MAG + '|' + S) {
       // precompute destination y/height per source row so the stack fills the screen exactly
       const m = []; let tot = 0;
@@ -99,6 +99,9 @@ G.gfx = {
 // All UI coordinates are in low-res units but rendered at native resolution.
 G.ui = {
   get c() { return G.gfx.cx; },
+  _hot: [], _hotNext: [], _scene: null,
+  // clickable region for the mouse, in game units; registered while drawing, owned by the drawing scene
+  hot(x, y, w, h, hover, click) { this._hotNext.push({ x, y, w, h, hover, click, scene: this._scene }); },
   X(x) { return G.gfx.ox + x * G.gfx.S; },
   Y(y) { return G.gfx.oy + y * G.gfx.S; },
   font(size, weight = 600, fam = G.FONT) {

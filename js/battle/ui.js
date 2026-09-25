@@ -96,9 +96,11 @@
       U.text('What will', 16, G.H - 43, { size: 8.4, color: '#dfe8f8', weight: 600 });
       U.text(this.name + ' do?', 16, G.H - 31, { size: 8.4, color: '#ffffff', weight: 800 });
       U.text('Q: Battle info', 212, G.H - 13, { size: 4.8, color: '#8a9ab8', align: 'right' });
+      U.hot(150, G.H - 17, 66, 9, null, () => G.input.tap('l'));
       CMDS.forEach((c, k) => {
         const x = 224 + (k % 2) * 78, y = G.H - 50 + Math.floor(k / 2) * 23, sel = this.i === k;
         const dis = (c.id === 'run' && !this.req.canRun) || (c.id === 'bag' && !this.req.canItem);
+        U.hot(x, y, 76, 21, () => { if (this.i !== k) { this.i = k; G.audio && G.audio.sfx('cursor'); } }, () => { this.i = k; G.input.tap('a'); });
         U.panel(x, y + (sel ? -1 : 0), 76, 21, dis ? 'dark' : c.th, { r: 5, alpha: dis ? .55 : 1 });
         if (sel) { U.rrect(x - 1, y - 2, 78, 23, 6); U.c.lineWidth = G.gfx.S * 1.2; U.c.strokeStyle = '#ffffff'; U.c.stroke(); }
         U.text(c.label, x + 38, y + 5.5 + (sel ? -1 : 0), { size: 8.6, weight: 900, color: '#fff', align: 'center', shadow: 'rgba(0,0,0,.35)' });
@@ -131,6 +133,7 @@
       this.req.moves.forEach((mv, k) => {
         const m = G.MOVES[mv.id], x = 6 + (k % 2) * 130, y = G.H - 50 + Math.floor(k / 2) * 23, sel = this.i === k;
         const col = G.TYPE_COLORS[m.type];
+        U.hot(x, y, 128, 21, () => { if (this.i !== k) { this.i = k; G.audio && G.audio.sfx('cursor'); } }, () => { this.i = k; G.input.tap('a'); });
         U.rrect(x, y, 128, 21, 5);
         const g = U.c.createLinearGradient(0, U.Y(y), 0, U.Y(y + 21)); g.addColorStop(0, G.col.light(col, sel ? .35 : .2)); g.addColorStop(1, G.col.dark(col, sel ? .05 : .2));
         U.c.fillStyle = g; U.c.fill(); U.c.lineWidth = G.gfx.S * (sel ? 1.3 : .8); U.c.strokeStyle = sel ? '#ffffff' : G.col.dark(col, .5); U.c.stroke();
@@ -161,6 +164,7 @@
       } else U.text(G.ui.wrap(m.desc, 100, 4.6)[0] || '', px + 6, py + 36, { size: 4.6, weight: 600, color: '#5a6070' });
       if (this.req.canResonate) {
         const on = this.res, bx = 266, by = G.H - 66;
+        U.hot(bx, by, 112, 13, null, () => G.input.tap('r'));
         U.panel(bx, by, 112, 13, on ? 'teal' : 'dark', { r: 4 });
         if (on) { U.rrect(bx - 1, by - 1, 114, 15, 5); U.c.lineWidth = G.gfx.S * (1 + .5 * Math.sin(G.realTime * 8)); U.c.strokeStyle = '#bffff4'; U.c.stroke(); }
         U.text((on ? '✦ RESONATING ✦' : '✦ Resonate') + '  [R]', bx + 56, by + 3, { size: 5.8, weight: 800, color: '#fff', align: 'center' });
@@ -186,6 +190,7 @@
       const U = G.ui;
       U.panel(6, G.H - 50, G.W - 12, 45, 'dark', { r: 5 });
       const r = this.opts[this.i], s = this.sc.slot(r);
+      this.opts.forEach((o, k) => { const q = this.sc.slot(o); if (q) U.hot(q.x - 30, q.y - 70 * q.sc, 60, 70 * q.sc, () => { this.i = k; }, () => { this.i = k; G.input.tap('a'); }); });
       U.text('Choose a target:', 16, G.H - 43, { size: 8, color: '#dfe8f8' });
       if (s) {
         U.text((r.s === this.sc.persp ? 'Ally ' : '') + s.name, 16, G.H - 30, { size: 9, color: '#fff', weight: 800 });

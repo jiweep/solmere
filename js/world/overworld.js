@@ -37,8 +37,10 @@ G.Ent = class {
   animFrame() {
     if (!this.moving) return 0;
     const t = this.prog / (this.jump ? this.jump.d * 16 : 16);
-    if (this.speed >= 4) return this.stepN % 2 ? 1 : 2;
-    return t > .2 && t < .8 ? (this.stepN % 2 ? 1 : 2) : 0;
+    // DS cycle: each tile shows one stride (alternating feet) framed by the standing pose;
+    // running and biking hold the stride longer so the legs read as a quicker gait
+    const lo = this.speed >= 4 ? .05 : this.speed >= 2 ? .12 : .25, hi = this.speed >= 4 ? .9 : this.speed >= 2 ? .8 : .75;
+    return t > lo && t < hi ? (this.stepN % 2 ? 1 : 2) : 0;
   }
 };
 
@@ -172,6 +174,10 @@ G.WorldScene = class {
     const p = this.player;
     const arrived = p.update();
     if (arrived) this.afterStep();
+    if (this.pendingTrigger && !this.busy && !p.moving) {
+      const q = this.pendingTrigger; this.pendingTrigger = null;
+      if (q.map === this.map.id && p.x === q.x && p.y === q.y && G.checkCond(q.t.cond)) { G.run(() => G.runScript(q.t.script, { trigger: q.t })); return; }
+    }
     if (top && !this.busy && !p.moving) this.control();
     else if (top && !this.busy && p.moving && p.prog >= 16 - p.speed && !p.jump) { /* chain handled in afterStep */ }
     if (!top || this.busy) this.turnHold = 0;
@@ -196,12 +202,12 @@ G.WorldScene = class {
     this.tryStep(d);
   }
   moveSpeed() {
-    // snappy: walk 8 frames/tile, run & surf 4, bike 2 (speeds divide the 16px tile evenly)
-    if (this.surfing) return 4;
-    if (this.biking) return 8;
+    // original DS pacing: walk 16 frames/tile, run & surf 8, bike 4 (speeds divide the 16px tile evenly)
+    if (this.surfing) return 2;
+    if (this.biking) return 4;
     const run = G.settings.autoRun ? !G.input.isDown('run') : G.input.isDown('run');
-    if (run && this.map.type !== 'indoor' || run && this.map.def.canRun) return 4;
-    return G.save.god.speed ? 8 : 2;
+    if (run && this.map.type !== 'indoor' || run && this.map.def.canRun) return 2;
+    return G.save.god.speed ? 8 : 1;
   }
   tryStep(d) {
     const p = this.player; const [dx, dy] = G.DIRS[d]; const nx = p.x + dx, ny = p.y + dy;
@@ -286,7 +292,13 @@ G.WorldScene = class {
     // warps
     const w = m.warps.find(w => w.x === p.x && w.y === p.y && G.checkCond(w.cond));
     if (w && this.map === m) { G.run(() => this.doWarp(w)); return; }
-    if (this.busy) { this.lastMoved = false; return; }
+    if (this.busy) {
+      // a trigger stepped on while a script is finishing must not be skipped (that let players slip
+      // past story blockers): remember it and fire once the world is free, if still standing on it
+      const tp = m.objs.find(o => o.type === 'trigger' && p.x >= o.x && p.x < o.x + (o.w || 1) && p.y >= o.y && p.y < o.y + (o.h || 1) && G.checkCond(o.cond));
+      if (tp) this.pendingTrigger = { t: tp, x: p.x, y: p.y, map: m.id };
+      this.lastMoved = false; return;
+    }
     // triggers
     for (const t of m.objs.filter(o => o.type === 'trigger')) {
       if (p.x >= t.x && p.x < t.x + (t.w || 1) && p.y >= t.y && p.y < t.y + (t.h || 1) && G.checkCond(t.cond)) { G.run(() => G.runScript(t.script, { trigger: t })); return; }

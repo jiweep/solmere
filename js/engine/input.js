@@ -48,8 +48,41 @@ G.input = (function () {
     window.addEventListener('keyup', e => { const b = keymap[e.code]; if (b) { kbState[b] = false; e.preventDefault(); } });
     window.addEventListener('blur', () => { for (const k in kbState) kbState[k] = false; });
     window.addEventListener('mousedown', () => G.audio && G.audio.unlock());
+    // ---- mouse: position in game units; clicks drive UI hotspots, or confirm/back as a fallback
+    const toGame = e => {
+      const cv = G.gfx && G.gfx.canvas; if (!cv) return null;
+      const r = cv.getBoundingClientRect(), px = (e.clientX - r.left) * cv.width / r.width, py = (e.clientY - r.top) * cv.height / r.height;
+      return [(px - G.gfx.ox) / G.gfx.S, (py - G.gfx.oy) / G.gfx.S];
+    };
+    window.addEventListener('mousemove', e => { const p = toGame(e); if (p) { M.x = p[0]; M.y = p[1]; M.moved = true; M.active = true; I.lastDevice = 'mouse'; } });
+    window.addEventListener('mousedown', e => {
+      if (e.target && e.target.id === 'ff') return;
+      const p = toGame(e); if (!p) return; M.x = p[0]; M.y = p[1]; M.active = true;
+      if (e.button === 0) M.click = true; else if (e.button === 2) M.rclick = true;
+    });
+    window.addEventListener('contextmenu', e => { if (e.target && e.target.tagName === 'CANVAS') e.preventDefault(); });
+    window.addEventListener('wheel', e => { M.wheel += Math.sign(e.deltaY); }, { passive: true });
+  }
+  const M = { x: -1, y: -1, moved: false, click: false, rclick: false, wheel: 0, active: false };
+  I.mouse = M;
+  I.tap = function (b) { tapQ[b] = true; };
+  // hotspots registered while drawing (G.ui.hot); only the top scene's respond
+  function dispatchMouse() {
+    const hs = (G.ui && G.ui._hot) || [], top = G.top && G.top();
+    const mine = hs.filter(h => h.scene === top);
+    let hit = null;
+    for (let i = mine.length - 1; i >= 0; i--) { const h = mine[i]; if (M.x >= h.x && M.x < h.x + h.w && M.y >= h.y && M.y < h.y + h.h) { hit = h; break; } }
+    if (M.moved && hit && hit.hover) hit.hover();
+    if (M.click) {
+      if (hit && hit.click) hit.click();
+      else if (top && !top.isWorld && !top.noClickConfirm && !top.menu) tapQ.a = true;   // click anywhere: advance / confirm
+    }
+    if (M.rclick) tapQ.b = true;
+    if (M.wheel) { tapQ[M.wheel > 0 ? 'down' : 'up'] = true; M.wheel = 0; }
+    M.moved = M.click = M.rclick = false;
   }
   I.poll = function () {
+    if (typeof window !== 'undefined') dispatchMouse();
     // gamepad
     for (const b of BTN) padState[b] = false;
     const pads = typeof navigator !== 'undefined' && navigator.getGamepads ? navigator.getGamepads() : [];

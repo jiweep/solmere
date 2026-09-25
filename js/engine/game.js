@@ -48,6 +48,7 @@ G.render = function () {
   // find lowest opaque scene
   let start = 0;
   for (let i = G.scenes.length - 1; i >= 0; i--) if (G.scenes[i].opaque) { start = i; break; }
+  G.ui._hotNext = [];
   for (let i = start; i < G.scenes.length; i++) {
     const s = G.scenes[i];
     if (s.draw && s.lowres !== false) {
@@ -59,8 +60,10 @@ G.render = function () {
       else if (s.fx25 && G.settings.fancy !== false) gx.present25(s.fx25());
       else gx.present();
     }
+    G.ui._scene = s;
     if (s.drawUI && !(G.photoMode && s.isWorld)) { c.save(); s.drawUI(c); c.restore(); }
   }
+  G.ui._hot = G.ui._hotNext; G.ui._hotNext = []; G.ui._scene = null;
   // clip letterbox
   c.fillStyle = '#000';
   if (gx.ox > 0) { c.fillRect(0, 0, gx.ox, gx.canvas.height); c.fillRect(gx.ox + G.W * S, 0, gx.canvas.width, gx.canvas.height); }
