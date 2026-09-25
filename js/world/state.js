@@ -117,7 +117,11 @@ G.persist = {
     const blob = new Blob([JSON.stringify(G.save)], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `solmere_${G.save.name}_${new Date().toISOString().slice(0, 10)}.json`; a.click();
   },
-  globalSettings() { try { const s = localStorage.getItem('solmere_settings'); if (s) Object.assign(G.settings, JSON.parse(s)); } catch (e) { } },
+  globalSettings() {
+    try { const s = localStorage.getItem('solmere_settings'); if (s) Object.assign(G.settings, JSON.parse(s)); } catch (e) { }
+    // the 3D world became the default once every town had its tiers: switch it on once for everyone
+    if (G.settings.v3d !== 1) { G.settings.v3d = 1; G.settings.render3d = true; this.saveSettings(); }
+  },
   saveSettings() { try { localStorage.setItem('solmere_settings', JSON.stringify(G.settings)); } catch (e) { } },
 };
 // migrate / repair loaded saves so older or partial saves never crash
