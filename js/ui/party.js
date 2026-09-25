@@ -12,7 +12,7 @@ G.menuBG = function (b, col1 = '#2a4a7a', col2 = '#16283f', t = G.realTime) {
 G.statusBadge = function (st, x, y) {
   if (!st) return;
   const U = G.ui, col = { brn: '#ee8130', par: '#e8c020', psn: '#a33ea1', tox: '#7a2a78', slp: '#8a8a9a', frz: '#78d0d0', fnt: '#c83a3a', dead: '#2a2a34' }[st];
-  U.rrect(x, y, 18, 6.6, 2); U.c.fillStyle = col; U.c.fill();
+  U.shape(x, y, 18, 6.6, 2, col);
   U.text({ brn: 'BRN', par: 'PAR', psn: 'PSN', tox: 'TOX', slp: 'SLP', frz: 'FRZ', fnt: 'FNT', dead: 'RIP' }[st], x + 9, y + .9, { size: 4.6, weight: 800, color: '#fff', align: 'center', shadow: false });
 };
 
@@ -307,7 +307,7 @@ G.SummaryScene = class {
     m.moves.forEach((mv, k) => {
       const M = G.MOVES[mv.id], y = py + 8 + k * 24, sel = this.moveMode && this.mi === k, sw = this.swapMove === k;
       U.pick(px + 8, y, 222, 21, sel, () => { if (!this.moveMode) { this.moveMode = true; } this.mi = k; }, () => { if (!this.moveMode) { this.moveMode = true; this.mi = k; } else { this.mi = k; G.input.tap('a'); } });
-      U.rrect(px + 8, y, 222, 21, 4); U.c.fillStyle = sel ? 'rgba(255,211,92,.5)' : sw ? 'rgba(255,90,90,.25)' : 'rgba(40,48,64,.06)'; U.c.fill();
+      U.shape(px + 8, y, 222, 21, 4, sel ? 'rgba(255,211,92,.5)' : sw ? 'rgba(255,90,90,.25)' : 'rgba(40,48,64,.06)');
       U.typeBadge(M.type, px + 12, y + 3, 30, 8.6, 5.2); U.catBadge(M.cat, px + 12, y + 12.4);
       U.text(M.name, px + 48, y + 3, { size: 7.4, weight: 800 });
       U.text(`PP ${mv.pp}/${G.mon.maxPP(mv)}`, px + 224, y + 3.6, { size: 6, weight: 700, align: 'right' });
@@ -327,7 +327,7 @@ G.SummaryScene.prototype.drawMoves = (function (orig) {
     m.moves.forEach((mv, k) => {
       const M = G.MOVES[mv.id], y = py + 8 + k * 24, sel = this.moveMode && this.mi === k, sw = this.swapMove === k;
       U.pick(px + 8, y, 222, 21, sel, () => { if (!this.moveMode) { this.moveMode = true; } this.mi = k; }, () => { if (!this.moveMode) { this.moveMode = true; this.mi = k; } else { this.mi = k; G.input.tap('a'); } });
-      U.rrect(px + 8, y, 222, 21, 4); U.c.fillStyle = sel ? 'rgba(255,211,92,.5)' : sw ? 'rgba(255,90,90,.25)' : 'rgba(40,48,64,.06)'; U.c.fill();
+      U.shape(px + 8, y, 222, 21, 4, sel ? 'rgba(255,211,92,.5)' : sw ? 'rgba(255,90,90,.25)' : 'rgba(40,48,64,.06)');
       U.typeBadge(M.type, px + 12, y + 3, 30, 8.6, 5.2); U.catBadge(M.cat, px + 12, y + 12.4);
       U.text(M.name, px + 48, y + 3, { size: 7.4, weight: 800 });
       U.text(`PP ${mv.pp}/${G.mon.maxPP(mv)}`, px + 224, y + 3.6, { size: 6, weight: 700, align: 'right' });
@@ -378,7 +378,7 @@ G.MoveForgetScene = class {
     all.forEach((id, k) => {
       const M = G.MOVES[id], y = 28 + k * 19 + (k === 4 ? 4 : 0), sel = this.i === k;
       U.pick(28, y, 200, 17, sel, () => { this.i = k; });
-      U.rrect(28, y, 200, 17, 4); U.c.fillStyle = sel ? 'rgba(255,211,92,.55)' : k === 4 ? 'rgba(42,168,106,.15)' : 'rgba(40,48,64,.06)'; U.c.fill();
+      U.shape(28, y, 200, 17, 4, sel ? 'rgba(255,211,92,.55)' : k === 4 ? 'rgba(42,168,106,.15)' : 'rgba(40,48,64,.06)');
       U.typeBadge(M.type, 32, y + 4, 28, 8.6, 5); U.text(M.name, 64, y + 4, { size: 7, weight: 800 });
       U.text(k === 4 ? 'NEW' : `PP ${this.m.moves[k].pp}`, 222, y + 4.5, { size: 5.8, align: 'right', weight: 800, color: k === 4 ? '#2aa86a' : '#6a7080' });
     });

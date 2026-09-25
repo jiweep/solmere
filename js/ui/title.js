@@ -147,7 +147,7 @@ G.NewGameScene = class {
     R.forEach((r, k) => {
       const y = 26 + k * 9.4, sel = k === this.i;
       U.pick(22, y - 1.4, G.W - 44, 9.2, sel, () => { this.i = k; }, () => { this.i = k; G.input.tap(r.start ? 'a' : 'right'); });
-      if (sel) { U.rrect(22, y - 1.4, G.W - 44, 9.2, 3); U.c.fillStyle = r.start ? 'rgba(42,168,106,.3)' : 'rgba(27,167,184,.18)'; U.c.fill(); }
+      if (sel) { U.shape(22, y - 1.4, G.W - 44, 9.2, 3, r.start ? 'rgba(42,168,106,.3)' : 'rgba(27,167,184,.18)'); }
       U.text(r.label, 30, y, { size: 6.4, weight: r.start ? 900 : 700, color: r.start ? '#2a7a4a' : r.dep ? '#5a6070' : '#283040' });
       if (!r.start) { const vi = r.vals.indexOf(this.v[r.k]); U.text('◀ ' + r.names[vi] + ' ▶', G.W - 30, y, { size: 6.4, weight: 800, align: 'right', color: sel ? '#1e9486' : '#4a5060' }); }
     });

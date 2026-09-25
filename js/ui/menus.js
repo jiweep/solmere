@@ -122,6 +122,7 @@ G.openOptions = function () {
     { k: 'sfx', label: 'Sound Volume', vals: [0, .2, .4, .6, .8, 1], names: ['0', '2', '4', '6', '8', '10'] },
     { k: 'clock', label: 'Day/Night Clock', vals: ['accel', 'real'], names: ['Fast (48 min day)', 'Real time'] },
     { k: 'fill', label: 'Screen Scaling', vals: [false, true], names: ['Pixel-perfect', 'Fill window'] },
+    { k: 'vectorUI', label: 'Menu Style', vals: [false, true], names: ['Pixel', 'Smooth'] },
   ];
   return new Promise(res => G.push({
     opaque: true, i: 0, t: 0, scroll: 0,
@@ -281,7 +282,7 @@ G.openTownMap = function (o = {}) {
       const here = G.TOWNS.find(x => x.id === (cur.def.town || cur.def.region));
       if (here) { const bob = Math.sin(this.t / 8) * 1.5; U.img(G.chars.sheet(G.LOOKS[G.save.look]).down[0], here.x - 8, here.y - 26 + bob); }
       const bob = Math.sin(this.t / 6) * 1.5;
-      U.rrect(t.x - 7, t.y - 7 + bob, 14, 14, 3); U.c.lineWidth = G.gfx.S * 1.2; U.c.strokeStyle = '#ffd35c'; U.c.stroke();
+      U.shape(t.x - 7, t.y - 7 + bob, 14, 14, 3, null, '#ffd35c', 1.2);
       U.panel(8, G.H - 34, 250, 28, 'light', { r: 6 });
       U.text(G.save.visited[t.id] ? t.name : '???', 16, G.H - 30, { size: 8.4, weight: 900 });
       U.text(G.save.visited[t.id] ? t.desc : 'You haven\'t been here yet.', 16, G.H - 19, { size: 5.8, color: '#5a6070' });

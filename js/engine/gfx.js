@@ -237,18 +237,66 @@ G.ui = {
   // skewed parallelogram (Persona-style slab): top edge shifted right by sk. Smooth, slightly rounded corners;
   // a coloured slab gets a soft top-to-bottom shade and a bright hairline along its top edge
   para(x, y, w, h, sk, fill, o = {}) {
+    const k = Math.abs(sk); x = this.snap(x); y = this.snap(y);
+    this.pixel(Math.min(x, x + sk), Math.min(y, y + h), Math.abs(w) + k, Math.abs(h), () => this._para(x, y, w, h, sk, fill, o),
+      typeof fill === 'string' && ['p', x, y, w, h, sk, fill, o.r, o.shade, o.stroke, o.lw]);
+  },
+  _para(x, y, w, h, sk, fill, o = {}) {
     const c = this.c, S = G.gfx.S;
     const pts = [[x + sk, y], [x + w + sk, y], [x + w, y + h], [x, y + h]].map(([a, b]) => [this.X(a), this.Y(b)]);
     const rad = Math.min(o.r !== undefined ? o.r * S : S * 1.1, Math.abs(h) * S * .3, Math.abs(w) * S * .3);
-    this.polyPath(pts, rad);
+    const rows = this._pix ? this.paraRows(pts, rad) : null;
+    const path = () => rows ? this.stairPath(rows) : this.polyPath(pts, rad);
+    path();
     const hex = typeof fill === 'string' && /^#[0-9a-f]{6}$/i.test(fill);
     const lum = hex ? (() => { const [r, g, b] = G.col.parse(fill); return r * .3 + g * .59 + b * .11; })() : 0;
     if (hex && lum > 45 && h >= 4 && o.shade !== false) {
       const g = c.createLinearGradient(0, this.Y(y), 0, this.Y(y + h)); g.addColorStop(0, G.col.light(fill, .1)); g.addColorStop(1, G.col.dark(fill, .1));
       c.fillStyle = g; c.fill();
-      c.save(); c.clip(); c.fillStyle = 'rgba(255,255,255,.28)'; c.fillRect(Math.min(pts[3][0], pts[0][0]), pts[0][1], Math.abs(pts[1][0] - pts[3][0]) + S * Math.abs(sk), Math.max(1, S * .35)); c.restore();
+      c.save(); c.clip(); c.fillStyle = 'rgba(255,255,255,.28)'; c.fillRect(Math.floor(Math.min(pts[3][0], pts[0][0])), rows ? rows.y0 : pts[0][1], Math.ceil(Math.abs(pts[1][0] - pts[3][0]) + S * Math.abs(sk)) + 1, rows ? 1 : Math.max(1, S * .35)); c.restore();
     } else { c.fillStyle = fill; c.fill(); }
-    if (o.stroke) { this.polyPath(pts, rad); c.lineJoin = 'round'; c.lineWidth = Math.max(1, (o.lw || .5) * S); c.strokeStyle = o.stroke; c.stroke(); }
+    if (o.stroke) {
+      if (rows) { this.stairRing(rows, Math.max(1, Math.round((o.lw || .5) * S))); c.fillStyle = o.stroke; c.fill('evenodd'); }
+      else { this.polyPath(pts, rad); c.lineJoin = 'round'; c.lineWidth = Math.max(1, (o.lw || .5) * S); c.strokeStyle = o.stroke; c.stroke(); }
+    }
+  },
+  // ---- pixel-grid geometry (used on the chrome grid): shapes as runs of whole pixels, one [left, right] per
+  // row, so every edge is a hard pixel step: bold and sharp, never a smeared anti-aliased line
+  stairPath(rows, fresh = true) {
+    const c = this.c; if (fresh) c.beginPath();
+    const y0 = rows.y0, n = rows.length; if (!n) return;
+    c.moveTo(rows[0][0], y0);
+    for (let i = 0; i < n; i++) { c.lineTo(rows[i][0], y0 + i); c.lineTo(rows[i][0], y0 + i + 1); }
+    for (let i = n - 1; i >= 0; i--) { c.lineTo(rows[i][1], y0 + i + 1); c.lineTo(rows[i][1], y0 + i); }
+    c.closePath();
+  },
+  // the band of pixels lw thick just inside a shape's edge (fill it with 'evenodd')
+  stairRing(rows, lw = 1) {
+    this.stairPath(rows);
+    const inner = rows.slice(lw, rows.length - lw).map(([l, r]) => [l + lw, r - lw]).filter(([l, r]) => r > l);
+    inner.y0 = rows.y0 + lw; if (inner.length) this.stairPath(inner, false);
+  },
+  rrRows(X0, Y0, X1, Y1, rad) {
+    rad = Math.round(rad); const rows = []; rows.y0 = Y0;
+    for (let y = Y0; y < Y1; y++) {
+      const d = Math.min(y - Y0, Y1 - 1 - y);
+      const ins = d < rad ? Math.round(rad - Math.sqrt(Math.max(0, rad * rad - (rad - d - .5) ** 2))) : 0;
+      rows.push([X0 + ins, X1 - ins]);
+    }
+    return rows;
+  },
+  // a parallelogram's rows: the slanted sides step one pixel at a time; a 1-pixel nick rounds each corner
+  paraRows(pts, rad) {
+    const [a0, a1, b1, b0] = pts, yA = a0[1], yB = b0[1];
+    const Yt = Math.round(Math.min(yA, yB)), Yb = Math.round(Math.max(yA, yB)), rows = []; rows.y0 = Yt;
+    for (let y = Yt; y < Yb; y++) {
+      const t = yB === yA ? 0 : (y + .5 - yA) / (yB - yA);
+      let l = Math.round(a0[0] + (b0[0] - a0[0]) * t), r = Math.round(a1[0] + (b1[0] - a1[0]) * t);
+      if (l > r) [l, r] = [r, l];
+      rows.push([l, r]);
+    }
+    if (rad >= .8 && rows.length >= 4) for (const i of [0, rows.length - 1]) if (rows[i][1] - rows[i][0] > 4) rows[i] = [rows[i][0] + 1, rows[i][1] - 1];
+    return rows;
   },
   // a closed polygon (screen coords) with every corner rounded by rad
   polyPath(pts, rad) {
@@ -264,6 +312,7 @@ G.ui = {
     const c = this.c, S = G.gfx.S;
     const X0 = Math.round(this.X(x)), Y0 = Math.round(this.Y(y)), X1 = Math.round(this.X(x + w)), Y1 = Math.round(this.Y(y + h));
     const rad = Math.max(0, Math.min(r * S, (X1 - X0) / 2, (Y1 - Y0) / 2));
+    if (this._pix) return this.stairPath(this.rrRows(X0, Y0, X1, Y1, rad));
     c.beginPath();
     if (c.roundRect) c.roundRect(X0, Y0, X1 - X0, Y1 - Y0, rad);
     else { c.moveTo(X0 + rad, Y0); c.arcTo(X1, Y0, X1, Y1, rad); c.arcTo(X1, Y1, X0, Y1, rad); c.arcTo(X0, Y1, X0, Y0, rad); c.arcTo(X0, Y0, X1, Y0, rad); c.closePath(); }
@@ -275,6 +324,10 @@ G.ui = {
   // themed panel: a bold smooth outline, a soft shadow under it, a gradient body with a gloss sheen and a
   // hairline highlight inside the edge (clean vector shapes against the pixel art)
   panel(x, y, w, h, style = 'light', o = {}) {
+    x = this.snap(x); y = this.snap(y);
+    this.pixel(x - 6, y - 1, w + 8, h + 7, () => this._panel(x, y, w, h, style, o), ['n', x, y, w, h, style, o.r, o.slab, o.noShadow, o.alpha]);
+  },
+  _panel(x, y, w, h, style = 'light', o = {}) {
     const c = this.c, S = G.gfx.S, r = o.r !== undefined ? o.r : 4;
     const T = G.ui.THEMES[style] || G.ui.THEMES.light;
     if (o.alpha !== undefined) c.globalAlpha = o.alpha;
@@ -286,7 +339,7 @@ G.ui = {
     }
     this.rrect(x, y, w, h, r); c.fillStyle = T.border; c.fill();
     if (w > 3 && h > 3) {
-      const bw = w > 12 && h > 12 ? .9 : .6;
+      const bw = this._pix ? 1 : w > 12 && h > 12 ? .9 : .6;   // on the chrome grid: a whole pixel
       const g = c.createLinearGradient(0, this.Y(y), 0, this.Y(y + h)); g.addColorStop(0, T.top); g.addColorStop(1, T.bot);
       this.rrect(x + bw, y + bw, w - bw * 2, h - bw * 2, Math.max(0, r - bw)); c.fillStyle = g; c.fill();
       c.save(); c.clip();
@@ -294,8 +347,8 @@ G.ui = {
       gl.addColorStop(0, `rgba(255,255,255,${T.gloss !== undefined ? T.gloss : .18})`); gl.addColorStop(1, 'rgba(255,255,255,0)');
       c.fillStyle = gl; c.fillRect(this.X(x), this.Y(y), w * S, gh * S);
       c.restore();
-      const k = bw + .45;
-      this.rrect(x + k, y + k, w - k * 2, h - k * 2, Math.max(0, r - k)); c.lineWidth = Math.max(1, S * .33); c.strokeStyle = T.inner; c.stroke();
+      if (this._pix) { this.rrRing(x + bw, y + bw, w - bw * 2, h - bw * 2, Math.max(0, r - bw), 1); c.fillStyle = T.inner; c.fill('evenodd'); }
+      else { const k = bw + .45; this.rrect(x + k, y + k, w - k * 2, h - k * 2, Math.max(0, r - k)); c.lineWidth = Math.max(1, S * .33); c.strokeStyle = T.inner; c.stroke(); }
     }
     c.globalAlpha = 1;
   },
@@ -313,7 +366,9 @@ G.ui = {
     select: { top: '#fff1b8', bot: '#ffd35c', border: '#8a5d00', inner: 'rgba(255,255,255,.8)' },
   },
   // selection cursor (animated arrow)
-  cursor(x, y, col = '#e8484a') {
+  cursor(x, y, col = '#e8484a') { this.pixel(x - 1, y - 4, 7, 9, () => this._cursor(x, y, col)); },
+  _cursor(x, y, col = '#e8484a') {
+    if (this._pix) return this._pixCursor(x, y, col);
     const c = this.c, S = G.gfx.S, b = Math.sin(G.realTime * 8) * .8;
     const px = this.X(x + b), py = this.Y(y);
     const tri = (dx, dy) => this.polyPath([[px + dx, py - 3 * S + dy], [px + 4.2 * S + dx, py + dy], [px + dx, py + 3 * S + dy]], S * .6);
@@ -322,8 +377,37 @@ G.ui = {
     c.lineJoin = 'round'; c.lineWidth = Math.max(1, S * .45); c.strokeStyle = G.col.dark(col, .45); c.stroke();
     tri(0, 0); c.save(); c.clip(); c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(px, py - 3 * S, 4.2 * S, 2.2 * S); c.restore();
   },
+  // the arrow on the chrome grid: a dark-outlined wedge with a lit upper half and a drop shadow
+  _pixCursor(x, y, col) {
+    const c = this.c, S = G.gfx.S, b = Math.round(Math.sin(G.realTime * 8) * .8 * S);
+    const px = Math.round(this.X(x)) + b, py = Math.round(this.Y(y)), hh = Math.max(3, Math.round(3 * S)), len = Math.max(3, Math.round(4.2 * S));
+    const rows = []; rows.y0 = py - hh;
+    for (let i = 0; i < hh * 2; i++) { const d = Math.abs(i + .5 - hh) / hh; rows.push([px, px + Math.max(1, Math.round(len * (1 - d)))]); }
+    const sh = rows.map(([l, r]) => [l + 1, r + 1]); sh.y0 = rows.y0 + 1;
+    this.stairPath(sh); c.fillStyle = 'rgba(0,0,0,.3)'; c.fill();
+    this.stairPath(rows); c.fillStyle = G.col.dark(col, .45); c.fill();
+    const inner = rows.slice(1, -1).map(([l, r]) => [l + 1, r - 1]).filter(([l, r]) => r > l); inner.y0 = rows.y0 + 1;
+    this.stairPath(inner); c.fillStyle = col; c.fill();
+    const top = inner.slice(0, Math.ceil(inner.length / 2) - 1); top.y0 = inner.y0;
+    if (top.length) { this.stairPath(top); c.fillStyle = 'rgba(255,255,255,.35)'; c.fill(); }
+  },
+  // pixel mode: the ring lw pixels thick inside a rounded rectangle (fill with 'evenodd')
+  rrRing(x, y, w, h, r, lw = 1) {
+    const S = G.gfx.S, X0 = Math.round(this.X(x)), Y0 = Math.round(this.Y(y)), X1 = Math.round(this.X(x + w)), Y1 = Math.round(this.Y(y + h));
+    this.stairRing(this.rrRows(X0, Y0, X1, Y1, Math.max(0, Math.min(r * S, (X1 - X0) / 2, (Y1 - Y0) / 2))), lw);
+  },
+  // an outline for a rounded rectangle: a pixel ring on the chrome grid, a stroke otherwise
+  rrOutline(x, y, w, h, r, col, lw = .5) {
+    const c = this.c;
+    if (this._pix) { this.rrRing(x, y, w, h, r, Math.max(1, Math.round(lw * G.gfx.S))); c.fillStyle = col; c.fill('evenodd'); }
+    else { this.rrect(x, y, w, h, r); c.lineWidth = Math.max(1, lw * G.gfx.S); c.strokeStyle = col; c.stroke(); }
+  },
   // a rounded capsule gauge with a glossy fill
   bar(x, y, w, h, frac, col, bg = '#39414f', o = {}) {
+    x = this.snap(x); y = this.snap(y);
+    this.pixel(x - 1, y - 1, w + 2, h + 2, () => this._bar(x, y, w, h, frac, col, bg, o), ['b', x, y, w, h, Math.round(frac * w * G.gfx.S), col, bg, o.border]);
+  },
+  _bar(x, y, w, h, frac, col, bg = '#39414f', o = {}) {
     const c = this.c, S = G.gfx.S, r = h / 2;
     if (o.border !== false) { this.rrect(x - .6, y - .6, w + 1.2, h + 1.2, r + .6); c.fillStyle = 'rgba(14,18,28,.9)'; c.fill(); }
     this.rrect(x, y, w, h, r); c.fillStyle = bg; c.fill();
@@ -332,9 +416,65 @@ G.ui = {
       c.save(); this.rrect(x, y, w, h, r); c.clip();
       const g = c.createLinearGradient(0, this.Y(y), 0, this.Y(y + h)); g.addColorStop(0, G.col.light(col, .3)); g.addColorStop(.55, col); g.addColorStop(1, G.col.dark(col, .28));
       this.rrect(x, y, fw, h, Math.min(r, fw / 2)); c.fillStyle = g; c.fill();
-      if (h >= 2) { c.fillStyle = 'rgba(255,255,255,.4)'; c.fillRect(this.X(x + Math.min(r, fw / 2)), this.Y(y + h * .16), Math.max(0, fw - Math.min(r, fw / 2) * 2) * S, Math.max(1, h * .18 * S)); }
+      if (h >= 2) { const R = this._pix ? Math.round : v => v; c.fillStyle = 'rgba(255,255,255,.4)'; c.fillRect(R(this.X(x + Math.min(r, fw / 2))), R(this.Y(y + h * .16)), R(Math.max(0, fw - Math.min(r, fw / 2) * 2) * S), Math.max(1, R(h * .18 * S))); }
       c.restore();
     }
+  },
+  // UI chrome on a pixel grid (Options > Menu Style: Pixel). Shapes (panels, slabs, gauges, badges, the
+  // cursor) are traced along whole pixels of the game's own grid into a scratch canvas and scaled up with no
+  // smoothing: bold one-pixel borders, stepped corners and slants that sit with the pixel art, instead of
+  // hairline vector strokes. bbox is in game units; calls nest (inner shapes join the outer pass).
+  chromePx() { return G.settings && G.settings.vectorUI ? 0 : Math.max(1, Math.round(G.gfx.S)); },
+  // in pixel mode, positions snap to whole chrome pixels: the shapes step cleanly as they slide, and a
+  // shape that sits still is the same shape every frame (so its cached image is reused)
+  snap(v) { const P = this._pix ? 0 : this.chromePx(); return P ? Math.round(v * G.gfx.S / P) * P / G.gfx.S : v; },
+  _cache: new Map(), _spare: [],
+  pixel(bx, by, bw, bh, fn, key) {
+    const gx = G.gfx, P = this.chromePx();
+    if (this._pix || !P || bw <= 0 || bh <= 0) return fn();
+    const S = gx.S, main = gx.cx;
+    // align the scratch to one global grid so neighbouring shapes share pixel boundaries
+    const sx0 = gx.ox + Math.floor((bx * S - 2 * P) / P) * P, sy0 = gx.oy + Math.floor((by * S - 2 * P) / P) * P;
+    const w = Math.ceil((bw * S + 4 * P) / P) + 1, h = Math.ceil((bh * S + 4 * P) / P) + 1;
+    const blit = (cv) => {
+      const sm = main.imageSmoothingEnabled; main.imageSmoothingEnabled = false;
+      main.drawImage(cv, 0, 0, w, h, sx0, sy0, w * P, h * P);
+      main.imageSmoothingEnabled = sm;
+    };
+    // a shape drawn with the same arguments as before is blitted from the cache (least recently used goes)
+    const k = key ? key.join('|') + '|' + S + '|' + gx.ox + '|' + gx.oy : null;
+    if (k) { const hit = this._cache.get(k); if (hit) { this._cache.delete(k); this._cache.set(k, hit); blit(hit); return; } }
+    let cv, sc;
+    if (k) {
+      cv = this._spare.pop() || G.makeCanvas(w, h);
+      if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+      sc = cv.getContext('2d');
+    } else {
+      cv = this._scratch;
+      if (!cv) { cv = this._scratch = G.makeCanvas(w, h); this._sx = cv.getContext('2d'); }
+      if (cv.width < w || cv.height < h) { cv.width = Math.max(cv.width, w); cv.height = Math.max(cv.height, h); }
+      sc = this._sx;
+    }
+    sc.setTransform(1, 0, 0, 1, 0, 0); sc.globalAlpha = 1; sc.clearRect(0, 0, w, h);
+    const saved = [gx.S, gx.ox, gx.oy];
+    gx.S = S / P; gx.ox = (gx.ox - sx0) / P; gx.oy = (gx.oy - sy0) / P; gx.cx = sc; this._pix = true;
+    try { fn(); } finally {
+      [gx.S, gx.ox, gx.oy] = saved; gx.cx = main; this._pix = false;
+      blit(cv);
+      if (k) {
+        this._cache.set(k, cv);
+        if (this._cache.size > 320) { const [old, ocv] = this._cache.entries().next().value; this._cache.delete(old); if (this._spare.length < 32) this._spare.push(ocv); }
+      }
+    }
+  },
+  // a filled (and optionally outlined) rounded rectangle on the chrome grid, for screens that draw their own
+  shape(x, y, w, h, r, fill, stroke, lw = .5) {
+    x = this.snap(x); y = this.snap(y);
+    this.pixel(x, y, w, h, () => {
+      const c = this.c; this.rrect(x, y, w, h, r);
+      if (fill) { c.fillStyle = fill; c.fill(); }
+      if (stroke) this.rrOutline(x, y, w, h, r, stroke, lw);
+    }, ['s', x, y, w, h, r, fill, stroke, lw]);
   },
   hpColor(f) { return f > .5 ? '#3ed16b' : f > .2 ? '#f5c02b' : '#ef4b4b'; },
   // draw a low-res image (canvas) at native scale (nearest-neighbour)
@@ -351,16 +491,18 @@ G.ui = {
     c.globalAlpha = 1;
   },
   typeBadge(type, x, y, w = 30, h = 9, size = 5.6) {
-    const col = G.TYPE_COLORS[type] || '#999';
-    const c = this.c;
-    this.rrect(x, y, w, h, 2.5);
-    const g = c.createLinearGradient(0, this.Y(y), 0, this.Y(y + h)); g.addColorStop(0, G.col.light(col, .25)); g.addColorStop(1, G.col.dark(col, .12));
-    c.fillStyle = g; c.fill(); c.lineWidth = G.gfx.S * .5; c.strokeStyle = G.col.dark(col, .5); c.stroke();
+    const col = G.TYPE_COLORS[type] || '#999'; x = this.snap(x); y = this.snap(y);
+    this.pixel(x, y, w, h, () => {
+      const c = this.c;
+      this.rrect(x, y, w, h, 2.5);
+      const g = c.createLinearGradient(0, this.Y(y), 0, this.Y(y + h)); g.addColorStop(0, G.col.light(col, .25)); g.addColorStop(1, G.col.dark(col, .12));
+      c.fillStyle = g; c.fill(); this.rrOutline(x, y, w, h, 2.5, G.col.dark(col, .5), .5);
+    }, ['t', x, y, w, h, col]);
     this.text(type.toUpperCase(), x + w / 2, y + h / 2 + .3, { size, color: '#fff', align: 'center', base: 'middle', weight: 800, shadow: 'rgba(0,0,0,.4)' });
   },
   catBadge(cat, x, y) {
     const cols = { phys: '#e0603a', spec: '#4b73d8', status: '#8c8c9c' }, lbl = { phys: 'PHYS', spec: 'SPEC', status: 'STAT' };
-    this.rrect(x, y, 22, 9, 2.5); this.c.fillStyle = cols[cat]; this.c.fill();
+    this.shape(x, y, 22, 9, 2.5, cols[cat]);
     this.text(lbl[cat], x + 11, y + 4.8, { size: 5.2, color: '#fff', align: 'center', base: 'middle', weight: 800 });
   },
 };

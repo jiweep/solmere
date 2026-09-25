@@ -129,7 +129,12 @@ G.drawOverlays = function () {
   const U = G.ui;
   // area sign: a wooden board on two chains drops in from the top, bounces to a stop and swings on its
   // chains (a damped pendulum with a little lingering sway), then is hauled back up
-  if (G.banner) G.drawAreaSign(G.banner);
+  // only over the overworld and its dialogue, never on top of a menu or a battle (it keeps its clock, so
+  // it has usually left by the time the menu closes)
+  if (G.banner) {
+    const top = G.top(), w = G.world && G.world.scene;
+    if (!w || top === w || top instanceof G.DialogScene) G.drawAreaSign(G.banner);
+  }
   // toasts
   // toasts stack down from the top-right so they never cover the dialogue box
   let ty = G.net && G.net.connected ? 30 : 18;

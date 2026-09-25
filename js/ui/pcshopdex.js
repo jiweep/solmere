@@ -103,7 +103,7 @@ G.PCScene = class {
     for (let k = 0; k < 30; k++) {
       const x = bx + 6 + (k % 6) * 31, y = by + 24 + Math.floor(k / 6) * 30, sel = this.side === 'box' && this.i === k;
       if (!this.sub) U.pick(x, y, 28, 27, sel, () => { this.side = 'box'; this.i = k; });
-      U.rrect(x, y, 28, 27, 4); U.c.fillStyle = sel ? 'rgba(255,211,92,.6)' : 'rgba(40,48,64,.07)'; U.c.fill();
+      U.shape(x, y, 28, 27, 4, sel ? 'rgba(255,211,92,.6)' : 'rgba(40,48,64,.07)');
       const m = list[k]; if (m) U.img(G.monArt.icon(m.sp, m.shiny, sel ? Math.floor(this.t / 10) % 2 : 0), x - 4, y - 5, { scale: 1, alpha: this.o.grave ? .6 : 1 });
     }
     U.text(this.o.grave ? `${list.length} remembered` : `${list.length}/30   ·   Q/E change box`, bx + 98, 176, { size: 5.4, color: '#6a7080', align: 'center' });

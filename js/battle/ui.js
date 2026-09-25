@@ -163,7 +163,7 @@
           const lbl = eff === 0 ? 'No effect' : eff > 1 ? 'Super effective' : eff < 1 ? 'Not very effective' : '';
           if (lbl) U.text(lbl, x + 7, y + 12.8, { size: 5, weight: 800, color: eff === 0 ? '#d0d0d8' : eff > 1 ? '#c8ffb0' : '#ffd0c0', shadow: 'rgba(0,0,0,.45)' });
         }
-        if (mv.dis) { U.rrect(x, y, 128, 21, 5); U.c.fillStyle = 'rgba(20,20,30,.5)'; U.c.fill(); }
+        if (mv.dis) { U.shape(x, y, 128, 21, 5, 'rgba(20,20,30,.5)'); }
       });
       // info panel
       const mv = this.req.moves[this.i], m = G.MOVES[mv.id];
@@ -183,7 +183,7 @@
         const on = this.res, bx = 266, by = G.H - 66;
         U.hot(bx, by, 112, 13, null, () => G.input.tap('r'));
         U.panel(bx, by, 112, 13, on ? 'teal' : 'dark', { r: 4 });
-        if (on) { U.rrect(bx - 1, by - 1, 114, 15, 5); U.c.lineWidth = G.gfx.S * (1 + .5 * Math.sin(G.realTime * 8)); U.c.strokeStyle = '#bffff4'; U.c.stroke(); }
+        if (on) { U.shape(bx - 1, by - 1, 114, 15, 5, null, '#bffff4', 1 + .5 * Math.sin(G.realTime * 8)); }
         U.text((on ? '✦ RESONATING ✦' : '✦ Resonate') + '  [R]', bx + 56, by + 3, { size: 5.8, weight: 800, color: '#fff', align: 'center' });
       }
     }

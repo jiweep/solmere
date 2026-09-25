@@ -62,7 +62,7 @@ G.TextBox = class {
       U.c.globalAlpha = .9; U.para(this.x, this.y, this.w, this.h, 5, '#10121c'); U.c.globalAlpha = 1; U.para(this.x, this.y, this.w, 1.2, 5, '#ff3b4e');
     } else U.panel(this.x, this.y, this.w, this.h, this.style, { r: 5 });
     // inner decorative line
-    if (this.style === 'light') { U.rrect(this.x + 3, this.y + 3, this.w - 6, this.h - 6, 3); U.c.lineWidth = G.gfx.S * .45; U.c.strokeStyle = 'rgba(42,48,64,.18)'; U.c.stroke(); }
+    if (this.style === 'light') { U.shape(this.x + 3, this.y + 3, this.w - 6, this.h - 6, 3, null, 'rgba(42,48,64,.18)', .45); }
     const por = this.drawPortrait();
     if (this.speaker) {
       // slanted name tag that snaps in with a little overshoot
@@ -340,14 +340,14 @@ G.NamingScene = class {
     this.rows.forEach((r, y) => [...r].forEach((chx, x) => {
       const sel = this.cx === x && this.cy === y;
       U.pick(gx + x * cw, gy + y * ch, cw - 3, ch - 3, sel, () => { this.cx = x; this.cy = y; this.gridMode = true; });
-      if (sel) { U.rrect(gx + x * cw, gy + y * ch, cw - 3, ch - 3, 3); U.c.fillStyle = '#ffd35c'; U.c.fill(); }
+      if (sel) { U.shape(gx + x * cw, gy + y * ch, cw - 3, ch - 3, 3, '#ffd35c'); }
       U.text(chx === ' ' ? '␣' : chx, gx + x * cw + (cw - 3) / 2, gy + y * ch + 2.5, { size: 8, weight: 700, align: 'center', color: sel ? '#3a2800' : '#dfe6f2' });
     }));
     const by = gy + this.rows.length * ch;
     ['Delete', 'Reset', 'OK'].forEach((l, i) => {
       const sel = this.cy === this.rows.length && Math.floor(this.cx / 3.34) === i;
       U.pick(gx + i * 88, by + 1, 80, ch - 3, sel, () => { this.cy = this.rows.length; this.cx = [0, 4, 8][i]; this.gridMode = true; });
-      U.rrect(gx + i * 88, by + 1, 80, ch - 3, 3); U.c.fillStyle = sel ? '#ffd35c' : (i === 2 ? '#2bb3a3' : '#3a4a66'); U.c.fill();
+      U.shape(gx + i * 88, by + 1, 80, ch - 3, 3, sel ? '#ffd35c' : (i === 2 ? '#2bb3a3' : '#3a4a66'));
       U.text(l, gx + i * 88 + 40, by + 3.5, { size: 7.5, weight: 800, align: 'center', color: sel ? '#3a2800' : '#fff' });
     });
     U.text(this.v || !o.def ? 'Type on your keyboard, or use arrows + Z.  Enter = done' : `Type a name, or press Enter to go with "${o.def}".`, G.W / 2, G.H - 10, { size: 5.8, align: 'center', color: '#9fb2cc' });
