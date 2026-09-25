@@ -23,6 +23,54 @@ G.MUSIC_FILES = {
 "worked": 1790340097,
 "hidden": true
 },
+"aud10": {
+"file": "music/aud10.mp3",
+"loop": true,
+"loopStart": 11.47812,
+"loopEnd": 67.72812,
+"duration": 69.22812,
+"bpm": 128.0,
+"title": "Audition 10 - Tidewalk",
+"intro": 3.75,
+"worked": 1790341729,
+"hidden": true
+},
+"aud11": {
+"file": "music/aud11.mp3",
+"loop": true,
+"loopStart": 8.38396,
+"loopEnd": 70.45292,
+"duration": 71.95293,
+"bpm": 116.00002,
+"title": "Audition 11 - Porchlight",
+"intro": 4.13793,
+"worked": 1790341731,
+"hidden": true
+},
+"aud12": {
+"file": "music/aud12.mp3",
+"loop": true,
+"loopStart": 12.05003,
+"loopEnd": 71.06643,
+"duration": 72.56642,
+"bpm": 122.0,
+"title": "Audition 12 - Harbor Hop",
+"intro": 7.86885,
+"worked": 1790341734,
+"hidden": true
+},
+"aud13": {
+"file": "music/aud13.mp3",
+"loop": true,
+"loopStart": 11.8822,
+"loopEnd": 90.6322,
+"duration": 92.1322,
+"bpm": 96.0,
+"title": "Audition 13 - Lantern",
+"intro": 3.75,
+"worked": 1790341734,
+"hidden": true
+},
 "aud2": {
 "file": "music/aud2.mp3",
 "loop": true,
@@ -105,6 +153,18 @@ G.MUSIC_FILES = {
 "title": "Audition 8 - Musette Waltz",
 "intro": 4.8,
 "worked": 1790340087,
+"hidden": true
+},
+"aud9": {
+"file": "music/aud9.mp3",
+"loop": true,
+"loopStart": 9.55092,
+"loopEnd": 91.3691,
+"duration": 92.86909,
+"bpm": 88.0,
+"title": "Audition 9 - Keepsake",
+"intro": 5.45455,
+"worked": 1790341737,
 "hidden": true
 },
 "bike": {
