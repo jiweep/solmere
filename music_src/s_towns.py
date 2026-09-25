@@ -6,10 +6,11 @@ from motifs import TIDE, CRANE
 # ============================================================================ BRINEHOLLOW (hometown)
 # Bb major, 100, gentle 16th swing. Nylon guitar, flute, soft piano; the iv-minor (Ebm6) sigh in
 # bar 12 is the "home" feeling that returns in the credits.
-BRINE_A = ('r:8 f5:8 bb5:8 c6:8 d6:4 c6:8 bb5:8 |-:4 g5:8 a5:8 bb5:8 d6:4. | c6:8 bb5:8 g5:4 eb5:8 f5:8 g5:8 bb5:8 |-:4 c6:8 bb5:8 a5:2 |'
-           'r:8 a4:8 d5:8 f5:8 a5:4 g5:8 f5:8 |-:4 bb4:8 d5:8 g5:8 bb5:4. | a5:8 g5:8 eb5:4 d5:8 eb5:8 g5:8 bb5:8 |-:4 c6:8 bb5:8 a5:4 r:8 f5:8 |'
-           'bb5:8 c6:8 d6:8 f6:8 -:4 d6:8 c6:8 | ab5:4. g5:8 f5:4 d5:4 | eb5:8 g5:8 bb5:8 d6:8 -:4 c6:8 bb5:8 | gb5:4. f5:8 eb5:4 c5:4 |'
-           'r:8 f5:8 a5:8 c6:8 d6:4 c6:8 a5:8 | b5:4 ab5:8 b5:8 d6:8 f6:4. | eb6:8 d6:8 c6:8 g5:8 a5:8 c6:8 eb6:4 | d6:2. r:8 f5:8')
+# one 2-bar idea (dotted rise, a note held over the barline, a sigh down) stated, sequenced up, answered
+BRINE_A = ('d5:4. c5:8 d5:8 f5:4. | -:4 a5:4 g5:2 | g5:4. f5:8 g5:8 bb5:4. | -:4 c6:4 a5:2 |'
+           'f5:4. e5:8 f5:8 a5:4. | -:4 bb5:4 g5:2 | eb5:4. d5:8 eb5:8 g5:4. | -:4 f5:4 c5:2 |'
+           'd5:4. c5:8 d5:8 f5:4. | -:4 ab5:4 f5:2 | g5:4. f5:8 g5:8 bb5:4. | -:4 c6:4 gb5:2 |'
+           'a5:4. g5:8 e5:8 f5:4. | -:4 b5:4 ab5:2 | g5:4 eb5:4 d5:4 c5:4 | d5:2. r:4')
 BRINE_CH_A = 'Bbmaj9 | Gm9 | Ebmaj9 | F13sus4 F13 | Dm7 | Gm7 | Cm9 | F7sus4 F7 | Bbmaj9 | Bb7 | Ebmaj7 | Ebm6 | Dm7 | G7b9 | Cm9 F13 | Bb6'
 
 

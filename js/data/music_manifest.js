@@ -23,9 +23,9 @@ G.MUSIC_FILES = {
 "brinehollow": {
 "file": "music/brinehollow.mp3",
 "loop": true,
-"loopStart": 5.81746,
-"loopEnd": 61.20209,
-"duration": 61.80209,
+"loopStart": 4.6551,
+"loopEnd": 60.03973,
+"duration": 60.63973,
 "bpm": 103.99998,
 "title": "Brinehollow",
 "intro": 0.0
@@ -33,9 +33,9 @@ G.MUSIC_FILES = {
 "brinehollow@night": {
 "file": "music/brinehollow_night.mp3",
 "loop": true,
-"loopStart": 4.47052,
-"loopEnd": 59.85515,
-"duration": 60.45515,
+"loopStart": 8.09229,
+"loopEnd": 63.47692,
+"duration": 64.07692,
 "bpm": 103.99998,
 "title": "Brinehollow",
 "intro": 0.0
@@ -93,9 +93,9 @@ G.MUSIC_FILES = {
 "conclave": {
 "file": "music/conclave.mp3",
 "loop": true,
-"loopStart": 7.80794,
-"loopEnd": 51.44431,
-"duration": 52.04431,
+"loopStart": 8.15714,
+"loopEnd": 51.79351,
+"duration": 52.39351,
 "bpm": 87.99998,
 "title": "The Conclave",
 "intro": 0.0
@@ -193,9 +193,9 @@ G.MUSIC_FILES = {
 "evolution": {
 "file": "music/evolution.mp3",
 "loop": true,
-"loopStart": 7.27415,
-"loopEnd": 26.47415,
-"duration": 27.07415,
+"loopStart": 6.89002,
+"loopEnd": 26.09002,
+"duration": 26.69002,
 "bpm": 100.0,
 "title": "What? Something's happening!",
 "intro": 0.0
@@ -273,9 +273,9 @@ G.MUSIC_FILES = {
 "gate": {
 "file": "music/gate.mp3",
 "loop": true,
-"loopStart": 3.83197,
-"loopEnd": 23.83197,
-"duration": 24.43197,
+"loopStart": 8.83061,
+"loopEnd": 28.83061,
+"duration": 29.43061,
 "bpm": 96.0,
 "title": "Victory Gate",
 "intro": 0.0
@@ -303,9 +303,9 @@ G.MUSIC_FILES = {
 "halloffame": {
 "file": "music/halloffame.mp3",
 "loop": true,
-"loopStart": 9.66009,
-"loopEnd": 49.66009,
-"duration": 50.26009,
+"loopStart": 7.65964,
+"loopEnd": 47.65964,
+"duration": 48.25964,
 "bpm": 96.0,
 "title": "Hall of Fame",
 "intro": 5.0
@@ -323,9 +323,9 @@ G.MUSIC_FILES = {
 "home": {
 "file": "music/home.mp3",
 "loop": true,
-"loopStart": 4.01655,
-"loopEnd": 45.75569,
-"duration": 46.35567,
+"loopStart": 8.38662,
+"loopEnd": 50.12576,
+"duration": 50.72576,
 "bpm": 91.99998,
 "title": "Home Sweet Home",
 "intro": 0.0
@@ -343,9 +343,9 @@ G.MUSIC_FILES = {
 "hq": {
 "file": "music/hq.mp3",
 "loop": true,
-"loopStart": 7.68821,
-"loopEnd": 38.65594,
-"duration": 39.25594,
+"loopStart": 6.87506,
+"loopEnd": 37.84279,
+"duration": 38.44279,
 "bpm": 124.00004,
 "title": "Crane Fellowship HQ",
 "intro": 0.0
@@ -483,9 +483,9 @@ G.MUSIC_FILES = {
 "legend": {
 "file": "music/legend.mp3",
 "loop": true,
-"loopStart": 13.73181,
-"loopEnd": 69.38398,
-"duration": 69.98397,
+"loopStart": 13.93634,
+"loopEnd": 69.58852,
+"duration": 70.1885,
 "bpm": 137.99999,
 "title": "Battle! (Orrelume)",
 "intro": 6.95652
@@ -493,9 +493,9 @@ G.MUSIC_FILES = {
 "lighthouse": {
 "file": "music/lighthouse.mp3",
 "loop": true,
-"loopStart": 7.52358,
-"loopEnd": 48.66644,
-"duration": 49.26644,
+"loopStart": 7.53855,
+"loopEnd": 48.68141,
+"duration": 49.28141,
 "bpm": 140.0,
 "title": "The Tidelight \u2014 Ascent",
 "intro": 0.0
@@ -523,9 +523,9 @@ G.MUSIC_FILES = {
 "route1": {
 "file": "music/route1.mp3",
 "loop": true,
-"loopStart": 13.92636,
-"loopEnd": 69.57854,
-"duration": 70.17853,
+"loopStart": 13.94632,
+"loopEnd": 69.59849,
+"duration": 70.19848,
 "bpm": 137.99999,
 "title": "Route 1 \u2014 First Steps",
 "intro": 6.95652
@@ -533,9 +533,9 @@ G.MUSIC_FILES = {
 "route1@night": {
 "file": "music/route1_night.mp3",
 "loop": true,
-"loopStart": 11.65153,
-"loopEnd": 67.30371,
-"duration": 67.9037,
+"loopStart": 10.47421,
+"loopEnd": 66.12639,
+"duration": 66.72637,
 "bpm": 137.99999,
 "title": "Route 1 \u2014 First Steps",
 "intro": 6.95652
@@ -703,9 +703,9 @@ G.MUSIC_FILES = {
 "title": {
 "file": "music/title.mp3",
 "loop": true,
-"loopStart": 18.69002,
-"loopEnd": 95.49002,
-"duration": 96.09,
+"loopStart": 18.79977,
+"loopEnd": 95.59977,
+"duration": 96.19977,
 "bpm": 100.0,
 "title": "Solmere \u2014 Main Theme",
 "intro": 9.6
@@ -723,9 +723,9 @@ G.MUSIC_FILES = {
 "victory_champion": {
 "file": "music/victory_champion.mp3",
 "loop": true,
-"loopStart": 12.09993,
-"loopEnd": 49.02302,
-"duration": 49.62302,
+"loopStart": 13.99063,
+"loopEnd": 50.91372,
+"duration": 51.51372,
 "bpm": 103.99998,
 "title": "Victory! (Champion)",
 "intro": 9.23077
@@ -763,9 +763,9 @@ G.MUSIC_FILES = {
 "victoryroad": {
 "file": "music/victoryroad.mp3",
 "loop": true,
-"loopStart": 11.32347,
-"loopEnd": 56.32347,
-"duration": 56.92347,
+"loopStart": 11.28855,
+"loopEnd": 56.28855,
+"duration": 56.88855,
 "bpm": 128.0,
 "title": "Victory Road",
 "intro": 3.75

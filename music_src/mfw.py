@@ -948,7 +948,7 @@ def anticipate(song):
     Only when the note before is held for at least a beat (so the push steals from a sustain, never
     from a run). Deterministic per song; fast battle themes and jingles keep their written rhythm."""
     if song.bar != 4 or song.id.startswith('j_') or song.bpm >= 150 or getattr(song, 'no_push', False): return
-    rate = getattr(song, 'push', .38)
+    rate = getattr(song, 'push', .22)
     for part in _melody_parts(song):
         ns = sorted(part.notes)
         r = random.Random(f'push|{song.id}|{part.name}')
