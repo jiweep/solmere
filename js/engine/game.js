@@ -49,9 +49,13 @@ G.render = function () {
   let start = 0;
   for (let i = G.scenes.length - 1; i >= 0; i--) if (G.scenes[i].opaque) { start = i; break; }
   G.ui._hotNext = [];
+  // 3D world: the WebGL canvas sits under this one; leave the viewport transparent over it
+  const w3 = G.W3 && G.W3.active(G.scenes[start]);
+  if (w3) { if (G.W3.render(G.scenes[start])) c.clearRect(gx.ox, gx.oy, G.W * S, G.H * S); } else if (G.W3) G.W3.hide();
+  G.in3d = !!w3;
   for (let i = start; i < G.scenes.length; i++) {
     const s = G.scenes[i];
-    if (s.draw && s.lowres !== false) {
+    if (s.draw && s.lowres !== false && !(w3 && i === start)) {
       const b = gx.bx;
       b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = 1; b.globalCompositeOperation = 'source-over';
       b.clearRect(0, 0, G.W, G.H);

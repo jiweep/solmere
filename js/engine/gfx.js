@@ -21,7 +21,7 @@ G.gfx = {
   S: 4, ox: 0, oy: 0, fill: false,
   init() {
     const cv = document.getElementById('game');
-    this.canvas = cv; this.cx = cv.getContext('2d', { alpha: false });
+    this.canvas = cv; this.cx = cv.getContext('2d', { alpha: true });
     this.buf = G.makeCanvas(G.W, G.H); this.bx = this.buf.getContext('2d');
     this.bx.imageSmoothingEnabled = false;
     window.addEventListener('resize', () => this.resize());

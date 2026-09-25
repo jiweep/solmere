@@ -407,6 +407,19 @@ G.WorldScene = class {
     }
     return false;
   }
+  // UI layer over the 3D world: emotes above heads and the race clock
+  drawUI3d(c) {
+    const U = G.ui;
+    for (const e of [...this.ents, this.player, this.follower].filter(Boolean)) if (e.emote) {
+      const q = G.W3.project(e.px + 8, e.py + 16, 2.4); if (!q) continue;
+      const k = Math.min(1, e.emoteT / 6); U.img(G.EMOTES(e.emote), q.x - 6.5, q.y - 12 - k * 4);
+    }
+    if (G.flag('race_active')) {
+      const v = Math.max(0, G.save.vars.raceLeft || 0), low = v < 60 * 5;
+      U.panel(G.W / 2 - 34, 4, 68, 16, low ? 'red' : 'dark', { r: 4 });
+      U.text('RACE  ' + (v / 60).toFixed(1) + 's', G.W / 2, 7.5, { size: 7.4, weight: 800, align: 'center', color: '#fff' });
+    }
+  }
   // start a script and hold the world still from this very frame (G.run starts it a tick later,
   // which let a running player take one more step past story blockers)
   lockRun(fn) { this.busy++; G.run(async () => { try { await fn(); } finally { this.busy--; } }); }
@@ -962,6 +975,7 @@ G.WorldScene = class {
   }
   drawUI(c) {
     const S = G.gfx.S, U = G.ui;
+    if (G.in3d) return this.drawUI3d(c);
     if (G.flag('race_active')) {
       const v = Math.max(0, G.save.vars.raceLeft || 0), sec = (v / 60).toFixed(1), low = v < 60 * 5;
       U.panel(G.W / 2 - 34, 4, 68, 16, low ? 'red' : 'dark', { r: 4 });

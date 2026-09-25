@@ -105,6 +105,7 @@ G.openTrainerCard = function () {
 G.openOptions = function () {
   const S = G.settings, sv = G.save;
   const opts = [
+    { k: 'render3d', label: '3D World (beta, F3)', vals: [false, true], names: ['Off', 'On'] },
     { k: 'textSpeed', label: 'Text Speed', vals: [0, 1, 2, 3], names: ['Slow', 'Mid', 'Fast', 'Instant'] },
     { k: 'battleAnims', label: 'Battle Animations', vals: [true, false], names: ['On', 'Off'] },
     { k: 'battleSpeed', label: 'Battle Speed', vals: [1, 1.5, 2, 3], names: ['1x', '1.5x', '2x', '3x'] },

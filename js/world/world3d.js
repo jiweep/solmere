@@ -1,0 +1,349 @@
+'use strict';
+// ============================================================================
+//  3D world renderer (WebGL, three.js). Presentation only: the game still runs
+//  on the 2D tile grid (movement, collision, scripts); this draws that grid as a
+//  DS-style 3D scene. Terrain gets real height levels (cliffs become walls,
+//  ramps become slopes), buildings become textured low-poly models, and
+//  characters, trees and props stand in the scene as upright pixel sprites.
+//  Rendered at a low internal resolution and scaled up with nearest filtering
+//  so it keeps the pixel-art look. Units: 1 = one tile; x east, z south, y up.
+// ============================================================================
+G.W3 = (function () {
+  const T = window.THREE;
+  const LEVEL_H = 1.1;          // height of one cliff level, in tiles
+  const RES = 2;                // internal resolution multiplier over 384x216
+  let R = null, cv = null, scene, camera, sun, hemi, cache = new Map(), cur = null, ok = !!T;
+
+  // ------------------------------------------------------------- setup
+  function init() {
+    if (R || !ok) return !!R;
+    try {
+      cv = document.createElement('canvas'); cv.id = 'w3';
+      Object.assign(cv.style, { position: 'fixed', left: '0', top: '0', zIndex: '0', imageRendering: 'pixelated', display: 'none' });
+      document.body.insertBefore(cv, document.body.firstChild);
+      R = new T.WebGLRenderer({ canvas: cv, antialias: false, alpha: false, powerPreference: 'high-performance' });
+      R.setPixelRatio(1); R.setSize(G.W * RES, G.H * RES, false);
+      R.shadowMap.enabled = true; R.shadowMap.type = T.PCFShadowMap;
+      R.outputColorSpace = T.SRGBColorSpace;
+      scene = new T.Scene();
+      camera = new T.PerspectiveCamera(26, G.W / G.H, .5, 200);
+      hemi = new T.HemisphereLight(0xdfeeff, 0x4a5a3a, .9); scene.add(hemi);
+      sun = new T.DirectionalLight(0xfff0d8, 1.7);
+      sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+      const sc = sun.shadow.camera; sc.left = -22; sc.right = 22; sc.top = 22; sc.bottom = -22; sc.near = 1; sc.far = 80;
+      sun.shadow.bias = -.0015; sun.shadow.normalBias = .02;
+      scene.add(sun); scene.add(sun.target);
+      return true;
+    } catch (e) { console.warn('3D unavailable', e); ok = false; R = null; return false; }
+  }
+  const tex = (canvas) => { const t = new T.CanvasTexture(canvas); t.magFilter = T.NearestFilter; t.minFilter = T.NearestFilter; t.generateMipmaps = false; t.colorSpace = T.SRGBColorSpace; return t; };
+
+  // ------------------------------------------------------------- heights
+  // Levels come from the cliffs: cliff cells separate regions, the region north of a cliff is one
+  // level above the region south of it. Walkable cells cut through a cliff line are ramps.
+  function levels(map) {
+    const W = map.w, H = map.h, N = W * H;
+    const cliff = c => c && (c.g === 'cliff' || c.g === 'cavewall' || c.g === 'crystalwall');
+    const isRamp = (x, y) => { const c = map.cell(x, y); if (!c || cliff(c) || c.solid && !c.ledge) return false; return cliff(map.cell(x - 1, y)) || cliff(map.cell(x + 1, y)) || (cliff(map.cell(x - 2, y)) && !cliff(map.cell(x - 1, y)) && isRampLine(x - 1, y)) || (cliff(map.cell(x + 2, y)) && isRampLine(x + 1, y)); };
+    const isRampLine = (x, y) => { const c = map.cell(x, y); return c && !cliff(c) && (cliff(map.cell(x - 1, y)) || cliff(map.cell(x + 1, y))); };
+    const kind = new Uint8Array(N);   // 0 ground, 1 cliff, 2 ramp
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const c = map.cell(x, y); kind[y * W + x] = cliff(c) ? 1 : isRamp(x, y) ? 2 : 0; }
+    // ramps spanning a whole cliff gap: every walkable cell in a row between cliff cells
+    for (let y = 0; y < H; y++) {
+      let x = 0;
+      while (x < W) {
+        if (kind[y * W + x] === 1) { let e = x + 1; while (e < W && kind[y * W + e] !== 1 && map.cell(e, y) && !map.cell(e, y).solid) e++; if (e < W && kind[y * W + e] === 1 && e - x - 1 <= 8) for (let k = x + 1; k < e; k++) kind[y * W + k] = 2; x = e; } else x++;
+      }
+    }
+    const reg = new Int32Array(N).fill(-1); let nr = 0;
+    for (let i = 0; i < N; i++) if (kind[i] === 0 && reg[i] < 0) {
+      const q = [i]; reg[i] = nr;
+      while (q.length) { const p = q.pop(), x = p % W, y = (p / W) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue; const n = ny * W + nx; if (kind[n] === 0 && reg[n] < 0) { reg[n] = nr; q.push(n); } } }
+      nr++;
+    }
+    // constraints from cliff and ramp cells: region above (north) = region below (south) + 1
+    const edges = [];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x; if (!kind[i]) continue;
+      let up = -1, dn = -1;
+      for (let k = 1; k <= 3 && up < 0; k++) { const yy = y - k; if (yy < 0) break; const j = yy * W + x; if (kind[j] === 0) up = reg[j]; else if (kind[j] !== kind[i]) break; }
+      for (let k = 1; k <= 3 && dn < 0; k++) { const yy = y + k; if (yy >= H) break; const j = yy * W + x; if (kind[j] === 0) dn = reg[j]; else if (kind[j] !== kind[i]) break; }
+      if (up >= 0 && dn >= 0 && up !== dn) edges.push([up, dn]);
+    }
+    const lv = new Array(nr).fill(null);
+    for (let r0 = 0; r0 < nr; r0++) {
+      if (lv[r0] !== null) continue;
+      lv[r0] = 0; const q = [r0];
+      while (q.length) { const r = q.shift(); for (const [u, d] of edges) { if (u === r && lv[d] === null) { lv[d] = lv[r] - 1; q.push(d); } if (d === r && lv[u] === null) { lv[u] = lv[r] + 1; q.push(u); } } }
+    }
+    const minL = Math.min(0, ...lv.filter(v => v !== null));
+    // per-cell corner heights (NW, NE, SW, SE)
+    const flat = new Float32Array(N);
+    for (let i = 0; i < N; i++) if (kind[i] === 0) flat[i] = (lv[reg[i]] - minL) * LEVEL_H;
+    const upDn = (x, y) => {
+      let up = null, dn = null;
+      for (let k = 1; k <= 4 && up === null; k++) { const yy = y - k; if (yy < 0) break; if (kind[yy * W + x] === 0) up = flat[yy * W + x]; }
+      for (let k = 1; k <= 4 && dn === null; k++) { const yy = y + k; if (yy >= H) break; if (kind[yy * W + x] === 0) dn = flat[yy * W + x]; }
+      if (up === null) up = dn || 0; if (dn === null) dn = up;
+      return [up, dn];
+    };
+    const corner = new Float32Array(N * 4);
+    const band = new Float32Array(N * 2);   // for sloped cells: [fraction of the drop already done at the north edge, at the south edge]
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      if (kind[i] === 0) { corner.fill(flat[i], i * 4, i * 4 + 4); continue; }
+      // a vertical run of cliff/ramp cells spreads the drop over its length
+      let top = y; while (top > 0 && kind[(top - 1) * W + x] === kind[i]) top--;
+      let bot = y; while (bot < H - 1 && kind[(bot + 1) * W + x] === kind[i]) bot++;
+      const [u, d] = upDn(x, top), n = bot - top + 1, a = (y - top) / n, b = (y - top + 1) / n;
+      const hn = u + (d - u) * a, hs = u + (d - u) * b;
+      corner[i * 4] = corner[i * 4 + 1] = hn; corner[i * 4 + 2] = corner[i * 4 + 3] = hs;
+    }
+    const at = (fx, fy) => {   // smooth elevation at a fractional tile position
+      const x = Math.floor(fx), y = Math.floor(fy);
+      if (x < 0 || y < 0 || x >= W || y >= H) { const cx = G.clamp(x, 0, W - 1), cy = G.clamp(y, 0, H - 1); return corner[(cy * W + cx) * 4]; }
+      const i = (y * W + x) * 4, u = fx - x, v = fy - y;
+      const n = corner[i] + (corner[i + 1] - corner[i]) * u, s = corner[i + 2] + (corner[i + 3] - corner[i + 2]) * u;
+      return n + (s - n) * v;
+    };
+    return { kind, corner, at, W, H };
+  }
+
+  // ------------------------------------------------------------- terrain mesh
+  function buildTerrain(map, hv, group) {
+    const CT = G.terrain.CT, W = map.w, H = map.h, PADT = 10;
+    // chunks cover the map plus a border ring of trees/water
+    for (let cy = Math.floor(-PADT / CT); cy <= Math.floor((H + PADT) / CT); cy++) for (let cx = Math.floor(-PADT / CT); cx <= Math.floor((W + PADT) / CT); cx++) {
+      const ch = G.terrain.chunk(map, cx, cy);
+      const cvs = G.makeCanvas(ch.gnd.width, ch.gnd.height), c2 = cvs.getContext('2d');
+      c2.drawImage(ch.gnd, 0, 0); if (ch.shadow) { c2.globalAlpha = .55; c2.drawImage(ch.shadow, 0, 0); }
+      const t = tex(cvs);
+      const pos = [], uv = [], idx = [];
+      for (let j = 0; j < CT; j++) for (let i = 0; i < CT; i++) {
+        const x = cx * CT + i, y = cy * CT + j;
+        const inside = x >= 0 && y >= 0 && x < W && y < H;
+        let h = [0, 0, 0, 0];
+        if (inside) { const k = (y * W + x) * 4; h = [hv.corner[k], hv.corner[k + 1], hv.corner[k + 2], hv.corner[k + 3]]; }
+        else h.fill(hv.at(G.clamp(x, 0, W - 1) + .5, G.clamp(y, 0, H - 1) + .5));
+        const c = inside ? map.cell(x, y) : G.borderCell(map, x, y);
+        const wdrop = c && c.water ? -.14 : 0;
+        const b = pos.length / 3;
+        pos.push(x, h[0] + wdrop, y, x + 1, h[1] + wdrop, y, x, h[2] + wdrop, y + 1, x + 1, h[3] + wdrop, y + 1);
+        uv.push(i / CT, 1 - j / CT, (i + 1) / CT, 1 - j / CT, i / CT, 1 - (j + 1) / CT, (i + 1) / CT, 1 - (j + 1) / CT);
+        idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3);
+      }
+      const g = new T.BufferGeometry();
+      g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+      const mesh = new T.Mesh(g, new T.MeshLambertMaterial({ map: t }));
+      mesh.receiveShadow = true; group.add(mesh);
+    }
+    // cliff walls: vertical rock faces where a cell is higher than its east/west/south neighbour
+    const rock = rockTexture();
+    const pos = [], uv = [], idx = [];
+    const face = (x0, z0, x1, z1, yTop0, yTop1, yBot) => {
+      const b = pos.length / 3, hgt = Math.max(yTop0, yTop1) - yBot;
+      pos.push(x0, yTop0, z0, x1, yTop1, z1, x0, yBot, z0, x1, yBot, z1);
+      const L = Math.hypot(x1 - x0, z1 - z0);
+      uv.push(0, hgt, L, hgt, 0, 0, L, 0); idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3);
+    };
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const k = (y * W + x) * 4, C = hv.corner;
+      // south face
+      if (y + 1 < H) { const k2 = ((y + 1) * W + x) * 4, bot = Math.min(C[k2], C[k2 + 1]); if (C[k + 2] - bot > .2) face(x, y + 1, x + 1, y + 1, C[k + 2], C[k + 3], bot); }
+      if (x + 1 < W) { const k2 = (y * W + x + 1) * 4; const hA = Math.max(C[k + 1], C[k + 3]), hB = Math.max(C[k2], C[k2 + 2]); if (hA - hB > .2) face(x + 1, y + 1, x + 1, y, C[k + 3], C[k + 1], Math.min(C[k2], C[k2 + 2])); }
+      if (x > 0) { const k2 = (y * W + x - 1) * 4; const hA = Math.max(C[k], C[k + 2]), hB = Math.max(C[k2 + 1], C[k2 + 3]); if (hA - hB > .2) face(x, y, x, y + 1, C[k], C[k + 2], Math.min(C[k2 + 1], C[k2 + 3])); }
+    }
+    if (pos.length) {
+      const g = new T.BufferGeometry();
+      g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+      const m = new T.Mesh(g, new T.MeshLambertMaterial({ map: rock, side: T.DoubleSide })); m.receiveShadow = true; m.castShadow = true; group.add(m);
+    }
+  }
+  let rockTex = null;
+  function rockTexture() {
+    if (rockTex) return rockTex;
+    const p = new G.Painter(16, 16), Rm = G.ramp(['#4a3a2e', '#5e4a3a', '#735c48', '#8a7058', '#a0866a']);
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) p.set(x, y, G.tiles.rockAt(x, y, Rm.concat([Rm[4], Rm[4], Rm[4]]), 7, 7, 5.5));
+    for (let x = 0; x < 16; x++) { p.set(x, 0, G.rgb('#5aa446')); p.set(x, 1, G.rgb('#3e7a34')); }
+    rockTex = tex(p.done()); rockTex.wrapS = rockTex.wrapT = T.RepeatWrapping;
+    return rockTex;
+  }
+
+  // ------------------------------------------------------------- billboards
+  // upright sprite whose bottom-centre sits on the ground; tilted back to face the camera so the
+  // pixel art reads exactly as drawn
+  const PITCH = .8;   // radians the camera looks down from horizontal
+  function billboard(img, opts = {}) {
+    const t = tex(img);
+    const mat = new T.MeshLambertMaterial({ map: t, alphaTest: .5, transparent: false, side: T.DoubleSide });
+    const g = new T.PlaneGeometry(img.width / 16, img.height / 16); g.translate(0, img.height / 32, 0);
+    const m = new T.Mesh(g, mat);
+    m.rotation.x = -(Math.PI / 2 - PITCH) * (opts.lean === undefined ? .55 : opts.lean);
+    m.castShadow = opts.shadow !== false;
+    m.customDepthMaterial = new T.MeshDepthMaterial({ depthPacking: T.RGBADepthPacking, map: t, alphaTest: .5 });
+    m.userData.tex = t; m.userData.img = img;
+    return m;
+  }
+  function setBillboardImage(m, img) {
+    if (m.userData.img === img) return;
+    const t = tex(img); m.material.map = t; m.material.needsUpdate = true; m.customDepthMaterial.map = t; m.customDepthMaterial.needsUpdate = true;
+    if (m.userData.w !== img.width || m.userData.h !== img.height) { m.geometry.dispose(); m.geometry = new T.PlaneGeometry(img.width / 16, img.height / 16); m.geometry.translate(0, img.height / 32, 0); m.userData.w = img.width; m.userData.h = img.height; }
+    if (m.userData.tex) m.userData.tex.dispose(); m.userData.tex = t; m.userData.img = img;
+  }
+
+  // ------------------------------------------------------------- props
+  function buildProps(map, hv, group) {
+    const W = map.w, H = map.h, PADT = 6;
+    for (let y = -PADT; y < H + PADT; y++) for (let x = -PADT; x < W + PADT; x++) {
+      const inside = x >= 0 && y >= 0 && x < W && y < H;
+      const c = inside ? map.cell(x, y) : G.borderCell(map, x, y);
+      if (c && (c.g === 'tall' || c.g === 'flowers' || c.g === 'hedge')) {
+        // live ground (tall grass, flower beds, hedges) stands up out of the terrain
+        let lt = null; try { lt = c.g === 'hedge' ? G.tiles.hedgeSprite(map, c) : G.liveTile(map, c, 0); } catch (e) { }
+        if (lt && lt.img) {
+          const m = billboard(lt.img, { lean: c.g === 'hedge' ? .6 : .85, shadow: c.g !== 'flowers' });
+          const bz = y + (16 + (lt.oy || 0) + lt.img.height - 16) / 16;
+          m.position.set(x + .5, hv.at(G.clamp(x + .5, 0, W - .01), G.clamp(y + .5, 0, H - .01)) + .01, Math.min(bz, y + 1) - .02);
+          if (c.g === 'flowers') { m.rotation.x = -Math.PI / 2; m.position.z = y + .5 + lt.img.height / 32; m.position.y += .02; }
+          group.add(m);
+        }
+      }
+      if (!c || !c.o || c.o === 'table' || c.o === 'bed' || c.o === 'rug') continue;
+      if (c.cut || c.smash || c.push || c.solidIf) continue;   // stateful props stay dynamic (drawn as ents below)
+      let oi; try { oi = G.objImg(map, c, 0); } catch (e) { oi = null; }
+      if (!oi || !oi.img || oi.flat) continue;
+      const m = billboard(oi.img);
+      const bx = x + ((oi.ox || 0) + oi.img.width / 2) / 16, bz = y + ((oi.oy || 0) + oi.img.height) / 16;
+      m.position.set(bx, hv.at(G.clamp(bx, 0, W - .01), G.clamp(bz - .2, 0, H - .01)), bz - .12);
+      group.add(m);
+    }
+  }
+
+  // ------------------------------------------------------------- buildings
+  // a box body plus a pitched roof, textured by cutting the building's art into facade and roof
+  const WALL = { house: .44, haven: .48, mart: .48, lab: .46, gym: .5 };
+  function buildBuildings(map, hv, group) {
+    for (const b of map.buildings) {
+      const bi = G.tiles.building(b.kind, b.w, b.h, { roof: b.roof, door: b.door, accent: b.accent, label: b.label });
+      const img = bi.img, ax = bi.atlas ? G.bldAlign(b) : 0;
+      const baseY = hv.at(b.x + b.w / 2, Math.min(map.h - .01, b.y + b.h - .5));
+      const x0 = b.x + ax / 16, x1 = x0 + b.w, zF = b.y + b.h, zB = b.y + .3;
+      const g = new T.Group(); group.add(g);
+      if (b.kind === 'tower' || b.kind === 'lighthouse') {
+        // tall landmarks: stand the art up as a thick cut-out with side walls
+        const m = billboard(img, { lean: 0 }); m.position.set(x0 + b.w / 2, baseY, zF - .05); g.add(m);
+        continue;
+      }
+      const f = WALL[b.kind] || .45, wallPx = Math.round(img.height * f), roofPx = img.height - wallPx;
+      const facade = G.makeCanvas(img.width, wallPx); facade.getContext('2d').drawImage(img, 0, roofPx, img.width, wallPx, 0, 0, img.width, wallPx);
+      const roof = G.makeCanvas(img.width, roofPx); roof.getContext('2d').drawImage(img, 0, 0, img.width, roofPx, 0, 0, img.width, roofPx);
+      // side walls: the facade's average wall colour, a shade darker, with a plinth
+      const side = G.makeCanvas(8, 16); {
+        let r = 0, gg = 0, bb = 0, n = 0; const d = facade.getContext('2d').getImageData(0, 0, facade.width, facade.height).data;
+        for (let i = 0; i < d.length; i += 16) if (d[i + 3] > 200) { r += d[i]; gg += d[i + 1]; bb += d[i + 2]; n++; }
+        const sc = side.getContext('2d'), col = n ? [r / n, gg / n, bb / n] : [200, 190, 170];
+        sc.fillStyle = `rgb(${col[0] * .82 | 0},${col[1] * .82 | 0},${col[2] * .82 | 0})`; sc.fillRect(0, 0, 8, 16);
+        sc.fillStyle = `rgb(${col[0] * .6 | 0},${col[1] * .6 | 0},${col[2] * .6 | 0})`; sc.fillRect(0, 13, 8, 3);
+      }
+      const wallH = Math.min(1.9, wallPx / 16), roofH = Math.min(1.5, roofPx / 16 * .6), depth = zF - zB, ridgeZ = zB + depth * .45;
+      const mFac = new T.MeshLambertMaterial({ map: tex(facade), alphaTest: .4, side: T.DoubleSide });
+      const mSide = new T.MeshLambertMaterial({ map: tex(side) });
+      const mRoof = new T.MeshLambertMaterial({ map: tex(roof), alphaTest: .4, side: T.DoubleSide });
+      // body
+      const body = new T.Mesh(new T.BoxGeometry(b.w - .1, wallH, depth - .05), [mSide, mSide, mSide, mSide, mFac, mSide]);
+      body.position.set(x0 + b.w / 2, baseY + wallH / 2, zB + depth / 2); body.castShadow = body.receiveShadow = true; g.add(body);
+      // roof: two slopes meeting at a ridge, overhanging the walls a little
+      const ov = .25, geo = new T.BufferGeometry();
+      const X0 = x0 - ov, X1 = x1 + ov, Y0 = baseY + wallH, Y1 = Y0 + roofH, ZF = zF + ov, ZB = zB - ov;
+      const P = [X0, Y0, ZF, X1, Y0, ZF, X0, Y1, ridgeZ, X1, Y1, ridgeZ,  X0, Y1, ridgeZ, X1, Y1, ridgeZ, X0, Y0, ZB, X1, Y0, ZB];
+      const U = [0, 0, 1, 0, 0, 1, 1, 1,  0, 1, 1, 1, 0, .4, 1, .4];
+      geo.setAttribute('position', new T.Float32BufferAttribute(P, 3)); geo.setAttribute('uv', new T.Float32BufferAttribute(U, 2));
+      geo.setIndex([0, 1, 2, 1, 3, 2, 4, 5, 6, 5, 7, 6]); geo.computeVertexNormals();
+      const rm = new T.Mesh(geo, mRoof); rm.castShadow = rm.receiveShadow = true; g.add(rm);
+      // gable ends
+      const gab = new T.BufferGeometry();
+      gab.setAttribute('position', new T.Float32BufferAttribute([X0 + ov, Y0, ZF - ov, X0 + ov, Y1 - .05, ridgeZ, X0 + ov, Y0, ZB + ov, X1 - ov, Y0, ZF - ov, X1 - ov, Y0, ZB + ov, X1 - ov, Y1 - .05, ridgeZ], 3));
+      gab.setIndex([0, 1, 2, 3, 4, 5]); gab.computeVertexNormals();
+      const gm = new T.Mesh(gab, new T.MeshLambertMaterial({ map: tex(side), side: T.DoubleSide })); gm.castShadow = true; g.add(gm);
+    }
+  }
+
+  // ------------------------------------------------------------- build / cache
+  function build(map) {
+    if (cache.has(map.id)) return cache.get(map.id);
+    const group = new T.Group(), hv = levels(map);
+    buildTerrain(map, hv, group);
+    buildProps(map, hv, group);
+    buildBuildings(map, hv, group);
+    const dyn = new T.Group(); group.add(dyn);
+    const entry = { map, group, hv, dyn, sprites: new Map() };
+    cache.set(map.id, entry);
+    if (cache.size > 4) { const k = cache.keys().next().value; if (k !== map.id) { dispose(cache.get(k).group); cache.delete(k); } }
+    return entry;
+  }
+  function dispose(obj) { obj.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m.map) m.map.dispose(); m.dispose(); }); }); }
+
+  // ------------------------------------------------------------- per-frame
+  function entImage(w, e) {
+    if (e.kind === 'item') { if (e.hidden) return null; return G.tiles.get('fu|orbball|0', 16, 16, p => G.tiles.furniture(p, 'orbball', 0)); }
+    if (e.kind === 'sign') { if (e.invisible && !e.deco) return null; return e.deco ? null : (G.tiles.atlas && G.tiles.atlas('sign')); }
+    if (e.monSprite) return G.monArt.overworld(e.monSprite, !!e.shiny, e.dir, Math.floor(w.frame / 16) % 2);
+    if (!e.look) return null;
+    const sh = G.chars.sheet(e.look), surf = e === w.player && w.surfing;
+    const set = sh[e.dir + (surf ? '_surf' : '')] || sh.down, fr = surf ? 0 : e.animFrame();
+    return set[Math.min(fr, set.length - 1)];
+  }
+  function syncEnts(w, E) {
+    const seen = new Set(), H = E.hv;
+    const place = (key, img, px, py, lift = 0) => {
+      seen.add(key);
+      let m = E.sprites.get(key);
+      if (!img) { if (m) m.visible = false; return; }
+      if (!m) { m = billboard(img, { lean: .5 }); E.sprites.set(key, m); E.dyn.add(m); }
+      setBillboardImage(m, img); m.visible = true;
+      const fx = px / 16 + .5, fz = py / 16 + 1;
+      m.position.set(fx, H.at(G.clamp(fx, 0, H.W - .01), G.clamp(fz - .5, 0, H.H - .01)) + lift / 16, fz - .3);
+    };
+    for (const e of w.ents) if (e.visible && !e.hidden) place('e:' + e.id + ':' + e.x0id, entImage(w, e), e.px, e.py, e.hop || 0);
+    if (w.player) place('player', entImage(w, w.player), w.player.px, w.player.py, w.player.hop || 0);
+    const f = w.follower; if (f && !f.hidden) place('follower', G.monArt.overworld(f.mon.sp, f.mon.shiny, f.dir, Math.floor(w.frame / 10) % 2), f.px, f.py, f.hop || 0);
+    for (const [k, m] of E.sprites) if (!seen.has(k)) m.visible = false;
+  }
+  function lighting(w) {
+    const h = G.clock.hourF(), m = w.map;
+    const indoor = m.type !== 'outdoor';
+    const day = indoor ? 1 : h >= 7 && h <= 17 ? 1 : h > 17 && h < 19.5 ? 1 - (h - 17) / 2.5 : h > 5 && h < 7 ? (h - 5) / 2 : 0;
+    const dusk = !indoor && ((h > 16.5 && h < 20) || (h > 5 && h < 7.5));
+    sun.intensity = .35 + 1.45 * day; sun.color.set(dusk ? 0xffb070 : day > .5 ? 0xfff0d8 : 0x9ab0ff);
+    hemi.intensity = .45 + .55 * day; hemi.color.set(day > .3 ? 0xdfeeff : 0x5a6aa8); hemi.groundColor.set(day > .3 ? 0x4a5a3a : 0x1a1e30);
+    const sky = indoor ? 0x08080e : dusk ? 0xe8a88a : day > .3 ? 0x9cc8f0 : 0x0a1030;
+    scene.background = new T.Color(sky);
+    scene.fog = indoor ? null : new T.Fog(sky, 26, 60);
+  }
+  function render(w) {
+    if (!init()) return false;
+    const map = w.map;
+    if (!cur || cur.map !== map) { if (cur) scene.remove(cur.group); cur = build(map); scene.add(cur.group); }
+    syncEnts(w, cur);
+    lighting(w);
+    // camera: behind and above the player, a fixed DS-like pitch
+    const p = w.player, fx = p.px / 16 + .5, fz = p.py / 16 + .5, fy = cur.hv.at(G.clamp(fx, 0, map.w - .01), G.clamp(fz, 0, map.h - .01));
+    const dist = 30, cy = Math.sin(PITCH) * dist, cz = Math.cos(PITCH) * dist;
+    camera.position.set(fx, fy + cy, fz + cz); camera.lookAt(fx, fy + .6, fz);
+    sun.position.set(fx - 10, fy + 22, fz + 6); sun.target.position.set(fx, fy, fz);
+    // canvas placed exactly over the game viewport
+    const S = G.gfx.S, dpr = window.devicePixelRatio || 1;
+    Object.assign(cv.style, { display: 'block', left: (G.gfx.ox / dpr) + 'px', top: (G.gfx.oy / dpr) + 'px', width: (G.W * S / dpr) + 'px', height: (G.H * S / dpr) + 'px' });
+    R.render(scene, camera);
+    return true;
+  }
+  function hide() { if (cv) cv.style.display = 'none'; }
+  // world pixel position -> screen position in game units (for UI overlays such as emotes)
+  function project(px, py, lift = 0) {
+    if (!cur) return null;
+    const fx = px / 16, fz = py / 16, v = new T.Vector3(fx, cur.hv.at(G.clamp(fx, 0, cur.map.w - .01), G.clamp(fz, 0, cur.map.h - .01)) + lift, fz).project(camera);
+    return { x: (v.x + 1) / 2 * G.W, y: (1 - v.y) / 2 * G.H };
+  }
+  const active = (s) => ok && s && s.isWorld && G.settings.render3d && s.map && s.map.type === 'outdoor';
+  return { active, render, hide, project, invalidate: id => { const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
+})();
