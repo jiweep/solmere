@@ -273,7 +273,10 @@ G.BattleScene = class {
     this.drawAmbience(b);
     // platforms
     const n = this.nSlots(), ioff = this.intro * 260;
+    const E0 = G.BATTLE_ENVS[this.env] || {};
     const plat = (x, y, w, mine) => {
+      // outdoors there is no platform at all: the mons stand in the field with a soft contact shadow
+      if (!E0.indoor) { const ox2 = mine ? ioff : -ioff; for (let i = 0; i < 3; i++) { b.fillStyle = `rgba(10,20,10,${.1 + i * .05})`; b.beginPath(); b.ellipse(x + ox2, y + 2, w * .32 * (1 - i * .22), w * .07 * (1 - i * .22), 0, 0, Math.PI * 2); b.fill(); } return; }
       const img = G.battlePlatform(this.env, w, mine);
       b.drawImage(img, Math.round(x - img.width / 2 + (mine ? ioff : -ioff)), Math.round(y - img.height / 2 + 2));
     };

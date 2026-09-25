@@ -164,14 +164,22 @@ G.chars = (function () {
       let feet = 0, n = 0; for (let y = bot - 3; y <= bot; y++) if (rows[y] && rows[y][0] >= 0) { feet += rows[y][1] - rows[y][0]; n++; }
       let head = 0, hn = 0; for (let y = top; y < top + 8 && y < fh; y++) if (rows[y][0] >= 0) { head += (rows[y][0] + rows[y][1]) / 2; hn++; }
       let sx = 0, sn = 0; for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) if (d[(y * fw + x) * 4 + 3] > 0) { sx += x; sn++; }
-      return { feet: n ? feet / n : 0, head: hn ? head / hn : fw / 2, mass: sn ? sx / sn : fw / 2 };
+      // front/back stride: lowest pixel under the left half vs the right half (both feet planted = level)
+      const mid = Math.round(sn ? sx / sn : fw / 2); let lL = 0, lR = 0;
+      for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) if (d[(y * fw + x) * 4 + 3] > 0) { if (x < mid) lL = y; else lR = y; }
+      return { feet: n ? feet / n : 0, head: hn ? head / hn : fw / 2, mass: sn ? sx / sn : fw / 2, n: sn, level: Math.abs(lL - lR) };
     };
     const shift = (cv, dx) => { if (!dx) return cv; const o = G.makeCanvas(fw, fh); o.getContext('2d').drawImage(cv, dx, 0); return o; };
     dirs.forEach((d, i) => {
       let F = [fr(i * 3), fr(i * 3 + 1), fr(i * 3 + 2)];
       try {
-        const M = F.map(metrics);
-        const si = d === 'left' || d === 'right' ? M.reduce((bi, m, k) => m.feet < M[bi].feet ? k : bi, 0) : 0;
+        let M = F.map(metrics);
+        // frames the extractor lost (nearly empty) are replaced by the fullest frame
+        const full = M.reduce((bi, m, k) => m.n > M[bi].n ? k : bi, 0);
+        F = F.map((f, k) => M[k].n < M[full].n * .4 ? F[full] : f); M = F.map(metrics);
+        const side = d === 'left' || d === 'right';
+        // standing pose: narrowest stance from the side, feet most level from the front/back
+        const si = M.reduce((bi, m, k) => (side ? m.feet < M[bi].feet : m.level < M[bi].level) ? k : bi, 0);
         const order = [si, ...[0, 1, 2].filter(k => k !== si)];
         // side views align on the head; front/back views on the whole body, so both strides swing evenly
         const key = d === 'left' || d === 'right' ? 'head' : 'mass';

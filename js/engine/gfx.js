@@ -43,11 +43,12 @@ G.gfx = {
   present25(o = {}) {
     const c = this.cx, S = this.S, W = G.W, H = G.H, buf = this.buf;
     c.imageSmoothingEnabled = false; this._persp = true;
-    const MAG = o.tilt === undefined ? .2 : o.tilt;
+    const MAG = o.tilt === undefined ? .14 : o.tilt;
     if (!this._rows || this._rowsKey !== MAG + '|' + S) {
       // destination y/height per source row so the stack fills the screen exactly
       const m = []; let tot = 0;
-      for (let y = 0; y < H; y++) { const k = 1 + MAG * Math.pow(y / (H - 1), 1.35); m.push(k); tot += k; }
+      // linear in screen y = a flat tilted plane (a curved profile read as a rolling, drum-like floor)
+      for (let y = 0; y < H; y++) { const k = 1 + MAG * (y / (H - 1)); m.push(k); tot += k; }
       let acc = 0; this._rows = m.map(k => { const r = { k, y0: acc / tot * H * S }; acc += k; r.y1 = acc / tot * H * S; return r; });
       // inverse map per destination pixel row: source row (fractional) and magnification
       this._dst = [];

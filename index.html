@@ -14,6 +14,8 @@
   canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
   #ff { position: fixed; top: 10px; left: 10px; z-index: 5; padding: 6px 11px; border-radius: 9px; border: 1px solid rgba(255,255,255,.25); background: rgba(16,20,32,.55); color: #fff; font: 700 13px "Avenir Next", sans-serif; letter-spacing: .04em; cursor: pointer; opacity: .55; transition: opacity .15s, background .15s; user-select: none; }
   #ff:hover { opacity: 1; }
+  #sc { position: fixed; top: 10px; left: 64px; z-index: 5; padding: 6px 11px; border-radius: 9px; border: 1px solid rgba(255,255,255,.25); background: rgba(16,20,32,.55); color: #fff; font: 700 11px "Avenir Next", sans-serif; letter-spacing: .08em; cursor: pointer; opacity: .45; }
+  #sc:hover { opacity: 1; }
   #ff.on { background: rgba(255,196,40,.9); color: #1a1405; opacity: .95; border-color: rgba(255,255,255,.6); }
   #boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: #8af0e0; font: 600 18px "Avenir Next", sans-serif; letter-spacing: .1em; }
 </style>
@@ -22,6 +24,7 @@
 <div id="boot">SOLMERE · loading…</div>
 <canvas id="game"></canvas>
 <button id="ff" title="Fast-forward (Tab)">▶▶</button>
+<button id="sc" title="Showcase (F1): jump to any town, battle or scene">SHOWCASE</button>
 <script src="js/engine/core.js"></script>
 <script src="js/engine/input.js"></script>
 <script src="js/engine/gfx.js"></script>
@@ -79,11 +82,15 @@
       G.persist.globalSettings();
       G.gfx.fill = !!G.settings.fill;
       G.boot();
+      // Showcase from anywhere (cutscenes, battles): reload straight into the Showcase menu
+      const toShowcase = () => { location.href = location.pathname + '?showcase' + (/[?&]mute\b/.test(location.search) ? '&mute' : ''); };
+      document.getElementById('sc').addEventListener('click', ev => { ev.preventDefault(); toShowcase(); });
+      window.addEventListener('keydown', ev => { if (ev.code === 'F1') { ev.preventDefault(); toShowcase(); } });
       document.getElementById('ff').addEventListener('click', ev => { ev.preventDefault(); G.setTurbo(!G.turbo); G.ffButton = G.turbo; ev.currentTarget.blur(); });
       // right-click the button to step through speeds: 2x … 24x
       document.getElementById('ff').addEventListener('contextmenu', ev => { ev.preventDefault(); const V = [2, 3, 4, 6, 8, 12, 16, 24]; const i = V.indexOf(G.ffSpeed()); G.settings.ffSpeed = V[(i + 1) % V.length]; G.setTurbo(true); G.ffButton = true; });
       // the sprite atlas is an embedded image: decode it before the title shows
-      Promise.all([G.monArt.load(), G.chars.load(), G.tiles.loadWorld(), G.loadFonts()]).then(() => { G.push(new G.TitleScene()); document.getElementById('boot').remove(); });
+      Promise.all([G.monArt.load(), G.chars.load(), G.tiles.loadWorld(), G.loadFonts()]).then(() => { G.push(new G.TitleScene()); document.getElementById('boot').remove(); if (/[?&]showcase\b/.test(location.search)) { history.replaceState(null, '', location.pathname); G.run(() => G.openShowcase()); } });
       window.addEventListener('beforeunload', () => { try { G.persist.saveSettings(); } catch (e) {} });
     } catch (e) {
       document.getElementById('boot').textContent = 'Failed to start: ' + e.message;
