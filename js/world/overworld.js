@@ -411,7 +411,7 @@ G.WorldScene = class {
   drawUI3d(c) {
     const U = G.ui;
     for (const e of [...this.ents, this.player, this.follower].filter(Boolean)) if (e.emote) {
-      const q = G.W3.project(e.px + 8, e.py + 16, 1.75); if (!q) continue;
+      const q = G.W3.project(e.px + 8, e.py + 16, 2.2); if (!q) continue;
       const k = Math.min(1, e.emoteT / 6); U.img(G.EMOTES(e.emote), q.x - 6.5, q.y - 12 - k * 4);
     }
     if (G.flag('race_active')) {

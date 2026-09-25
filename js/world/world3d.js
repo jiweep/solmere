@@ -413,7 +413,7 @@ G.W3 = (function () {
   // lit like the ground they stand on (Lambert with an upward-facing normal, receiving the sun's
   // shadows and the lamps' light), and the silhouette gets a little rounding: faces turned toward the
   // sun (estimated from the alpha edges) are a touch brighter, the feet a touch darker.
-  const STRETCH = 1 / Math.cos(.8), ENT_SC = .58;
+  const STRETCH = 1 / Math.cos(.8), ENT_SC = .74;
   let blobMat = null, blobGeo = null;
   function blob() {
     if (!blobMat) {
@@ -686,7 +686,7 @@ G.W3 = (function () {
         const cards = !!(g.userData && g.userData.cards), mesh = new T.InstancedMesh(g, treeMaterial(map, crown, geo.h, cards), L.length);
         const M = new T.Matrix4(), Q = new T.Quaternion(), S = new T.Vector3(), Pv = new T.Vector3(), E = new T.Euler();
         L.forEach((t, i) => {
-          const sc = .88 + G.h2(t[0] * 10 | 0, t[2] * 10 | 0, 3) * .3, ry = t[3] * 40;
+          const sc = (.88 + G.h2(t[0] * 10 | 0, t[2] * 10 | 0, 3) * .3) * .82, ry = t[3] * 40;
           E.set(0, ry, 0); Q.setFromEuler(E); S.set(sc, sc * (.95 + t[3] * .12), sc); Pv.set(t[0], t[1], t[2]);
           M.compose(Pv, Q, S); mesh.setMatrixAt(i, M);
           if (crown) { const sh = G.h2(t[4].x | 0, t[4].y | 0, 91), k = sh < .4 ? .78 : sh < .75 ? .9 : 1; mesh.setColorAt(i, new T.Color(k, k, k)); }
@@ -721,7 +721,7 @@ G.W3 = (function () {
   // ------------------------------------------------------------- street lamps
   // cast-iron lamp posts about two people tall (a plinth, a fluted pole, a lantern with glowing panes and
   // a cap), and low stone lanterns for the old quarters; the panes light up at dusk
-  const LAMP_GLASS = new Set();
+  const LAMP_GLASS = new Set(), LAMP_SC = .8;
   let lampParts = null;
   function lampModel(kind, x, y, z) {
     if (!lampParts) {
@@ -745,7 +745,7 @@ G.W3 = (function () {
       add(new T.BoxGeometry(.3, .3, .3), L.glass, 0, 1.0, 0);
       add(new T.ConeGeometry(.36, .26, 4), L.stone, 0, 1.28, 0).rotation.y = Math.PI / 4;
     }
-    g.position.set(x, y, z);
+    g.position.set(x, y, z); g.scale.setScalar(LAMP_SC);
     return g;
   }
 
@@ -805,7 +805,7 @@ G.W3 = (function () {
       const rt = tex(rside); rt.wrapS = rt.wrapT = T.RepeatWrapping; const mRoofEnd = new T.MeshLambertMaterial({ map: rt, emissive: 0xffffff }); mRoofEnd.emissiveMap = mRoofEnd.map; SIDES.add(mRoofEnd);
       // walls stand taller than the art draws them (a house is two to three people tall), the facade
       // stretched to fit; the art's transparent margins are filled with its own colours so no face is holey
-      const KW = 1.35, wallH = Math.min(3.4, wallPx / 16 * KW), depth = zF - zB;
+      const KW = 1.05, wallH = Math.min(2.7, wallPx / 16 * KW), depth = zF - zB;
       const solid = (cv, col) => { const o = G.makeCanvas(cv.width, cv.height), c2 = o.getContext('2d'); c2.fillStyle = col; c2.fillRect(0, 0, o.width, o.height); c2.drawImage(cv, 0, 0); return o; };
       const roofAvg = (() => { let r = 0, gg = 0, bb = 0, n = 0; const d = roof.getContext('2d').getImageData(0, 0, roof.width, roof.height).data; for (let i = 0; i < d.length; i += 16) if (d[i + 3] > 200) { r += d[i]; gg += d[i + 1]; bb += d[i + 2]; n++; } return n ? [r / n, gg / n, bb / n] : [150, 70, 60]; })();
       const mFac = new T.MeshLambertMaterial({ map: tex(solid(facade, rgbS(wallCol, .9))) });
@@ -1015,7 +1015,7 @@ G.W3 = (function () {
   // every lamp, lantern, crystal and lava cell gets an additive glow sprite (faded in by night, lava
   // always on); a small pool of point lights follows the nearest ones so they light the ground
   const LIGHT_COL = { lamp: 0xffc47a, lantern: 0xffb060, crystal: 0x7ae0ff, lava: 0xff6a2a, screen: 0x7ab0ff };
-  const LIGHT_LIFT = { lamp: 2.86, lantern: 1.0, crystal: .7, lava: .15, screen: .8 };
+  const LIGHT_LIFT = { lamp: 2.29, lantern: .8, crystal: .7, lava: .15, screen: .8 };
   let glowTex = null;
   function glowTexture() {
     if (glowTex) return glowTex;
