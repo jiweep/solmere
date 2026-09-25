@@ -60,6 +60,7 @@
 <script src="js/world/script.js"></script>
 <script src="js/battle/scene.js"></script>
 <script src="js/art/battlebg.js"></script>
+<script src="js/art/battlehd.js"></script>
 <script src="js/battle/anims.js"></script>
 <script src="js/battle/ui.js"></script>
 <script src="js/battle/flow.js"></script>
@@ -93,7 +94,7 @@
       // right-click the button to step through speeds: 2x … 24x
       document.getElementById('ff').addEventListener('contextmenu', ev => { ev.preventDefault(); const V = [2, 3, 4, 6, 8, 12, 16, 24]; const i = V.indexOf(G.ffSpeed()); G.settings.ffSpeed = V[(i + 1) % V.length]; G.setTurbo(true); G.ffButton = true; });
       // the sprite atlas is an embedded image: decode it before the title shows
-      Promise.all([G.monArt.load(), G.chars.load(), G.tiles.loadWorld(), G.loadFonts()]).then(() => { G.push(new G.TitleScene()); document.getElementById('boot').remove(); if (/[?&]showcase\b/.test(location.search)) { history.replaceState(null, '', location.pathname); G.run(() => G.openShowcase()); } });
+      Promise.all([G.monArt.load(), G.chars.load(), G.tiles.loadWorld(), G.loadFonts()]).then(() => { G.loadBattleArt && G.loadBattleArt(); G.push(new G.TitleScene()); document.getElementById('boot').remove(); if (/[?&]showcase\b/.test(location.search)) { history.replaceState(null, '', location.pathname); G.run(() => G.openShowcase()); } });
       window.addEventListener('beforeunload', () => { try { G.persist.saveSettings(); } catch (e) {} });
     } catch (e) {
       document.getElementById('boot').textContent = 'Failed to start: ' + e.message;

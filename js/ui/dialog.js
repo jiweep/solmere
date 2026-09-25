@@ -56,7 +56,10 @@ G.TextBox = class {
   lastPage() { return this.page >= this.pages.length - 1; }
   draw(showArrow = true) {
     const U = G.ui;
-    U.panel(this.x, this.y, this.w, this.h, this.style, { r: 5 });
+    if (this.style === 'hd') {   // modern slab: translucent dark glass, a thin accent line, white type
+      U.c.globalAlpha = .82; U.para(this.x - 2, this.y + 2, this.w + 2, this.h, 5, '#07060c'); U.c.globalAlpha = 1;
+      U.c.globalAlpha = .9; U.para(this.x, this.y, this.w, this.h, 5, '#10121c'); U.c.globalAlpha = 1; U.para(this.x, this.y, this.w, 1.2, 5, '#ff3b4e');
+    } else U.panel(this.x, this.y, this.w, this.h, this.style, { r: 5 });
     // inner decorative line
     if (this.style === 'light') { U.rrect(this.x + 3, this.y + 3, this.w - 6, this.h - 6, 3); U.c.lineWidth = G.gfx.S * .45; U.c.strokeStyle = 'rgba(42,48,64,.18)'; U.c.stroke(); }
     if (this.speaker) {
@@ -71,7 +74,7 @@ G.TextBox = class {
     }
     const lines = this.pages[this.page] || [];
     let left = Math.floor(this.chars);
-    const tc = this.color || (this.style === 'dark' || this.style === 'glass' ? '#f2f4f8' : '#283040');
+    const tc = this.color || (this.style === 'dark' || this.style === 'glass' || this.style === 'hd' ? '#f2f4f8' : '#283040');
     lines.forEach((ln, i) => {
       if (left <= 0) return;
       const vis = G.TextBox.cut(ln, left);

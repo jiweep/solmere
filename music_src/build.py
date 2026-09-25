@@ -22,7 +22,7 @@ warnings.filterwarnings('ignore', category=wavfile.WavFileWarning)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-OUT = os.path.join(ROOT, 'music')
+OUT = os.environ.get('SOLMERE_OUT') or os.path.join(ROOT, 'music')
 WORK = os.environ.get('SOLMERE_WORK', os.path.join(HERE, '_work'))
 SR = 44100
 MAXTAIL = 10.0   # seconds rendered past the first loop pass, to find where both passes converge
@@ -30,6 +30,20 @@ RENDER = os.path.join(HERE, 'render') if sys.platform == 'darwin' else os.path.j
 sys.path.insert(0, HERE)
 import mfw
 import songs  # registers SONGS
+
+
+def ds_master(x):
+    """Nintendo DS output character: the console mixes at 32768 Hz into a 10-bit DAC. Resample down and
+    back up (band-limits the top to ~15 kHz), then add the 10-bit step with light TPDF dither."""
+    import scipy.signal as ss
+    lo = ss.resample_poly(x, 32768, SR, axis=0)
+    q = 2.0 / 1024
+    rng = np.random.default_rng(7)
+    d = (rng.random(lo.shape) - rng.random(lo.shape)) * q * .5
+    lo = np.round((lo + d) / q) * q
+    y = ss.resample_poly(lo, SR, 32768, axis=0)
+    n = min(len(y), len(x)); out = np.zeros_like(x); out[:n] = y[:n]
+    return out
 
 
 # ------------------------------------------------------------------ compile
@@ -427,6 +441,7 @@ def _build_one(key):
         endi = min(len(out), (idx[-1] if len(idx) else len(out)) + int(.05 * SR))
         out = out[:endi]; f = min(len(out), int(.06 * SR)); out[-f:] *= np.linspace(1, 0, f)[:, None]
         ls = le = None
+    if os.environ.get('SOLMERE_DSFX'): out = ds_master(out)
     wav = os.path.join(wdir, 'mix.wav')
     wavfile.write(wav, SR, (np.clip(out, -1, 1) * 32767).astype(np.int16))
     if not song.loop: bestv = None
@@ -468,7 +483,7 @@ def main():
                 print(f"  !! {m['id']}: {m['error']}", flush=True); continue
             metas.append(m)
             print(f"  {m['id']:24s} {m['duration']:6.1f}s  loop {str(round(m['loopStart'], 2)) if m['loop'] else '-':>6} → {str(round(m['loopEnd'], 2)) if m['loop'] else '-':>6}  peak {m['peak']:.2f}  L {m['lufs_approx']:.1f}  ({m['build_sec']}s)", flush=True)
-    write_manifest()
+    if not os.environ.get('SOLMERE_OUT'): write_manifest()
     print(f'built {len(metas)} tracks in {time.time() - t0:.0f}s')
 
 

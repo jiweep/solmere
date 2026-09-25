@@ -67,13 +67,14 @@ G.render = function () {
       b.clearRect(0, 0, G.W, G.H);
       s.draw3d(b); gx.present();
     }
+    if (s.drawBack) s.drawBack(c);   // native-resolution backdrop under the scene's pixel layer
     if (s.draw && s.lowres !== false && !(w3 && i === start)) {
       const b = gx.bx;
       b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = 1; b.globalCompositeOperation = 'source-over';
       b.clearRect(0, 0, G.W, G.H);
       s.draw(b);
       if (s.isWorld && G.settings.fancy !== false) gx.present25(s.lookFX ? s.lookFX() : {});
-      else if (s.fx25 && G.settings.fancy !== false) gx.present25(s.fx25());
+      else if (s.fx25 && G.settings.fancy !== false && s.fx25()) gx.present25(s.fx25());
       else gx.present();
     }
     G.ui._scene = s;

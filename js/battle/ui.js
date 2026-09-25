@@ -96,26 +96,26 @@
       const para = (x, y, w, h, sk, fill) => { c.fillStyle = fill; c.beginPath(); c.moveTo(X(x + sk), Y(y)); c.lineTo(X(x + w + sk), Y(y)); c.lineTo(X(x + w), Y(y + h)); c.lineTo(X(x), Y(y + h)); c.closePath(); c.fill(); };
       // prompt: a slanted black slab with the mon's name set big, sliding in from the left
       const pk = G.ease.outCubic(Math.min(1, t / 10)), px = -150 + 150 * pk;
-      para(px - 10, G.H - 50, 196, 42, 10, '#07060c');
-      para(px - 10, G.H - 50, 196, 3, 10, '#ff3b4e');
-      U.text('WHAT WILL', px + 14, G.H - 45, { size: 6.2, weight: 800, color: '#ff8a96', shadow: false });
-      U.text(this.name.toUpperCase(), px + 12, G.H - 37, { size: 12.5, weight: 900, color: '#ffffff', shadow: false });
-      U.text('DO?', px + 14 + U.measure(this.name.toUpperCase(), 12.5, 900) + 4, G.H - 32, { size: 7, weight: 900, color: '#ff8a96', shadow: false });
-      U.text('Q · battle info', px + 150, G.H - 14, { size: 4.8, color: '#8a90a8', align: 'right', shadow: false });
-      U.hot(Math.max(0, px + 100), G.H - 18, 60, 9, null, () => G.input.tap('l'));
+      c.globalAlpha = .9; para(px - 10, G.H - 31, 176, 26, 6, '#0e1019'); c.globalAlpha = 1;
+      para(px - 10, G.H - 31, 176, 1.2, 6, '#ff3b4e');
+      U.text('What will', px + 10, G.H - 27.5, { size: 5.2, weight: 800, color: '#ff8a96', shadow: false });
+      U.text(this.name, px + 10, G.H - 20.5, { size: 9.5, weight: 900, color: '#ffffff', shadow: false });
+      U.text('do?', px + 12 + U.measure(this.name, 9.5, 900) + 3, G.H - 17.5, { size: 6, weight: 900, color: '#ff8a96', shadow: false });
+      U.text('Q · battle info', px + 156, G.H - 11, { size: 4.4, color: '#8a90a8', align: 'right', shadow: false });
+      U.hot(Math.max(0, px + 110), G.H - 14, 56, 9, null, () => G.input.tap('l'));
       // commands: a diagonal cascade of skewed bars; the selected one juts out in its colour
       const COL = { fight: '#ff3b4e', bag: '#ffb52e', party: '#2ec27e', run: '#3b82e0' };
       CMDS.forEach((cm, k) => {
         const dis = (cm.id === 'run' && !this.req.canRun) || (cm.id === 'bag' && !this.req.canItem);
         const e = G.ease.outBack(G.clamp((t - k * 3) / 12, 0, 1)), sel = this.i === k;
-        const bx = 214 + k * 8 + (1 - e) * 200 - (sel ? 16 : 0), by = G.H - 58 + k * 13.5, w = sel ? 170 : 150, h = 12;
+        const bx = 262 + k * 6 + (1 - e) * 160 - (sel ? 10 : 0), by = G.H - 50 + k * 11.5, w = sel ? 124 : 112, h = 10;
         U.hot(bx, by, w, h, () => { if (this.i !== k) { this.i = k; G.audio && G.audio.sfx('cursor'); } }, () => { this.i = k; G.input.tap('a'); });
         if (sel) { para(bx - 3, by - 1.5, w + 6, h + 3, 8, '#07060c'); para(bx + 2 + Math.sin(t / 5), by + 2, w, h, 8, 'rgba(0,0,0,.35)'); }
         para(bx, by, w, h, 8, sel ? COL[cm.id] : dis ? '#2a2a34' : '#12131c');
         if (!sel) para(bx, by + h - 1.5, w, 1.5, 1, COL[cm.id]);
         const jit = sel ? Math.round(Math.sin(t / 3)) * .5 : 0;
-        U.text(cm.label, bx + 18 + jit, by + (sel ? .8 : 2.4), { size: sel ? 10.5 : 7.6, weight: 900, color: dis ? '#6a6a78' : '#fff', shadow: sel ? 'rgba(0,0,0,.5)' : false });
-        if (sel) { c.fillStyle = '#fff'; c.beginPath(); c.moveTo(X(bx + 6), Y(by + 3)); c.lineTo(X(bx + 12), Y(by + 6)); c.lineTo(X(bx + 6), Y(by + 9)); c.fill(); }
+        U.text(cm.label, bx + 15 + jit, by + (sel ? 1 : 2), { size: sel ? 8.2 : 6.4, weight: 900, color: dis ? '#6a6a78' : '#fff', shadow: sel ? 'rgba(0,0,0,.5)' : false });
+        if (sel) { c.fillStyle = '#fff'; c.beginPath(); c.moveTo(X(bx + 5), Y(by + 2.5)); c.lineTo(X(bx + 10), Y(by + 5)); c.lineTo(X(bx + 5), Y(by + 7.5)); c.fill(); }
       });
     }
   }

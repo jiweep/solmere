@@ -6,20 +6,20 @@
 G.BattleScene = class {
   constructor(o) {
     this.o = o; this.opaque = true; this.persp = o.persp || 0; this.env = o.env || 'grass';
-    this.slots = {}; this.parts = new G.Particles(); this.fxp = new G.Particles(); this.box = new G.TextBox({ y: G.H - 50, h: 45, style: 'light' });
+    this.slots = {}; this.parts = new G.Particles(); this.fxp = new G.Particles(); this.box = new G.TextBox({ x: 10, y: G.H - 31, w: G.W - 20, h: 26, style: 'hd', size: 7, lh: 9.4, lines: 2 });
     this.box.pages = []; this.t = 0; this.menu = null; this.shake = 0; this.flash = 0; this.flashCol = '#fff';
     this.weather = null; this.popups = []; this.overlays = []; this.intro = 1; this.trainers = []; this.cmdIndex = 0; this.moveIndex = 0;
     this.hudShow = { 0: 0, 1: 0 }; this.balls = null; this.resonateOn = false; this.screens = { 0: {}, 1: {} }; this.hazards = { 0: {}, 1: {} };
     this.speed = () => (G.settings.battleSpeed || 1) * (G.input.isDown('b') || G.input.isDown('a') && this.fastAdvance ? 2 : 1);
     this.dim = 0; this.bgT = 0; this.ended = false;
   }
-  fx25() { return { tilt: 0, hazeA: .1, bloomA: .2, key: 'rgba(255,225,180,.45)', fill: 'rgba(50,60,120,.4)' }; }
+  fx25() { if (this._hd) return null; return { tilt: 0, hazeA: .1, bloomA: .2, key: 'rgba(255,225,180,.45)', fill: 'rgba(50,60,120,.4)' }; }
   // -------------------------------------------------------------- layout
   pos(s, i, n) {
     const mine = s === this.persp;
-    if (n === 1) return mine ? { x: 100, y: 158, sc: 1, back: true } : { x: 282, y: 106, sc: 1, back: false };
-    if (mine) return i === 0 ? { x: 72, y: 160, sc: .8, back: true } : { x: 150, y: 164, sc: .8, back: true };
-    return i === 0 ? { x: 252, y: 102, sc: .85, back: false } : { x: 322, y: 96, sc: .85, back: false };
+    if (n === 1) return mine ? { x: 122, y: 190, sc: .82, back: true } : { x: 270, y: 132, sc: 1, back: false };
+    if (mine) return i === 0 ? { x: 96, y: 190, sc: .7, back: true } : { x: 172, y: 196, sc: .7, back: true };
+    return i === 0 ? { x: 244, y: 132, sc: .88, back: false } : { x: 308, y: 126, sc: .88, back: false };
   }
   key(r) { return r.s + ':' + r.i; }
   slot(r) { return this.slots[this.key(r)]; }
@@ -112,8 +112,8 @@ G.BattleScene = class {
     const foeTr = e.sides[1 - this.persp].trainers.filter(t => t.name);
     const myTr = e.sides[this.persp].trainers;
     this.trainers = [];
-    foeTr.forEach((t, k) => this.trainers.push({ side: 1 - this.persp, look: t.sprite, x: foeTr.length > 1 ? 262 + k * 50 : 286, y: 104, alpha: 1, off: 0, name: t.name, cls: t.cls }));
-    myTr.forEach((t, k) => this.trainers.push({ side: this.persp, look: t.sprite, x: myTr.length > 1 ? 62 + k * 70 : 88, y: 168, alpha: 1, off: 0, back: true, name: t.name }));
+    foeTr.forEach((t, k) => this.trainers.push({ side: 1 - this.persp, look: t.sprite, x: foeTr.length > 1 ? 318 + k * 36 : 338, y: 130, alpha: 1, off: 0, name: t.name, cls: t.cls }));
+    myTr.forEach((t, k) => this.trainers.push({ side: this.persp, look: t.sprite, x: myTr.length > 1 ? 40 + k * 60 : 58, y: 232, alpha: 1, off: 0, back: true, name: t.name }));
     this.balls = e.wild ? null : e.sides.map(s => s.trainers.reduce((a, t) => ({ count: a.count + t.count, alive: a.alive + t.alive }), { count: 0, alive: 0 }));
     // slide in
     this.intro = 1;
@@ -133,7 +133,7 @@ G.BattleScene = class {
     // the player's back sprite leaves the frame; the opponent steps back behind their mon and stays in view
     for (const t of this.trainers) if (t.side === e.ref.s && t.alpha > 0) {
       if (mine) G.tween(t, { off: -120, alpha: 0 }, 22, G.ease.inQuad);
-      else if (!t.backed) { t.backed = true; t.act = 24; G.tween(t, { off: 62, y: t.y - 6 }, 26, G.ease.outCubic); }
+      else if (!t.backed) { t.backed = true; t.act = 24; G.tween(t, { off: -24, y: t.y + 8 }, 26, G.ease.outCubic); }
     }
     this.hudShow[e.ref.s] = 1;
     if (e.wild && e.initial) {
@@ -269,7 +269,7 @@ G.BattleScene = class {
     if (zi > .002) { const z = 1 + .18 * zi, cx = G.W / 2 + 70 * zi, cy = G.H * .45; b.translate(cx, cy); b.scale(z, z); b.translate(-cx, -cy); }
     // impact punch: a quick push toward the target on big hits
     if (this.punch && this.punch.t > 0) { const k = Math.sin(this.punch.t / 18 * Math.PI) * .05, px = this.punch.x, py = this.punch.y; b.translate(px, py); b.scale(1 + k, 1 + k); b.translate(-px, -py); this.punch.t--; }
-    b.drawImage(G.battleBG(this.env, this.o.phase || 'day'), 0, 0);
+    if (!this._hd) b.drawImage(G.battleBG(this.env, this.o.phase || 'day'), 0, 0);
     this.drawAmbience(b);
     // platforms
     const n = this.nSlots(), ioff = this.intro * 260;
@@ -341,9 +341,27 @@ G.BattleScene = class {
     if (this.flash > 0) { b.globalAlpha = this.flash / 16; b.fillStyle = this.flashCol; b.fillRect(0, 0, G.W, G.H); b.globalAlpha = 1; }
   }
   // living backdrop: drifting clouds, sun shafts, and particles that suit the setting
+  // HD backdrop straight onto the screen canvas at native resolution, following the same camera
+  // (intro push-in, impact punch, shake) as the pixel layer drawn over it
+  drawBack(c) {
+    const hd = G.battleHD && G.battleHD(this.env, this.o.phase || 'day');
+    this._hd = !!hd; if (!hd) return;
+    const gx = G.gfx, S = gx.S;
+    c.save(); c.beginPath(); c.rect(gx.ox, gx.oy, G.W * S, G.H * S); c.clip();
+    c.translate(gx.ox, gx.oy); c.scale(S, S);
+    if (this.shake) c.translate((G.rand() - .5) * this.shake * .6, (G.rand() - .5) * this.shake * .4);
+    const zi = G.ease.inOutQuad ? G.ease.inOutQuad(Math.min(1, this.intro)) : this.intro;
+    if (zi > .002) { const z = 1 + .18 * zi, cx = G.W / 2 + 70 * zi, cy = G.H * .45; c.translate(cx, cy); c.scale(z, z); c.translate(-cx, -cy); }
+    if (this.punch && this.punch.t > 0) { const k = Math.sin(this.punch.t / 18 * Math.PI) * .05, px = this.punch.x, py = this.punch.y; c.translate(px, py); c.scale(1 + k, 1 + k); c.translate(-px, -py); }
+    // a slow drift keeps the scene alive
+    const dx = Math.sin(this.t / 700) * 6, dy = Math.sin(this.t / 900) * 2, sc = 1.05;
+    c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+    c.drawImage(hd, -G.W * (sc - 1) / 2 + dx, -G.H * (sc - 1) / 2 + dy, G.W * sc, G.H * sc);
+    c.restore(); c.imageSmoothingEnabled = false;
+  }
   drawAmbience(b) {
     const E = G.BATTLE_ENVS[this.env] || G.BATTLE_ENVS.grass, ph = this.o.phase || 'day', night = ph === 'night', t = this.t;
-    if (!E.indoor && E.clouds) {
+    if (!E.indoor && E.clouds && !this._hd) {
       if (!G._bclouds) G._bclouds = [0, 1, 2].map(i => {
         const rng = new G.RNG(300 + i), w = 50 + rng.int(0, 40), p = new G.Painter(w + 10, 18);
         const L = [G.rgb('#b8c8e0'), G.rgb('#e4ecf8'), G.rgb('#ffffff')];
@@ -354,7 +372,7 @@ G.BattleScene = class {
       G._bclouds.forEach((c, i) => { const x = ((i * 150 - t * (.08 + i * .03)) % (G.W + 120) + G.W + 120) % (G.W + 120) - 90; b.drawImage(c, Math.round(x), 14 + i * 16); });
       b.globalAlpha = 1;
     }
-    if (!E.indoor && !night && E.sun) {
+    if (!E.indoor && !night && E.sun && !this._hd) {
       b.save(); b.globalCompositeOperation = 'lighter';
       for (let i = 0; i < 4; i++) {
         const life = Math.max(0, Math.sin(t / (300 + i * 70) + i * 2.1)); if (life < .05) continue;
@@ -433,37 +451,31 @@ G.BattleScene = class {
     if (this.levelPanel) this.drawLevelPanel();
   }
   drawHUD(s, n) {
-    const U = G.ui, mine = s.side === this.persp;
-    const i = s.slot;
+    // compact glass card: translucent slab, a colour edge, white type; the HP bar carries the colour
+    const U = G.ui, mine = s.side === this.persp, i = s.slot;
     const slide = this.hudShow[s.side] ? 0 : 1;
-    let x, y, w = 124, h = mine ? 36 : 28;
-    if (mine) { x = G.W - w - 6; y = n === 1 ? 124 : (i === 0 ? 92 : 128); }
-    else { x = 8; y = n === 1 ? 14 : (i === 0 ? 6 : 38); }
-    x += (mine ? 1 : -1) * slide * 160;
-    // slanted HUD card: black slab, colour edge, a light face with the name set bold
-    const c = U.c, X = v => U.X(v), Y = v => U.Y(v), acc = mine ? '#3b82e0' : '#ff3b4e';
-    const para = (px, py, pw, ph, sk, f) => { c.fillStyle = f; c.beginPath(); c.moveTo(X(px + sk), Y(py)); c.lineTo(X(px + pw + sk), Y(py)); c.lineTo(X(px + pw), Y(py + ph)); c.lineTo(X(px), Y(py + ph)); c.closePath(); c.fill(); };
-    para(x - 2, y + 2, w + 4, h, 6, '#07060c');
-    para(x, y, w, h, 6, '#fbf8ef');
-    para(x, y, w, 11, 6, '#07060c');
-    para(x + (mine ? w - 4 : 0), y, 4, h, 6, acc);
-    const name = s.name.toUpperCase();
-    U.text(name, x + 9, y + 1.8, { size: 7.4, weight: 900, color: '#ffffff', shadow: false });
-    const nw = U.measure(name, 7.4, 900);
-    if (s.gender) U.text(s.gender === 'm' ? '♂' : '♀', x + 11 + nw, y + 1.8, { size: 7, weight: 800, color: s.gender === 'm' ? '#6ab0ff' : '#ff7aa0', shadow: false });
-    U.text('Lv' + s.lvl, x + w - 6, y + 2.2, { size: 6.4, weight: 900, align: 'right', color: '#ffd35c', shadow: false });
-    if (!mine && this.bt && this.bt.wild && G.save && G.save.dex.caught[s.sp]) U.img(G.tiles.itemIcon('orb', '#e8484a'), x + w - 36, y + 2.6, { scale: .5 });
-    // HP bar
+    const w = 100, h = mine ? 25 : 18;
+    let x = mine ? G.W - w - 8 : 8, y = mine ? (n === 1 ? 128 : (i === 0 ? 100 : 128)) : (n === 1 ? 8 : (i === 0 ? 6 : 28));
+    x += (mine ? 1 : -1) * slide * 150;
+    const acc = mine ? '#3b82e0' : '#ff3b4e';
+    U.c.globalAlpha = .55; U.para(x - 1, y + 2, w + 2, h, 5, '#000000'); U.c.globalAlpha = .86; U.para(x, y, w, h, 5, '#0e1019'); U.c.globalAlpha = 1;
+    U.para(mine ? x + w - 2.5 : x, y, 2.5, h, 5, acc);
+    const name = s.name;
+    U.text(name, x + 8, y + 2, { size: 6.3, weight: 800, color: '#ffffff', shadow: false });
+    const nw = U.measure(name, 6.3, 800);
+    if (s.gender) U.text(s.gender === 'm' ? '♂' : '♀', x + 10 + nw, y + 2, { size: 6, weight: 800, color: s.gender === 'm' ? '#6ab0ff' : '#ff7aa0', shadow: false });
+    U.text('Lv' + s.lvl, x + w - 7, y + 2.4, { size: 5.4, weight: 800, align: 'right', color: '#ffd35c', shadow: false });
+    if (!mine && this.bt && this.bt.wild && G.save && G.save.dex.caught[s.sp]) U.img(G.tiles.itemIcon('orb', '#e8484a'), x + w - 30, y + 2.2, { scale: .42 });
     const f = s.maxhp ? s.dispHp / s.maxhp : 0;
-    U.text('HP', x + 9, y + 14.2, { size: 5, weight: 800, color: '#e8a030' });
-    U.bar(x + 20, y + 14.5, w - 28, 5, f, U.hpColor(f));
-    if (s.status) { const col = { brn: '#ee8130', par: '#e8c020', psn: '#a33ea1', tox: '#7a2a78', slp: '#8a8a9a', frz: '#78d0d0' }[s.status]; U.rrect(x + 9, y + 21, 18, 6.4, 2); U.c.fillStyle = col; U.c.fill(); U.text({ brn: 'BRN', par: 'PAR', psn: 'PSN', tox: 'TOX', slp: 'SLP', frz: 'FRZ' }[s.status], x + 18, y + 21.8, { size: 4.6, weight: 800, color: '#fff', align: 'center', shadow: false }); }
+    U.para(x + 8, y + 11, w - 17, 3.4, 1.2, 'rgba(255,255,255,.12)');
+    U.para(x + 8, y + 11, (w - 17) * Math.max(0, f), 3.4, 1.2, U.hpColor(f));
+    if (s.status) { const col = { brn: '#ee8130', par: '#e8c020', psn: '#a33ea1', tox: '#7a2a78', slp: '#8a8a9a', frz: '#78d0d0' }[s.status]; U.para(x + 8, y + (mine ? 16.5 : 14.8), 15, 5.2, 1.5, col); U.text({ brn: 'BRN', par: 'PAR', psn: 'PSN', tox: 'TOX', slp: 'SLP', frz: 'FRZ' }[s.status], x + 16, y + (mine ? 16.9 : 15.2), { size: 3.9, weight: 800, color: '#fff', align: 'center', shadow: false }); }
     if (mine) {
-      U.text(`${Math.max(0, s.dispHp)} / ${s.maxhp}`, x + w - 8, y + 20.5, { size: 6.4, weight: 800, align: 'right', color: '#3a4050' });
+      U.text(`${Math.max(0, s.dispHp)} / ${s.maxhp}`, x + w - 8, y + 15.6, { size: 5.2, weight: 800, align: 'right', color: '#d8dde8', shadow: false });
       const ef = s.expFrac !== undefined ? s.expFrac : this.expFracOf(s);
-      U.bar(x + 9, y + h - 6, w - 17, 2.6, ef, '#4ab0f4', '#2a3040', { border: false });
+      U.para(x + 8, y + h - 3, w - 17, 1.3, .5, 'rgba(255,255,255,.1)'); U.para(x + 8, y + h - 3, (w - 17) * ef, 1.3, .5, '#4ab0f4');
     }
-    if (s.resonant) { U.text('✦', x + w - 12, y + (mine ? 20 : 12), { size: 7, color: s.resonant, weight: 800, outline: 'rgba(0,0,0,.6)' }); }
+    if (s.resonant) U.text('✦', x + w - 12, y + (mine ? 15 : 10), { size: 6, color: s.resonant, weight: 800, outline: 'rgba(0,0,0,.6)' });
   }
   expFracOf(s) { const m = this.findMon(s.uid); return m ? G.mon.expProgress(m) : 0; }
   findMon(uid) { return G.save ? G.party.allMons().find(m => m.uid === uid) : null; }
