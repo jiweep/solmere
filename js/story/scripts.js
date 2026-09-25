@@ -45,6 +45,7 @@
   };
   // ------------------------------------------------------------- INTRO
   SC.intro_professor = async (S) => {
+    if (G.runPrologue) await G.runPrologue();
     const bd = new G.IntroBackdrop(); G.push(bd);
     G.audio && G.audio.music('intro');
     await G.fadeIn(30);

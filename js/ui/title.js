@@ -83,13 +83,18 @@ G.TitleScene = class {
     const bx = W / 2 + (LX - camX) * s, by = hz + camH * s;
     this.drawIsland(b, bx, by, s, orbit, t);
     // Orrelume breaching far out
-    const k = (t % 1100) / 1100;
+    const k = this.breachK !== undefined && this.breachK !== null ? this.breachK : (t % 1100) / 1100;
     if (k > .2 && k < .5) {
-      const p = (k - .2) / .3, z = 520, sz = f / z, wx = 80 + p * 90;
-      const x = W / 2 + (wx - camX) * sz, y = hz + camH * sz - Math.sin(p * Math.PI) * 26;
-      b.save(); b.globalAlpha = Math.sin(p * Math.PI) * .9; b.translate(x, y); b.rotate(-Math.cos(p * Math.PI) * .5); b.scale(.55, .55);
-      b.drawImage(G.pix.silhouette(G.monArt.front('orrelume', false, 0), '#101838'), -48, -80);
+      const p = (k - .2) / .3, z = this.glowBreach ? 300 : 520, sz = f / z, wx = this.glowBreach ? 60 + p * 50 : 80 + p * 90;
+      const x = W / 2 + (wx - camX) * sz, y = hz + camH * sz - Math.sin(p * Math.PI) * (this.glowBreach ? 40 : 26);
+      b.save(); b.globalAlpha = Math.sin(p * Math.PI) * .95; b.translate(x, y); b.rotate(-Math.cos(p * Math.PI) * .5); b.scale(this.glowBreach ? 1.1 : .55, this.glowBreach ? 1.1 : .55);
+      if (this.glowBreach) {
+        // the leviathan itself: dark body with its lighthouse-orbs blazing, and a halo on the water
+        b.drawImage(G.pix.silhouette(G.monArt.front('orrelume', false, 0), '#0c1640'), -48, -80);
+        b.globalAlpha = Math.min(1, b.globalAlpha * 1.4); b.drawImage(G.monArt.front('orrelume', false, 0), -48, -80); b.globalCompositeOperation = 'lighter'; b.globalAlpha *= .35; b.drawImage(G.monArt.front('orrelume', false, 0), -48, -80);
+      } else b.drawImage(G.pix.silhouette(G.monArt.front('orrelume', false, 0), '#101838'), -48, -80);
       b.restore();
+      if (this.glowBreach) G.pxGlow(b, x, y - 30, 60 + Math.sin(t / 6) * 4, '120,200,255', .45 * Math.sin(p * Math.PI), 5);
       if ((p > .92 || p < .08) && t % 2 === 0) for (let i = 0; i < 2; i++) this.parts.add({ x, y: hz + camH * sz, vx: (G.rand() - .5) * 1.4, vy: -.6 - G.rand() * 1.2, ay: .05, life: 34, size: 1, color: '#d8f4ff' });
     }
     this.parts.draw(b);
@@ -210,6 +215,8 @@ G.TitleScene = class {
     b.fillStyle = '#fff2a8'; b.fillRect(Math.round(x0 - r * .45), Math.round(lampY), Math.round(r * .9), Math.round(5 * sc));
     b.fillStyle = '#a83a3a'; b.beginPath(); b.moveTo(x0 - r * .9, lampY - 2); b.lineTo(x0, lampY - 9 * sc); b.lineTo(x0 + r * .9, lampY - 2); b.fill();
     // rotating beam, projected: a wedge whose far end sweeps around the tower in 3D
+    const lamp = this.lampLevel === undefined ? 1 : this.lampLevel;
+    if (lamp <= 0) return;   // the light is out (prologue)
     const phi = t / 55, dirx = Math.cos(phi), dirz = Math.sin(phi);
     const towardCam = Math.max(0, -dirz);
     const L = 260, ex = x0 + dirx * L * (1 - Math.max(0, dirz) * .6), ey = lampY + 3 + dirz * 18;
@@ -217,14 +224,14 @@ G.TitleScene = class {
     const bw = 10 + 26 * (1 - Math.abs(dirz)) + 30 * towardCam;
     for (let i = 0; i < 3; i++) {
       const wk = 1 - i * .3, lk = 1 - i * .28;
-      b.fillStyle = `rgba(255,244,190,${(.1 + towardCam * .1).toFixed(3)})`;
+      b.fillStyle = `rgba(255,244,190,${((.1 + towardCam * .1) * lamp).toFixed(3)})`;
       b.beginPath(); b.moveTo(x0, lampY + 2); b.lineTo(x0 + (ex - x0) * lk, lampY + 2 + (ey - lampY - 2) * lk - bw * wk * lk); b.lineTo(x0 + (ex - x0) * lk, lampY + 2 + (ey - lampY - 2) * lk + bw * wk * lk); b.closePath(); b.fill();
     }
     b.restore();
     // flare when the beam faces the camera; the lamp's own halo
     const fl = Math.pow(towardCam, 6);
-    if (fl > .02) G.pxGlow(b, x0, lampY + 2, 16 + fl * 22, '255,248,210', .55 * fl, 4);
-    G.pxGlow(b, x0, lampY + 2, 12, '255,240,170', .7, 3);
+    if (fl > .02) G.pxGlow(b, x0, lampY + 2, 16 + fl * 22, '255,248,210', .55 * fl * lamp, 4);
+    G.pxGlow(b, x0, lampY + 2, 12, '255,240,170', .7 * lamp, 3);
     b.save();
     b.restore();
     // warm windows of the keeper's cottage
@@ -498,4 +505,47 @@ G.jumpToChapter = async function (ch) {
   G.maps.reset();
   await G.world.scene.warpTo(ch.map, ch.x, ch.y, ch.dir || 'down');
   G.toast('Jumped to: ' + ch.name);
+};
+
+// ------------------------------------------------------------------ prologue --
+// A cold open before the Professor: the night the Tidelight went dark and something in the Mere sang.
+G.PrologueScene = class extends G.TitleScene {
+  constructor() { super(); this.caption = ''; this.capA = 0; this.lampLevel = 1; this.breachK = 0; this.glowBreach = true; this.skip = false; this.night = 0; }
+  enter() { }
+  update(top) {
+    this.t++; this.parts.update();
+    if (top && (G.input.pressed('b') || G.input.pressed('start'))) { G.input.consumeAll(); this.skip = true; }
+  }
+  draw(b) {
+    super.draw(b);
+    if (this.night > 0) { b.fillStyle = `rgba(6,8,34,${(.5 * this.night).toFixed(3)})`; b.fillRect(0, 0, G.W, G.H); }
+  }
+  drawUI() {
+    const U = G.ui;
+    if (this.capA > 0) U.text(this.caption, G.W / 2, G.H - 40, { size: 8.4, weight: 700, align: 'center', color: '#f4ecd8', alpha: this.capA, outline: 'rgba(0,0,10,.8)', outlineW: 1.6 });
+    U.text('X: skip', G.W - 8, G.H - 10, { size: 5, align: 'right', color: 'rgba(255,255,255,.35)' });
+  }
+};
+G.runPrologue = async function () {
+  const sc = new G.PrologueScene(); G.push(sc);
+  G.audio && G.audio.music('tidelight_calm');
+  const SKIP = {};
+  const wait = async n => { for (let i = 0; i < n; i++) { if (sc.skip) throw SKIP; await G.wait(1); } };
+  const cap = async (text, hold = 170) => { sc.caption = text; for (let i = 0; i <= 20; i++) { sc.capA = i / 20; await wait(1); } await wait(hold); for (let i = 20; i >= 0; i--) { sc.capA = i / 20; await wait(1); } };
+  try {
+    await G.fadeIn(50);
+    await cap('Twelve years ago...', 110);
+    for (let i = 0; i <= 60; i++) { sc.night = i / 60; await wait(1); }
+    await cap('On the night of the spring tide, the Tidelight went dark.', 40);
+    for (let i = 0; i < 70; i++) { sc.lampLevel = i > 55 ? 0 : (G.rand() < .45 ? 0 : .4 + G.rand() * .6); await wait(1); }
+    sc.lampLevel = 0; await wait(40);
+    const rise = (async () => { for (let i = 0; i <= 260; i++) { sc.breachK = .2 + .3 * i / 260; if (i === 110) { G.audio && G.audio.cry('orrelume'); } await wait(1); } })();
+    await cap('And from the black water, something rose... and sang.', 140);
+    await rise;
+    await cap('Every mon in Solmere heard that song. Every person who loved one felt it.', 170);
+    await cap('Some say it was saying goodbye.', 110);
+    await cap('Others say... it was calling someone.', 150);
+  } catch (e) { if (e !== SKIP) throw e; }
+  await G.fadeOut(40, '#eaf6ff');
+  G.pop(sc);
 };
