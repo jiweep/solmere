@@ -182,12 +182,14 @@
     const key = env + '|' + w + '|' + mine; if (G._platCache[key]) return G._platCache[key];
     const E = G.BATTLE_ENVS[env] || G.BATTLE_ENVS.grass;
     const C = G.ramp(PLAT[env] || PLAT.grass);
-    const h = Math.round(w * .28), side = Math.round(w * .06);
+    // outdoors the "platform" is just a patch of the same ground, feathered into the field; indoors it stays a podium
+    const natural = !E.indoor;
+    const h = Math.round(w * .28), side = natural ? 0 : Math.round(w * .06);
     const p = new G.Painter(w + 4, h + side + 6);
     const cx = (w + 4) / 2, cy = h / 2 + 1, rx = w / 2, ry = h / 2;
     const tufts = ['grass', 'forest', 'dusk'].includes(env);
     // soft drop shadow
-    p.ell(cx + 2, cy + side + 2, rx, ry, P('#000000'), 60);
+    if (!natural) p.ell(cx + 2, cy + side + 2, rx, ry, P('#000000'), 60);
     // earthen side wall under the rim
     for (let y = 0; y < side; y++) p.ell(cx, cy + y + 1, rx, ry, C[5]);
     for (let x = 0; x < w + 4; x++) for (let y = Math.floor(cy); y < cy + side + ry; y++) if (p.A(x, y) === 255 && G.h2(x, y, 3) > .85) p.shade(x, y, .12);
@@ -198,7 +200,8 @@
       let k = d > .78 ? 1 : 2;
       if (d < .5 && nx + ny < -.2) k = 3;
       if (d < .12 && nx + ny < -.25) k = 4;
-      if (d > .92) k = 0;
+      if (d > .92) k = natural ? 1 : 0;
+      if (natural && d > .72 && ((x + y) & 1) && G.h2(x, y, 4) < (d - .72) * 3.2) continue;   // dithered, feathered edge
       if (d > .78 && d < .92 && ny < -.2) k = 3;
       const hs = G.h2(x, y, 9);
       if (hs > .9 && k > 0) k = Math.max(1, k - 1); else if (hs < .05) k = Math.min(4, k + 1);

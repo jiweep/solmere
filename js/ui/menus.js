@@ -50,14 +50,20 @@ G.PauseScene = class {
     if (I.pressed('b') || I.pressed('start')) { I.consume('b'); I.consume('start'); G.audio && G.audio.sfx('back'); G.pop(this); this.res(null); }
   }
   drawUI() {
-    const U = G.ui, k = Math.min(1, this.t / 8), x = G.W - 96 * G.ease.outCubic(k) - 4, w = 92;
-    const h = this.items.length * 14 + 10;
-    U.panel(x, 6, w, h, 'light', { r: 7 });
+    // a diagonal cascade of skewed tabs, each snapping in after the last; the selected tab juts out
+    const U = G.ui, c = U.c, X = v => U.X(v), Y = v => U.Y(v);
+    const para = (px, py, pw, ph, sk, f) => { c.fillStyle = f; c.beginPath(); c.moveTo(X(px + sk), Y(py)); c.lineTo(X(px + pw + sk), Y(py)); c.lineTo(X(px + pw), Y(py + ph)); c.lineTo(X(px), Y(py + ph)); c.closePath(); c.fill(); };
+    const bk = G.ease.outCubic(Math.min(1, this.t / 8));
+    para(G.W - 150 * bk, 0, 170, G.H, -40, 'rgba(7,6,12,.55)');
     this.items.forEach((it, j) => {
-      const y = 11 + j * 14, sel = j === this.i;
-      if (sel) { U.rrect(x + 3, y - 1, w - 6, 13, 4); U.c.fillStyle = 'rgba(59,130,224,.18)'; U.c.fill(); }
-      if (it.icon) U.img(G.tiles.itemIcon(it.icon, it.col), x + 6, y - .5, { scale: .75 });
-      U.text(it.label, x + 21, y + 1.4, { size: 7.4, weight: sel ? 800 : 700, color: sel ? '#1e3a70' : '#283040' });
+      const e = G.ease.outBack(G.clamp((this.t - j * 1.5) / 9, 0, 1)), sel = j === this.i;
+      const w = sel ? 108 : 94, x = G.W - w + 4 - j * 3 + (1 - e) * 140 - (sel ? 6 : 0), y = 8 + j * 15.5;
+      U.hot(x, y, w, 13, () => { if (this.i !== j) { this.i = j; G.audio && G.audio.sfx('cursor'); } }, () => { this.i = j; G.input.tap('a'); });
+      if (sel) para(x - 3, y - 1.5, w + 6, 16, 6, '#07060c');
+      para(x, y, w, 13, 6, sel ? '#ff3b4e' : '#12131c');
+      if (!sel) para(x, y + 11.5, w, 1.5, 1, '#ff3b4e');
+      if (it.icon) U.img(G.tiles.itemIcon(it.icon, it.col), x + 9, y + .5, { scale: .75 });
+      U.text(it.label.toUpperCase(), x + 24 + (sel ? Math.round(Math.sin(this.t / 3)) * .5 : 0), y + (sel ? .6 : 2), { size: sel ? 8.6 : 7, weight: 900, color: '#fff', shadow: false });
     });
     // info strip
     const lead = G.party.lead();

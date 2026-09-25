@@ -121,7 +121,7 @@ G.runBattle = async function (cfg) {
     G.save.stats.battles++;
     // transition
     if (G.audio) G.audio.music(cfg.music || (cfg.wild ? 'wild' : 'trainer'));
-    await G.battleTransition(cfg.wild ? 'wild' : cfg.boss ? 'boss' : 'trainer');
+    await G.battleTransition(cfg.wild ? 'wild' : cfg.boss ? 'boss' : 'trainer', cfg);
     G.push(scene);
     await G.fadeIn(10);
     let result;
@@ -147,21 +147,65 @@ G.runBattle = async function (cfg) {
     return result;
   } finally { if (w) w.busy--; }
 };
-G.battleTransition = async function (kind) {
+// Encounter transition: white flashes, a storm of skewed colour slashes and shattering shards, then
+// (for Tamers) a VS cut-in with both fighters on slanted panels before the battle field opens.
+G.battleTransition = async function (kind, cfg = {}) {
+  const ACC = { wild: ['#1ec8b8', '#0b3b48'], trainer: ['#ff3b4e', '#3a0a18'], boss: ['#ffc83a', '#2a0a4a'] }[kind] || ['#ff3b4e', '#3a0a18'];
+  const foe = cfg.foes && cfg.foes[0], T = foe && G.TRAINERS[foe.trainerId];
+  const vs = kind !== 'wild' && foe && foe.sprite;
+  const shards = []; for (let i = 0; i < 26; i++) shards.push({ x: G.rand() * G.W, y: G.rand() * G.H, vx: (G.rand() - .5) * 9, vy: (G.rand() - .5) * 7, r: G.rand() * 6, vr: (G.rand() - .5) * .4, s: 10 + G.rand() * 26 });
+  const total = vs ? 118 : 56;
   const sc = {
-    t: 0, lowres: false, kind, update() { this.t++; }, drawUI() {
-      const U = G.ui, c = U.c, S = G.gfx.S, t = this.t;
-      if (t < 12) { c.fillStyle = `rgba(255,255,255,${(t % 6) < 3 ? .7 : 0})`; c.fillRect(G.gfx.ox, G.gfx.oy, G.W * S, G.H * S); return; }
-      const k = G.clamp((t - 12) / 26, 0, 1);
-      c.fillStyle = '#05050a';
-      if (this.kind === 'wild') { for (let i = 0; i < 12; i++) { const h = G.H / 12; const w = G.W * G.ease.inQuad(G.clamp(k * 1.4 - i * .03, 0, 1)); c.fillRect(i % 2 ? U.X(G.W - w) : U.X(0), U.Y(i * h), w * S, h * S + 1); } }
-      else if (this.kind === 'boss') { const r = Math.hypot(G.W, G.H) * (1 - k); c.beginPath(); c.rect(G.gfx.ox, G.gfx.oy, G.W * S, G.H * S); c.moveTo(U.X(G.W / 2) + r * S, U.Y(G.H / 2)); for (let i = 0; i <= 8; i++) { const a = i / 8 * Math.PI * 2, rr = i % 2 ? r * .55 : r; c.lineTo(U.X(G.W / 2) + Math.cos(a) * rr * S, U.Y(G.H / 2) + Math.sin(a) * rr * S); } c.fill('evenodd'); }
-      else { for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + k * 2; c.beginPath(); c.moveTo(U.X(G.W / 2), U.Y(G.H / 2)); c.arc(U.X(G.W / 2), U.Y(G.H / 2), G.W * S, a, a + Math.PI / 4 * k); c.fill(); } }
+    t: 0, lowres: false, update() { this.t++; }, drawUI() {
+      const U = G.ui, c = U.c, S = G.gfx.S, t = this.t, X = U.X.bind(U), Y = U.Y.bind(U);
+      const quad = (x0, y0, x1, y1, x2, y2, x3, y3, col) => { c.fillStyle = col; c.beginPath(); c.moveTo(X(x0), Y(y0)); c.lineTo(X(x1), Y(y1)); c.lineTo(X(x2), Y(y2)); c.lineTo(X(x3), Y(y3)); c.closePath(); c.fill(); };
+      if (t < 10) { c.fillStyle = `rgba(255,255,255,${(t % 5) < 3 ? .8 : 0})`; c.fillRect(G.gfx.ox, G.gfx.oy, G.W * S, G.H * S); return; }
+      // skewed slashes sweeping in, staggered, alternating accent / black
+      const k = G.clamp((t - 10) / 24, 0, 1);
+      for (let i = 0; i < 9; i++) {
+        const e = G.ease.outCubic(G.clamp(k * 1.6 - i * .07, 0, 1)); if (e <= 0) continue;
+        const y = -30 + i * 30, len = (G.W + 140) * e, fromL = i % 2 === 0, sk = 34;
+        const x0 = fromL ? -80 : G.W + 80 - len;
+        quad(x0, y, x0 + len, y, x0 + len - sk, y + 34, x0 - sk, y + 34, i % 3 === 1 ? ACC[0] : '#07060c');
+        if (i % 3 === 1) quad(x0, y + 30, x0 + len, y + 30, x0 + len - sk * .1, y + 34, x0 - sk * .1, y + 34, '#ffffff');
+      }
+      // shards flying off with the glass-break sound
+      if (t > 16 && t < 60) for (const sh of shards) {
+        const u = t - 16, x = sh.x + sh.vx * u, y = sh.y + sh.vy * u + .12 * u * u, r = sh.r + sh.vr * u;
+        c.save(); c.translate(X(x), Y(y)); c.rotate(r); c.fillStyle = 'rgba(255,255,255,.85)'; c.beginPath(); c.moveTo(0, -sh.s * S / 3); c.lineTo(sh.s * S / 4, sh.s * S / 3); c.lineTo(-sh.s * S / 4, sh.s * S / 4); c.closePath(); c.fill(); c.restore();
+      }
+      if (!vs || t < 34) return;
+      // VS cut-in
+      const v = t - 34, inE = G.ease.outBack ? G.ease.outBack(G.clamp(v / 16, 0, 1)) : G.ease.outCubic(G.clamp(v / 16, 0, 1));
+      const bgE = G.ease.outCubic(G.clamp(v / 10, 0, 1));
+      quad(0, 30, G.W * bgE, 30, G.W * bgE - 20, 186, -20, 186, ACC[1]);
+      for (let i = 0; i < 14; i++) { const yy = 34 + ((i * 37 + v * 6) % 150); quad(-10, yy, G.W, yy - 8, G.W, yy - 7, -10, yy + 1, 'rgba(255,255,255,.07)'); }   // speed lines
+      // foe panel from the right, player panel from the left
+      const fx = G.W - 190 * inE, px = -190 + 190 * inE;
+      quad(fx + 40, 34, fx + 200, 34, fx + 180, 182, fx + 10, 182, ACC[0]);
+      quad(px - 10, 34, px + 150, 34, px + 120, 182, px - 30, 182, '#22335a');
+      const draw = (look, x, flip) => {
+        const lk = typeof look === 'string' ? G.LOOKS[look] : look, im = G.chars.battleSprite && (G.chars.battleSprite(lk, 'a') || G.chars.battleSprite(lk, 'i'));
+        if (!im) return; c.save(); c.imageSmoothingEnabled = false; const sc2 = 1.7;
+        if (flip) { c.translate(X(x + im.width * sc2), Y(182 - im.height * sc2)); c.scale(-1, 1); c.drawImage(im, 0, 0, im.width * sc2 * S, im.height * sc2 * S); }
+        else c.drawImage(im, X(x), Y(182 - im.height * sc2), im.width * sc2 * S, im.height * sc2 * S);
+        c.restore();
+      };
+      draw(foe.sprite, fx + 70, false);
+      draw(G.save.look, px + 20, true);
+      // names and the VS mark
+      const nm = ((T && T.cls) ? T.cls + ' ' : '') + (foe.name || '');
+      U.text(nm.toUpperCase(), fx + 176, 150, { size: 12, weight: 900, align: 'right', color: '#fff', outline: '#07060c', outlineW: 2.2 });
+      U.text((G.save.name || '').toUpperCase(), px + 24, 150, { size: 12, weight: 900, color: '#fff', outline: '#07060c', outlineW: 2.2 });
+      const vk = G.clamp((v - 8) / 8, 0, 1), vsS = 34 * (2 - G.ease.outCubic(vk));
+      if (vk > 0) { c.save(); c.globalAlpha = vk; U.text('VS', G.W / 2 + 2, 92 - vsS / 2 + 2, { size: vsS, weight: 900, align: 'center', color: '#07060c', shadow: false }); U.text('VS', G.W / 2, 92 - vsS / 2, { size: vsS, weight: 900, align: 'center', color: '#fff4c0', outline: ACC[0], outlineW: 2.4, shadow: false }); c.restore(); }
+      if (v > 70) { const w = G.clamp((v - 70) / 12, 0, 1); c.fillStyle = '#05050a'; c.fillRect(G.gfx.ox, G.gfx.oy, G.W * S * w, G.H * S); }
     },
   };
   G.push(sc);
   G.audio && G.audio.sfx('battle_start');
-  await G.wait(40);
+  setTimeout(() => G.audio && G.audio.sfx('shatter'), 260);
+  await G.wait(total);
   G.fade.a = 1;
   G.pop(sc);
 };

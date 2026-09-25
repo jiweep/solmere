@@ -60,9 +60,14 @@ G.TextBox = class {
     // inner decorative line
     if (this.style === 'light') { U.rrect(this.x + 3, this.y + 3, this.w - 6, this.h - 6, 3); U.c.lineWidth = G.gfx.S * .45; U.c.strokeStyle = 'rgba(42,48,64,.18)'; U.c.stroke(); }
     if (this.speaker) {
-      const sw = U.measure(this.speaker, 6.6, 800) + 14;
-      U.panel(this.x + 8, this.y - 9, sw, 12, 'teal', { r: 4 });
-      U.text(this.speaker, this.x + 8 + sw / 2, this.y - 6.6, { size: 6.6, weight: 800, color: '#fff', align: 'center' });
+      // slanted name tag that snaps in with a little overshoot
+      const c = U.c, X = v => U.X(v), Y = v => U.Y(v), nm = this.speaker.toUpperCase();
+      const e = G.ease.outBack(Math.min(1, (this.t || 0) / 9)), sw = U.measure(nm, 7.2, 900) + 20, tx = this.x + 6 - (1 - e) * 30, ty = this.y - 11;
+      const para = (px, py, pw, ph, sk, f) => { c.fillStyle = f; c.beginPath(); c.moveTo(X(px + sk), Y(py)); c.lineTo(X(px + pw + sk), Y(py)); c.lineTo(X(px + pw), Y(py + ph)); c.lineTo(X(px), Y(py + ph)); c.closePath(); c.fill(); };
+      para(tx + 2, ty + 2, sw, 13, 5, '#07060c');
+      para(tx, ty, sw, 13, 5, '#ff3b4e');
+      para(tx, ty + 10, sw, 3, 5, '#07060c');
+      U.text(nm, tx + 10, ty + 2, { size: 7.2, weight: 900, color: '#fff', shadow: false });
     }
     const lines = this.pages[this.page] || [];
     let left = Math.floor(this.chars);

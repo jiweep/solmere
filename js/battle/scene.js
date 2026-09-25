@@ -68,7 +68,11 @@ G.BattleScene = class {
       case 'msg': return this.message(this.fmt(e));
       case 'send': return this.playSend(e);
       case 'withdraw': return this.playWithdraw(e);
-      case 'move': if (anims) await G.battleAnim(this, e); else await this.wait(6); return;
+      case 'move': {
+        // the commanding trainer strikes their action pose as the move goes off
+        const r = e.user || e.ref || e.src; if (r) for (const t of this.trainers) if (t.side === r.s && !t.back) t.act = 40;
+        if (anims) await G.battleAnim(this, e); else await this.wait(6); return;
+      }
       case 'hit': return this.playHit(e);
       case 'hp': return this.playHP(e);
       case 'faint': return this.playFaint(e);
@@ -126,7 +130,11 @@ G.BattleScene = class {
     const mine = e.ref.s === this.persp;
     if (!mine && G.dexMark) G.dexMark(e.mon.sp, 'seen');   // every mon you face registers as seen, trainers' included
     // trainers step off
-    for (const t of this.trainers) if (t.side === e.ref.s && t.alpha > 0) G.tween(t, { off: mine ? -120 : 120, alpha: 0 }, 22, G.ease.inQuad);
+    // the player's back sprite leaves the frame; the opponent steps back behind their mon and stays in view
+    for (const t of this.trainers) if (t.side === e.ref.s && t.alpha > 0) {
+      if (mine) G.tween(t, { off: -120, alpha: 0 }, 22, G.ease.inQuad);
+      else if (!t.backed) { t.backed = true; t.act = 24; G.tween(t, { off: 62, y: t.y - 6 }, 26, G.ease.outCubic); }
+    }
     this.hudShow[e.ref.s] = 1;
     if (e.wild && e.initial) {
       s.scale = 1; s.flash = 1;
@@ -287,10 +295,10 @@ G.BattleScene = class {
       const lk = typeof t.look === 'string' ? G.LOOKS[t.look] : t.look;
       const going = Math.abs(t.off) > .5, prog = Math.min(1, Math.abs(t.off) / 60);
       const spr = t.back ? G.chars.battleSprite(lk, 'b' + (going ? 1 + Math.min(2, Math.floor(prog * 3)) : 0)) || G.chars.battleSprite(lk, 'b0')
-                         : G.chars.battleSprite(lk, going || t.act > 0 ? 'a' : 'i') || G.chars.battleSprite(lk, 'i');
+                         : G.chars.battleSprite(lk, t.act > 0 ? 'a' : 'i') || G.chars.battleSprite(lk, 'i');
       if (spr) {
         const idle = G.chars.battleSprite(lk, t.back ? 'b0' : 'i') || spr;
-        const breathe = going ? 0 : Math.round(Math.sin((this.t + (t.back ? 20 : 0)) / 22) * .6 + .4);
+        const breathe = (t.back && going) ? 0 : Math.round(Math.sin((this.t + (t.back ? 20 : 0)) / 22) * .6 + .4);
         const x = Math.round(sx - idle.width / 2 + (spr.width !== idle.width && !t.back ? (idle.width - spr.width) / 2 : 0));
         if (t.back) b.drawImage(spr, x, Math.round(t.y + 12 - spr.height + breathe));
         else {
@@ -429,14 +437,18 @@ G.BattleScene = class {
     if (mine) { x = G.W - w - 6; y = n === 1 ? 124 : (i === 0 ? 92 : 128); }
     else { x = 8; y = n === 1 ? 14 : (i === 0 ? 6 : 38); }
     x += (mine ? 1 : -1) * slide * 160;
-    U.panel(x, y, w, h, 'light', { r: 5 });
-    // accent stripe
-    U.rrect(x + 1.5, y + 1.5, 4, h - 3, 2); U.c.fillStyle = mine ? '#3b82e0' : '#e8484a'; U.c.fill();
-    const name = s.name;
-    U.text(name, x + 9, y + 3, { size: 7.4, weight: 800 });
-    const nw = U.measure(name, 7.4, 800);
-    if (s.gender) U.text(s.gender === 'm' ? '♂' : '♀', x + 11 + nw, y + 3, { size: 7, weight: 800, color: s.gender === 'm' ? '#3b82e0' : '#e8487a' });
-    U.text('Lv' + s.lvl, x + w - 6, y + 3.4, { size: 6.4, weight: 800, align: 'right', color: '#4a5060' });
+    // slanted HUD card: black slab, colour edge, a light face with the name set bold
+    const c = U.c, X = v => U.X(v), Y = v => U.Y(v), acc = mine ? '#3b82e0' : '#ff3b4e';
+    const para = (px, py, pw, ph, sk, f) => { c.fillStyle = f; c.beginPath(); c.moveTo(X(px + sk), Y(py)); c.lineTo(X(px + pw + sk), Y(py)); c.lineTo(X(px + pw), Y(py + ph)); c.lineTo(X(px), Y(py + ph)); c.closePath(); c.fill(); };
+    para(x - 2, y + 2, w + 4, h, 6, '#07060c');
+    para(x, y, w, h, 6, '#fbf8ef');
+    para(x, y, w, 11, 6, '#07060c');
+    para(x + (mine ? w - 4 : 0), y, 4, h, 6, acc);
+    const name = s.name.toUpperCase();
+    U.text(name, x + 9, y + 1.8, { size: 7.4, weight: 900, color: '#ffffff', shadow: false });
+    const nw = U.measure(name, 7.4, 900);
+    if (s.gender) U.text(s.gender === 'm' ? '♂' : '♀', x + 11 + nw, y + 1.8, { size: 7, weight: 800, color: s.gender === 'm' ? '#6ab0ff' : '#ff7aa0', shadow: false });
+    U.text('Lv' + s.lvl, x + w - 6, y + 2.2, { size: 6.4, weight: 900, align: 'right', color: '#ffd35c', shadow: false });
     if (!mine && this.bt && this.bt.wild && G.save && G.save.dex.caught[s.sp]) U.img(G.tiles.itemIcon('orb', '#e8484a'), x + w - 36, y + 2.6, { scale: .5 });
     // HP bar
     const f = s.maxhp ? s.dispHp / s.maxhp : 0;

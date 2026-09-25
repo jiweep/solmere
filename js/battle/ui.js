@@ -84,26 +84,38 @@
     update() {
       const I = G.input; this.t++;
       const i = this.i;
-      if (I.repeat('left') || I.repeat('right')) { this.i = i ^ 1; G.audio && G.audio.sfx('cursor'); }
-      if (I.repeat('up') || I.repeat('down')) { this.i = i ^ 2; G.audio && G.audio.sfx('cursor'); }
+      if (I.repeat('up') || I.repeat('left')) { this.i = (i + 3) % 4; G.audio && G.audio.sfx('cursor'); }
+      if (I.repeat('down') || I.repeat('right')) { this.i = (i + 1) % 4; G.audio && G.audio.sfx('cursor'); }
       if (I.pressed('l')) { I.consume('l'); G.openBattleInfo(this.sc); return; }
       if (I.pressed('a')) { I.consume('a'); G.audio && G.audio.sfx('select'); this.sc.cmdIndex = this.i; this.done(CMDS[this.i].id); }
       else if (I.pressed('b')) { I.consume('b'); if (this.canBack) { G.audio && G.audio.sfx('back'); this.done('back'); } else if (this.i !== 3 && this.req.canRun) { this.i = 3; G.audio && G.audio.sfx('cursor'); } }
     }
     draw() {
-      const U = G.ui;
-      U.panel(6, G.H - 50, 214, 45, 'dark', { r: 5 });
-      U.text('What will', 16, G.H - 43, { size: 8.4, color: '#dfe8f8', weight: 600 });
-      U.text(this.name + ' do?', 16, G.H - 31, { size: 8.4, color: '#ffffff', weight: 800 });
-      U.text('Q: Battle info', 212, G.H - 13, { size: 4.8, color: '#8a9ab8', align: 'right' });
-      U.hot(150, G.H - 17, 66, 9, null, () => G.input.tap('l'));
-      CMDS.forEach((c, k) => {
-        const x = 224 + (k % 2) * 78, y = G.H - 50 + Math.floor(k / 2) * 23, sel = this.i === k;
-        const dis = (c.id === 'run' && !this.req.canRun) || (c.id === 'bag' && !this.req.canItem);
-        U.hot(x, y, 76, 21, () => { if (this.i !== k) { this.i = k; G.audio && G.audio.sfx('cursor'); } }, () => { this.i = k; G.input.tap('a'); });
-        U.panel(x, y + (sel ? -1 : 0), 76, 21, dis ? 'dark' : c.th, { r: 5, alpha: dis ? .55 : 1 });
-        if (sel) { U.rrect(x - 1, y - 2, 78, 23, 6); U.c.lineWidth = G.gfx.S * 1.2; U.c.strokeStyle = '#ffffff'; U.c.stroke(); }
-        U.text(c.label, x + 38, y + 5.5 + (sel ? -1 : 0), { size: 8.6, weight: 900, color: '#fff', align: 'center', shadow: 'rgba(0,0,0,.35)' });
+      const U = G.ui, c = U.c, t = this.t;
+      const X = x => U.X(x), Y = y => U.Y(y);
+      const para = (x, y, w, h, sk, fill) => { c.fillStyle = fill; c.beginPath(); c.moveTo(X(x + sk), Y(y)); c.lineTo(X(x + w + sk), Y(y)); c.lineTo(X(x + w), Y(y + h)); c.lineTo(X(x), Y(y + h)); c.closePath(); c.fill(); };
+      // prompt: a slanted black slab with the mon's name set big, sliding in from the left
+      const pk = G.ease.outCubic(Math.min(1, t / 10)), px = -150 + 150 * pk;
+      para(px - 10, G.H - 50, 196, 42, 10, '#07060c');
+      para(px - 10, G.H - 50, 196, 3, 10, '#ff3b4e');
+      U.text('WHAT WILL', px + 14, G.H - 45, { size: 6.2, weight: 800, color: '#ff8a96', shadow: false });
+      U.text(this.name.toUpperCase(), px + 12, G.H - 37, { size: 12.5, weight: 900, color: '#ffffff', shadow: false });
+      U.text('DO?', px + 14 + U.measure(this.name.toUpperCase(), 12.5, 900) + 4, G.H - 32, { size: 7, weight: 900, color: '#ff8a96', shadow: false });
+      U.text('Q · battle info', px + 150, G.H - 14, { size: 4.8, color: '#8a90a8', align: 'right', shadow: false });
+      U.hot(Math.max(0, px + 100), G.H - 18, 60, 9, null, () => G.input.tap('l'));
+      // commands: a diagonal cascade of skewed bars; the selected one juts out in its colour
+      const COL = { fight: '#ff3b4e', bag: '#ffb52e', party: '#2ec27e', run: '#3b82e0' };
+      CMDS.forEach((cm, k) => {
+        const dis = (cm.id === 'run' && !this.req.canRun) || (cm.id === 'bag' && !this.req.canItem);
+        const e = G.ease.outBack(G.clamp((t - k * 3) / 12, 0, 1)), sel = this.i === k;
+        const bx = 214 + k * 8 + (1 - e) * 200 - (sel ? 16 : 0), by = G.H - 58 + k * 13.5, w = sel ? 170 : 150, h = 12;
+        U.hot(bx, by, w, h, () => { if (this.i !== k) { this.i = k; G.audio && G.audio.sfx('cursor'); } }, () => { this.i = k; G.input.tap('a'); });
+        if (sel) { para(bx - 3, by - 1.5, w + 6, h + 3, 8, '#07060c'); para(bx + 2 + Math.sin(t / 5), by + 2, w, h, 8, 'rgba(0,0,0,.35)'); }
+        para(bx, by, w, h, 8, sel ? COL[cm.id] : dis ? '#2a2a34' : '#12131c');
+        if (!sel) para(bx, by + h - 1.5, w, 1.5, 1, COL[cm.id]);
+        const jit = sel ? Math.round(Math.sin(t / 3)) * .5 : 0;
+        U.text(cm.label, bx + 18 + jit, by + (sel ? .8 : 2.4), { size: sel ? 10.5 : 7.6, weight: 900, color: dis ? '#6a6a78' : '#fff', shadow: sel ? 'rgba(0,0,0,.5)' : false });
+        if (sel) { c.fillStyle = '#fff'; c.beginPath(); c.moveTo(X(bx + 6), Y(by + 3)); c.lineTo(X(bx + 12), Y(by + 6)); c.lineTo(X(bx + 6), Y(by + 9)); c.fill(); }
       });
     }
   }
@@ -134,9 +146,14 @@
         const m = G.MOVES[mv.id], x = 6 + (k % 2) * 130, y = G.H - 50 + Math.floor(k / 2) * 23, sel = this.i === k;
         const col = G.TYPE_COLORS[m.type];
         U.hot(x, y, 128, 21, () => { if (this.i !== k) { this.i = k; G.audio && G.audio.sfx('cursor'); } }, () => { this.i = k; G.input.tap('a'); });
-        U.rrect(x, y, 128, 21, 5);
-        const g = U.c.createLinearGradient(0, U.Y(y), 0, U.Y(y + 21)); g.addColorStop(0, G.col.light(col, sel ? .35 : .2)); g.addColorStop(1, G.col.dark(col, sel ? .05 : .2));
-        U.c.fillStyle = g; U.c.fill(); U.c.lineWidth = G.gfx.S * (sel ? 1.3 : .8); U.c.strokeStyle = sel ? '#ffffff' : G.col.dark(col, .5); U.c.stroke();
+        // slanted type-coloured card; the selected one lifts and gets a hard black offset shadow
+        this.t2 = (this.t2 || 0) + (k === 0 ? 1 : 0);
+        const lift = sel ? 2 : 0, cx = U.c, X = v => U.X(v), Y = v => U.Y(v);
+        const para = (px, py, w, h, sk, f) => { cx.fillStyle = f; cx.beginPath(); cx.moveTo(X(px + sk), Y(py)); cx.lineTo(X(px + w + sk), Y(py)); cx.lineTo(X(px + w), Y(py + h)); cx.lineTo(X(px), Y(py + h)); cx.closePath(); cx.fill(); };
+        if (sel) para(x + 3, y + 3 - lift, 124, 21, 6, '#07060c');
+        para(x, y - lift, 124, 21, 6, sel ? G.col.light(col, .12) : G.col.dark(col, .28));
+        para(x, y - lift, 124, 6, 6, G.col.light(col, sel ? .35 : .08));
+        if (sel) para(x - 1, y + 19 - lift, 124, 2, 1, '#ffffff');
         U.text(m.name, x + 7, y + 3, { size: 7.6, weight: 800, color: '#fff', shadow: 'rgba(0,0,0,.4)' });
         const ppc = mv.pp === 0 ? '#ffb0b0' : mv.pp <= mv.maxpp / 4 ? '#ffe08a' : '#eef4ff';
         U.text(`PP ${mv.pp}/${mv.maxpp}`, x + 121, y + 12.3, { size: 5.6, weight: 800, color: ppc, align: 'right', shadow: 'rgba(0,0,0,.4)' });

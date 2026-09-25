@@ -431,6 +431,7 @@ G.audio = (function () {
       const noise = (d, fType, fq, v = .2, o = {}) => { const s = ctx.createBufferSource(); s.buffer = noiseBuf; const f = ctx.createBiquadFilter(); f.type = fType; f.frequency.setValueAtTime(fq, t + (o.at || 0)); if (o.to) f.frequency.exponentialRampToValueAtTime(o.to, t + (o.at || 0) + d); const g = ctx.createGain(); g.gain.setValueAtTime(v, t + (o.at || 0)); g.gain.exponentialRampToValueAtTime(.001, t + (o.at || 0) + d); s.connect(f); f.connect(g); g.connect(B); s.start(t + (o.at || 0), Math.random() * .3); s.stop(t + (o.at || 0) + d + .05); };
       switch (id) {
         case 'cursor': tone(1320, .03, 'sq50', .06); break;
+        case 'shatter': noise(.35, 'highpass', 5000, .22, { to: 9000 }); for (let i = 0; i < 5; i++) tone(2200 + Math.random() * 2000, .05, 'sine', .04, { at: i * .03 }); break;
         // footsteps by surface (kept very quiet: felt more than heard)
         case 'fs_grass': noise(.07, 'bandpass', 2600, .035); break;
         case 'fs_sand': noise(.09, 'lowpass', 1400, .045); break;
