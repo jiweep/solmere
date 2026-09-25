@@ -806,8 +806,48 @@ G.WorldScene = class {
     // weather particles (world space)
     this.parts.draw(b, -ox, -oy);
     this.drawRays(b, ox, oy);
+    if (m.type === 'indoor' && m.decor && G.settings.fancy !== false) this.drawInterior(b, ox, oy);
     this.drawLighting(b, ox, oy);
     this.ox = ox; this.oy = oy;
+  }
+  // rooms: soft occlusion where floor meets wall, daylight (or moonlight) falling in through each
+  // window as a slanted shaft with dust motes, and warm pools under every lamp and sconce
+  drawInterior(b, ox, oy) {
+    const m = this.map, D = m.decor, t = this.frame, h = G.clock.hourF();
+    const day = h >= 7 && h <= 17 ? 1 : h > 17 && h < 19.5 ? 1 - (h - 17) / 2.5 : h > 5 && h < 7 ? (h - 5) / 2 : 0;
+    b.save();
+    for (let x = 0; x < m.w; x++) {
+      const yb = D.wb[x]; if (yb === undefined) continue;
+      const X = x * 16 - ox, Y = (yb + 1) * 16 - oy;
+      const g = b.createLinearGradient(0, Y, 0, Y + 12); g.addColorStop(0, 'rgba(30,14,30,.32)'); g.addColorStop(1, 'rgba(30,14,30,0)');
+      b.fillStyle = g; b.fillRect(X, Y, 16, 12);
+    }
+    const top = Math.min(...D.wb.filter(v => v !== undefined)) + 1, L0 = -ox, R0 = m.w * 16 - ox, T0 = top * 16 - oy, B0 = m.h * 16 - oy;
+    for (const [x0, dir] of [[L0, 1], [R0, -1]]) { const g = b.createLinearGradient(x0, 0, x0 + dir * 12, 0); g.addColorStop(0, 'rgba(30,14,30,.28)'); g.addColorStop(1, 'rgba(30,14,30,0)'); b.fillStyle = g; b.fillRect(Math.min(x0, x0 + dir * 12), T0, 12, B0 - T0); }
+    b.beginPath(); b.rect(-ox, -oy, m.w * 16, m.h * 16); b.clip();
+    b.globalCompositeOperation = 'lighter';
+    const col = day > .3 ? (h > 16 ? '255,200,140' : '255,240,200') : '140,170,255', a = day > .3 ? .24 * day : .08;
+    for (const w of D.windows) {
+      const yb = D.wb[w.x]; if (yb === undefined) continue;
+      const wx = w.x * 16 - ox + 8, wy = (yb + 1) * 16 - oy, len = 46;
+      const g = b.createLinearGradient(0, wy - 12, 0, wy + len); g.addColorStop(0, `rgba(${col},${a})`); g.addColorStop(1, `rgba(${col},0)`);
+      b.fillStyle = g; b.beginPath(); b.moveTo(wx - 6, wy - 12); b.lineTo(wx + 6, wy - 12); b.lineTo(wx + 24, wy + len); b.lineTo(wx + 2, wy + len); b.closePath(); b.fill();
+      // the bright patch where it lands
+      b.fillStyle = `rgba(${col},${(a * .8).toFixed(3)})`; b.beginPath(); b.moveTo(wx + 2, wy + 10); b.lineTo(wx + 14, wy + 10); b.lineTo(wx + 20, wy + 26); b.lineTo(wx + 8, wy + 26); b.closePath(); b.fill();
+      if (day > .3 && t % 20 === (w.x * 7) % 20) this.parts.add({ x: w.x * 16 + 8 + G.rand() * 18, y: (yb + 1) * 16 + G.rand() * 34, life: 220, size: 1, color: '#fff6d8', blend: 'lighter', alpha: .75, fadeIn: 50, upd: p => { p.vx = Math.sin(p.t / 40 + p.y) * .07; p.vy = -.02; } });
+    }
+    for (const l of D.lamps) {
+      const lx = l.x * 16 - ox + 8, ly = l.kind === 'sconce' ? l.y * 16 - oy + 6 : l.y * 16 - oy - (l.kind === 'floorlamp' ? 10 : 4);
+      const k = (.14 + .22 * (1 - day)) * (.94 + .06 * Math.sin(t / 9 + l.x));
+      const g = b.createRadialGradient(lx, ly, 1, lx, ly, 34); g.addColorStop(0, `rgba(255,214,150,${k.toFixed(3)})`); g.addColorStop(1, 'rgba(255,190,120,0)');
+      b.fillStyle = g; b.fillRect(lx - 34, ly - 34, 68, 68);
+    }
+    b.restore();
+    // the room's shell: thick side walls and a front lip, so it reads as a box rather than a floating floor
+    const X0 = -ox, X1 = m.w * 16 - ox, Y1 = m.h * 16 - oy, Yt = -oy;
+    b.fillStyle = '#2a1c24'; b.fillRect(X0 - 4, Yt, 4, Y1 - Yt + 5); b.fillRect(X1, Yt, 4, Y1 - Yt + 5); b.fillRect(X0 - 4, Y1, X1 - X0 + 8, 5);
+    b.fillStyle = '#4a3440'; b.fillRect(X0 - 4, Yt, 1, Y1 - Yt + 5); b.fillRect(X1 + 3, Yt, 1, Y1 - Yt + 5); b.fillRect(X0 - 4, Y1, X1 - X0 + 8, 1);
+    b.fillStyle = '#6a5060'; b.fillRect(X0 - 4, Yt, X1 - X0 + 8, 1);
   }
   // 3D mode: the scene itself is WebGL; this draws the 2D effects over it, projected into the view
   draw3d(b) {

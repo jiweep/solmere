@@ -2,7 +2,7 @@
 const { load } = require('./harness');
 const FILES = ['js/engine/core.js', 'js/engine/input.js', 'js/engine/gfx.js', 'js/engine/audio.js', 'js/data/types.js', 'js/data/moves.js', 'js/data/abilities.js', 'js/data/items.js', 'js/data/species.js',
   'js/art/px.js', 'js/art/tiles.js', 'js/art/terrain.js', 'js/art/charart.js', 'js/art/monart.js', 'js/art/monart_species1.js', 'js/art/monart_species2.js', 'js/art/monart_species3.js',
-  'js/battle/mon.js', 'js/battle/engine.js', 'js/battle/ai.js', 'js/ui/dialog.js', 'js/world/state.js', 'js/world/world.js', 'js/world/overworld.js', 'js/world/script.js',
+  'js/battle/mon.js', 'js/battle/engine.js', 'js/battle/ai.js', 'js/ui/dialog.js', 'js/world/state.js', 'js/world/world.js', 'js/world/decor.js', 'js/world/overworld.js', 'js/world/script.js',
   'js/battle/scene.js', 'js/battle/anims.js', 'js/battle/ui.js', 'js/battle/flow.js', 'js/ui/party.js', 'js/ui/bag.js', 'js/ui/menus.js', 'js/ui/pcshopdex.js', 'js/ui/title.js',
   'js/story/common.js', 'js/story/builder.js', 'js/story/trainers.js', 'js/story/maps_south.js', 'js/story/maps_north.js', 'js/story/maps_east.js', 'js/story/maps_league.js', 'js/story/scripts.js', 'js/net/net.js', 'js/engine/game.js'];
 const G = load(FILES);

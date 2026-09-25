@@ -233,7 +233,7 @@ G.tiles = (function () {
   function carpet(p, map, c, col) {
     const base = { red: '#b83a3a', blue: '#3a5ab0', green: '#3a8a5a' }[col] || col || '#b83a3a';
     const r = G.rampFrom(base, 6, { lo: .3, hi: .2 });
-    const same = (dx, dy) => { const q = map.cell(c.x + dx, c.y + dy); return q && q.g === 'carpet'; };
+    const same = (dx, dy) => { const q = map.cell(c.x + dx, c.y + dy); return q && q.g === 'carpet' && (q.carpet || null) === (c.carpet || null); };
     const n = same(0, -1), s = same(0, 1), w = same(-1, 0), e = same(1, 0);
     for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
       let k = ((c.x * 16 + x + c.y * 16 + y) % 4 === 0) ? 2 : 3;
@@ -285,6 +285,26 @@ G.tiles = (function () {
       p.rect(3, wy0 + 1, 10, 8, P('#6a4426')); p.rect(4, wy0 + 2, 8, 6, P('#8cc8f0'));
       p.rect(4, wy0 + 5, 8, 3, P('#3a78c8')); p.rect(4, wy0 + 7, 8, 1, P('#e8d49a')); p.rect(9, wy0 + 3, 1, 3, P('#f4f4f4')); p.set(9, wy0 + 2, P('#ffd84a'));
       p.hline(3, 12, wy0 + 1, P('#a8743e')); p.hline(4, 12, wy0 + 9, P('#3a2414'));
+    } else if (c.wv === 4) {   // brass wall sconce with a frosted glass shade
+      p.rect(7, wy0 + 6, 2, 4, P('#8a6a3a')); p.hline(6, 9, wy0 + 9, P('#c8a060'));
+      for (let y = 0; y < 5; y++) for (let x = 5 - (y > 2 ? 1 : 0); x < 11 + (y > 2 ? 1 : 0); x++) p.set(x, wy0 + 1 + y, P(y === 0 ? '#fff8e0' : x < 7 ? '#fff0c0' : '#f0d08a'));
+    } else if (c.wv === 5) {   // floating shelf with books and a little plant
+      p.rect(1, wy0 + 8, 14, 2, P('#6a4426')); p.hline(1, 14, wy0 + 8, P('#a8743e'));
+      const bc = ['#c84a4a', '#4a7ac8', '#e8b83a', '#4ab86a'];
+      for (let i = 0; i < 4; i++) p.rect(2 + i * 2, wy0 + 3 + (i % 2), 2, 5 - (i % 2), P(bc[i]));
+      p.rect(11, wy0 + 5, 3, 3, P('#b45c34')); p.set(12, wy0 + 3, P('#4a9a3a')); p.set(11, wy0 + 4, P('#5aac4a')); p.set(13, wy0 + 4, P('#3a8a2a'));
+    } else if (c.wv === 6) {   // calendar
+      p.rect(4, wy0 + 1, 8, 10, P('#f8f6f0')); p.rect(4, wy0 + 1, 8, 3, P('#d84a4a'));
+      for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) p.set(5 + x * 2, wy0 + 5 + y * 2, P('#6a6a7a'));
+      p.set(9, wy0 + 7, P('#d84a4a')); p.set(8, wy0, P('#3a3a3a'));
+    } else if (c.wv === 7) {   // poster: a mon silhouette on a bright ground
+      p.rect(3, wy0, 10, 12, P('#3a78c8')); p.rect(4, wy0 + 1, 8, 10, P('#8ac8f0'));
+      p.circ(8, wy0 + 5, 2.6, P('#ffd84a')); p.rect(6, wy0 + 7, 4, 3, P('#e89a3a')); p.hline(4, 11, wy0 + 10, P('#2a4a8a'));
+    } else if (c.wv === 8) {   // cluster of small framed photos
+      for (const [x, y, w, hh] of [[2, 1, 5, 4], [8, 0, 6, 5], [4, 6, 6, 5]]) { p.rect(x, wy0 + y, w, hh, P('#5a3a22')); p.rect(x + 1, wy0 + y + 1, w - 2, hh - 2, P(['#e8c8a0', '#a8d0e8', '#c8e0a8'][(x + y) % 3])); }
+    } else if (c.wv === 9) {   // cork notice board with pinned notes
+      p.rect(1, wy0, 14, 11, P('#6a4426')); p.rect(2, wy0 + 1, 12, 9, P('#c8945a'));
+      for (const [x, y, col] of [[3, 2, '#fff6a0'], [8, 2, '#ffffff'], [5, 6, '#a8e0ff'], [10, 6, '#ffc0d0']]) { p.rect(x, wy0 + y, 3, 3, P(col)); p.set(x + 1, wy0 + y, P('#e84a4a')); }
     } else if (c.wv === 3) {   // wall clock
       p.circ(8, wy0 + 5, 4.6, P('#6a4426')); p.circ(8, wy0 + 5, 3.6, P('#f8f4ea')); p.set(8, wy0 + 3, P('#202020')); p.set(8, wy0 + 4, P('#202020')); p.set(9, wy0 + 5, P('#202020')); p.set(8, wy0 + 5, P('#e84a4a'));
     }
@@ -658,7 +678,7 @@ G.tiles = (function () {
 
   // --------------------------------------------------------- furniture ---
   function furniture(kind, frame) {
-    const tall = { shelf: 26, plant: 22, pc: 20, machine: 22, healer: 18, counter: 18, statue: 26, tv: 18 };
+    const tall = { shelf: 26, plant: 22, pc: 20, machine: 22, healer: 18, counter: 18, statue: 26, tv: 18, dresser: 22, sidetable: 24, armchair: 18, fridge: 28, stove: 20, sink: 20, boxes: 20, floorlamp: 30, vending: 28, display: 20, whiteboard: 26, plant2: 26 };
     const h = tall[kind] || 16;
     const img = get(`fu|${kind}|${frame}`, 16, h, p => paintFurniture(p, kind, frame, h));
     return { img, ox: 0, oy: 16 - h };
@@ -715,6 +735,94 @@ G.tiles = (function () {
         p.hline(3, 12, b + 10, T[4]);
         const L = LEAF.grass;
         for (const [dx, dy, r] of [[0, 0, 5], [-3, 3, 3.6], [3, 3, 3.6], [-1, -4, 3.4], [2, -3, 3]]) p.sphere(8 + dx, b + 5 + dy, r, r * .9, L, { bias: .04 });
+        break;
+      }
+      case 'dresser': {   // three drawers, brass knobs, a vase and a photo on top
+        box(0, b + 2, 16, 14, 3, WD, 5, 3);
+        for (let r = 0; r < 3; r++) { const y = b + 6 + r * 3; p.hline(1, 14, y + 2, WD[1]); p.set(5, y + 1, P('#e8c060')); p.set(10, y + 1, P('#e8c060')); }
+        p.rect(3, b - 3, 3, 5, P('#5a8ac8')); p.set(3, b - 3, P('#8ab8f0')); for (const [x, y] of [[4, b - 5], [3, b - 6], [5, b - 6], [4, b - 7]]) p.set(x, y, P('#ff8aa0'));
+        p.rect(9, b - 2, 5, 4, P('#3a2a1a')); p.rect(10, b - 1, 3, 2, P('#e8d8b0'));
+        break;
+      }
+      case 'sidetable': {  // small round-legged table carrying a lamp with a pleated shade
+        box(2, b + 8, 12, 5, 2, WD, 5, 3); p.rect(3, b + 13, 1, 3, WD[1]); p.rect(12, b + 13, 1, 3, WD[1]);
+        p.rect(7, b + 3, 2, 5, P('#c8a060'));
+        const SH = R(['#a8704a', '#e8c890', '#fff0c8']);
+        for (let y = 0; y < 5; y++) for (let x = 4 - Math.floor(y / 2); x < 12 + Math.floor(y / 2); x++) p.set(x, b - 2 + y, SH[x < 7 ? 2 : x > 10 ? 0 : 1]);
+        p.hline(3, 12, b + 3, SH[0]);
+        break;
+      }
+      case 'armchair': {
+        const Up = R(['#3a1a2a', '#5a2a3e', '#7a3a54', '#9a4e6a', '#bc6a86', '#dc90a8']);
+        box(1, b + 1, 14, 6, 2, Up, 4, 3);                        // back
+        box(0, b + 6, 3, 9, 2, Up, 4, 2); box(13, b + 6, 3, 9, 2, Up, 4, 2);   // arms
+        box(3, b + 8, 10, 7, 3, Up, 4, 3);                        // seat cushion
+        p.rect(2, b + 15, 2, 1, WD[1]); p.rect(12, b + 15, 2, 1, WD[1]);
+        break;
+      }
+      case 'fridge': {
+        const Fr = R(['#5a6a70', '#8a9aa0', '#b8c8cc', '#d8e6e8', '#eef6f6', '#ffffff']);
+        box(1, 0, 14, h, 2, Fr, 4, 3);
+        p.hline(2, 13, 11, Fr[1]); p.rect(12, 4, 1, 5, Fr[0]); p.rect(12, 14, 1, 7, Fr[0]);
+        p.set(4, 6, P('#e84a4a')); p.set(6, 7, P('#4ab86a')); p.rect(4, 15, 3, 4, P('#fff6d8')); p.hline(4, 6, 16, P('#c8a060'));
+        break;
+      }
+      case 'stove': {
+        box(0, b + 2, 16, 14, 5, R(['#2a2c34', '#3a3e48', '#50566a', '#6a7286', '#8a92a6', '#aab2c4', '#ccd2de']), 5, 3);
+        for (const [x, y] of [[4, b + 3], [11, b + 3], [4, b + 5], [11, b + 5]]) { p.set(x - 1, y, P('#1a1a20')); p.set(x, y, P('#1a1a20')); p.set(x + 1, y, P('#1a1a20')); }
+        p.rect(3, b + 10, 10, 4, P('#1c1c24')); p.rect(4, b + 11, 8, 2, frame % 2 ? P('#ff8a3a') : P('#e8702a'));
+        p.rect(9, b - 2, 6, 5, P('#b84a3a')); p.hline(9, 14, b - 2, P('#e87a5a')); p.set(8, b - 1, P('#3a2a2a'));
+        break;
+      }
+      case 'sink': {
+        box(0, b + 2, 16, 14, 5, WD, 5, 3); p.rect(1, b + 2, 14, 5, P('#d8dce4'));
+        p.rect(3, b + 3, 8, 3, P('#8a9aac')); p.rect(4, b + 4, 6, 1, P('#b8d8f0'));
+        p.rect(6, b - 1, 1, 4, P('#9aa2ae')); p.hline(6, 8, b - 1, P('#c0c6ce'));
+        for (let x = 12; x < 15; x++) p.rect(x, b - 1, 1, 3, x % 2 ? P('#f4f4f8') : P('#8ac8e8'));
+        p.vline(8, b + 9, b + 14, WD[2]);
+        break;
+      }
+      case 'boxes': {
+        const Cb = R(['#5a3a1c', '#8a5a2c', '#b07a40', '#c89458', '#dcb070', '#ecc888']);
+        box(0, b + 6, 10, 10, 3, Cb, 4, 3); p.vline(5, b + 6, b + 15, P('#e8d8a8'));
+        box(8, b + 9, 8, 7, 2, Cb, 4, 2);
+        box(2, b - 1, 8, 8, 3, Cb, 4, 3); p.hline(2, 9, b + 1, P('#e8d8a8'));
+        break;
+      }
+      case 'floorlamp': {
+        p.rect(5, h - 2, 6, 2, MET[1]); p.rect(7, 9, 2, h - 11, MET[3]); p.vline(7, 9, h - 3, MET[5]);
+        const SH = R(['#b87a4a', '#f0d098', '#fff4d0']);
+        for (let y = 0; y < 8; y++) for (let x = 5 - Math.floor(y / 2); x < 11 + Math.floor(y / 2); x++) p.set(x, 1 + y, SH[x < 6 ? 2 : x > 10 ? 0 : 1]);
+        p.hline(2, 13, 8, SH[0]);
+        break;
+      }
+      case 'vending': {
+        const Vr = R(['#5a1018', '#8a1a26', '#b82a36', '#d84450', '#f06a74', '#ff9aa2']);
+        box(1, 0, 14, h, 2, Vr, 4, 3);
+        p.rect(3, 4, 8, 14, P('#20242e'));
+        for (let r = 0; r < 4; r++) for (let q = 0; q < 3; q++) p.rect(4 + q * 2 + (q > 0 ? q : 0), 5 + r * 3, 2, 2, P(['#6ad0ff', '#ffd84a', '#6aff9a', '#ff8aa0'][(r + q) % 4]));
+        p.rect(12, 6, 2, 4, P('#e8e8f0')); p.rect(3, 21, 8, 3, P('#101218'));
+        if (frame % 2) p.rect(3, 4, 8, 1, P('#ffffff'));
+        break;
+      }
+      case 'display': {
+        box(0, b + 8, 16, 8, 2, WD, 5, 3);
+        for (let y = b; y < b + 8; y++) for (let x = 1; x < 15; x++) p.set(x, y, P(y === b ? '#e8f4ff' : '#b8d8ea'));
+        p.rect(3, b + 4, 3, 3, P('#e84a4a')); p.rect(7, b + 5, 2, 2, P('#4a8ae8')); p.rect(10, b + 3, 3, 4, P('#e8c040')); p.line(2, b + 1, 5, b + 4, P('#ffffff'));
+        break;
+      }
+      case 'whiteboard': {
+        p.rect(2, b + 18, 1, 8, MET[2]); p.rect(13, b + 18, 1, 8, MET[2]);
+        p.rect(0, b, 16, 18, MET[4]); p.rect(1, b + 1, 14, 16, P('#f8fafc'));
+        p.line(3, b + 5, 8, b + 3, P('#3a78c8')); p.line(8, b + 3, 12, b + 7, P('#3a78c8')); p.hline(3, 11, b + 10, P('#e84a4a')); p.hline(3, 8, b + 13, P('#2a2a2a')); p.circ(11, b + 13, 1.5, P('#4ab86a'));
+        break;
+      }
+      case 'plant2': {   // tall leafy palm in a ceramic pot
+        const T2 = R(['#2a3a5a', '#3a5a8a', '#5a82b8', '#8ab0dc', '#c0d8f0']);
+        for (let y = h - 7; y < h; y++) for (let x = 4; x < 12; x++) p.set(x, y, T2[x < 6 ? 3 : x > 9 ? 1 : 2]);
+        p.hline(3, 12, h - 7, T2[4]);
+        const L = LEAF.grass;
+        for (let a = 0; a < 7; a++) { const ang = -Math.PI / 2 + (a - 3) * .42; for (let r = 0; r < 13; r++) { const x = 8 + Math.cos(ang) * r * .75, y = h - 8 + Math.sin(ang) * r + r * r * .045; p.set(Math.round(x), Math.round(y), L[r < 4 ? 3 : r < 9 ? 5 : 6]); p.set(Math.round(x) + 1, Math.round(y), L[2]); } }
         break;
       }
       case 'stairsup': case 'stairsdown': break;
