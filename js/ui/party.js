@@ -151,7 +151,7 @@ G.PartyScene = class {
       U.bar(x + 44, y + 14, 88, 4, f, U.hpColor(f));
       U.text(`${m.hp}/${max}`, x + w - 6, y + 13, { size: 5.8, weight: 800, color: sub, align: 'right', shadow: false });
       G.statusBadge(dead ? 'dead' : fnt ? 'fnt' : m.status, x + 136, y + 13.2);
-      if (m.item) U.img(G.tiles.itemIcon(G.ITEMS[m.item].icon || 'gem', G.ITEMS[m.item].ic || '#999'), x + 30, y + 12, { scale: .5 });
+      if (m.item) U.img(G.itemIconFor(m.item), x + 30, y + 12, { scale: .5 });
       if (m.shiny) U.text('★', x + 8, y + 14, { size: 6, color: '#ffd23a', weight: 800 });
       let tag = null;
       if (this.o.mode === 'select' && this.o.label) tag = this.o.label(m);
@@ -220,7 +220,7 @@ G.SummaryScene = class {
     U.text('Lv' + m.lvl, nx + 118, 17.5, { size: 7, weight: 800, align: 'right', color: '#ffd23a' });
     U.typeBadge(sp.types[0], nx + 1, 30, 32, 8.5); if (sp.types[1]) U.typeBadge(sp.types[1], nx + 36, 30, 32, 8.5);
     if (m.shiny) U.text('★', nx + 96, 30, { size: 7, color: '#ffd23a', weight: 800 });
-    U.img(G.tiles.itemIcon('orb', (G.ITEMS[m.ball] || G.ITEMS.orb).ic), nx + 110, 27, { scale: .7 });
+    U.img(G.itemIconFor(G.ITEMS[m.ball] ? m.ball : 'orb'), nx + 110, 27, { scale: .7 });
     if (m.dead) { U.para(4, 150, 124, 14, 5, '#07060c'); U.text('Fallen — rests in memory', 66, 153.5, { size: 6, color: '#ccd', align: 'center' }); }
     // tabs: skewed slabs, the open page juts up in red
     ['INFO', 'STATS', 'MOVES'].forEach((lb, k) => {

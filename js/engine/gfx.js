@@ -286,8 +286,8 @@ G.ui = {
   img(im, x, y, o = {}) {
     if (!im) return;
     const c = this.c, S = G.gfx.S;
-    const sc = o.scale || 1, w = (o.w || im.width) * sc, h = (o.h || im.height) * sc;
-    c.imageSmoothingEnabled = false;
+    const sc = o.scale || 1, w = (o.w || im.dispW || im.width) * sc, h = (o.h || im.dispH || im.height) * sc;
+    c.imageSmoothingEnabled = !!im.dispW; if (im.dispW) c.imageSmoothingQuality = 'high';   // HD icons scale smoothly
     if (o.alpha !== undefined) c.globalAlpha = o.alpha;
     if (o.flip) {
       c.save(); c.translate(this.X(x + w), this.Y(y)); c.scale(-1, 1);

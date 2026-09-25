@@ -298,7 +298,9 @@ G.chars = (function () {
     cache.set(key, cv);
     return cv;
   }
-  return { walker, sheet, portrait, battleSprite, hasBattle, load, SKIN, HAIR };
+  // feet-centre x of a battle sprite frame (animation frames are anchored there so they don't drift)
+  function battleFeet(a, k) { const r = hasBattle(a, k) && G.TRAINER_ATLAS.rects[a.id][k]; return r ? (r[4] !== undefined ? r[4] : r[2] / 2) : 0; }
+  return { walker, sheet, portrait, battleSprite, battleFeet, hasBattle, load, SKIN, HAIR };
 })();
 
 // ----------------------------------------------------------- appearances --

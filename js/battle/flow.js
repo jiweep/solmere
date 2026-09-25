@@ -185,7 +185,7 @@ G.battleTransition = async function (kind, cfg = {}) {
       quad(fx + 40, 34, fx + 200, 34, fx + 180, 182, fx + 10, 182, ACC[0]);
       quad(px - 10, 34, px + 150, 34, px + 120, 182, px - 30, 182, '#22335a');
       const draw = (look, x, flip) => {
-        const lk = typeof look === 'string' ? G.LOOKS[look] : look, im = G.chars.battleSprite && (G.chars.battleSprite(lk, 'a') || G.chars.battleSprite(lk, 'i'));
+        const lk = typeof look === 'string' ? G.LOOKS[look] : look, im = G.chars.battleSprite && (G.chars.battleSprite(lk, 'e5') || G.chars.battleSprite(lk, 'a') || G.chars.battleSprite(lk, 'i'));
         if (!im) return; c.save(); c.imageSmoothingEnabled = false; const sc2 = 1.7;
         if (flip) { c.translate(X(x + im.width * sc2), Y(182 - im.height * sc2)); c.scale(-1, 1); c.drawImage(im, 0, 0, im.width * sc2 * S, im.height * sc2 * S); }
         else c.drawImage(im, X(x), Y(182 - im.height * sc2), im.width * sc2 * S, im.height * sc2 * S);

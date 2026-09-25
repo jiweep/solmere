@@ -299,6 +299,18 @@ G.BattleScene = class {
       // generated sprites: idle breathing, action pose while sending out, 4-frame throw for the player
       const lk = typeof t.look === 'string' ? G.LOOKS[t.look] : t.look;
       const going = Math.abs(t.off) > .5, prog = Math.min(1, Math.abs(t.off) / 60);
+      // animated trainers: an idle loop (breathing, a blink now and then) and a signature emote when
+      // they first appear; the ready pose of the emote doubles as the send-out pose
+      if (!t.back && G.chars.hasBattle(lk, 'n0')) {
+        if (t.emoteAt === undefined) t.emoteAt = this.t + 24;
+        const et = this.t - t.emoteAt, SEQ = [0, 1, 1, 0, 3, 3, 0, 0, 1, 1, 0, 3, 3, 0, 2, 0];
+        let k = et >= 0 && et < 48 ? 'e' + Math.floor(et / 8) : t.act > 0 ? 'e5' : 'n' + SEQ[Math.floor(this.t / 12) % SEQ.length];
+        if (!G.chars.hasBattle(lk, k)) k = 'n0';
+        const spr = G.chars.battleSprite(lk, k);
+        b.drawImage(spr, Math.round(sx - G.chars.battleFeet(lk, k)), Math.round(t.y - spr.height));
+        if (t.act > 0) t.act--;
+        b.globalAlpha = 1; continue;
+      }
       const spr = t.back ? G.chars.battleSprite(lk, 'b' + (going ? 1 + Math.min(2, Math.floor(prog * 3)) : 0)) || G.chars.battleSprite(lk, 'b0')
                          : G.chars.battleSprite(lk, t.act > 0 ? 'a' : 'i') || G.chars.battleSprite(lk, 'i');
       if (spr) {

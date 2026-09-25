@@ -2,7 +2,26 @@
 // ============================================================================
 //  Bag: pockets, item details, field use, battle use, give, register
 // ============================================================================
-G.itemIconFor = id => { const it = G.ITEMS[id]; return G.tiles.itemIcon(it ? it.icon || 'gem' : 'gem', it ? it.ic || '#999' : '#999'); };
+// HD icons cut from the generated item sheets (tools/item_atlas.py); neutral ones (TM discs, type gems,
+// status sprays...) are recoloured by the item's colour. Falls back to the painted 16px icons.
+G.itemHD = (function () {
+  let img = null, ok = false; const cache = {};
+  return function (id) {
+    const A = G.ITEM_ATLAS; if (!A || typeof Image === 'undefined') return null;
+    if (!img) { img = new Image(); img.onload = () => { ok = true; }; img.src = A.src; }
+    if (!ok) return null;
+    if (cache[id]) return cache[id];
+    const it = G.ITEMS[id]; let m = A.map[id];
+    if (!m && it && A.kind[it.icon]) m = [A.kind[it.icon], it.icon === 'tm' ? 1 : 0];
+    if (!m) return null;
+    const [x, y] = A.rects[m[0]], S = A.size, cv = G.makeCanvas(S, S), c = cv.getContext('2d');
+    c.drawImage(img, x, y, S, S, 0, 0, S, S);
+    if (m[1] && it && it.ic) { c.globalCompositeOperation = 'multiply'; c.fillStyle = it.ic; c.fillRect(0, 0, S, S); c.globalCompositeOperation = 'destination-in'; c.drawImage(img, x, y, S, S, 0, 0, S, S); }
+    cv.dispW = 16; cv.dispH = 16;
+    return (cache[id] = cv);
+  };
+})();
+G.itemIconFor = id => { const hd = G.itemHD(id); if (hd) return hd; const it = G.ITEMS[id]; return G.tiles.itemIcon(it ? it.icon || 'gem' : 'gem', it ? it.ic || '#999' : '#999'); };
 G.BagScene = class {
   constructor(o, res) {
     this.o = o; this.res = res; this.opaque = true; this.t = 0;
