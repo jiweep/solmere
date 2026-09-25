@@ -43,19 +43,34 @@ G.gfx = {
   present25(o = {}) {
     const c = this.cx, S = this.S, W = G.W, H = G.H, buf = this.buf;
     c.imageSmoothingEnabled = false; this._persp = true;
-    const MAG = 0;   // row-stretch perspective retired: it made pixels swim while scrolling
+    const MAG = o.tilt === undefined ? .2 : o.tilt;
     if (!this._rows || this._rowsKey !== MAG + '|' + S) {
-      // precompute destination y/height per source row so the stack fills the screen exactly
+      // destination y/height per source row so the stack fills the screen exactly
       const m = []; let tot = 0;
       for (let y = 0; y < H; y++) { const k = 1 + MAG * Math.pow(y / (H - 1), 1.35); m.push(k); tot += k; }
       let acc = 0; this._rows = m.map(k => { const r = { k, y0: acc / tot * H * S }; acc += k; r.y1 = acc / tot * H * S; return r; });
+      // inverse map per destination pixel row: source row (fractional) and magnification
+      this._dst = [];
+      let yi = 0;
+      for (let j = 0; j < H * S; j++) {
+        while (yi < H - 1 && this._rows[yi].y1 <= j + .5) yi++;
+        const r = this._rows[yi], f = (j + .5 - r.y0) / (r.y1 - r.y0);
+        this._dst.push({ sy: (yi + Math.max(0, Math.min(1, f))) * S, k: r.k });
+      }
       this._rowsKey = MAG + '|' + S;
     }
-    // align the magnification centre with the screen centre horizontally
-    for (let y = 0; y < H; y++) {
-      const r = this._rows[y], sw = W / r.k, sx = (W - sw) / 2;
-      const dy = Math.floor(this.oy + r.y0), dh = Math.ceil(this.oy + r.y1) - dy;
-      c.drawImage(buf, sx, y, sw, 1, this.ox, dy, W * S, dh);
+    if (MAG === 0) { c.drawImage(buf, 0, 0, W, H, this.ox, this.oy, W * S, H * S); }
+    else {
+      // 1) crisp integer upscale, 2) tilt from the upscaled image with filtering: the slant without pixel shimmer
+      if (!this._hi || this._hi.width !== W * S) { this._hi = G.makeCanvas(W * S, H * S); this._hix = this._hi.getContext('2d'); }
+      const hx = this._hix; hx.imageSmoothingEnabled = false; hx.drawImage(buf, 0, 0, W, H, 0, 0, W * S, H * S);
+      c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'low';
+      const WS = W * S;
+      for (let j = 0; j < H * S; j++) {
+        const d = this._dst[j], sw = WS / d.k;
+        c.drawImage(this._hi, (WS - sw) / 2, Math.min(H * S - 1, d.sy), sw, 1, this.ox, this.oy + j, WS, 1);
+      }
+      c.imageSmoothingEnabled = false;
     }
     const x0 = this.ox, y0 = this.oy, w = W * S, h = H * S;
     // depth haze toward the far edge
@@ -395,6 +410,10 @@ G.Particles = class {
       } else if (p.type === 'star') {
         c.save(); c.translate(x, y); c.rotate(p.rot);
         c.beginPath(); for (let i = 0; i < 8; i++) { const r = i % 2 ? s * .4 : s; const an = i * Math.PI / 4; c.lineTo(Math.cos(an) * r, Math.sin(an) * r); } c.fill(); c.restore();
+      } else if (p.type === 'bfly') {   // two wing pixels that flap
+        const up = Math.floor(p.t / 4) % 2, x = Math.round(p.x + ox), y = Math.round(p.y + oy);
+        c.fillStyle = 'rgba(40,30,30,.8)'; c.fillRect(x, y, 1, 2);
+        c.fillStyle = p.color; if (up) { c.fillRect(x - 2, y - 1, 2, 2); c.fillRect(x + 1, y - 1, 2, 2); } else { c.fillRect(x - 1, y, 1, 2); c.fillRect(x + 1, y, 1, 2); }
       } else if (p.type === 'leaf') {
         c.save(); c.translate(x, y); c.rotate(p.rot); c.beginPath(); c.ellipse(0, 0, s, s * .45, 0, 0, Math.PI * 2); c.fill(); c.restore();
       } else {

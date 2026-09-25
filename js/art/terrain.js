@@ -227,6 +227,36 @@ G.terrain = (function () {
         put(x, y, [255, 150, 70]); put(x + 1, y, [200, 90, 40]);
       }
     }
+    // ---- larger detail pass: clover, mushrooms, leaf litter, stones, shells, driftwood (sparse, world-stable)
+    const GS2 = 13;
+    for (let gy = Math.floor((Y0 - 16) / GS2); gy <= Math.floor((Y0 + CS + 16) / GS2); gy++) for (let gxx = Math.floor((X0 - 16) / GS2); gxx <= Math.floor((X0 + CS + 16) / GS2); gxx++) {
+      const hsh = G.h2(gxx, gy, 55); if (hsh > .34) continue;
+      const hx = gxx * GS2 + Math.floor(G.h2(gxx, gy, 54) * GS2), hy = gy * GS2 + Math.floor(G.h2(gxx, gy, 53) * GS2);
+      const x = hx - X0, y = hy - Y0, m = matAt(x, y);
+      if (!safe(x, y, m) || !safe(x + 2, y, m) || !safe(x - 2, y, m)) continue;
+      const kind = Math.floor(G.h2(gxx, gy, 52) * 6);
+      if (m === M.GRASS) {
+        const base = G.fbm(hx / 56, hy / 56, 3, 2) * .72 + G.vnoise(hx / 9, hy / 9, 5) * .28, k = base < .36 ? 3 : base < .6 ? 4 : 5;
+        if (kind <= 1) {   // clover patch: a small darker clump of trefoils
+          for (let i = 0; i < 5; i++) { const cx = x + ((i * 3) % 5) - 2, cy = y + Math.floor(i / 2) - 1; put(cx, cy, GR[k - 2]); put(cx + 1, cy, GR[k - 1]); put(cx, cy - 1, GR[k - 1]); put(cx + 1, cy - 1, GR[k + 1]); }
+        } else if (kind === 2 && map.theme !== 'beach') {   // mushrooms
+          const cap = G.h2(gxx, gy, 51) > .5 ? [214, 64, 58] : [226, 186, 120];
+          put(x, y, [236, 226, 204]); put(x, y + 1, GR[k - 2]); put(x - 1, y - 1, cap); put(x, y - 1, cap); put(x + 1, y - 1, [cap[0] * .7, cap[1] * .7, cap[2] * .7]); put(x, y - 2, [255, 240, 230]);
+          put(x + 3, y + 1, [236, 226, 204]); put(x + 3, y, cap); put(x + 4, y, [cap[0] * .7, cap[1] * .7, cap[2] * .7]);
+        } else if (kind === 3) {   // leaf litter
+          const LC = [[200, 140, 60], [176, 96, 48], [214, 172, 72]];
+          for (let i = 0; i < 4; i++) { const c = LC[(((i + gxx) % 3) + 3) % 3]; const lx = x + (i % 2) * 3 - 1, ly = y + (i >> 1) * 2 - 1; put(lx, ly, c); put(lx + 1, ly, [c[0] * .75, c[1] * .75, c[2] * .75]); }
+        } else if (kind === 4) {   // mossy stone
+          put(x, y, [150, 150, 140]); put(x + 1, y, [120, 122, 116]); put(x - 1, y + 1, [110, 110, 104]); put(x, y + 1, [96, 98, 92]); put(x + 1, y + 1, [80, 84, 80]); put(x, y - 1, GR[k + 1]); put(x + 2, y + 1, GR[k - 2]);
+        }
+      } else if (m === M.SAND) {
+        if (kind <= 1) { put(x, y, [250, 150, 120]); put(x - 1, y, [236, 120, 96]); put(x + 1, y, [236, 120, 96]); put(x, y - 1, [236, 120, 96]); put(x, y + 1, [236, 120, 96]); }   // starfish
+        else if (kind === 2) { for (let i = 0; i < 6; i++) put(x - 3 + i, y + (i > 3 ? 1 : 0), i % 2 ? [150, 110, 70] : [178, 136, 90]); }   // driftwood
+        else if (kind === 3) { put(x, y, [255, 250, 240]); put(x + 1, y, [230, 214, 200]); put(x + 3, y + 1, [240, 200, 210]); }   // shells
+      } else if (m === M.PATH && kind === 0) {
+        put(x, y, RAMPS.path[2]); put(x + 1, y, RAMPS.path[1]); put(x + 3, y + 1, RAMPS.path[2]);   // cart ruts / hoof prints
+      }
+    }
     gx.putImageData(img, 0, 0);
     // ---- structural tiles on top
     for (let j = 0; j < CT; j++) for (let i = 0; i < CT; i++) {

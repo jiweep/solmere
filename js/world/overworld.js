@@ -682,6 +682,12 @@ G.WorldScene = class {
       if (green && G.rand() < .022) P.add({ x: spawnX(), y: cy - 6, vx: -.2, vy: .32 + G.rand() * .2, life: 700, type: 'leaf', size: 1.6 + G.rand() * .5, rot: G.rand() * 6, vr: .05, color: G.pick(['#5a9a3a', '#7ab84a', '#c8b04a', '#d88a3a']), upd: p => { p.vx = -.15 - G.wind(this.frame) * .9 + Math.sin(p.t / 24) * .25; p.vr = .03 + G.wind(this.frame) * .08; } });
       if (m.theme === 'dusk' && G.rand() < .03) P.add({ x: spawnX(), y: cy - 6, vx: -.3, vy: .3 + G.rand() * .2, life: 700, type: 'leaf', size: 1.5, rot: G.rand() * 6, vr: .06, color: G.pick(['#ffc0d8', '#ffd8e8', '#ff9ac0']), upd: p => { p.vx = -.2 - G.wind(this.frame) + Math.sin(p.t / 20) * .3; } });
       if (m.theme === 'snow' && G.rand() < .12) P.add({ x: spawnX(), y: cy - 6, vx: -.2, vy: .35 + G.rand() * .25, life: 600, size: G.rand() < .25 ? 2 : 1, color: '#ffffff', upd: p => { p.vx = -.1 - G.wind(this.frame) * .8 + Math.sin((p.t + p.y) / 30) * .2; } });
+      // butterflies flutter over grassy places by day
+      if (day && green && G.rand() < .006 && this.parts.list.filter(q => q.bfly).length < 4) {
+        const col = G.pick(['#fff4a0', '#ffffff', '#ffb0d0', '#a8d8ff']), bx = cx + G.rand() * G.W, by = cy + G.rand() * G.H;
+        P.add({ x: bx, y: by, vx: 0, vy: 0, life: 900, size: 2, color: col, bfly: true, fadeIn: 40, type: 'bfly',
+          upd: p => { p.vx = Math.sin(p.t / 40 + p.y * .1) * .45 - G.wind(this.frame) * .3; p.vy = Math.cos(p.t / 23) * .3 + Math.sin(p.t / 7) * .15; } });
+      }
       // pollen / dust motes drifting in the sunlight
       if (day && (green || m.theme === 'beach') && G.rand() < .04) P.add({ x: cx + G.rand() * G.W, y: cy + G.rand() * G.H, vx: 0, vy: -.05, life: 260, size: 1, color: '#fff6c8', alpha: .7, fadeIn: 60, blend: 'lighter', upd: p => { p.vx = -G.wind(this.frame) * .5 + Math.sin(p.t / 30 + p.y) * .12; } });
     }
@@ -952,7 +958,7 @@ G.WorldScene = class {
     if (ph === 'dusk') return { haze: 'rgba(255,170,130,', hazeA: .34, bloomA: .26, key: 'rgba(255,160,90,.6)', fill: 'rgba(70,40,110,.5)' };
     if (ph === 'dawn') return { haze: 'rgba(255,210,190,', hazeA: .3, bloomA: .24, key: 'rgba(255,200,160,.55)', fill: 'rgba(60,70,130,.45)' };
     if (d.weather === 'snow' || m.theme === 'snow') return { haze: 'rgba(235,245,255,', hazeA: .26, bloomA: .2 };
-    return { haze: 'rgba(214,232,255,', hazeA: .08, bloomA: .14, key: 'rgba(255,214,150,.55)', fill: 'rgba(30,50,110,.42)' };
+    return { haze: 'rgba(214,232,255,', hazeA: .12, bloomA: .2, key: 'rgba(255,208,140,.72)', fill: 'rgba(24,40,110,.5)' };
   }
   drawUI(c) {
     const S = G.gfx.S, U = G.ui;
