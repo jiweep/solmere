@@ -12,6 +12,13 @@ G.pop = function (s) {
 G.top = () => G.scenes[G.scenes.length - 1];
 G.findScene = cls => G.scenes.find(s => s instanceof cls);
 G.turbo = false;
+G.ffSpeed = () => G.settings.ffSpeed || 3;
+G.setTurbo = function (on, quiet) {
+  G.turbo = !!on; G.ffButton = false;
+  if (!quiet) G.toast(G.turbo ? `Fast-forward ${G.ffSpeed()}x  (Tab)` : 'Normal speed', { life: 60 });
+  const b = typeof document !== 'undefined' && document.getElementById('ff');
+  if (b) { b.classList.toggle('on', G.turbo); b.textContent = G.turbo ? '▶▶ ' + G.ffSpeed() + 'x' : '▶▶'; }
+};
 G.toasts = [];
 G.toast = function (text, o = {}) { G.toasts.push({ text, t: 0, life: o.life || 150, col: o.col || 'dark', icon: o.icon }); };
 G.banner = null; // area name banner
@@ -21,9 +28,10 @@ G.errors = [];
 G.update = function () {
   G.input.poll();
   G.frame++; G.time += 1 / 60;
-  if (G.input.pressed('turbo') && !(G.top() && G.top().noTurbo)) {
-    G.turbo = !G.turbo; G.toast(G.turbo ? 'Turbo ON  (Tab)' : 'Turbo OFF', { life: 70 });
-  }
+  // emulator-style fast-forward: Tab toggles it (or runs it while held, per Options); the on-screen button toggles
+  const blocked = G.top() && G.top().noTurbo;
+  if (G.settings.ffMode === 'hold') { const on = G.input.isDown('turbo') && !blocked; if (on !== G.turbo && !G.ffButton) G.setTurbo(on, true); }
+  else if (G.input.pressed('turbo') && !blocked) G.setTurbo(!G.turbo);
   if (G.input.pressed('photo') && G.world && G.top() === G.world.scene) { G.photoMode = !G.photoMode; G.toast(G.photoMode ? 'Photo mode: UI hidden. Press P to exit, Z to save a screenshot.' : 'Photo mode off', { life: 120 }); }
   G.updateTimers();
   const top = G.top();
@@ -82,7 +90,7 @@ G.drawOverlays = function () {
     U.text(t.text, G.W - w / 2 - 6, ty - 9.6, { size: 6.5, weight: 700, color: '#fff', align: 'center', alpha: a });
     ty += 15;
   }
-  if (G.turbo) U.text('▶▶', 6, 5, { size: 7, color: '#ffe066', weight: 800, outline: 'rgba(0,0,0,.6)' });
+  if (G.turbo && !document.getElementById('ff')) U.text('▶▶ ' + G.ffSpeed() + 'x', 6, 5, { size: 7, color: '#ffe066', weight: 800, outline: 'rgba(0,0,0,.6)' });
   if (G.net && G.net.connected) {
     const on = G.net.partner;
     U.text(on ? '● Link: ' + on.name : '● Link: waiting…', G.W - 6, 5, { size: 5.5, align: 'right', color: on ? '#7cf29a' : '#ffd166', weight: 800, outline: 'rgba(0,0,0,.6)' });
@@ -115,7 +123,7 @@ G.boot = function () {
     try { for (let k = 0; k < count; k++) { G.update(); if (k < count - 1) await yieldTask(); } }
     finally { stepping = false; }
   };
-  const reps = () => (G.turbo ? 3 : 1) * (G.simSpeed || 1);   // simSpeed: automated tests fast-forward
+  const reps = () => (G.turbo ? G.ffSpeed() : 1) * (G.simSpeed || 1);   // simSpeed: automated tests fast-forward
   const loop = async (now) => {
     if (stepping) { requestAnimationFrame(loop); return; }
     if (document.hidden && bgWanted()) { last = now; acc = 0; requestAnimationFrame(loop); return; }   // the worker clock is driving

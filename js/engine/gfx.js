@@ -3,7 +3,12 @@
 //  Graphics: canvas management, low-res world buffer, crisp native-res UI,
 //  pixel-art sprite pipeline ("pixelizer"), particles, fades.
 // ============================================================================
-G.FONT = '"Avenir Next", "Avenir", "Nunito", "Segoe UI", "Helvetica Neue", Arial, sans-serif';
+G.FONT = '"Pixelify Sans", "Avenir Next", "Avenir", "Nunito", "Segoe UI", "Helvetica Neue", Arial, sans-serif';
+// the bundled pixel font must be decoded before the first canvas text is drawn
+G.loadFonts = function () {
+  if (typeof document === 'undefined' || !document.fonts) return Promise.resolve();
+  return Promise.all([400, 500, 600, 700].map(w => document.fonts.load(`${w} 16px "Pixelify Sans"`).catch(() => null)));
+};
 G.MONO = '"SF Mono", Menlo, Consolas, monospace';
 
 G.makeCanvas = function (w, h) {
@@ -158,11 +163,26 @@ G.ui = {
     }
     return out;
   },
+  // pixel-art rounded rectangle: world-pixel aligned, corners cut in 1px steps (DS window style)
   rrect(x, y, w, h, r) {
     const c = this.c, S = G.gfx.S;
-    x = this.X(x); y = this.Y(y); w *= S; h *= S; r *= S;
-    c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
-    c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+    x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
+    const k = r >= 3 ? 2 : r >= 1 ? 1 : 0, steps = k === 2 ? [2, 1] : k === 1 ? [1] : [];
+    const P = (px, py) => [this.X(px), this.Y(py)];
+    const pts = [];
+    // top-left -> top-right -> bottom-right -> bottom-left, stepping around each corner
+    pts.push(P(x + (steps[0] || 0), y));
+    pts.push(P(x + w - (steps[0] || 0), y));
+    steps.forEach((st, i) => { pts.push(P(x + w - st, y + i + 1)); pts.push(P(x + w - (steps[i + 1] || 0), y + i + 1)); });
+    pts.push(P(x + w, y + h - steps.length));
+    for (let i = steps.length - 1; i >= 0; i--) { pts.push(P(x + w - (steps[i + 1] || 0), y + h - i - 1)); pts.push(P(x + w - steps[i], y + h - i - 1)); }
+    pts.push(P(x + w - (steps[0] || 0), y + h)); pts.push(P(x + (steps[0] || 0), y + h));
+    steps.forEach((st, i) => { pts.push(P(x + st, y + h - i - 1)); pts.push(P(x + (steps[i + 1] || 0), y + h - i - 1)); });
+    pts.push(P(x, y + steps.length));
+    for (let i = steps.length - 1; i >= 0; i--) { pts.push(P(x + (steps[i + 1] || 0), y + i + 1)); pts.push(P(x + steps[i], y + i + 1)); }
+    c.beginPath(); c.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
+    c.closePath();
   },
   fillRect(x, y, w, h, col, a) {
     const c = this.c; if (a !== undefined) c.globalAlpha = a;
@@ -170,17 +190,23 @@ G.ui = {
   },
   // themed panel
   panel(x, y, w, h, style = 'light', o = {}) {
-    const c = this.c, S = G.gfx.S, r = o.r !== undefined ? o.r : 4;
+    const c = this.c, r = o.r !== undefined ? o.r : 4;
     const T = G.ui.THEMES[style] || G.ui.THEMES.light;
+    x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
     if (o.alpha !== undefined) c.globalAlpha = o.alpha;
-    // drop shadow
-    if (!o.noShadow) { this.rrect(x + .8, y + 1.2, w, h, r); c.fillStyle = 'rgba(0,0,0,.28)'; c.fill(); }
-    this.rrect(x, y, w, h, r);
-    const g = c.createLinearGradient(0, this.Y(y), 0, this.Y(y + h)); g.addColorStop(0, T.top); g.addColorStop(1, T.bot);
-    c.fillStyle = g; c.fill();
-    c.lineWidth = S * (o.bw || .9); c.strokeStyle = T.border; c.stroke();
-    // inner highlight
-    this.rrect(x + 1, y + 1, w - 2, h - 2, Math.max(0, r - 1)); c.lineWidth = S * .5; c.strokeStyle = T.inner; c.stroke();
+    // hard drop shadow, 1px down-right
+    if (!o.noShadow) { this.rrect(x + 1, y + 1, w, h, r); c.fillStyle = 'rgba(0,0,0,.32)'; c.fill(); }
+    // dark outline, then a bevel: light top/left edge, shaded bottom/right edge
+    this.rrect(x, y, w, h, r); c.fillStyle = T.border; c.fill();
+    if (w > 4 && h > 4) {
+      this.rrect(x + 1, y + 1, w - 2, h - 2, r - 1); c.fillStyle = T.hi || G.col.light(T.top.startsWith('rgba') ? '#3a4660' : T.top, .5); c.fill();
+      this.rrect(x + 2, y + 2, w - 3, h - 3, r - 2); c.fillStyle = T.lo || (T.bot.startsWith('rgba') ? 'rgba(0,0,0,.4)' : G.col.dark(T.bot, .16)); c.fill();
+      this.rrect(x + 2, y + 2, w - 4, h - 4, r - 2); c.fillStyle = T.bot; c.fill();
+      // flat two-tone body: the upper band a step lighter
+      c.save(); this.rrect(x + 2, y + 2, w - 4, h - 4, r - 2); c.clip();
+      c.fillStyle = T.top; c.fillRect(this.X(x + 2), this.Y(y + 2), (w - 4) * G.gfx.S, Math.round((h - 4) * .55) * G.gfx.S);
+      c.restore();
+    }
     c.globalAlpha = 1;
   },
   THEMES: {
@@ -206,14 +232,16 @@ G.ui = {
     c.beginPath(); c.moveTo(px, py - 3 * S); c.lineTo(px + 4 * S, py); c.lineTo(px, py + 3 * S); c.fill();
   },
   bar(x, y, w, h, frac, col, bg = '#39414f', o = {}) {
-    const c = this.c;
-    this.rrect(x, y, w, h, h / 2); c.fillStyle = bg; c.fill();
+    const c = this.c, S = G.gfx.S;
+    x = Math.round(x * 2) / 2; y = Math.round(y * 2) / 2;
+    if (o.border !== false) { c.fillStyle = 'rgba(20,24,34,.85)'; c.fillRect(this.X(x - .5), this.Y(y - .5), (w + 1) * S, (h + 1) * S); }
+    c.fillStyle = bg; c.fillRect(this.X(x), this.Y(y), w * S, h * S);
     if (frac > 0) {
-      this.rrect(x, y, Math.max(h, w * G.clamp(frac, 0, 1)), h, h / 2);
-      const g = c.createLinearGradient(0, this.Y(y), 0, this.Y(y + h)); g.addColorStop(0, G.col.light(col, .35)); g.addColorStop(.5, col); g.addColorStop(1, G.col.dark(col, .15));
-      c.fillStyle = g; c.fill();
+      const fw = Math.max(.5, w * G.clamp(frac, 0, 1));
+      c.fillStyle = G.col.dark(col, .22); c.fillRect(this.X(x), this.Y(y), fw * S, h * S);
+      c.fillStyle = col; c.fillRect(this.X(x), this.Y(y), fw * S, h * .62 * S);
+      c.fillStyle = G.col.light(col, .45); c.fillRect(this.X(x), this.Y(y), fw * S, Math.min(h * .25, .5) * S);
     }
-    if (o.border !== false) { this.rrect(x, y, w, h, h / 2); c.lineWidth = G.gfx.S * .5; c.strokeStyle = 'rgba(0,0,0,.45)'; c.stroke(); }
   },
   hpColor(f) { return f > .5 ? '#3ed16b' : f > .2 ? '#f5c02b' : '#ef4b4b'; },
   // draw a low-res image (canvas) at native scale (nearest-neighbour)

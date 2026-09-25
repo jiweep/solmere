@@ -4,7 +4,7 @@ from mfw import *
 
 @song('home')
 def home(v):
-    s = Song('home', bpm=92, swing16=.58, title='Home Sweet Home', room=1.5, loudness=-18.0)
+    s = Song('home', bpm=92, swing=.6, title='Home Sweet Home', room=1.5, loudness=-18.0)
     s.section('A', 16, 'Gmaj9 | Em9 | Cmaj9 | D7sus4 D7 | Bm7 | Em7 | Am9 | D9sus4 D7b9 | Gmaj9 | G7 | Cmaj7 | Cm6 | Bm7 E7b9 | Am9 D13 | Gmaj9 | D7sus4')
     ld = s.part('lead', FLUTE, rev=.3, delay=.1); ld.autovib = True
     ld.write('A', 'd5:4 g5:4. a5:8 b5:4 | f#5:2. d5:4 | e5:4 g5:4. a5:8 b5:4 | g5:2 f#5:2 | d5:4 f#5:4. e5:8 d5:4 | b4:2. g4:4 | c5:4 e5:4 b4:4 c5:4 | d5:2 c5:4 eb5:4 |'
@@ -43,7 +43,7 @@ def lab(v):
 
 @song('haven')
 def haven(v):
-    s = Song('haven', bpm=96, swing16=.6, title='Tamer Haven', room=1.6, loudness=-18.0)
+    s = Song('haven', bpm=96, swing=.6, title='Tamer Haven', room=1.6, loudness=-18.0)
     s.section('A', 16, 'Fmaj9 | Dm9 | Gm9 | C13 | Am7 | D7b9 | Gm9 | C9sus4 C7b9 | Fmaj9 | F9 | Bbmaj9 | Bbm6 | Am7 | D7alt | Gm9 C13 | Fmaj9')
     ld = s.part('lead', VIBES, rev=.32, layer=[FLUTE]); ld.layer_gain = .5
     ld.write('A', 'c5:8 f5:8 a5:8 c6:8 e6:2 | d6:4. c6:8 a5:4 e5:4 | bb4:8 d5:8 f5:8 a5:8 bb5:2 | a5:4. g5:8 e5:4 bb4:4 | c5:8 e5:8 g5:8 b5:8 c6:2 | c6:4. a5:8 f#5:4 eb5:4 | d5:4 f5:4 a5:4 bb5:4 | g5:2 e5:4 db5:4 |'

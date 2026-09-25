@@ -83,8 +83,8 @@ def wild(v):
     lead = s.part('lead', TRUMPET, rev=.2, layer=[SYNBRASS], delay=.06); lead.autovib = True; lead.layer_gain = .7
     lead.write('A', 'e5:8 a5:8 r:8 a5:8 c6:8 b5:8 a5:8 e5:8 | f5:8 a5:8 r:8 a5:8 c6:4 a5:4 | e5:8 a5:8 r:8 a5:8 c6:8 d6:8 e6:4 | d6:8 c6:8 b5:8 g5:8 d5:2 |'
                     'e5:8 a5:8 r:8 a5:8 c6:8 b5:8 a5:8 e5:8 | f5:8 a5:8 r:8 a5:8 c6:4 f6:4 | e6:8 d6:8 c6:8 a5:8 f5:4 d5:4 | e5:4 g#5:4 b5:4 d6:4', vel=104)
-    lead.write('A2', 'c6:4. a5:8 e5:4 f5:4 | g5:4. b5:8 d6:2 | e6:4. d6:8 b5:4 g5:4 | a5:2. e5:8 a5:8 |'
-                     'c6:4. a5:8 e6:4 c6:4 | d6:4. b5:8 g6:2 | a5:2 b5:4 a5:4 | g#5:2 b5:4 d6:4', vel=102)
+    lead.write('A2', 'r:8 c6:8 -:8 a5:8 e6:4 c6:8 a5:8 | b5:8 d6:8 -:8 b5:8 g6:4 d6:8 b5:8 | e6:8 d6:8 b5:8 g5:8 -:8 e5:8 g5:8 b5:8 | a5:2 r:8 e5:8 a5:8 c6:8 |'
+                     '-:8 f6:8 e6:8 c6:8 a5:4 c6:8 e6:8 | -:8 g6:8 f6:8 d6:8 b5:4 d6:8 e6:8 | -:4 e6:8 d6:8 a5:4 b5:4 | g#5:4 b5:8 d6:8 -:4 e6:8 f6:8', vel=102)
     lead.write('C', 'a5+c6:8 r:8 a5+c6:8 c6+f6:8 r:8 a5+c6:8 g5+c6:4 | b5+d6:8 r:8 b5+d6:8 d6+g6:8 r:8 b5+d6:8 a5+d6:4 |'
                     'c6+e6:4. b5+d6:8 a5+c6:4 e5+a5:4 | c6+e6:8 d6+f6:8 e6+g6:8 c6+e6:8 a5+c6:2 |'
                     'a5+c6:8 r:8 a5+c6:8 c6+f6:8 r:8 a5+c6:8 g5+c6:4 | b5+d6:8 r:8 b5+d6:8 d6+g6:8 r:8 b5+d6:8 a5+d6:4 |'

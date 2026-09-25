@@ -6,15 +6,17 @@ from motifs import TIDE, CRANE
 # ============================================================================ BRINEHOLLOW (hometown)
 # Bb major, 100, gentle 16th swing. Nylon guitar, flute, soft piano; the iv-minor (Ebm6) sigh in
 # bar 12 is the "home" feeling that returns in the credits.
-BRINE_A = ('f5:4 bb5:4. c6:8 d6:4 | a5:2. f5:4 | g5:4 bb5:4. c6:8 d6:4 | c6:2 a5:2 | f5:4 a5:4. g5:8 f5:4 | d5:2. bb4:4 | eb5:4 g5:4 d5:4 eb5:4 | f5:2 r:4 f5:4 |'
-           'f5:4 bb5:4. c6:8 d6:4 | f6:2. ab5:4 | g5:4 bb5:4 eb6:4 d6:4 | gb5:2. c5:4 | f5:4. a5:8 d6:4 c6:4 | b5:4. ab5:8 f5:4 d5:4 | eb5:4 d5:4 a5:4 d6:4 | bb5:2. r:4')
+BRINE_A = ('r:8 f5:8 bb5:8 c6:8 d6:4 c6:8 bb5:8 |-:4 g5:8 a5:8 bb5:8 d6:4. | c6:8 bb5:8 g5:4 eb5:8 f5:8 g5:8 bb5:8 |-:4 c6:8 bb5:8 a5:2 |'
+           'r:8 a4:8 d5:8 f5:8 a5:4 g5:8 f5:8 |-:4 bb4:8 d5:8 g5:8 bb5:4. | a5:8 g5:8 eb5:4 d5:8 eb5:8 g5:8 bb5:8 |-:4 c6:8 bb5:8 a5:4 r:8 f5:8 |'
+           'bb5:8 c6:8 d6:8 f6:8 -:4 d6:8 c6:8 | ab5:4. g5:8 f5:4 d5:4 | eb5:8 g5:8 bb5:8 d6:8 -:4 c6:8 bb5:8 | gb5:4. f5:8 eb5:4 c5:4 |'
+           'r:8 f5:8 a5:8 c6:8 d6:4 c6:8 a5:8 | b5:4 ab5:8 b5:8 d6:8 f6:4. | eb6:8 d6:8 c6:8 g5:8 a5:8 c6:8 eb6:4 | d6:2. r:8 f5:8')
 BRINE_CH_A = 'Bbmaj9 | Gm9 | Ebmaj9 | F13sus4 F13 | Dm7 | Gm7 | Cm9 | F7sus4 F7 | Bbmaj9 | Bb7 | Ebmaj7 | Ebm6 | Dm7 | G7b9 | Cm9 F13 | Bb6'
 
 
 @song('brinehollow', variants=('day', 'night'))
 def brinehollow(v):
     night = v == 'night'
-    s = Song('brinehollow', bpm=100, swing16=.56, title='Brinehollow', room=1.9)
+    s = Song('brinehollow', bpm=104, swing=.61, title='Brinehollow', room=1.9)
     s.section('A', 16, BRINE_CH_A)
     s.section('B', 8, 'Ebmaj9 | Dm7 | Cm9 | Bbmaj7 | Ebmaj9 | Dm7 G7 | Cm9 | F7sus4')
     ld = s.part('lead', FLUTE if not night else OCARINA, rev=.34, delay=.12); ld.autovib = True
@@ -32,7 +34,7 @@ def brinehollow(v):
 @song('fernwick', variants=('day', 'night'))
 def fernwick(v):
     night = v == 'night'
-    s = Song('fernwick', bpm=116, title='Fernwick Town', room=1.8)
+    s = Song('fernwick', bpm=116, swing=.58, title='Fernwick Town', room=1.8)
     s.section('A', 16, 'Fmaj9 | Fmaj9 | Gm9 | C13 | Am7 | D7b9 | Gm9 | C7sus4 C7 | Fmaj9 | F7 | Bbmaj7 | Bbm6 | Am7 | Abdim7 | Gm9 C13 | Fmaj9')
     s.section('B', 8, 'Dm9 | G13 | Cmaj9 | A7alt | Dm9 | G13 | Gm9 | C7sus4')
     mA = ('a5:4. g5:8 a5:4 c6:4 | e5:2. g5:4 | bb5:4. a5:8 bb5:4 d6:4 | e5:2. a5:4 | c6:4. b5:8 c6:4 e6:4 | f#5:2. eb6:4 | d6:4. c6:8 bb5:4 a5:4 | f5:2 e5:2 |'

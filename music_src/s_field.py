@@ -8,17 +8,17 @@ from mfw import *
 @song('route1', variants=('day', 'night'))
 def route1(v):
     night = v == 'night'
-    s = Song('route1', bpm=140, swing16=.54, title='Route 1 — First Steps', room=1.7, reverb=1.0)
+    s = Song('route1', bpm=138, swing=.58, title='Route 1 — First Steps', room=1.7, reverb=1.0)
     s.section('intro', 4, 'Cbmaj7 Db | Ebmaj9 | Cbmaj7 Db | Bb7sus4 Bb7', intro=True)
     s.section('A', 16, 'Ebmaj9 | Cm11 | Abmaj9 | Bb13sus4 Bb7 | Ebmaj9 | Gm7 C7b9 | Fm9 | Bb13sus4 Bb7 |'
                        'Abmaj9 | Bb13 | Gm7 | Cm9 | Fm9 | Bb13sus4 Bb7b9 | Ebmaj9 | Cm9 F13')
     s.section('B', 8, 'Abmaj7 | Gm7 | Fm7 | Ebmaj7/G | Abmaj7 | Am7b5 D7b9 | Gm7 C7 | Fm7 Bb7sus4')
     s.section('C', 8, 'Cbmaj7 | Db6 | Ebmaj9 | Ebmaj9 | Cbmaj7 | Db6 | Fm9 | Bb13')
 
-    mel_A = ('bb4:8 eb5 g5:4 f5:8 eb5 f5 g5 | bb5:4. g5:8 f5:4 eb5:8 c5 | eb5:4. c5:8 bb4:2 | ab4:8 bb4 c5 d5 eb5 f5:4. |'
-             'bb4:8 eb5 g5:4 f5:8 eb5 f5 g5 | bb5:4. c6:8 bb5:4 g5:8 e5 | f5:4. ab5:8 g5:4 f5:8 eb5 | f5:2. r:8 bb4:8 |'
-             'c5:8 eb5 ab5:4 g5:8 f5 eb5 f5 | g5:4. f5:8 d5:4 bb4:4 | bb4:8 d5 g5:4 f5:8 d5 f5 g5 | bb5:4. g5:8 d5:2 |'
-             'ab5:8 g5 f5 eb5 c5:4 eb5:4 | f5:4. eb5:8 d5:4 cb5:4 | bb4:2. g4:8 bb4:8 | eb5:4 d5:4 c5:4 a4:4')
+    mel_A = ('bb4:8 eb5:8 g5:8 bb5:8 -:8 g5:8 bb5:8 c6:8 | -:4 g5:8 f5:8 eb5:4 d5:8 eb5:8 | c5:8 eb5:8 ab5:8 bb5:8 -:8 ab5:8 g5:8 eb5:8 | f5:4 eb5:8 f5:8 d5:4. r:8 |'
+             'bb4:8 eb5:8 g5:8 bb5:8 -:8 g5:8 bb5:8 eb6:8 | d6:4 bb5:8 g5:8 e5:8 g5:8 bb5:8 db6:8 | c6:4. ab5:8 g5:8 f5:8 eb5:8 c5:8 | eb5:4 f5:8 g5:8 -:4 r:8 bb4:8 |'
+             'c5:8 eb5:8 ab5:8 c6:8 -:4 bb5:8 ab5:8 | g5:4 f5:8 d5:8 -:4 bb4:8 c5:8 | d5:8 f5:8 bb5:8 d6:8 -:4 c6:8 bb5:8 | g5:4 eb5:8 d5:8 -:4 r:4 |'
+             'r:8 c5:8 f5:8 ab5:8 c6:4 bb5:8 ab5:8 | g5:8 ab5:8 bb5:8 eb6:8 d6:8 cb6:8 ab5:8 f5:8 | g5:4. f5:8 eb5:8 f5:8 g5:8 bb5:8 | -:4 c6:8 bb5:8 a5:8 c6:8 eb6:4')
     mel_B = ('c6:2. bb5:8 ab5:8 | bb5:2 g5:4 f5:4 | ab5:2. g5:8 f5:8 | g5:1 |'
              'c6:4. db6:8 c6:4 bb5:4 | c6:2 eb6:4 c6:4 | bb5:4. a5:8 g5:4 e5:4 | f5:2 eb5:4 bb4:4')
     mel_C = ('eb5:4. gb5:8 bb5:2 | ab5:4. f5:8 db5:2 | eb5:8 f5 g5 bb5 d6:2 | c6:4 bb5:4 g5:4 f5:4 |'
@@ -91,7 +91,7 @@ def route1(v):
 @song('route2', variants=('day', 'night'))
 def route2(v):
     night = v == 'night'
-    s = Song('route2', bpm=132, swing16=.57, title='Route 2 — Hedgerow Lane', room=1.6)
+    s = Song('route2', bpm=132, swing=.58, title='Route 2 — Hedgerow Lane', room=1.6)
     s.section('intro', 2, 'Cmaj7 | D7sus4 D7', intro=True)
     s.section('A', 16, 'Gmaj7 | Bm7 E7 | Am9 | D13 | Gmaj7 | Bm7 E7b9 | Am7 | Cm6 | Bm7 | E7 | Am9 | D7 | Em7 | A13 | Am7 D7 | G6')
     s.section('B', 8, 'Cmaj9 | B7alt | Em9 | A13 | Am9 | D13 | Bm7 E7b9 | Am7 D7sus4')
@@ -151,7 +151,7 @@ def route3(v):
 @song('route4', variants=('day', 'night'))
 def route4(v):
     night = v == 'night'
-    s = Song('route4', bpm=116, swing16=.6, title='Route 4 — Rainmoor', room=1.9)
+    s = Song('route4', bpm=116, swing=.6, title='Route 4 — Rainmoor', room=1.9)
     s.section('intro', 2, 'Dm9 | G13', intro=True)
     s.section('A', 16, 'Dm9 | G13 | Dm9 | G13 | Bbmaj9 | A7alt | Dm9 | Dm9 | Gm9 | C13 | Fmaj9 | Bbmaj7 | Em7b5 | A7b9 | Dm9 | A7alt')
     s.section('B', 8, 'Bbmaj7#11 | Am7 | Gm9 | C13 | Fmaj9 | Em7b5 A7 | Dm9 | Ebmaj7#11 A7alt')
@@ -176,7 +176,7 @@ def route4(v):
 @song('surf', variants=('day', 'night'))
 def surf(v):
     night = v == 'night'
-    s = Song('surf', bpm=124, swing16=.55, title='Across the Mere', room=1.9)
+    s = Song('surf', bpm=124, swing=.57, title='Across the Mere', room=1.9)
     s.section('intro', 2, 'Gm7 | C7sus4 C7', intro=True)
     s.section('A', 16, 'Fmaj7 | Gm7 C7 | Fmaj7 | Dm7 | Bbmaj7 | C7 | Am7 | Dm7 | Gm7 | C9 | Am7 | D7b9 | Gm7 | C13 | Fmaj7 | C7sus4')
     s.section('B', 8, 'Bbmaj7 | Bbm6 | Am7 | D7 | Gm7 | C7 | Fmaj7 | Gm7 C7')
@@ -200,7 +200,7 @@ def surf(v):
 # ============================================================================ BIKE
 @song('bike')
 def bike(v):
-    s = Song('bike', bpm=160, swing16=.54, title='Cycling!', room=1.3, loudness=-16.0)
+    s = Song('bike', bpm=160, swing=.56, title='Cycling!', room=1.3, loudness=-16.0)
     s.section('A', 16, 'Bbmaj7 | Gm7 | Cm7 | F7 | Bbmaj7 | Gm7 | Ebmaj7 | F7sus4 F7 | Dm7 | Gm7 | Cm7 | F7 | Ebmaj7 | Edim7 | Bb/F | F7sus4 F7')
     ld = s.part('lead', SYNBRASS, rev=.18, layer=[ALTOSAX], delay=.08); ld.autovib = True; ld.layer_gain = .7
     ld.write('A', 'f5:8 bb5:8 d6:8 f6:8 r:8 d6:8 f6:4 | f6:4. d6:8 bb5:4 g5:4 | g5:8 c6:8 eb6:8 g6:8 r:8 eb6:8 g6:4 | f6:4. eb6:8 c6:4 a5:4 |'

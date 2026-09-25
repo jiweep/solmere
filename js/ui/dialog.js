@@ -2,7 +2,7 @@
 // ============================================================================
 //  Dialogue: typewriter text boxes, choices, number pickers, naming keyboard
 // ============================================================================
-G.settings = G.settings || { textSpeed: 2, music: .7, sfx: .8, battleAnims: true, battleStyle: 'switch', battleSpeed: 1, autoRun: false, fill: false, hints: true, dmgPreview: false, clock: 'accel', autosave: true };
+G.settings = G.settings || { textSpeed: 2, music: .7, sfx: .8, battleAnims: true, battleStyle: 'switch', battleSpeed: 1, autoRun: false, fill: false, hints: true, dmgPreview: false, clock: 'accel', autosave: true, ffSpeed: 3, ffMode: 'toggle' };
 G.fmtText = function (s) {
   const sv = G.save;
   return String(s).replace(/\{PLAYER\}/g, sv ? sv.name : 'You').replace(/\{RIVAL\}/g, sv ? sv.rival || 'Wren' : 'Wren')

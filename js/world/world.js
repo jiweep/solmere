@@ -143,63 +143,114 @@ G.maps = {
 };
 
 // --------------------------------------------------------- tile images ----
+// Man-made and state-dependent ground tiles. Natural ground (grass, dirt,
+// sand, water, snow, ash, cave floor) is baked pixel by pixel in terrain.js;
+// these are painted on top of it. Tiles that depend on world position are not
+// cached here because the terrain bake caches the finished chunk instead.
 G.tileImg = function (map, c, frame) {
-  const T = G.tiles, th = map.theme;
+  const T = G.tiles, th = map.theme, X0 = c.x * 16, Y0 = c.y * 16;
+  const fresh = (fn) => { const p = new G.Painter(16, 16); fn(p); return p.done(); };
   switch (c.g) {
-    case 'grass': return T.get(`g|${c.v}|${th}`, 16, 16, p => T.grass(p, c.v, th));
-    case 'flowers': return T.get(`fl|${c.v}|${frame % 2}|${th}`, 16, 16, p => T.flowers(p, c.v, th, frame % 2));
-    case 'tall': return T.get(`tg|${frame % 4}|${th}|${c.mask & 1}`, 16, 16, p => T.tallgrass(p, frame % 4, th, c.mask));
-    case 'path': return T.get(`pa|${c.mask}|${th}|${c.v}`, 16, 16, p => T.path(p, c.mask, th, 'path', c.v * 16, c.v * 7));
-    case 'sand': return T.get(`sa|${c.mask}|${c.v}`, 16, 16, p => T.path(p, c.mask, th, 'sand', c.v * 16, 0));
-    case 'pave': return T.get(`pv|${c.v % 2}`, 16, 16, p => T.path(p, 255, th, 'pave', c.v * 8, 0));
-    case 'water': return T.get(`wa|${c.mask}|${frame % 4}|${c.shore}|${th}`, 16, 16, p => T.water(p, c.mask, frame % 4, th, c.shore));
-    case 'hedge': return T.get(`he|${c.mask}|${th}`, 16, 16, p => { T.grass(p, 0, th); T.hedge(p, c.mask, th); });
-    case 'ledge': return T.get(`le|${c.v}|${th}|${map.type}`, 16, 16, p => { if (map.type === 'cave') { T.simple(p, 'cave', c.v, 0, th); const cc = [G.col.parse('#66523f'), G.col.parse('#523f30'), G.col.parse('#9a8068')]; p.rect(0, 10, 16, 6, cc[0]); p.rect(0, 10, 16, 1, cc[2]); p.rect(0, 15, 16, 1, cc[1]); } else T.ledge(p, c.v, th, 'down'); });
-    case 'ledgel': return T.get(`lel|${c.v}|${th}`, 16, 16, p => T.ledge(p, c.v, th, 'left'));
-    case 'ledger': return T.get(`ler|${c.v}|${th}`, 16, 16, p => T.ledge(p, c.v, th, 'right'));
-    case 'cliff': return T.get(`cl|${c.mask}|${th}`, 16, 16, p => T.cliff(p, c.mask, th, 'cliff'));
-    case 'cavewall': return T.get(`cw|${c.mask}`, 16, 16, p => T.cliff(p, c.mask, th, 'cave'));
-    case 'crystalwall': return T.get(`crw|${c.mask}`, 16, 16, p => T.cliff(p, c.mask, th, 'crystal'));
-    case 'wall': return T.get(`wl|${c.wv}|${c.wstyle || map.def.wall || 'cream'}`, 16, 16, p => T.wall(p, c.wv, c.wstyle || map.def.wall || 'cream'));
-    case 'gymfloor': return T.get(`gf|${map.def.floor || '#8aa0b8'}`, 16, 16, p => T.simple(p, 'gymfloor', 0, 0, map.def.floor || '#8aa0b8'));
-    case 'gymfloor2': return T.get(`gf|${map.def.floor2 || '#6a809a'}`, 16, 16, p => T.simple(p, 'gymfloor', 0, 0, map.def.floor2 || '#6a809a'));
-    case 'carpet': return T.get(`cp|${map.def.carpet || 'red'}`, 16, 16, p => T.simple(p, 'carpet', 0, 0, map.def.carpet || 'red'));
-    case 'stairsup': case 'stairsdown': return T.get(c.g, 16, 16, p => T.furniture(p, c.g, 0));
-    case 'ladderup': return T.get('ladder', 16, 16, p => { T.simple(p, 'cave', 0, 0, th); const w = G.col.parse('#8a5a34'), d = G.col.parse('#5a3a20'); p.rect(3, 0, 2, 16, w); p.rect(11, 0, 2, 16, w); for (let y = 2; y < 16; y += 4) p.rect(3, y, 10, 2, y % 8 ? w : d); });
-    case 'hole': return T.get('hole', 16, 16, p => { T.simple(p, 'cave', 0, 0, th); p.ell(8, 8.5, 6.5, 5.5, G.col.parse('#1a1210')); p.ell(8, 7.5, 5.5, 4, G.col.parse('#0a0808')); });
-    case 'mat': return T.get('mat|' + (map.def.matCol || ''), 16, 16, p => T.simple(p, 'mat', 0, 0, th));
-    case 'lava': return T.get(`lv|${frame % 4}|${c.v}`, 16, 16, p => T.simple(p, 'lava', c.v, frame % 4, th, c.x * 3, c.y * 3));
-    case 'switch': { const on = G.flag(c.sw); return T.get(`sw|${on ? 1 : 0}|${map.def.floor || ''}`, 16, 16, p => { T.simple(p, 'gymfloor', 0, 0, map.def.floor || '#8aa0b8'); p.circ(8, 8, 6, G.col.parse('#2a2e38')); p.circ(8, 8, 4.6, G.col.parse(on ? '#6aff9a' : '#ffd84a')); p.circ(7, 7, 1.6, G.col.parse('#ffffff')); }); }
-    case 'none': return null;
-    default: return T.get(`s|${c.g}|${c.v}|${th}`, 16, 16, p => T.simple(p, c.g, c.v, 0, th, c.v * 16, c.v * 5));
+    case 'cliff': case 'cavewall': case 'crystalwall': return T.cliffTile(map, c);
+    case 'ledge': return T.ledgeTile(map, c, 'down');
+    case 'ledgel': return T.ledgeTile(map, c, 'left');
+    case 'ledger': return T.ledgeTile(map, c, 'right');
+    case 'bridge': case 'bridgev': return T.bridgeTile(map, c);
+    case 'wall': return T.wallTile(map, c);
+    case 'wood': return fresh(p => T.woodFloor(p, X0, Y0, map.def.woodTone || 0));
+    case 'tilefloor': return fresh(p => T.tileFloor(p, X0, Y0, map.def.floor || '#e4e8ec'));
+    case 'carpet': return fresh(p => T.carpet(p, map, c, map.def.carpet || 'red'));
+    case 'gymfloor': return fresh(p => T.gymFloor(p, X0, Y0, map.def.floor || '#8aa0b8'));
+    case 'gymfloor2': return fresh(p => T.gymFloor(p, X0, Y0, map.def.floor2 || '#6a809a'));
+    case 'pave': return fresh(p => T.tileFloor(p, X0, Y0, '#b8b4ac'));
+    case 'metal': return fresh(p => { const M = G.ramp(['#4a525e', '#5e6874', '#76808c', '#8e98a4', '#a8b2bc', '#c8d0d8']); for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const u = (X0 + x) % 16, v = (Y0 + y) % 16; p.set(x, y, M[u === 15 || v === 15 ? 0 : u === 0 || v === 0 ? 5 : (u - v + 32) % 6 === 0 ? 4 : 3]); } for (const [x, y] of [[2, 2], [13, 2], [2, 13], [13, 13]]) { p.set(x, y, M[5]); p.set(x + 1, y + 1, M[1]); } });
+    case 'stairsup': return T.get('stairsup', 16, 16, p => { const W = G.ramp(['#4a2c18', '#6a4426', '#865a32', '#a0703e', '#b5844c', '#c8995e', '#dcb074']); for (let i = 0; i < 4; i++) for (let y = 0; y < 4; y++) for (let x = 0; x < 16; x++) p.set(x, i * 4 + y, W[y === 0 ? 6 : y === 3 ? 1 : 4 - (i > 1 ? 1 : 0)]); for (let y = 0; y < 16; y++) { p.set(0, y, W[0]); p.set(15, y, W[0]); p.set(1, y, W[5]); } });
+    case 'stairsdown': return T.get('stairsdown', 16, 16, p => { const W = G.ramp(['#140c08', '#2a1c14', '#46301e', '#62442a', '#7e5a38', '#9a7248']); p.fill(W[0]); for (let i = 0; i < 4; i++) for (let y = 0; y < 3; y++) for (let x = 1; x < 15; x++) p.set(x, i * 4 + y, W[5 - i - (y === 2 ? 1 : 0)]); });
+    case 'ladderup': return T.get('ladder', 16, 16, p => { const W = G.ramp(['#2a1a10', '#4a2e1a', '#6a4426', '#8a5c34', '#a87446']); for (let y = 0; y < 16; y++) { p.set(3, y, W[3]); p.set(4, y, W[2]); p.set(11, y, W[3]); p.set(12, y, W[2]); } for (let y = 2; y < 16; y += 4) { for (let x = 3; x < 13; x++) { p.set(x, y, W[4]); p.set(x, y + 1, W[1]); } } p.outline(null, { k: .4 }); });
+    case 'hole': return T.get('hole', 16, 16, p => { const K = G.ramp(['#050404', '#0e0a08', '#1c1410', '#3a2c22']); p.ell(8, 8.5, 6.8, 5.8, K[3]); p.ell(8, 8.8, 6, 5, K[1]); p.ell(8, 9.4, 4.6, 3.8, K[0]); for (let x = 3; x < 13; x++) if (p.A(x, 3)) p.set(x, 3, K[3]); });
+    case 'mat': return T.get('mat|' + (map.def.matCol || '') + '|' + map.type, 16, 16, p => { if (map.type === 'indoor') T.woodFloor(p, 0, 0, map.def.woodTone || 0); const Rm = G.rampFrom(map.def.matCol || '#b83a3a', 6, { lo: .3, hi: .2 }); for (let y = 2; y < 14; y++) for (let x = 1; x < 15; x++) p.set(x, y, Rm[(y === 2 || y === 13 || x === 1 || x === 14) ? 1 : (y === 4 || y === 11) && x > 2 && x < 13 ? 5 : 3]); for (let x = 2; x < 14; x += 2) { p.set(x, 14, Rm[4]); p.set(x, 1, Rm[4]); } });
+    case 'crystalfloor': return T.get('crysf|' + (c.v % 4), 16, 16, p => { if (c.v % 2) return; const Cc = G.ramp(['#3a9ac0', '#8ae0ff', '#ffffff']); const x = 3 + (c.v * 5) % 9, y = 4 + (c.v * 3) % 8; p.set(x, y, Cc[1]); p.set(x + 1, y, Cc[0]); p.set(x, y - 1, Cc[2]); p.set(x + 5, y + 4, Cc[1]); });
+    case 'dark': return T.get('dark', 16, 16, p => p.fill(G.rgb('#06060c')));
+    case 'lava': return T.get(`lava|${frame % 4}|${c.v}`, 16, 16, p => { const Lr = G.ramp(['#6a1408', '#a8240c', '#d84a14', '#f47a1c', '#ffae3a', '#ffe070', '#fff8c0']); for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const n = G.fbm((X0 + x) / 9 + frame * .08, (Y0 + y) / 9 - frame * .05, 8, 2); const cr = G.vnoise((X0 + x) / 4, (Y0 + y) / 4, 9); p.set(x, y, Lr[cr > .72 ? 1 : G.clamp(Math.floor(n * 7), 2, 6)]); } });
+    case 'switch': { const on = G.flag(c.sw); return T.get(`sw|${on ? 1 : 0}|${map.def.floor || ''}`, 16, 16, p => { T.gymFloor(p, 0, 0, map.def.floor || '#8aa0b8'); p.circ(8, 8, 6, G.rgb('#20242e')); p.circ(8, 8, 4.6, G.rgb(on ? '#6aff9a' : '#ffd84a')); p.circ(7, 7, 1.6, G.rgb('#ffffff')); }); }
+    default: return null;
   }
 };
+// live ground overlays drawn every frame on top of the baked terrain
+G.liveTile = function (map, c, frame) {
+  const T = G.tiles, th = map.theme;
+  switch (c.g) {
+    case 'tall': return { img: T.get(`tg|${frame % 4}|${th}`, 16, 20, p => T.tallgrass(p, frame % 4, th, 0, false)), oy: -4 };
+    case 'flowers': return { img: T.get(`fl|${c.v}|${frame % 2}`, 16, 16, p => T.flowerSprite(p, c.v, th, frame % 2)), oy: 0 };
+    case 'lava': case 'switch': return { img: G.tileImg(map, c, frame), oy: 0 };
+    default: return null;
+  }
+};
+// world props: {img, ox, oy} places the sprite relative to the tile's top-left
+const TREE_DEEP = [.62, .74, .8], TREE_MID = [.8, .88, .9];
+// generated sprites stand on their tile: centred, feet 2px into the tile
+const atlasObj = (key, extra = {}, tint) => { const im = G.tiles.atlas(key, 0, tint); return im ? { img: im, ox: Math.round(8 - im.width / 2), oy: 18 - im.height, base: 3, aoW: 7, ...extra } : null; };
 G.objImg = function (map, c, frame) {
   const T = G.tiles, th = map.theme;
+  const A = G.tiles.atlas && G.WORLD_ATLAS;
+  if (A) {
+    let r = null;
+    const snow = th === 'snow';
+    switch (c.o) {
+      case 'tree': {
+        if (snow) { r = atlasObj('pine_snow'); break; }
+        // woods: broadleaf and conifer, in three depths of shade so a tree wall reads as layered canopy
+        const hh = G.h2(c.x | 0, c.y | 0, 77), shade = G.h2(c.x | 0, c.y | 0, 91);
+        const tint = shade < .4 ? TREE_DEEP : shade < .75 ? TREE_MID : null;
+        if ((!th || th === 'grass') && hh < .3) r = atlasObj(c.v % 2 ? 'pine2' : 'pine', {}, tint);
+        else r = atlasObj(hh > .93 ? 'tree_fruit' : 'tree', {}, tint);
+        break;
+      }
+      case 'pine': r = atlasObj(snow ? 'pine_snow' : c.v % 2 ? 'pine2' : 'pine'); break;
+      case 'palm': r = atlasObj('palm'); break;
+      case 'deadtree': r = atlasObj('deadtree'); break;
+      case 'smalltree': r = atlasObj('smalltree', { base: 2, aoW: 5 }); break;
+      case 'rock': r = atlasObj('rock', { base: 2 }); break;
+      case 'crackrock': r = atlasObj('crackrock', { base: 2 }); break;
+      case 'boulder': r = atlasObj('boulder', { base: 2 }); break;
+      case 'lamp': r = atlasObj('lamp', { base: 2, aoW: 4 }); break;
+      case 'sign': r = atlasObj('sign', { base: 1, aoW: 4 }); break;
+      case 'mailbox': r = atlasObj('mailbox', { base: 1, aoW: 3 }); break;
+      case 'bench': r = atlasObj('bench', { base: 1, aoW: 6 }); break;
+    }
+    if (r) return r;
+  }
   switch (c.o) {
-    case 'tree': return { img: T.get(`tr|${c.v % 2}|${th}`, 16, 32, p => T.tree(p, c.v % 2, th, 'broad')), oy: -16 };
-    case 'pine': return { img: T.get(`pi|${th}`, 16, 32, p => T.tree(p, 0, th === 'snow' ? 'snow' : th, 'pine')), oy: -16 };
-    case 'palm': return { img: T.get(`pm|${th}`, 16, 32, p => T.tree(p, 0, 'beach', 'palm')), oy: -16 };
-    case 'deadtree': return { img: T.get(`dt|${th}`, 16, 32, p => T.tree(p, 0, 'ash', 'dead')), oy: -16 };
-    case 'smalltree': return { img: T.get(`st|${th}`, 16, 16, p => T.smallTree(p, th)), oy: 0 };
-    case 'rock': return { img: T.get(`rk|${th}`, 16, 16, p => T.rock(p, 'rock', th)), oy: 0 };
-    case 'crackrock': return { img: T.get(`rc|${th}`, 16, 16, p => T.rock(p, 'crack', th)), oy: 0 };
-    case 'boulder': return { img: T.get(`bo|${th}`, 16, 16, p => T.rock(p, 'boulder', th)), oy: 0 };
-    case 'fence': return { img: T.get(`fe|${c.mask || 0}|${th}`, 16, 16, p => T.fence(p, c.mask || 0, th)), oy: 0 };
+    case 'tree':
+      // woods mix broadleaf and conifer, like the DS routes
+      if ((!th || th === 'grass') && G.h2(c.x | 0, c.y | 0, 77) < .3) return { img: T.pineTree(c.v % 2, th), ox: -7, oy: -32, base: 3, aoW: 6 };
+      return { img: T.broadTree(c.v % 3, th === 'snow' ? 'snow' : th), ox: -8, oy: -28, base: 3, aoW: 7 };
+    case 'pine': return { img: T.pineTree(c.v % 2, th), ox: -7, oy: -32, base: 3, aoW: 6 };
+    case 'palm': return { img: T.palmTree(th), ox: -8, oy: -30, base: 3, aoW: 5 };
+    case 'deadtree': return { img: T.deadTree(c.v % 2), ox: -6, oy: -24, base: 2, aoW: 5 };
+    case 'smalltree': return { img: T.smallTree(th), ox: -1, oy: -6, base: 2, aoW: 5 };
+    case 'rock': return { img: T.rockSprite('rock', th), ox: -1, oy: -2, base: 2, aoW: 7 };
+    case 'crackrock': return { img: T.rockSprite('crack', th), ox: -1, oy: -2, base: 2, aoW: 7 };
+    case 'boulder': return { img: T.rockSprite('boulder', th), ox: -1, oy: -2, base: 2, aoW: 7 };
+    case 'fence': return { img: T.fenceSprite(c.mask || 0, th), ox: 0, oy: -6, base: 1, ao: false };
+    case 'lamp': return { img: T.lampSprite(th), ox: 0, oy: -24, base: 2, aoW: 4 };
+    case 'lanternpost': return { img: T.lanternPost(), ox: 0, oy: -6, base: 1, aoW: 4 };
+    case 'crystal': return { img: T.crystalSprite(c.v), ox: -1, oy: -4, base: 2, aoW: 6 };
     case 'table': {
       const n = (dx, dy) => { const q = map.cell(c.x + dx, c.y + dy); return q && q.o === 'table'; };
       const m = (n(0, -1) ? 1 : 0) | (n(1, 0) ? 2 : 0) | (n(0, 1) ? 4 : 0) | (n(-1, 0) ? 8 : 0);
-      return { img: T.get(`tbl|${m}`, 16, 16, p => T.tableJoin(p, m)), oy: 0 };
+      return { img: T.tableJoin(m), ox: 0, oy: 0, ao: false };
     }
-    case 'bed': { // vertical pairs of bed tiles render as one long bed
+    case 'bed': {   // vertical pairs of bed tiles render as one long bed
       const up = map.cell(c.x, c.y - 1), dn = map.cell(c.x, c.y + 1);
       const kind = up && up.o === 'bed' ? 'bed_bot' : dn && dn.o === 'bed' ? 'bed_top' : 'bed';
-      return { img: T.get(`fu|${kind}`, 16, 16, p => T.furniture(p, kind, 0)), oy: 0 };
+      return { ...T.furniture(kind, 0), ao: false };
     }
-    case 'lamp': return { img: T.get(`la|${th}`, 16, 32, p => T.lamp(p, th)), oy: -16 };
-    case 'crystal': return { img: T.get(`cr|${c.v % 2}`, 16, 16, p => T.crystal(p, c.v)), oy: 0 };
-    case 'barrier': case 'barrier2': { const col = c.o === 'barrier' ? '#ffe070' : '#8ae8ff'; return { img: T.get(`bar|${c.o}|${frame % 2}`, 16, 16, p => { const K = G.col.parse('#3a3e4a'), L = G.col.parse(col); p.rect(1, 2, 2, 13, K); p.rect(13, 2, 2, 13, K); for (let y = 4; y < 14; y += 3) for (let x = 3; x < 13; x++) p.set(x, y + ((x + frame) % 2), L); p.rect(0, 1, 4, 2, K); p.rect(12, 1, 4, 2, K); }), oy: 0 }; }
-    default: return { img: T.get(`fu|${c.o}|${['pc', 'tv', 'healer', 'machine', 'fountain', 'cauldron'].includes(c.o) ? frame % 2 : 0}`, 16, 16, p => T.furniture(p, c.o, frame % 2)), oy: 0, flat: c.o === 'rug' };
+    case 'barrier': case 'barrier2': { const col = c.o === 'barrier' ? '#ffe070' : '#8ae8ff'; return { img: T.get(`bar|${c.o}|${frame % 2}`, 16, 16, p => { const K = G.rgb('#3a3e4a'), L = G.rgb(col); p.rect(1, 2, 2, 13, K); p.rect(13, 2, 2, 13, K); for (let y = 4; y < 14; y += 3) for (let x = 3; x < 13; x++) p.set(x, y + ((x + frame) % 2), L); p.rect(0, 1, 4, 2, K); p.rect(12, 1, 4, 2, K); }), ox: 0, oy: 0, ao: false }; }
+    case 'rug': return { img: T.furniture('rug', 0).img, ox: 0, oy: 0, flat: true };
+    case 'counter': case 'pc': case 'shelf': case 'tv': case 'plant': case 'healer': case 'machine': case 'desk': case 'statue':
+      return { ...T.furniture(c.o, ['pc', 'tv', 'healer', 'machine'].includes(c.o) ? frame % 2 : 0), ao: c.o === 'plant' || c.o === 'statue' };
+    default: return { ...T.prop(c.o, ['fountain', 'cauldron'].includes(c.o) ? frame % 2 : 0), aoW: 6 };
   }
 };
 G.borderCell = function (map, x, y) {

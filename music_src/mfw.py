@@ -114,6 +114,42 @@ class Chord:
         if n > len(order): order = order + [1, 5, 3][:n - len(order)]
         return [(self.root + t.get(f, 0)) % 12 for f in order[:n]]
 
+    def template(self):
+        """Colour tones for a light 3-voice upper structure over the bass (the root is left to the bass):
+        guide tones (3rd + 7th, or 3rd + 6th) plus ONE colour tone, the way DS-era arrangements imply
+        extended harmony without stacking every tone. Triads stay triads (+9 if written).
+        maj7 -> 3 7 9, m7 -> b3 b7 9, dom -> 3 b7 (13 | alt 9 | 9), sus -> 4 b7 9, 6 -> 3 6 9."""
+        t = self.tones
+        has = lambda f: f in t
+        if has(7) and t[7] == 11 and not self.minor:            # maj7 family
+            f = [3, 7, 11] if has(11) and t[11] == 18 else [3, 7, 13] if has(13) else [3, 7, 9]
+        elif self.minor and has(7) and t.get(5) == 6: f = [3, 5, 7]                                     # m7b5 / dim7
+        elif self.minor and has(7): f = [3, 7, 11] if has(11) else [3, 7, 9] if has(9) or t[7] == 10 else [3, 7, 5]   # m7 / m9 / m11 / mM7
+        elif has(7) and t[7] == 10 and has(3):                    # dominant family
+            if has('x9'): f = [3, 7, 'x9']
+            elif has(9) and t[9] == 13: f = [3, 7, 9]
+            elif has(13): f = [3, 7, 13]
+            elif has(9): f = [3, 7, 9]
+            else: f = [3, 7, 5]
+        elif has(4) and not has(3): f = [4, 7, 9] if has(7) else [1, 4, 9] if has(9) else [1, 4, 5]
+        elif has(6): f = [3, 6, 9] if has(9) else [3, 5, 6]
+        elif self.minor: f = [3, 5, 9] if has(9) else [1, 3, 5]
+        elif has(3) and t.get(5) == 8: f = [1, 3, 5]
+        else: f = [3, 5, 9] if has(9) else [1, 3, 5]
+        out = []
+        for k in f:
+            v = t.get(k, {9: 14, 5: 7, 1: 0, 13: 21, 3: 4}.get(k, 0))
+            pc = (self.root + v) % 12
+            if pc not in out: out.append(pc)
+        return out
+
+    def guides(self):
+        """The two tones that define the chord's quality (3rd/7th, or 3rd/6th, 4th/7th for sus)."""
+        t = self.tones
+        g = [f for f in (3, 7) if f in t]
+        if len(g) < 2: g = [f for f in (3, 4, 6, 7, 2, 5, 1) if f in t][:2]
+        return [(self.root + t[f]) % 12 for f in g]
+
     def scale(self):
         """A chord-scale (7 pcs) for walking lines / arps."""
         t = self.tones; r = self.root
@@ -252,6 +288,92 @@ def voice(chord, prev=None, lo=52, hi=76, n=4, top=None, rootless=True, spread=F
     if best is None: best = sorted(_placements(pcs, lo - 6, hi + 6).__next__())
     if top is not None: best = best + [top]
     return best
+
+
+def _melody_parts(song):
+    return [p for n, p in song.parts.items() if not p.kit and (p.role in ('lead', 'solo') or n.startswith('lead'))]
+
+
+def melody_at(song, t0, t1=None):
+    """Melody pitches sounding at t0 (or starting before t1)."""
+    out = []
+    for p in _melody_parts(song):
+        for (t, d, pp, v, a) in p.notes:
+            if (t <= t0 + 1e-6 < t + d) or (t1 is not None and t0 <= t < t1): out.append(pp)
+    return out
+
+
+def _close(pcs, bottom):
+    """Stack pcs upward from the first placement >= bottom (close position)."""
+    v = []; cur = bottom - 1
+    for pc in pcs:
+        n = cur + 1
+        while n % 12 != pc: n += 1
+        v.append(n); cur = n
+    return v
+
+
+def master_voicing(song, sec, i):
+    """One voicing per chord that every harmony part shares: the chord's colour tones in close position
+    (3-7 based, tensions on top), voice-led from the previous chord, kept under the melody and free of
+    semitone rubs against it. Cached on the song."""
+    cache = song.__dict__.setdefault('_mv', {})
+    key = (sec.name, i)
+    if key in cache: return cache[key]
+    t, d, c = sec.chords[i]
+    T = sec.at + t
+    mel = melody_at(song, T + .01) or melody_at(song, T, T + min(d, 2))
+    ceiling = (min(mel) - 3) if mel else 79
+    pcs = c.template()
+    # never put the pc a semitone under the melody (or the melody's own pc) right below it
+    if mel:
+        bad = {(m - 1) % 12 for m in mel} | {m % 12 for m in mel}
+        keep = [pc for pc in pcs if pc not in bad]
+        if len(keep) >= 3 or (len(keep) >= 2 and len(pcs) <= 3): pcs = keep
+        elif len(keep) < 3:
+            fill = [pc for pc in (c.pc(5) if 5 in c.tones else None, c.root) if pc is not None and pc not in bad and pc not in keep]
+            pcs = keep + fill[:3 - len(keep)] if keep else pcs
+    prev = song.__dict__.get('_mv_prev')
+    best, bs = None, 1e9
+    n = len(pcs)
+    for order in itertools.permutations(pcs):
+        order = list(order)
+        for bottom in range(50, 70):
+            v = _close(order, bottom)
+            if v[0] != bottom: continue
+            if v[-1] > min(ceiling, 80) or v[0] < 50: continue
+            sc = 0.0
+            for a, b, c3 in zip(v, v[1:], v[2:]):
+                if b - a in (5, 7) and c3 - b in (5, 7): sc += 12   # stacked 4ths/5ths: hollow, 'lounge' sound
+            for a, b in zip(v, v[1:]):
+                if b - a == 1: sc += 24         # semitone between adjacent voices
+                if b - a == 2 and a < 55: sc += 2
+                if b - a > 9: sc += (b - a - 9) * .8   # big gaps in the middle of the voicing
+            for x in v:
+                for y in v:
+                    if y - x == 13: sc += 14   # minor 9th between any two voices
+            if v[-1] - v[0] > 16: sc += (v[-1] - v[0] - 16) * .6
+            if (c.root + 1) % 12 in [x % 12 for x in v] and not (c.dom and 9 in c.tones and c.tones[9] == 13): sc += 9
+            if prev:
+                sc += sum(min(abs(x - y) for y in prev) for x in v) * .9 + abs(v[-1] - prev[-1]) * .6
+            sc += abs((v[0] + v[-1]) / 2 - 63) * .35
+            if sc < bs: best, bs = v, sc
+    if best is None:   # melody too low: fall back to a compact voicing well below it
+        best = _close(pcs, max(40, ceiling - 14))
+    cache[key] = best
+    song._mv_prev = best
+    return best
+
+
+def fit(v, lo, hi, n=None, spread=False):
+    """Move a master voicing into a part's range by whole octaves (keeping its shape); optionally thin
+    it to the top n notes or open it into drop-2 spacing."""
+    v = list(v)
+    if n and n < len(v): v = v[-n:]
+    if spread and len(v) >= 4: v = sorted(v[:-2] + [v[-2] - 12] + v[-1:])
+    while v and max(v) > hi and min(v) - 12 >= lo - 5: v = [x - 12 for x in v]
+    while v and min(v) < lo and max(v) + 12 <= hi + 5: v = [x + 12 for x in v]
+    return sorted(v)
 
 
 def drop2(chord, top, n=4):
@@ -525,7 +647,7 @@ def comp(part, sec, style='block', lo=52, hi=74, n=4, vel=66, pattern=None, root
     prev = getattr(part, '_prevv', None)
     bar = part.song.bar
     for i, (t, d, c) in enumerate(sec.chords):
-        v = voice(c, prev, lo, hi, n, rootless=rootless, spread=spread); prev = v
+        v = fit(master_voicing(part.song, sec, i), lo, hi, n, spread); prev = v
         T = sec.at + t
         hits = []  # (offset, dur, velocity-offset)
         if style == 'block': hits = [(0, (dur or d) * .98, 0)]
@@ -558,7 +680,12 @@ def comp(part, sec, style='block', lo=52, hi=74, n=4, vel=66, pattern=None, root
                 elif ch == '=': hits.append((k * .25, 1.9, 0))
         elif style == 'arp':
             seq = arp or 'up'
-            notes = sorted(set(v + [v[0] + 12, v[1] + 12]))
+            vv = v if len(v) >= 2 else (v + [v[0] + 7] if v else [60, 64])
+            notes = sorted(set(vv + [vv[0] + 12, vv[1] + 12]))
+            clean = []
+            for q in notes:
+                if all(abs(q - x) not in (1, 2, 13) for x in clean): clean.append(q)
+            notes = clean if len(clean) >= 3 else notes
             rate = .5 if isinstance(seq, str) and seq.endswith('8') else .25
             order = {'up': notes, 'down': notes[::-1], 'updown': notes + notes[-2:0:-1], 'up8': notes, 'updown8': notes + notes[-2:0:-1],
                      'alberti': [notes[0], notes[2], notes[1], notes[2]]}.get(seq.replace('8', '') if isinstance(seq, str) and seq not in ('up8', 'updown8') else seq, notes)
@@ -573,11 +700,16 @@ def comp(part, sec, style='block', lo=52, hi=74, n=4, vel=66, pattern=None, root
     part._prevv = prev
 
 
-def pads(part, sec, lo=55, hi=79, n=4, vel=62, swell=False, rootless=False, hold=True, top_line=None, spread=True):
-    """Sustained voice-led string/pad chords (optionally re-voiced per chord with smooth leading)."""
+def pads(part, sec, lo=55, hi=79, n=4, vel=62, swell=False, rootless=False, hold=True, top_line=None, spread=True, guides=True):
+    """Sustained voice-led string/pad chords. By default only the guide tones of the shared voicing are
+    held (the comping part carries the colour tone), which keeps the texture light."""
     prev = getattr(part, '_prevp', None)
     for i, (t, d, c) in enumerate(sec.chords):
-        v = voice(c, prev, lo, hi, n, rootless=rootless, spread=spread); prev = v
+        v = fit(master_voicing(part.song, sec, i), lo, hi, n, spread)
+        if guides:
+            g = set(c.guides()); gv = [p for p in v if p % 12 in g]
+            if len(gv) >= 2: v = gv
+        prev = v
         T = sec.at + t
         for p in v: part.add(T, d * (1.0 if hold else .9), p, vel + (4 if p == v[-1] else 0), '_')
         if swell:
@@ -598,8 +730,8 @@ def ostinato(part, sec, pattern, lo=None, vel=80, rate=.25, degrees=None):
     """Chord-following figure: pattern of chord-tone indices, e.g. '0 1 2 1 3 2 1 2' over a voicing."""
     prev = None
     idx = [int(x) if x not in '.-' else x for x in pattern.split()]
-    for (t, d, c) in sec.chords:
-        v = voice(c, prev, lo or 60, (lo or 60) + 16, 4, rootless=False); prev = v
+    for i, (t, d, c) in enumerate(sec.chords):
+        v = fit(master_voicing(part.song, sec, i), lo or 60, (lo or 60) + 16); prev = v
         tones = sorted(set(v + [x + 12 for x in v]))
         steps = int(round(d / rate))
         for k in range(steps):
@@ -710,7 +842,8 @@ def harm(part, sec, src, n=4, vel=None, transpose=0, below=True, strict=True):
         c = sec.chord(e.t)
         if n <= 1: vs = [e.p]
         else:
-            pcs = [p for p in c.color_set(5) if p != e.p % 12]
+            pcs = [p for p in c.template() + [(c.root + 7) % 12] if p != e.p % 12 and (e.p - p) % 12 != 1]
+            pcs = list(dict.fromkeys(pcs)) or [c.root]
             vs = [e.p]; cur = e.p
             for _ in range(n - 1):
                 cands = [p for p in pcs if p not in [x % 12 for x in vs]] or pcs
@@ -735,7 +868,156 @@ def song(id, variants=('day',)):
 def make(id, variant='day'):
     s = SONGS[id]['fn'](variant)
     s.variant = variant
+    finalize(s)
     return s
+
+
+ACC_ROLES = ('comp', 'pad', 'arp')
+
+
+def chord_at_beat(song, T):
+    for sec in song.sec.values():
+        if sec.at <= T < sec.at + sec.len and sec.chords: return sec.chord(T - sec.at), sec
+    return None, None
+
+
+def finalize(song):
+    """Clean-up and expression pass run on every song:
+    1. accompaniment notes that ring into a chord they do not belong to are cut at the change;
+    2. accompaniment notes a semitone under a sounding melody note are dropped;
+    3. phrase dynamics: melodies shaped by contour and metre, 4-bar swells on sustained parts,
+       and a lift into each new section."""
+    anticipate(song)
+    mel = []
+    for p in _melody_parts(song): mel += [(t, t + d, pp) for (t, d, pp, v, a) in p.notes]
+    mel.sort()
+    changes = sorted({sec.at + t for sec in song.sec.values() for (t, d, c) in sec.chords})
+    def allowed(T):
+        c, _ = chord_at_beat(song, T)
+        if c is None: return None
+        return set(c.template()) | {c.root, (c.root + 7) % 12, c.bass} | set(c.pcs())
+    import bisect
+    for part in song.parts.values():
+        if part.kit or part.role not in ACC_ROLES: continue
+        out = []
+        for (t, d, p, v, a) in part.notes:
+            # 1. cut at the first chord change where this pitch no longer fits
+            i = bisect.bisect_right(changes, t + 1e-6)
+            while i < len(changes) and changes[i] < t + d - 1e-6:
+                al = allowed(changes[i] + 1e-4)
+                if al is not None and p % 12 not in al:
+                    d = changes[i] - t; break
+                i += 1
+            if d < .06: continue
+            # 2. minor 2nd / minor 9th against any melody note that sounds while this note rings:
+            #    drop it if the rub is there at the onset, otherwise cut it where the melody arrives
+            j = bisect.bisect_right(mel, (t + d, 1e9, 1e9))
+            rub = False; cut = None
+            for (m0, m1, mp) in mel[max(0, j - 40):j]:
+                if m1 <= t + 1e-6 or m0 >= t + d - 1e-6: continue
+                if abs(mp - p) not in (1, 13, 25): continue
+                if m0 <= t + 1e-6: rub = True; break
+                cut = m0 if cut is None else min(cut, m0)
+            if rub: continue
+            if cut is not None:
+                d = cut - t
+                if d < .2: continue
+            out.append((t, d, p, v, a))
+        part.notes = out
+    rank = {'pad': 0, 'comp': 1, 'arp': 2}
+    acc = sorted([p for p in song.parts.values() if not p.kit and p.role in ACC_ROLES], key=lambda p: rank[p.role])
+    for k, part in enumerate(acc):
+        higher = [(t, t + d, pp) for q in acc[:k] for (t, d, pp, v, a) in q.notes]
+        if not higher: continue
+        higher.sort()
+        starts = [h[0] for h in higher]
+        out = []
+        for (t, d, p, v, a) in part.notes:
+            j = bisect.bisect_right(starts, t + 1e-6)
+            clash = False
+            for (h0, h1, hp) in higher[max(0, j - 40):j]:
+                if h0 <= t + 1e-6 < h1 and abs(hp - p) in (1, 13): clash = True; break
+            if not clash: out.append((t, d, p, v, a))
+        part.notes = out
+    dynamics(song)
+
+
+def anticipate(song):
+    """Phrasing pass: push some strong-beat melody notes an eighth early (tied anticipation), the
+    syncopation that makes DS-era and jazz-pop melodies lilt instead of sitting squarely on the beat.
+    Only when the note before is held for at least a beat (so the push steals from a sustain, never
+    from a run). Deterministic per song; fast battle themes and jingles keep their written rhythm."""
+    if song.bar != 4 or song.id.startswith('j_') or song.bpm >= 150 or getattr(song, 'no_push', False): return
+    rate = getattr(song, 'push', .38)
+    for part in _melody_parts(song):
+        ns = sorted(part.notes)
+        r = random.Random(f'push|{song.id}|{part.name}')
+        for i in range(1, len(ns)):
+            t, d, p, v, a = ns[i]; pt, pd, pp, pv, pa = ns[i - 1]
+            if abs(pt + pd - t) > 1e-3 or pd < 1.0 - 1e-6 or p == pp: continue
+            beat = (t - song.sec_of(t).at) % song.bar
+            if beat not in (0, 2) or r.random() > rate: continue
+            ns[i - 1] = (pt, pd - .5, pp, pv, pa)
+            ns[i] = (t - .5, d + .5, p, v + 4, a)
+        part.notes = ns
+
+
+SECTION_SHAPE = (-10, 0, 5, -5, 6, 0, 7, -3)
+
+
+def section_offsets(song):
+    """Velocity offset per section: the loop opens lighter and each later section lifts or breathes,
+    so a track has an arc instead of one level. Songs can override with song.shape = {name: offset}."""
+    secs = [sc for sc in song.sec.values()]
+    loop = [sc for sc in secs if not getattr(sc, 'intro', False) and sc.at >= song.intro_len - 1e-6]
+    off = {}
+    for k, sc in enumerate(loop): off[sc.name] = SECTION_SHAPE[k % len(SECTION_SHAPE)] if len(loop) > 1 else 0
+    for sc in secs:
+        if sc.name not in off: off[sc.name] = -4
+    off.update(getattr(song, 'shape', {}) or {})
+    return off
+
+
+def dynamics(song):
+    bar = song.bar
+    soff = section_offsets(song)
+    loop_secs = [sc for sc in song.sec.values() if sc.at >= song.intro_len - 1e-6]
+    last = max(loop_secs, key=lambda sc: sc.at) if loop_secs else None
+    for part in song.parts.values():
+        if not part.notes: continue
+        role = part.role
+        notes = []
+        pitches = [p for (t, d, p, v, a) in part.notes]
+        mean = sum(pitches) / len(pitches)
+        for (t, d, p, v, a) in part.notes:
+            sec = song.sec_of(t)
+            rel = t - sec.at
+            ph = (rel % (4 * bar)) / (4 * bar)                     # position in a 4-bar phrase
+            arc = math.sin(ph * math.pi) * 7 - 2                     # swell toward mid-phrase
+            beat = rel % bar
+            metre = 4 if abs(beat) < 1e-6 else 1 if abs(beat - bar / 2) < 1e-6 and bar == 4 else -2 if (beat % 1) > 1e-6 else 0
+            if part.kit:
+                nv = v + arc * .5
+            elif role in ('lead', 'solo', 'counter'):
+                nv = v + arc + metre + (p - mean) * .5 + (3 if d >= 1.5 else 0)
+            elif role in ('pad', 'comp', 'arp', 'brass'):
+                nv = v + arc * .8 + metre * .5
+            else:
+                nv = v + arc * .6 + metre * .5
+            # lift: the last bar of a section leans into the next one
+            if sec.len - rel <= bar and not part.kit: nv += 3 * (1 - (sec.len - rel) / bar)
+            # section arc (drums follow at half strength); the loop's last two bars build back up
+            so = soff.get(sec.name, 0)
+            if sec is last and sec.len - rel <= 2 * bar and len(loop_secs) > 1: so += 6 * (1 - (sec.len - rel) / (2 * bar))
+            nv += so * (.5 if part.kit else 1.0)
+            notes.append((t, d, p, int(max(8, min(124, nv))), a))
+        part.notes = notes
+        # sustained parts breathe with CC11 over each 4-bar phrase (skipped if the part already rides CC11)
+        if role in ('pad',) and not any(c == 11 for (_, c, _) in part.cc):
+            for sec in song.sec.values():
+                for k in range(int(sec.len // (4 * bar))):
+                    t0 = sec.at + k * 4 * bar
+                    part.ramp(t0, t0 + 2 * bar, 11, 92, 116, 8); part.ramp(t0 + 2 * bar, t0 + 4 * bar - .05, 11, 116, 96, 8)
 
 
 def roll(part, sec, beat, length, pitch, v0=50, v1=120, rate=.125):
@@ -750,16 +1032,21 @@ def roll(part, sec, beat, length, pitch, v0=50, v1=120, rate=.125):
 def band(s, secs, night=False, bass='pop8', bass_prog=FINGERBASS, nbass='two', nbass_prog=FRETLESS,
          keys=(BRIGHT, 'offbeat'), nkeys=(EPIANO, 'swingcomp'), pad=STRINGS, npad=SLOWSTR,
          kit=(KIT_STD, 'pop2'), nkit=(KIT_JAZZ, 'ballad'), fills=4, fill='snare', nfill='brush',
-         guitar=None, nguitar=None, arp=None, narp=None, drum_vel=90, keys_vel=62, tamb=None, hat_vel=.75, keys_range=(55, 74)):
+         guitar=None, nguitar=None, arp=None, narp=None, drum_vel=90, keys_vel=62, tamb=None, hat_vel=.75, keys_range=(55, 74), stagger=True):
     """Rhythm section for field/town themes; day and night swap instruments but keep the same parts,
     so both renders line up bar for bar (the game crossfades between them in sync)."""
     bp, bs_ = (nbass_prog, nbass) if night else (bass_prog, bass)
     b = s.parts.get('bass') or s.part('bass', bp, rev=.05)
     b.gen(secs, bass_line, style=bs_, vel=94)
     kp, ks = nkeys if night else keys
+    names = secs.split() if isinstance(secs, str) else list(secs)
+    g0 = nguitar if night else guitar
+    # arrangement arc: with a guitar carrying the harmony, keys and pads join from the second section on
+    loopn = [n for n in names if not s.sec[n].intro]
+    later = ' '.join(n for n in names if n != loopn[0]) if (g0 and len(loopn) > 1 and stagger) else ' '.join(names)
     if kp is not None:
         k = s.parts.get('keys') or s.part('keys', kp, rev=.24 if not night else .3, pan=-.2, role='comp', chorus=.35 if kp in (EPIANO, EP2) else 0)
-        k.gen(secs, comp, style=ks, lo=keys_range[0], hi=keys_range[1], vel=keys_vel)
+        k.gen(later, comp, style=ks, lo=keys_range[0], hi=keys_range[1], vel=keys_vel, n=3)
     g = nguitar if night else guitar
     if g:
         gp, gs = g
@@ -773,7 +1060,7 @@ def band(s, secs, night=False, bass='pop8', bass_prog=FINGERBASS, nbass='two', n
     pp = npad if night else pad
     if pp is not None:
         p = s.parts.get('strings') or s.part('strings', pp, rev=.4, role='pad', width=1.25)
-        p.gen(secs, pads, lo=53, hi=77, vel=62 if not night else 56)
+        p.gen(later if kp is not None or g0 else secs, pads, lo=53, hi=79, n=3, spread=False, vel=58 if not night else 52)
     kk, kg = nkit if night else kit
     if kg:
         d = s.parts.get('drums') or s.drums(kit=kk, rev=.16 if not night else .22, vol=0 if not night else -2)

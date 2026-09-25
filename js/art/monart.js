@@ -195,20 +195,115 @@ G.monArt = (function () {
     cache.set(key, img);
     return img;
   }
+  // ------------------------------------------------ sprite atlas (pixel art)
+  // Finished pixel sprites packed into G.MON_ATLAS (art_src/build_mons.py);
+  // the vector drawings above remain as a fallback for anything missing.
+  const A = { img: null };
+  function load() {
+    return new Promise(res => {
+      if (!G.MON_ATLAS || typeof Image === 'undefined') return res();
+      const im = new Image(); im.onload = () => { A.img = im; res(); }; im.onerror = () => res(); im.src = G.MON_ATLAS.src;
+    });
+  }
+  const has = (sp, k) => !!(A.img && G.MON_ATLAS.rects[sp] && G.MON_ATLAS.rects[sp][k]);
+  // raw crop, recoloured for shinies (hue-rotated, outlines and greys kept)
+  function crop(sp, k, shiny) {
+    const key = 'crop|' + sp + '|' + k + '|' + (shiny ? 1 : 0);
+    if (cache.has(key)) return cache.get(key);
+    const [x, y, w, h] = G.MON_ATLAS.rects[sp][k];
+    const cv = G.makeCanvas(w, h), c = cv.getContext('2d', { willReadFrequently: !!shiny });
+    c.drawImage(A.img, x, y, w, h, 0, 0, w, h);
+    if (shiny) {
+      const p = G.MONPAL[sp] || {}, shift = p.shift !== undefined ? p.shift : 150;
+      const id = c.getImageData(0, 0, w, h), d = id.data, memo = new Map();
+      for (let i = 0; i < d.length; i += 4) {
+        if (!d[i + 3]) continue;
+        const k2 = (d[i] << 16) | (d[i + 1] << 8) | d[i + 2];
+        let o = memo.get(k2);
+        if (!o) {
+          const [hh, ss, ll] = G.col.toHsl([d[i], d[i + 1], d[i + 2]]);
+          o = ll < .16 || ss < .12 ? [d[i], d[i + 1], d[i + 2]] : G.col.parse(G.col.fromHsl(hh + shift, Math.min(1, ss * 1.05), ll));
+          memo.set(k2, o);
+        }
+        d[i] = o[0]; d[i + 1] = o[1]; d[i + 2] = o[2];
+      }
+      c.putImageData(id, 0, 0);
+    }
+    cache.set(key, cv); return cv;
+  }
+  // draw a sprite row by row: rows sway sideways more toward the top and the
+  // body stretches by `breathe` pixels while the bottom row stays planted
+  function drawDeformed(c, src, x0, yBottom, ph, amp, breathe) {
+    const w = src.width, h = src.height, nh = h + breathe;
+    for (let j = 0; j < nh; j++) {
+      const sy = Math.min(h - 1, Math.floor(j * h / nh)), up = 1 - sy / h;
+      const dx = Math.round(Math.sin(ph + sy * .05) * amp * up * up * 1.6);
+      c.drawImage(src, 0, sy, w, 1, x0 + dx, yBottom - nh + j, w, 1);
+    }
+  }
+  // 4 baked idle frames for menus and screens that animate by frame number
+  function posed(sp, k, shiny, frame, W, H, bottom) {
+    const key = 'pose|' + sp + '|' + k + '|' + (shiny ? 1 : 0) + '|' + frame;
+    if (cache.has(key)) return cache.get(key);
+    const src = crop(sp, k, shiny), cv = G.makeCanvas(W, H), c = cv.getContext('2d');
+    c.imageSmoothingEnabled = false;
+    const ph = frame / 4 * Math.PI * 2;
+    drawDeformed(c, src, Math.round((W - src.width) / 2), H - bottom, ph, .8, Math.round((Math.sin(ph) * .5 + .5) * Math.min(2, src.height / 40)));
+    cache.set(key, cv); return cv;
+  }
+  const liveCache = new Map();
+  const FLOATY = new Set(['jellume', 'glimmer', 'snowlet', 'maskling', 'masquerail', 'cocoonet', 'nimbling', 'orrelume', 'wispurr', 'luminelle', 'aurorelle', 'chimelle', 'blotch']);
   return {
-    front(sp, shiny, frame = 0) { return render(sp, shiny, 'front', frame % 4, 96); },
-    back(sp, shiny, frame = 0) { return render(sp, shiny, 'back', frame % 4, 104); },
-    icon(sp, shiny, frame = 0) { return render(sp, shiny, 'front', (frame % 2) * 2, 36); },
-    big(sp, shiny, frame = 0) { return render(sp, shiny, 'front', frame % 4, 96); },
+    load, has: sp => has(sp, 'f'),
+    front(sp, shiny, frame = 0) { return has(sp, 'f') ? posed(sp, 'f', shiny, frame % 4, 96, 96, 8) : render(sp, shiny, 'front', frame % 4, 96); },
+    back(sp, shiny, frame = 0) { return has(sp, 'b') ? posed(sp, 'b', shiny, frame % 4, 156, 156, 0) : render(sp, shiny, 'back', frame % 4, 104); },
+    icon(sp, shiny, frame = 0) {
+      if (!has(sp, 'i')) return render(sp, shiny, 'front', (frame % 2) * 2, 36);
+      const key = 'icon|' + sp + (shiny ? 1 : 0) + (frame % 2);
+      if (!cache.has(key)) { const src = crop(sp, 'i', shiny), cv = G.makeCanvas(36, 36), c = cv.getContext('2d'); c.drawImage(src, Math.round((36 - src.width) / 2), 34 - src.height - (frame % 2)); cache.set(key, cv); }
+      return cache.get(key);
+    },
+    big(sp, shiny, frame = 0) { return this.front(sp, shiny, frame); },
     overworld(sp, shiny, dir, frame) {
+      if (has(sp, 'o')) {
+        const k = dir === 'up' ? 'ob' : 'o', key = 'ow|' + sp + (shiny ? 1 : 0) + dir + (frame % 2);
+        if (!cache.has(key)) {
+          const src = crop(sp, k, shiny), cv = G.makeCanvas(src.width, src.height + 1), c = cv.getContext('2d');
+          if (dir === 'right') { c.translate(src.width, 0); c.scale(-1, 1); }
+          c.drawImage(src, 0, frame % 2 ? 0 : 1);
+          cache.set(key, cv);
+        }
+        return cache.get(key);
+      }
       const s = (G.MONPAL[sp] && G.MONPAL[sp].ow) || 24;
       if (dir === 'up') return render(sp, shiny, 'back', frame * 2, s + 2);
       const im = render(sp, shiny, 'front', frame * 2, s);
       if (dir === 'right') { const k = 'owr|' + sp + shiny + frame + s; if (!cache.has(k)) cache.set(k, G.pix.flipH(im)); return cache.get(k); }
       return im;
     },
+    // battle idle loop: 32 cached frames of breathing + sway (feet planted).
+    // Returns null when the species has no atlas sprite (caller falls back).
+    live(sp, shiny, back, t) {
+      const k = back ? 'b' : 'f';
+      if (!has(sp, k)) return null;
+      const f = Math.floor(t / 4) & 31, key = 'live|' + sp + '|' + k + '|' + (shiny ? 1 : 0) + '|' + f;
+      let cv = liveCache.get(key);
+      if (!cv) {
+        const src = crop(sp, k, shiny), W = back ? 156 : 96, bottom = back ? 0 : 8;
+        cv = G.makeCanvas(W, W); let c = cv.getContext('2d'); c.imageSmoothingEnabled = false;
+        const ph = f / 32 * Math.PI * 2, spc = G.SPECIES[sp] || { types: [] }, floaty = spc.types.includes('flying') || FLOATY.has(sp);
+        const breathe = Math.round((Math.sin(ph) * .5 + .5) * Math.min(3, src.height / 26));
+        drawDeformed(c, src, Math.round((W - src.width) / 2), W - bottom, ph, floaty ? 1.3 : .9, breathe);
+        liveCache.set(key, cv);
+        if (liveCache.size > 900) liveCache.delete(liveCache.keys().next().value);
+      }
+      return cv;
+    },
+    // vertical hover offset for fliers and floaters (pixels, <= 0)
+    hover(sp, t) { const spc = G.SPECIES[sp] || { types: [] }; return (spc.types.includes('flying') || FLOATY.has(sp)) ? Math.round(Math.sin(t * .045) * 3 - 3) : 0; },
+    liveSize(sp, back) { const k = back ? 'b' : 'f'; return has(sp, k) ? G.MON_ATLAS.rects[sp][k].slice(2) : null; },
     palette,
-    silhouette(sp, col = '#1a1a24') { const k = 'sil|' + sp + col; if (!cache.has(k)) cache.set(k, G.pix.silhouette(render(sp, false, 'front', 0, 96), col)); return cache.get(k); },
+    silhouette(sp, col = '#1a1a24') { const k = 'sil|' + sp + col; if (!cache.has(k)) cache.set(k, G.pix.silhouette(this.front(sp, false, 0), col)); return cache.get(k); },
     clearCache() { cache.clear(); },
   };
 })();

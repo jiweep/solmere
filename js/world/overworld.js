@@ -529,6 +529,31 @@ G.WorldScene = class {
     await G.wait(20);
     await G.say(G.pick(lines));
   }
+  // sunbeams: a few soft diagonal shafts from the upper left in daylight, in stepped (pixel) bands,
+  // drifting slowly and parallaxing a little with the camera; stronger under forest canopy
+  drawRays(b, ox, oy) {
+    const m = this.map;
+    if (m.type !== 'outdoor' || G.settings.fancy === false) return;
+    if (this.weather && this.weather !== 'petals' && this.weather !== 'leaves') return;
+    const h = G.clock.hourF();
+    const day = h >= 7 && h <= 17 ? 1 : h > 17 && h < 19 ? (19 - h) / 2 : h > 6 && h < 7 ? h - 6 : 0;
+    if (day <= 0) return;
+    const forest = m.id.includes('wood') || m.id.includes('forest');
+    const warm = h > 16 ? '255,196,120' : '255,244,200', base = (forest ? .11 : .065) * day;
+    const t = this.frame;
+    b.save(); b.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 5; i++) {
+      const phase = t / (520 + i * 90) + i * 1.9, life = Math.max(0, Math.sin(phase));   // each shaft fades in and out on its own
+      if (life < .05) continue;
+      const x = ((i * 97 - ox * .15 + t * .04) % (G.W + 140) + G.W + 140) % (G.W + 140) - 60, w = 14 + (i % 3) * 10, lean = 70;
+      for (let k = 0; k < 2; k++) {   // two nested bands: wide faint, narrow brighter
+        const ww = w * (1 - k * .5);
+        b.fillStyle = `rgba(${warm},${(base * life * (k ? 1 : .6)).toFixed(3)})`;
+        b.beginPath(); b.moveTo(x - ww / 2, -4); b.lineTo(x + ww / 2, -4); b.lineTo(x + ww / 2 + lean, G.H + 4); b.lineTo(x - ww / 2 + lean, G.H + 4); b.closePath(); b.fill();
+      }
+    }
+    b.restore();
+  }
   // ---------------------------------------------------------- weather
   updateWeather() {
     const w = this.weather; this.weatherT++;
@@ -549,6 +574,17 @@ G.WorldScene = class {
     } else if (w === 'fog' || w === 'mist') {
       if (G.rand() < .03) P.add({ x: cx + G.W + 40, y: cy + G.rand() * G.H, vx: -.25 - G.rand() * .2, vy: 0, life: 1800, type: 'circle', size: 30 + G.rand() * 30, color: 'rgba(230,235,245,1)', alpha: .09, fadeIn: 200, fadeStart: .8 });
     }
+    // ambient life on calm outdoor maps: wind-borne leaves / petals / pollen, sparse and slow
+    const m = this.map;
+    if (m.type === 'outdoor' && !w && G.settings.fancy !== false) {
+      const wind = G.wind(this.frame), day = !G.clock.isNight();
+      const green = m.theme === 'grass' || !m.theme, spawnX = () => cx + G.rand() * (G.W + 120) - 20;
+      if (green && G.rand() < .022) P.add({ x: spawnX(), y: cy - 6, vx: -.2, vy: .32 + G.rand() * .2, life: 700, type: 'leaf', size: 1.6 + G.rand() * .5, rot: G.rand() * 6, vr: .05, color: G.pick(['#5a9a3a', '#7ab84a', '#c8b04a', '#d88a3a']), upd: p => { p.vx = -.15 - G.wind(this.frame) * .9 + Math.sin(p.t / 24) * .25; p.vr = .03 + G.wind(this.frame) * .08; } });
+      if (m.theme === 'dusk' && G.rand() < .03) P.add({ x: spawnX(), y: cy - 6, vx: -.3, vy: .3 + G.rand() * .2, life: 700, type: 'leaf', size: 1.5, rot: G.rand() * 6, vr: .06, color: G.pick(['#ffc0d8', '#ffd8e8', '#ff9ac0']), upd: p => { p.vx = -.2 - G.wind(this.frame) + Math.sin(p.t / 20) * .3; } });
+      if (m.theme === 'snow' && G.rand() < .12) P.add({ x: spawnX(), y: cy - 6, vx: -.2, vy: .35 + G.rand() * .25, life: 600, size: G.rand() < .25 ? 2 : 1, color: '#ffffff', upd: p => { p.vx = -.1 - G.wind(this.frame) * .8 + Math.sin((p.t + p.y) / 30) * .2; } });
+      // pollen / dust motes drifting in the sunlight
+      if (day && (green || m.theme === 'beach') && G.rand() < .04) P.add({ x: cx + G.rand() * G.W, y: cy + G.rand() * G.H, vx: 0, vy: -.05, life: 260, size: 1, color: '#fff6c8', alpha: .7, fadeIn: 60, blend: 'lighter', upd: p => { p.vx = -G.wind(this.frame) * .5 + Math.sin(p.t / 30 + p.y) * .12; } });
+    }
     // fireflies at night in green areas
     if (this.map.type === 'outdoor' && G.clock.isNight() && (this.map.theme === 'grass' || this.map.theme === 'dusk') && !w && G.rand() < .05) {
       P.add({ x: cx + G.rand() * G.W, y: cy + G.rand() * G.H, vx: 0, vy: 0, life: 160, size: 1, color: '#e8ff8a', glow: true, fadeIn: 40, upd: p => { p.vx = Math.sin(p.t / 17 + p.y) * .25; p.vy = Math.cos(p.t / 23 + p.x) * .2; } });
@@ -562,22 +598,25 @@ G.WorldScene = class {
     const shx = this.shake ? (G.rand() - .5) * 4 : 0, shy = this.shake ? (G.rand() - .5) * 3 : 0;
     const ox = Math.round(cam.x + shx), oy = Math.round(cam.y + shy);
     const fW = Math.floor(this.frame / 14), fT = Math.floor(this.frame / 22), fF = Math.floor(this.frame / 40), fL = Math.floor(this.frame / 12);
-    const x0 = Math.floor(ox / 16) - 1, y0 = Math.floor(oy / 16) - 1, x1 = x0 + Math.ceil(G.W / 16) + 2, y1 = y0 + Math.ceil(G.H / 16) + 3;
+    const x0 = Math.floor(ox / 16) - 2, y0 = Math.floor(oy / 16) - 1, x1 = x0 + Math.ceil(G.W / 16) + 4, y1 = y0 + Math.ceil(G.H / 16) + 4;
     b.imageSmoothingEnabled = false;
-    b.fillStyle = m.type === 'indoor' ? '#0a0a12' : '#000'; b.fillRect(0, 0, G.W, G.H);
+    b.fillStyle = m.type === 'indoor' ? '#06060c' : '#000'; b.fillRect(0, 0, G.W, G.H);
+    // baked terrain (+ animated water glints and shore foam)
+    const chunks = G.terrain.drawGround(b, m, ox, oy, this.frame);
+    G.terrain.prefetch(m, ox, oy, 1);
     const sprites = [];
-    const cellImg = (mm, c) => {
-      const fr = c.g === 'water' ? fW : c.g === 'tall' ? fT : c.g === 'lava' ? fL : c.g === 'flowers' ? fF : 0;
-      return G.tileImg(mm, c, fr);
-    };
-    // ground
+    // live ground (tall grass, flowers, lava, switches) and props
     for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
       const r = m.resolve(tx, ty);
       let c, mm;
       if (r) { mm = r.map; c = mm.cells[r.y * mm.w + r.x]; } else { mm = m; c = G.borderCell(m, tx, ty); }
       const dx = tx * 16 - ox, dy = ty * 16 - oy;
-      const img = cellImg(mm, c);
-      if (img) b.drawImage(img, dx, dy);
+      if (c.g === 'tall' || c.g === 'flowers' || c.g === 'lava' || c.g === 'switch') {
+        const fr = c.g === 'tall' ? fT : c.g === 'lava' ? fL : fF;
+        const lt = G.liveTile(mm, c, fr);
+        if (lt && lt.img) b.drawImage(lt.img, dx, dy + lt.oy);
+      }
+      if (c.g === 'hedge') { const hs = G.tiles.hedgeSprite(mm, c); sprites.push({ y: ty * 16 + 15, d: () => b.drawImage(hs.img, dx, dy + hs.oy) }); }
       if (c.o) {
         let skip = false;
         if ((c.cut || c.smash) && r && this.isCleared(mm.id, r.x, r.y)) skip = true;
@@ -586,20 +625,26 @@ G.WorldScene = class {
         if (!skip) {
           const oi = G.objImg(mm, c, fW);
           if (oi.flat) b.drawImage(oi.img, dx, dy);
-          else sprites.push({ y: ty * 16 + 15, d: () => b.drawImage(oi.img, dx, dy + oi.oy) });
+          else {
+            // props that can disappear (cut, smashed, pushed) are not baked: give them a live contact shadow
+            const live = c.cut || c.smash || c.push || c.solidIf;
+            sprites.push({ y: ty * 16 + 15, d: () => { if (live) this.contactShadow(b, dx + 8, dy + 14, 6); G.leanDraw(b, oi.img, dx + (oi.ox || 0), dy + (oi.oy || 0), dy + 16, { sway: ['tree', 'pine', 'palm', 'smalltree'].includes(c.o) ? (c.o === 'palm' ? 1.4 : 1) : 0 }); } });
+          }
         }
       }
     }
+    // cast shadows, strongest in daylight
+    G.terrain.drawShadows(b, chunks, ox, oy, this.shadowStrength());
     // moved boulders
     if (m.boulders) for (const k in m.boulders) if (m.boulders[k] === 'moved' || m.boulders[k] === 'filled') {
-      const [bx, by] = k.split(',').map(Number); const c = m.cell(bx, by) || { v: 0 };
-      if (m.boulders[k] === 'filled') { b.drawImage(G.tiles.get('filledhole', 16, 16, p => { G.tiles.simple(p, 'cave', 0, 0, m.theme); p.ell(8, 8.5, 6.5, 5.5, G.col.parse('#6a5a4a')); }), bx * 16 - ox, by * 16 - oy); continue; }
-      const oi = G.objImg(m, { o: 'boulder', v: 0 }, 0); sprites.push({ y: by * 16 + 15, d: () => b.drawImage(oi.img, bx * 16 - ox, by * 16 - oy) });
+      const [bx, by] = k.split(',').map(Number);
+      if (m.boulders[k] === 'filled') { b.drawImage(G.tiles.get('filledhole', 16, 16, p => { const K = G.ramp(['#3a2c22', '#5a4636', '#7a624c']); p.ell(8, 8.5, 6.5, 5.5, K[1]); p.ell(8, 8, 5, 4, K[2]); p.outline(K[0]); }), bx * 16 - ox, by * 16 - oy); continue; }
+      const oi = G.objImg(m, { o: 'boulder', v: 0 }, 0); sprites.push({ y: by * 16 + 15, d: () => { this.contactShadow(b, bx * 16 - ox + 8, by * 16 - oy + 14, 7); b.drawImage(oi.img, bx * 16 - ox + oi.ox, by * 16 - oy + oi.oy); } });
     }
-    if (this.movingBoulder) { const mb = this.movingBoulder; const oi = G.objImg(m, { o: 'boulder', v: 0 }, 0); sprites.push({ y: mb.y + 15, d: () => b.drawImage(oi.img, Math.round(mb.x - ox), Math.round(mb.y - oy)) }); }
+    if (this.movingBoulder) { const mb = this.movingBoulder; const oi = G.objImg(m, { o: 'boulder', v: 0 }, 0); sprites.push({ y: mb.y + 15, d: () => b.drawImage(oi.img, Math.round(mb.x - ox) + oi.ox, Math.round(mb.y - oy) + oi.oy) }); }
     // footprints
     for (const f of this.footprints) {
-      b.globalAlpha = .35 * (1 - f.t / 240); b.fillStyle = m.theme === 'snow' ? '#9ab0c8' : '#b89a60';
+      b.globalAlpha = .35 * (1 - f.t / 240); b.fillStyle = m.theme === 'snow' ? '#8aa0bc' : '#8a6a40';
       const fx = f.x * 16 - ox, fy = f.y * 16 - oy;
       if (f.dir === 'up' || f.dir === 'down') { b.fillRect(fx + 5, fy + 5, 2, 3); b.fillRect(fx + 9, fy + 9, 2, 3); } else { b.fillRect(fx + 4, fy + 6, 3, 2); b.fillRect(fx + 9, fy + 10, 3, 2); }
       b.globalAlpha = 1;
@@ -609,7 +654,8 @@ G.WorldScene = class {
       const bi = G.tiles.building(bo.kind, bo.w, bo.h, { roof: bo.roof, door: bo.door, accent: bo.accent, label: bo.label });
       const dx = (bo.x + offx) * 16 - ox, dy = (bo.y + offy) * 16 - oy - bi.oy;
       if (dx > G.W + 32 || dy > G.H + 32 || dx + bi.img.width < -32 || dy + bi.img.height < -32) return;
-      sprites.push({ y: (bo.y + offy + bo.h) * 16 - 1, d: () => b.drawImage(bi.img, dx, dy) });
+      const base = (bo.y + offy + bo.h) * 16 - oy;
+      sprites.push({ y: (bo.y + offy + bo.h) * 16 - 1, d: () => G.leanDraw(b, bi.img, dx, dy, base, { side: !bi.atlas }) });
     };
     for (const bo of m.buildings) drawBld(m, bo, 0, 0);
     for (const cn of m.conns) { const nm = cn.map; if (nm) for (const bo of nm.buildings) drawBld(nm, bo, cn.ox, cn.oy); }
@@ -633,12 +679,32 @@ G.WorldScene = class {
     // emotes
     for (const e of [...ents, this.player, this.follower, this.partner].filter(Boolean)) if (e.emote) {
       const k = Math.min(1, e.emoteT / 6);
-      b.drawImage(G.EMOTES(e.emote), Math.round(e.px - ox + 1.5), Math.round(e.py - oy - 22 - k * 4 - (e.hop || 0)));
+      b.drawImage(G.EMOTES(e.emote), Math.round(e.px - ox + 1.5), Math.round(e.py - oy - 26 - k * 4 - (e.hop || 0)));
     }
     // weather particles (world space)
     this.parts.draw(b, -ox, -oy);
+    this.drawRays(b, ox, oy);
     this.drawLighting(b, ox, oy);
     this.ox = ox; this.oy = oy;
+  }
+  // how strongly cast shadows show: full in daylight, fading through dusk, faint at night
+  shadowStrength() {
+    const m = this.map;
+    if (m.def.dark) return 0;
+    if (m.type !== 'outdoor') return .22;
+    const h = G.clock.hourF();
+    const day = h >= 7 && h <= 17 ? 1 : h > 17 && h < 19.5 ? 1 - (h - 17) / 2.5 : h > 5 && h < 7 ? (h - 5) / 2 : 0;
+    let a = .12 + .2 * day;
+    if (this.weather === 'rain' || this.weather === 'storm' || this.weather === 'fog' || this.weather === 'mist') a *= .45;
+    return a;
+  }
+  contactShadow(b, x, y, r) { b.fillStyle = 'rgba(12,16,36,.28)'; b.beginPath(); b.ellipse(x, y, r, r * .36, 0, 0, Math.PI * 2); b.fill(); }
+  // project a character's silhouette onto the ground like the baked prop shadows
+  castShadow(b, img, x, y, baseY) {
+    const a = this.shadowStrength(); if (a <= .02) return;
+    b.save(); b.globalAlpha = a * .9;
+    G.terrain.castShadow(b, img, x, y, baseY);
+    b.restore();
   }
   drawEnt(b, e, ox, oy) {
     const m = this.map;
@@ -675,31 +741,35 @@ G.WorldScene = class {
     const set = sh[e.dir + (surf ? '_surf' : '')] || sh.down;
     const fr = surf ? 0 : e.animFrame();
     const img = set[Math.min(fr, set.length - 1)];
-    let x = Math.round(e.px - ox), y = Math.round(e.py - oy - 8 - (e.hop || 0));
+    // feet on the tile's bottom edge, centred on the tile; walking steps bob up a pixel
+    const step = !surf && e.moving && fr > 0 ? 1 : 0;
+    let x = Math.round(e.px - ox + 8 - img.width / 2), y = Math.round(e.py - oy + 16 - img.height - (e.hop || 0)) - step;
+    if (surf) y = Math.round(e.py - oy + 16 - 22);
     const c = this.cellAt(e.x, e.y);
     // reflection in water / ice directly below
     const below = this.cellAt(e.tx, e.ty + 1);
     if (below && (below.water || below.ice) && !surf) {
-      b.save(); b.globalAlpha = .28; b.translate(x, y + 48); b.scale(1, -1); b.drawImage(img, 0, 0); b.restore();
+      b.save(); b.globalAlpha = .28; b.translate(x, y + img.height * 2 - 2); b.scale(1, -1); b.drawImage(img, 0, 0); b.restore();
     }
     if (surf) {
       // board + bob
       const bob = Math.sin(this.frame / 12) * 1;
       const bw = G.tiles.get('surfboard|' + e.dir, 16, 16, p => { const cb = G.col.parse('#f4f0e8'), cd = G.col.parse('#3a82e0'); if (e.dir === 'left' || e.dir === 'right') { p.ell(8, 10, 8, 3.2, cd); p.ell(8, 9.5, 7, 2.2, cb); } else { p.ell(8, 9, 4, 7, cd); p.ell(8, 8.5, 3, 6, cb); } p.outline(G.col.parse('#1e3a6a')); });
-      b.drawImage(bw, x, y + 12 + bob);
-      b.drawImage(img, x, y + 2 + bob);
+      b.drawImage(bw, Math.round(e.px - ox), Math.round(e.py - oy) + 4 + bob);
+      b.drawImage(img, x, y + bob);
       if (this.frame % 20 === 0) this.fx.add({ x: e.px + 8, y: e.py + 14, life: 24, type: 'ring', size: 3, grow: 2.5, color: 'rgba(255,255,255,.6)', lw: .8 });
       return;
     }
     if (e === this.player && this.biking) {
       const bk = G.tiles.get('bike|' + e.dir, 16, 16, p => { const R = G.col.parse('#e84a4a'), K = G.col.parse('#2a2a30'); if (e.dir === 'left' || e.dir === 'right') { p.circ(3.5, 12, 3, K); p.circ(12.5, 12, 3, K); p.line(3, 12, 8, 8, R); p.line(8, 8, 12, 12, R); p.line(8, 8, 10, 5, R); } else { p.rect(7, 4, 2, 11, K); p.rect(4, 5, 8, 1, R); p.rect(7, 8, 2, 4, R); } });
-      b.drawImage(bk, x, y + 8);
+      b.drawImage(bk, Math.round(e.px - ox), Math.round(e.py - oy) + 1);
     }
+    if (!surf) this.castShadow(b, img, x, y, Math.round(e.py - oy) + 15 - (e.hop || 0) * 0);
     b.drawImage(img, x, y);
     // tall grass overlay
     if (c && c.g === 'tall' && !e.moving || (c && c.g === 'tall' && e.moving && e.prog > 8)) {
-      const front = G.tiles.get(`tgf|${Math.floor(this.frame / 22) % 4}|${m.theme}`, 16, 16, p => G.tiles.tallgrass(p, Math.floor(this.frame / 22) % 4, m.theme, 0, true));
-      b.drawImage(front, Math.round(e.tx * 16 - ox), Math.round(e.ty * 16 - oy));
+      const front = G.tiles.get(`tgf|${Math.floor(this.frame / 22) % 4}|${m.theme}`, 16, 20, p => G.tiles.tallgrass(p, Math.floor(this.frame / 22) % 4, m.theme, 0, true));
+      b.drawImage(front, Math.round(e.tx * 16 - ox), Math.round(e.ty * 16 - oy) - 4);
     }
   }
   drawFollower(b, f, ox, oy) {
@@ -707,10 +777,11 @@ G.WorldScene = class {
     if (!img) return;
     const hop = f.moving ? Math.abs(Math.sin(f.prog / 16 * Math.PI)) * 2 : 0;
     const x = Math.round(f.px - ox + 8 - img.width / 2), y = Math.round(f.py - oy + 16 - img.height - hop - (f.hop || 0));
-    b.fillStyle = 'rgba(0,0,0,.25)'; b.beginPath(); b.ellipse(f.px - ox + 8, f.py - oy + 14.5, 5, 1.8, 0, 0, Math.PI * 2); b.fill();
+    b.fillStyle = 'rgba(12,16,36,.28)'; b.beginPath(); b.ellipse(f.px - ox + 8, f.py - oy + 14.5, Math.min(7, img.width / 3), 2, 0, 0, Math.PI * 2); b.fill();
+    this.castShadow(b, img, x, y + hop, Math.round(f.py - oy) + 15);
     b.drawImage(img, x, y);
     const c = this.cellAt(f.tx, f.ty);
-    if (c && c.g === 'tall') { const front = G.tiles.get(`tgf|${Math.floor(this.frame / 22) % 4}|${this.map.theme}`, 16, 16, p => G.tiles.tallgrass(p, Math.floor(this.frame / 22) % 4, this.map.theme, 0, true)); b.drawImage(front, Math.round(f.tx * 16 - ox), Math.round(f.ty * 16 - oy)); }
+    if (c && c.g === 'tall') { const front = G.tiles.get(`tgf|${Math.floor(this.frame / 22) % 4}|${this.map.theme}`, 16, 20, p => G.tiles.tallgrass(p, Math.floor(this.frame / 22) % 4, this.map.theme, 0, true)); b.drawImage(front, Math.round(f.tx * 16 - ox), Math.round(f.ty * 16 - oy) - 4); }
   }
   ambient() {
     const m = this.map;
@@ -747,7 +818,7 @@ G.WorldScene = class {
     for (let ty = y0; ty < y0 + 18; ty++) for (let tx = x0; tx < x0 + 28; tx++) {
       const c = this.cellAt(tx, ty); if (!c || !c.light) continue;
       const px = tx * 16 - ox + 8, py = ty * 16 - oy;
-      if (c.light === 'lamp') L.push({ x: px, y: py - 7, r: 42, col: 'rgba(255,220,140,', a: .5 * night });
+      if (c.light === 'lamp') L.push({ x: px, y: py - 15, r: 44, col: 'rgba(255,220,140,', a: .5 * night });
       if (c.light === 'lantern') L.push({ x: px, y: py + 4, r: 30, col: 'rgba(255,170,90,', a: .55 * night });
       if (c.light === 'crystal') L.push({ x: px, y: py + 8, r: 26, col: c.v % 2 ? 'rgba(140,230,255,' : 'rgba(200,160,255,', a: .45 });
       if (c.light === 'lava') L.push({ x: px, y: py + 8, r: 22, col: 'rgba(255,120,40,', a: .35 });
@@ -776,7 +847,7 @@ G.WorldScene = class {
     if (ph === 'dusk') return { haze: 'rgba(255,170,130,', hazeA: .34, bloomA: .26, key: 'rgba(255,160,90,.6)', fill: 'rgba(70,40,110,.5)' };
     if (ph === 'dawn') return { haze: 'rgba(255,210,190,', hazeA: .3, bloomA: .24, key: 'rgba(255,200,160,.55)', fill: 'rgba(60,70,130,.45)' };
     if (d.weather === 'snow' || m.theme === 'snow') return { haze: 'rgba(235,245,255,', hazeA: .26, bloomA: .2 };
-    return { haze: 'rgba(205,228,255,', hazeA: .16, bloomA: .2 };
+    return { haze: 'rgba(214,232,255,', hazeA: .08, bloomA: .14, key: 'rgba(255,214,150,.55)', fill: 'rgba(30,50,110,.42)' };
   }
   drawUI(c) {
     const S = G.gfx.S, U = G.ui;
@@ -809,3 +880,41 @@ G.WorldScene = class {
   }
 };
 G.world = { scene: null };
+
+// ---------------------------------------------------------------- 2.5D lean --
+// DS-style 3D feel for tall objects: a camera above the screen centre sees the tops of buildings,
+// trees and lamps pushed away from the centre in proportion to their height, and the side wall that
+// faces the centre. Shearing each object about its base line reproduces that for the cost of one
+// transform; it shifts continuously as the camera scrolls, which is what reads as depth.
+G.LEAN = .0009;
+// wind: a slow base breeze with gusts every few seconds (0..1)
+G.wind = function (f) { const g = Math.max(0, Math.sin(f / 260) * Math.sin(f / 97 + 1.3)); return .25 + .75 * g * g; };
+G._sideCol = new WeakMap();
+G.leanDraw = function (b, img, x, y, baseY, o = {}) {
+  if (G.settings && G.settings.fancy === false) { b.drawImage(img, x, y); return; }
+  let k = (x + img.width / 2 - G.W / 2) * G.LEAN;
+  // trees and bushes sway with the wind (each at its own phase), anchored at the base
+  if (o.sway) { const ws = G.world && G.world.scene ? G.world.scene.frame : 0; k -= (Math.sin(ws / 38 + x * .13) * .5 + .5) * G.wind(ws) * .045 * o.sway; }
+  if (Math.abs(k) < .002) { b.drawImage(img, x, y); return; }
+  if (o.side) {
+    // side wall wedge between the upright corner line and the leaning one, in the facade's wall tone
+    let col = G._sideCol.get(img);
+    if (!col) {
+      try {
+        const c = img.getContext ? img.getContext('2d') : null, h = img.height;
+        const d = c ? c.getImageData(2, Math.max(0, h - 14), 1, 8).data : null;
+        let r = 0, g = 0, bb = 0, n = 0;
+        if (d) for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 200) { r += d[i]; g += d[i + 1]; bb += d[i + 2]; n++; }
+        col = n ? `rgb(${r / n * .55 | 0},${g / n * .55 | 0},${bb / n * .62 | 0})` : 'rgb(60,56,70)';
+      } catch (e) { col = 'rgb(60,56,70)'; }
+      G._sideCol.set(img, col);
+    }
+    const H = Math.min(baseY - y, 40), ex = k > 0 ? x : x + img.width;
+    b.fillStyle = col; b.beginPath();
+    b.moveTo(ex, baseY); b.lineTo(ex, baseY - H); b.lineTo(ex + k * H, baseY - H); b.lineTo(ex + k * 2, baseY); b.closePath(); b.fill();
+  }
+  b.save();
+  b.transform(1, 0, -k, 1, k * baseY, 0);
+  b.drawImage(img, x, y);
+  b.restore();
+};

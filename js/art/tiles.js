@@ -1,648 +1,1005 @@
 'use strict';
 // ============================================================================
-//  Procedural tileset: every tile is painted pixel-by-pixel from palettes,
-//  with autotiling masks, seeded variation and animation frames.
+//  Tile & prop art: cliffs, ledges, bridges, floors and walls (baked into the
+//  terrain), live overlays (tall grass, flowers, hedges), world props (trees,
+//  rocks, lamps, fences...), furniture, buildings and item icons. All painted
+//  procedurally with the px.js toolkit: hue-shifted ramps, a single top-left
+//  key light and selective dark outlines.
 // ============================================================================
-G.Painter = class {
-  constructor(w, h) {
-    this.w = w; this.h = h; this.cv = G.makeCanvas(w, h); this.c = this.cv.getContext('2d');
-    this.id = this.c.createImageData(w, h); this.d = this.id.data;
-  }
-  set(x, y, col, a = 255) {
-    x |= 0; y |= 0; if (x < 0 || y < 0 || x >= this.w || y >= this.h) return;
-    const i = (y * this.w + x) * 4, d = this.d;
-    if (a >= 255) { d[i] = col[0]; d[i + 1] = col[1]; d[i + 2] = col[2]; d[i + 3] = 255; }
-    else { const k = a / 255; d[i] = d[i] * (1 - k) + col[0] * k; d[i + 1] = d[i + 1] * (1 - k) + col[1] * k; d[i + 2] = d[i + 2] * (1 - k) + col[2] * k; d[i + 3] = Math.max(d[i + 3], a); }
-  }
-  get(x, y) { const i = (y * this.w + x) * 4; return [this.d[i], this.d[i + 1], this.d[i + 2], this.d[i + 3]]; }
-  rect(x, y, w, h, col, a) { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) this.set(i, j, col, a); }
-  fill(col) { this.rect(0, 0, this.w, this.h, col); }
-  circ(cx, cy, r, col, a) { for (let y = Math.floor(cy - r); y <= cy + r; y++) for (let x = Math.floor(cx - r); x <= cx + r; x++) if ((x - cx + .5) ** 2 + (y - cy + .5) ** 2 <= r * r) this.set(x, y, col, a); }
-  ell(cx, cy, rx, ry, col, a) { for (let y = Math.floor(cy - ry); y <= cy + ry; y++) for (let x = Math.floor(cx - rx); x <= cx + rx; x++) if (((x - cx + .5) / rx) ** 2 + ((y - cy + .5) / ry) ** 2 <= 1) this.set(x, y, col, a); }
-  line(x0, y0, x1, y1, col, a) {
-    x0 |= 0; y0 |= 0; x1 |= 0; y1 |= 0; const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1; let e = dx + dy;
-    for (; ;) { this.set(x0, y0, col, a); if (x0 === x1 && y0 === y1) break; const e2 = 2 * e; if (e2 >= dy) { e += dy; x0 += sx; } if (e2 <= dx) { e += dx; y0 += sy; } }
-  }
-  // outline every opaque pixel's transparent neighbours
-  outline(col) {
-    const src = new Uint8ClampedArray(this.d);
-    for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
-      const i = (y * this.w + x) * 4; if (src[i + 3]) continue;
-      const n = (xx, yy) => xx >= 0 && yy >= 0 && xx < this.w && yy < this.h && src[(yy * this.w + xx) * 4 + 3] > 0;
-      if (n(x - 1, y) || n(x + 1, y) || n(x, y - 1) || n(x, y + 1)) this.set(x, y, col);
-    }
-  }
-  done() { this.c.putImageData(this.id, 0, 0); return this.cv; }
-};
 G.tiles = (function () {
-  const P = c => G.col.parse(c);
+  const P = G.rgb, R = G.ramp;
   const cache = new Map();
   const get = (key, w, h, fn) => { let c = cache.get(key); if (!c) { const p = new G.Painter(w, h); fn(p); c = p.done(); cache.set(key, c); } return c; };
-  const rng = (seed) => new G.RNG(seed);
-  const THEMES = {
-    grass: { g: ['#7fcf57', '#71c24c', '#5eae3f', '#4b9535', '#a0e071'], tall: ['#4f9f3b', '#3f8a31', '#2f6f28', '#79c653', '#9ee06c'], leaf: ['#3c8f3a', '#2f7a32', '#225e2a', '#5ab04a', '#7fd060'], trunk: ['#8a5a36', '#6a4428'], path: ['#e3c68d', '#d4b273', '#c29d5e', '#efd8a8'], cliff: ['#b08a60', '#96714c', '#7a5a3c', '#5c4430'] },
-    snow: { g: ['#f2f7fc', '#e6eef8', '#d3e0ee', '#bccde0', '#ffffff'], tall: ['#c9dbe9', '#b1c6da', '#92abc4', '#e3eef7', '#ffffff'], leaf: ['#3e7a6a', '#2f6558', '#224c44', '#e8f2fa', '#ffffff'], trunk: ['#6e5040', '#503828'], path: ['#dfe6ee', '#cad5e2', '#b6c4d4', '#eef3f8'], cliff: ['#9aa8ba', '#7f8ea2', '#66758a', '#4d5a6c'] },
-    ash: { g: ['#9a8a7e', '#8c7c72', '#7a6b62', '#665850', '#b2a298'], tall: ['#8a7a4a', '#766838', '#5e522a', '#a8985e', '#c4b270'], leaf: ['#5e4a3e', '#4c3a30', '#3a2c24', '#7a6252', '#94786a'], trunk: ['#4a3a34', '#342824'], path: ['#6e5e58', '#62524c', '#544642', '#7e6e66'], cliff: ['#6a5a52', '#574944', '#463a36', '#342a28'] },
-    dusk: { g: ['#6fae7c', '#62a070', '#548f63', '#437a53', '#8ccb96'], tall: ['#4c8a62', '#3e7654', '#2f5e44', '#6aac7c', '#8ccb96'], leaf: ['#8a4f7a', '#733f66', '#5a3052', '#b06c9c', '#d48cc0'], trunk: ['#5a4050', '#40303a'], path: ['#b8a8b8', '#a696a8', '#948498', '#ccbccc'], cliff: ['#8a7a8a', '#766676', '#625262', '#4c3e4c'] },
-    beach: { g: ['#8fd462', '#80c655', '#6db448', '#5a9c3c', '#aee47e'], tall: ['#5aa844', '#4a9238', '#3a782e', '#80c85a', '#a4e27a'], leaf: ['#4aa048', '#3a8a3c', '#2c6e30', '#6cc05a', '#90dc70'], trunk: ['#a0703e', '#7a5430'], path: ['#f1dfad', '#e6cf95', '#d8bc7c', '#fbefcc'], cliff: ['#c8a070', '#ae8658', '#926c44', '#745434'] },
-  };
-  const th = t => THEMES[t] || THEMES.grass;
-  const pal = arr => arr.map(P);
+  const h2 = G.h2;
+  const RMP = () => G.RAMPS;
 
-  // --------------------------------------------------------- ground ----
-  function grass(p, v, theme, x0 = 0, y0 = 0, seedBase = 0) {
-    const g = pal(th(theme).g); const r = rng(1000 + v * 77 + seedBase);
-    p.fill(g[0]);
-    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
-      const n = G.smoothNoise((x + x0) / 5, (y + y0) / 5, 3 + v);
-      if (n > .66) p.set(x, y, g[1]); else if (n < .2) p.set(x, y, g[4], 90);
+  // ------------------------------------------------------------ palettes --
+  const LEAF = {
+    grass: R(['#0a2214', '#0f301a', '#154420', '#1d5a27', '#29722d', '#398a32', '#52a43a', '#78be48', '#a8da66']),
+    beach: R(['#11301c', '#184224', '#20582b', '#2c7232', '#3c8c38', '#54a840', '#72c24c', '#98d85e', '#c4ec80']),
+    dusk: R(['#2a1434', '#3c1c46', '#52265a', '#6c3270', '#884286', '#a4589e', '#c074b6', '#da98cc', '#f0c2e2']),
+    snow: R(['#0e2426', '#143232', '#1c4240', '#265650', '#326a60', '#46806e', '#62987e', '#8ab4a0', '#b8d4c4']),
+    ash: R(['#1e1814', '#2a221c', '#382e26', '#483c32', '#5a4c3e', '#6e5e4c', '#84725e', '#9c8a74', '#b8a68e']),
+  };
+  const leafOf = th => LEAF[th] || LEAF.grass;
+  const BARK = R(['#1e120c', '#2e1d14', '#43291a', '#5c3a22', '#76502e', '#91683c', '#ad844e']);
+  const STONE = R(['#262630', '#3a3a46', '#50505c', '#686874', '#80808a', '#9a9aa2', '#b6b6bc', '#d4d4d8']);
+  const STONE_SNOW = R(['#243048', '#34425e', '#485874', '#5e708c', '#7a8ca6', '#98a8c0', '#b8c6d8', '#dce6f0']);
+  const STONE_ASH = R(['#1c1616', '#2a2220', '#3a302c', '#4c403a', '#5e5048', '#72625a', '#8a786e', '#a8948a']);
+  const CLIFF = {
+    grass: R(['#2a1a14', '#3e271c', '#553526', '#6e4631', '#88593d', '#a26f4d', '#bc8a62', '#d4a87e']),
+    beach: R(['#34221a', '#4a3222', '#62442e', '#7c583a', '#966e48', '#b0875a', '#c8a270', '#dcbc8a']),
+    dusk: R(['#221a2c', '#30263e', '#403452', '#524466', '#66567a', '#7c6a90', '#9482a8', '#b0a0c2']),
+    snow: R(['#1e2638', '#2c364c', '#3c4862', '#4e5c78', '#627290', '#7a8aa8', '#96a6c0', '#b8c4d8']),
+    ash: R(['#181210', '#241a16', '#32241e', '#423028', '#543e32', '#684e40', '#7e6250', '#987a66']),
+    cave: R(['#1a1210', '#261b16', '#34251c', '#443024', '#563e2e', '#6a4e3a', '#806248', '#9a7a5c']),
+    crystal: R(['#161428', '#201e38', '#2c2a4a', '#3a385e', '#4a4874', '#5e5c8c', '#7672a6', '#9490c2']),
+  };
+  const OUT = P('#141020');
+
+  // ----------------------------------------------------- rock face shader --
+  // cobbled rock: jittered-grid Voronoi, lit from the top-left per chunk,
+  // dark crevices where two chunks meet
+  function rockAt(wx, wy, ramp, seed = 0, sx = 7, sy = 5.5) {
+    const gx = Math.floor(wx / sx), gy = Math.floor(wy / sy);
+    let f1 = 1e9, f2 = 1e9, cx = 0, cy = 0, id = 0;
+    for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+      const X = gx + i, Y = gy + j;
+      const px = (X + .15 + h2(X, Y, 31 + seed) * .7) * sx, py = (Y + .15 + h2(X, Y, 37 + seed) * .7) * sy;
+      const dx = (wx + .5 - px) / sx, dy = (wy + .5 - py) / sy, d = dx * dx + dy * dy;
+      if (d < f1) { f2 = f1; f1 = d; cx = dx; cy = dy; id = h2(X, Y, 41 + seed); } else if (d < f2) f2 = d;
     }
-    const blades = 5 + r.int(0, 4);
-    for (let i = 0; i < blades; i++) {
-      const x = r.int(0, 15), y = r.int(1, 15);
-      p.set(x, y, g[2]); p.set(x, y - 1, g[1]);
-      if (r.chance(.4)) p.set(x + 1, y, g[3]);
-    }
-    for (let i = 0; i < 3; i++) p.set(r.int(0, 15), r.int(0, 15), g[4]);
-    if (theme === 'snow') { for (let i = 0; i < 4; i++) p.set(r.int(0, 15), r.int(0, 15), P('#c6d6e8')); }
-    if (v === 3 && theme !== 'snow' && theme !== 'ash') {
-      const fx = r.int(3, 12), fy = r.int(3, 12); const fc = P(r.pick(['#ffffff', '#fff27a', '#ffb3d0']));
-      p.set(fx, fy, fc); p.set(fx + 1, fy, fc); p.set(fx, fy + 1, fc); p.set(fx + 1, fy + 1, P('#e8a830'));
-    }
+    const edge = Math.sqrt(f2) - Math.sqrt(f1);
+    if (edge < .11) return ramp[1];
+    let I = .58 - cx * .55 - cy * .75 + (id - .5) * .35;
+    if (edge < .2) I -= .22;
+    const k = G.clamp(Math.floor(I * 5) + 2, 2, ramp.length - 1);
+    return ramp[k];
   }
-  function flowers(p, v, theme, frame) {
-    grass(p, 1, theme);
-    const r = rng(500 + v); const cols = [['#ff5a6a', '#c82a3a'], ['#ffe066', '#d9a520'], ['#ffffff', '#c8d0e0'], ['#ff9ad0', '#d05a98'], ['#9ad0ff', '#4a8ad0']];
-    const pick = cols[v % cols.length];
-    const spots = [[3, 4], [11, 3], [7, 10], [2, 12], [12, 12]];
-    for (const [sx, sy] of spots) {
-      const ox = (frame % 2) && (sx + sy) % 2 ? 1 : 0;
-      const x = sx + ox, y = sy;
-      p.set(x, y + 2, P('#3f8a31')); p.set(x, y + 3, P('#3f8a31'));
-      const c1 = P(pick[0]), c2 = P(pick[1]);
-      p.set(x, y, c1); p.set(x - 1, y + 1, c1); p.set(x + 1, y + 1, c1); p.set(x, y + 2, c2); p.set(x, y + 1, P('#fff4a0'));
-      p.set(x - 1, y, c2, 120); p.set(x + 1, y, c2, 120);
-    }
-  }
-  function tallgrass(p, frame, theme, mask = 0, front = false) {
-    const t = pal(th(theme).tall);
-    if (!front) { p.fill(t[0]); for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if ((x * 7 + y * 3) % 11 === 0) p.set(x, y, t[1]); }
-    const sway = [0, 1, 0, -1][frame % 4];
-    // clumps of blades in a 2x2 grid
-    for (let cy = 0; cy < 2; cy++) for (let cx = 0; cx < 2; cx++) {
-      const bx = cx * 8, by = cy * 8;
-      const bladesX = [1, 3, 5, 6];
-      for (let k = 0; k < bladesX.length; k++) {
-        const x = bx + bladesX[k], h = 5 + ((k + cx + cy) % 2) * 2, base = by + 8;
-        for (let j = 0; j < h; j++) {
-          const yy = base - j, xx = x + (j > h - 3 ? sway : 0);
-          if (front && yy < 9) continue;
-          p.set(xx, yy, j > h - 2 ? t[4] : j > h - 4 ? t[3] : k % 2 ? t[2] : t[1]);
-        }
-        if (!front) p.set(x - 1, base, t[2]);
-      }
-    }
-    if (!front) {
-      // soft top-edge fringe when nothing tall above
-      if (!(mask & 1)) for (let x = 0; x < 16; x++) if (x % 3 !== 1) p.set(x, 0, t[3], 150);
-    }
-  }
-  function path(p, mask, theme, kind = 'path', x0 = 0, y0 = 0) {
-    const pc = kind === 'sand' ? pal(['#f4e2b0', '#ead39a', '#dcc080', '#fff2cc']) : kind === 'pave' ? pal(['#d6d2c8', '#c8c3b8', '#b4aea2', '#e6e2d8']) : pal(th(theme).path);
-    const g = pal(th(theme).g);
+
+  // ---------------------------------------------------------- cliff walls --
+  // kind: cliff | cave | crystal. info: {n,s,e,w (same), s2, n2, above2}
+  function cliffTile(map, c) {
+    const same = (dx, dy) => { const q = map.cellAny(c.x + dx, c.y + dy); return !q ? true : q.g === c.g; };
+    const n1 = same(0, -1), s1 = same(0, 1), s2 = same(0, 2), n2 = same(0, -2), e1 = same(1, 0), w1 = same(-1, 0);
+    const kind = c.g === 'cliff' ? 'cliff' : c.g === 'cavewall' ? 'cave' : 'crystal';
+    const th = map.theme;
+    const ramp = kind === 'cliff' ? (CLIFF[th] || CLIFF.grass) : CLIFF[kind];
+    const type = !s1 ? 'faceB' : (!s2 && n1) ? 'faceU' : 'top';
+    const aboveFace = n1 && n2 && !s1;   // faceB directly below a faceU
+    const p = new G.Painter(16, 16), X0 = c.x * 16, Y0 = c.y * 16;
+    const GR = kind === 'cliff' ? (th === 'snow' ? RMP().snow : th === 'ash' ? RMP().ash : th === 'beach' ? RMP().beach : th === 'dusk' ? RMP().dusk : RMP().grass) : null;
+    const topFill = (x, y) => {
+      const wx = X0 + x, wy = Y0 + y;
+      if (GR) { const v = G.fbm(wx / 30, wy / 30, 8, 2); let k = v < .4 ? 4 : v < .62 ? 5 : 6; if (h2(wx, wy, 3) > .9) k--; if (h2(wx, wy, 4) > .95) k = Math.min(7, k + 1); return GR[Math.min(GR.length - 1, k)]; }
+      // cave ceiling rock: dark, gently mottled
+      const v = G.fbm(wx / 12, wy / 12, 9, 2); return ramp[v < .4 ? 1 : v < .65 ? 2 : 3];
+    };
     for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
-      const n = G.smoothNoise((x + x0) / 3.5, (y + y0) / 3.5, 9);
-      p.set(x, y, n > .7 ? pc[1] : n < .18 ? pc[3] : pc[0]);
-    }
-    if (kind === 'pave') {
-      // flagstone grid
-      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
-        const row = Math.floor(y / 8), off = row % 2 ? 4 : 0;
-        if (y % 8 === 7 || (x + off) % 8 === 7) p.set(x, y, pc[2]);
-        else if (y % 8 === 0 || (x + off) % 8 === 0) p.set(x, y, pc[3]);
-      }
-    } else {
-      const r = rng(77 + mask + x0 * 3);
-      for (let i = 0; i < 5; i++) { const x = r.int(1, 14), y = r.int(1, 14); p.set(x, y, pc[2]); p.set(x + 1, y, pc[1]); }
-    }
-    // blend edges into grass (mask bit: 1 N, 2 E, 4 S, 8 W: set = same terrain)
-    if (kind === 'pave') return;
-    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
-      const w = 2.2 + G.noise2(x + x0, y + y0, 4) * 1.6;
-      let edge = false;
-      if (!(mask & 1) && y < w) edge = true;
-      if (!(mask & 4) && 15 - y < w) edge = true;
-      if (!(mask & 8) && x < w) edge = true;
-      if (!(mask & 2) && 15 - x < w) edge = true;
-      // concave corners
-      if ((mask & 1) && (mask & 8) && !(mask & 16) && x + y < 3) edge = true;
-      if ((mask & 1) && (mask & 2) && !(mask & 32) && (15 - x) + y < 3) edge = true;
-      if ((mask & 4) && (mask & 8) && !(mask & 128) && x + (15 - y) < 3) edge = true;
-      if ((mask & 4) && (mask & 2) && !(mask & 64) && (15 - x) + (15 - y) < 3) edge = true;
-      if (edge) p.set(x, y, kind === 'sand' ? g[0] : g[(x + y) % 5 === 0 ? 2 : 0]);
+      const wx = X0 + x, wy = Y0 + y;
+      let col;
+      if (type === 'top') col = topFill(x, y);
       else {
-        // darker rim just inside the edge
-        const near = (!(mask & 1) && y < w + 1) || (!(mask & 4) && 15 - y < w + 1) || (!(mask & 8) && x < w + 1) || (!(mask & 2) && 15 - x < w + 1);
-        if (near) p.set(x, y, pc[2], kind === 'sand' ? 90 : 160);
-      }
-    }
-  }
-  function water(p, mask, frame, theme, shore = 'sand') {
-    const deep = P('#3a78d8'), mid = P('#4f93ea'), lt = P('#78b6f6'), hi = P('#c8e6ff'), foam = P('#ffffff');
-    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
-      const n = G.smoothNoise(x / 6 + frame * .25, y / 5, 21);
-      p.set(x, y, n > .62 ? mid : deep);
-    }
-    // travelling ripples
-    for (let k = 0; k < 3; k++) {
-      const yy = (k * 5 + 2 + Math.floor(frame / 2)) % 16, xs = (k * 7 + frame * 2) % 16;
-      for (let i = 0; i < 4; i++) p.set((xs + i) % 16, yy, i === 0 || i === 3 ? lt : hi, 200);
-    }
-    const sc = shore === 'grass' ? pal(th(theme).g) : pal(['#f4e2b0', '#ead39a', '#dcc080', '#fff2cc']);
-    const edgeCol = shore === 'grass' ? P(th(theme).cliff[1]) : P('#d8bc80');
-    const f = frame % 4, fw = [1, 2, 2, 1][f];
-    const edge = (d) => d;
-    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
-      let d = 99;
-      if (!(mask & 1)) d = Math.min(d, y); if (!(mask & 4)) d = Math.min(d, 15 - y);
-      if (!(mask & 8)) d = Math.min(d, x); if (!(mask & 2)) d = Math.min(d, 15 - x);
-      if ((mask & 1) && (mask & 8) && !(mask & 16)) d = Math.min(d, Math.hypot(x, y) - 1);
-      if ((mask & 1) && (mask & 2) && !(mask & 32)) d = Math.min(d, Math.hypot(15 - x, y) - 1);
-      if ((mask & 4) && (mask & 8) && !(mask & 128)) d = Math.min(d, Math.hypot(x, 15 - y) - 1);
-      if ((mask & 4) && (mask & 2) && !(mask & 64)) d = Math.min(d, Math.hypot(15 - x, 15 - y) - 1);
-      const wob = G.noise2(x, y, 2) * 1.2;
-      if (d < 2 + wob) p.set(x, y, sc[(x + y) % 4 === 0 ? 1 : 0]);
-      else if (d < 3 + wob) p.set(x, y, edgeCol);
-      else if (d < 3 + wob + fw) p.set(x, y, foam, 230);
-      else if (d < 5 + wob + fw) p.set(x, y, lt, 150);
-    }
-  }
-  function simple(p, kind, v, frame, theme, x0 = 0, y0 = 0) {
-    const r = rng(v * 31 + 7);
-    switch (kind) {
-      case 'snow': grass(p, v, 'snow', x0, y0); break;
-      case 'ice': {
-        p.fill(P('#bfe6f6'));
-        for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (G.smoothNoise((x + x0) / 4, (y + y0) / 4, 5) > .6) p.set(x, y, P('#d8f2fc'));
-        for (let i = 0; i < 16; i++) { const x = (i + v * 5) % 16, y = (i * 3 + v) % 16; if (i % 5 === 0) { p.line(x, y, x + 3, y - 3, P('#ffffff')); } }
-        p.rect(0, 15, 16, 1, P('#a8d4e8'), 120);
-        break;
-      }
-      case 'ash': grass(p, v, 'ash', x0, y0); for (let i = 0; i < 4; i++) p.set(r.int(0, 15), r.int(0, 15), P('#4a3c38')); break;
-      case 'lava': {
-        for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
-          const n = G.smoothNoise((x + x0) / 4 + frame * .15, (y + y0) / 4, 8);
-          p.set(x, y, n > .7 ? P('#ffe070') : n > .5 ? P('#ffa030') : n > .3 ? P('#f06020') : P('#c83a18'));
+        let lip = 0;
+        if (type === 'faceB' && !n1) lip = 5; else if (type === 'faceU' || (type === 'faceB' && n1 && !aboveFace)) lip = type === 'faceU' ? 3 : 0;
+        if (y < lip) col = topFill(x, y);
+        else {
+          col = rockAt(wx, wy, ramp, kind === 'crystal' ? 5 : 0);
+          // vertical gradient: darker toward the base of the wall
+          const depth = type === 'faceB' ? (y / 16) : (y / 32);
+          if (depth > .75) col = G.darkc(col, (depth - .75) * .9);
         }
-        break;
+        // lip edge: dark line with a lit rim above it
+        if (lip && y === lip) col = ramp[0];
+        if (lip && y === lip - 1) col = GR ? GR[7] : ramp[5];
+        if (type === 'faceB' && y >= 14) col = G.darkc(col, y === 15 ? .45 : .25);
       }
-      case 'cave': {
-        const c = pal(['#8c7a68', '#7e6c5c', '#6e5e50', '#a08c78']);
-        for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const n = G.smoothNoise((x + x0) / 4, (y + y0) / 4, 11); p.set(x, y, n > .66 ? c[1] : n < .22 ? c[3] : c[0]); }
-        for (let i = 0; i < 3; i++) { const x = r.int(1, 14), y = r.int(1, 14); p.set(x, y, c[2]); p.set(x + 1, y + 1, c[2]); }
-        break;
+      p.set(x, y, col);
+    }
+    // rims on the plateau top and wall ends
+    if (type === 'top' && !n1) { for (let x = 0; x < 16; x++) { p.set(x, 0, ramp[0]); p.set(x, 1, GR ? GR[7] : ramp[5]); } }
+    if (!w1) for (let y = 0; y < 16; y++) { p.set(0, y, ramp[0]); if (type !== 'top') p.set(1, y, ramp[2]); else p.shade(1, y, .12); }
+    if (!e1) for (let y = 0; y < 16; y++) { p.set(15, y, ramp[0]); p.set(14, y, type !== 'top' ? ramp[1] : G.darkc(p.get(14, y), .2)); }
+    // crystals studded in crystal walls
+    if (kind === 'crystal' && type !== 'top' && h2(c.x, c.y, 77) > .45) {
+      const cx = 3 + Math.floor(h2(c.x, c.y, 78) * 9), cy = 6 + Math.floor(h2(c.x, c.y, 79) * 5), cc = h2(c.x, c.y, 80) > .5 ? R(['#2a6a9a', '#5ab8e8', '#a8f0ff', '#ffffff']) : R(['#5a3a9a', '#9a6ae0', '#d8b8ff', '#ffffff']);
+      p.rect(cx, cy, 3, 5, cc[1]); p.rect(cx, cy, 1, 5, cc[2]); p.set(cx + 1, cy - 1, cc[2]); p.set(cx, cy, cc[3]); p.rect(cx + 2, cy + 1, 1, 4, cc[0]);
+      p.rect(cx + 3, cy + 2, 2, 3, cc[1]); p.set(cx + 3, cy + 2, cc[2]);
+    }
+    return p.done();
+  }
+
+  // ------------------------------------------------------------- ledges --
+  function ledgeTile(map, c, dir) {
+    const p = new G.Painter(16, 16);
+    const cave = map.type === 'cave';
+    const ramp = cave ? CLIFF.cave : (CLIFF[map.theme] || CLIFF.grass);
+    const GR = cave ? null : (map.theme === 'beach' ? RMP().beach : map.theme === 'dusk' ? RMP().dusk : map.theme === 'snow' ? RMP().snow : map.theme === 'ash' ? RMP().ash : RMP().grass);
+    const same = (dx, dy) => { const q = map.cellAny(c.x + dx, c.y + dy); return q && q.g === c.g; };
+    if (dir === 'down') {
+      // a low earth step: lit grass edge, short rock face, contact shadow
+      for (let x = 0; x < 16; x++) {
+        const wx = c.x * 16 + x;
+        p.set(x, 9, GR ? GR[7] : ramp[6]); p.set(x, 10, ramp[0]);
+        for (let y = 11; y < 15; y++) p.set(x, y, rockAt(wx, c.y * 16 + y, ramp, 2, 5, 3));
+        p.set(x, 15, ramp[1]);
       }
-      case 'crystalfloor': {
-        const c = pal(['#6c6a90', '#62608a', '#56547a', '#8886b0']);
-        for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const n = G.smoothNoise((x + x0) / 4, (y + y0) / 4, 12); p.set(x, y, n > .66 ? c[1] : n < .22 ? c[3] : c[0]); }
-        if (v % 3 === 0) { p.set(r.int(2, 13), r.int(2, 13), P('#a8f0ff')); }
-        break;
+      if (!same(-1, 0)) { for (let y = 9; y < 16; y++) p.set(0, y, ramp[0]); }
+      if (!same(1, 0)) { for (let y = 9; y < 16; y++) p.set(15, y, ramp[0]); }
+    } else {
+      const L = dir === 'left', x0 = L ? 0 : 11;
+      for (let y = 0; y < 16; y++) {
+        for (let i = 0; i < 5; i++) p.set(x0 + i, y, rockAt(c.x * 16 + x0 + i, c.y * 16 + y, ramp, 3, 3, 5));
+        p.set(L ? 5 : 10, y, ramp[0]); p.set(L ? 6 : 9, y, GR ? GR[7] : ramp[6]); p.set(L ? 0 : 15, y, ramp[1]);
       }
-      case 'wood': {
-        const c = pal(['#c89058', '#b87e4a', '#a06a3c', '#dca470']);
-        for (let y = 0; y < 16; y++) {
-          const plank = Math.floor(y / 4);
-          for (let x = 0; x < 16; x++) {
-            const seam = (x + plank * 5) % 16 === 0;
-            p.set(x, y, y % 4 === 3 ? c[2] : seam ? c[2] : (G.noise2(x, y, plank) > .8 ? c[1] : y % 4 === 0 ? c[3] : c[0]));
+    }
+    return p.done();
+  }
+
+  // ------------------------------------------------------------ bridges --
+  function bridgeTile(map, c) {
+    const p = new G.Painter(16, 16);
+    const isB = (dx, dy) => { const q = map.cellAny(c.x + dx, c.y + dy); return q && (q.g === 'bridge' || q.g === 'bridgev'); };
+    const land = (dx, dy) => { const q = map.cellAny(c.x + dx, c.y + dy); return q && !q.water; };
+    const vert = (isB(0, -1) || isB(0, 1) || land(0, -1) || land(0, 1)) && !(isB(-1, 0) || isB(1, 0));
+    const W = R(['#2a1a12', '#46301e', '#62442a', '#7e5a38', '#9a7248', '#b48c5c', '#cca674']);
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      const u = vert ? x : y, v = vert ? y : x;   // boards run across the walking direction
+      const board = Math.floor((v + (vert ? c.y : c.x) * 16) / 4), bv = ((v % 4) + 4) % 4;
+      const tone = h2(board, vert ? c.x : c.y, 5);
+      let k = tone < .3 ? 3 : tone > .75 ? 5 : 4;
+      if (bv === 3) k = 1; else if (bv === 0) k += 1;
+      if (h2(x + c.x * 16, y + c.y * 16, 6) > .94 && bv === 1) k -= 1;
+      if ((u === 2 || u === 13) && bv === 1) k = 6;   // nail heads
+      p.set(x, y, W[G.clamp(k, 0, 6)]);
+    }
+    // rails along water edges
+    const railSide = vert ? [[-1, 0, 0], [1, 0, 15]] : [[0, -1, 0], [0, 1, 15]];
+    for (const [dx, dy, e] of railSide) if (!isB(dx, dy) && !land(dx, dy)) {
+      for (let t = 0; t < 16; t++) { const x = vert ? e : t, y = vert ? t : e; p.set(x, y, W[0]); const x2 = vert ? (e ? 14 : 1) : t, y2 = vert ? t : (e ? 14 : 1); p.set(x2, y2, W[e ? 2 : 6]); }
+      if (vert) { p.rect(e ? 13 : 0, 6, 3, 4, W[1]); p.rect(e ? 13 : 0, 6, 3, 1, W[6]); }
+      else { p.rect(6, e ? 13 : 0, 4, 3, W[1]); p.rect(6, e ? 13 : 0, 4, 1, W[6]); }
+    }
+    return p.done();
+  }
+
+  // ------------------------------------------------------ indoor floors --
+  function woodFloor(p, X0, Y0, tone = 0) {
+    const W = tone === 1 ? R(['#3a2418', '#553622', '#6e4a2e', '#86603c', '#9c744a', '#b2895a', '#c89e6c']) : R(['#4a2c18', '#6a4426', '#865a32', '#a0703e', '#b5844c', '#c8995e', '#dcb074']);
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      const wx = X0 + x, wy = Y0 + y, row = Math.floor(wy / 5), rv = ((wy % 5) + 5) % 5;
+      const off = h2(row, 0, 3) * 24 | 0, seg = Math.floor((wx + off) / 24), su = ((wx + off) % 24 + 24) % 24;
+      const tn = h2(seg, row, 4);
+      let k = tn < .3 ? 3 : tn > .72 ? 5 : 4;
+      if (rv === 4) k = 1; else if (rv === 0) k = Math.min(6, k + 1);
+      if (su === 0) k = 2;
+      const grain = Math.sin(wx * .9 + row * 7 + Math.sin(wx * .23 + row) * 2);
+      if (grain > .93 && rv > 0 && rv < 4) k -= 1;
+      p.set(x, y, W[G.clamp(k, 0, 6)]);
+    }
+  }
+  function tileFloor(p, X0, Y0, base = '#e6eaee') {
+    const r = G.rampFrom(base, 6, { lo: .28, hi: .1 });
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      const u = ((X0 + x) % 16 + 16) % 16, v = ((Y0 + y) % 16 + 16) % 16;
+      const checker = (Math.floor((X0 + x) / 16) + Math.floor((Y0 + y) / 16)) & 1;
+      let k = checker ? 3 : 4;
+      if (u === 15 || v === 15) k = 1; else if (u === 0 || v === 0) k = 5;
+      if (u + v === 5 || u + v === 6) if (u < 6 && v < 6 && u > 0 && v > 0) k = 5;
+      p.set(x, y, r[k]);
+    }
+  }
+  function gymFloor(p, X0, Y0, base) {
+    const r = G.rampFrom(base, 7, { lo: .3, hi: .18 });
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      const u = ((X0 + x) % 16 + 16) % 16, v = ((Y0 + y) % 16 + 16) % 16;
+      let k = 3;
+      if (u === 15 || v === 15) k = 0; else if (u === 14 || v === 14) k = 2; else if (u === 0 || v === 0) k = 5; else if (u === 1 || v === 1) k = 4;
+      if (u > 3 && u < 12 && v > 3 && v < 12 && (u + v) % 7 === 0) k = 4;
+      p.set(x, y, r[k]);
+    }
+  }
+  function carpet(p, map, c, col) {
+    const base = { red: '#b83a3a', blue: '#3a5ab0', green: '#3a8a5a' }[col] || col || '#b83a3a';
+    const r = G.rampFrom(base, 6, { lo: .3, hi: .2 });
+    const same = (dx, dy) => { const q = map.cell(c.x + dx, c.y + dy); return q && q.g === 'carpet'; };
+    const n = same(0, -1), s = same(0, 1), w = same(-1, 0), e = same(1, 0);
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      let k = ((c.x * 16 + x + c.y * 16 + y) % 4 === 0) ? 2 : 3;
+      const b = (!n && y < 3) || (!s && y > 12) || (!w && x < 3) || (!e && x > 12);
+      if (b) k = 5; if ((!n && y === 0) || (!s && y === 15) || (!w && x === 0) || (!e && x === 15)) k = 1;
+      if ((!n && y === 3) || (!s && y === 12) || (!w && x === 3) || (!e && x === 12)) if (!b) k = 1;
+      p.set(x, y, r[k]);
+    }
+  }
+  // ------------------------------------------------------------- walls --
+  const WALLS = { cream: '#efe2c4', blue: '#c4d8ee', green: '#cfe6c8', lab: '#e8eef4', gym: '#3a4458', wood: '#b88452', stone: '#868a94', rose: '#f0cdd6' };
+  function wallTile(map, c) {
+    const style = c.wstyle || map.def.wall || 'cream';
+    const base = WALLS[style] || WALLS.cream;
+    const r = G.rampFrom(base, 7, { lo: .34, hi: .12 });
+    const below = map.cell(c.x, c.y + 1), above = map.cell(c.x, c.y - 1);
+    const lower = !(below && below.g === 'wall'), top = !(above && above.g === 'wall');
+    const p = new G.Painter(16, 16), X0 = c.x * 16;
+    const trim = G.rampFrom(style === 'gym' ? '#6a748a' : style === 'wood' ? '#6a4428' : '#8a6a4a', 5, { lo: .3, hi: .2 });
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      const wx = X0 + x;
+      let col;
+      if (style === 'wood') { const plank = Math.floor(wx / 5), pv = wx % 5; col = r[pv === 4 ? 1 : (h2(plank, 0, 2) > .5 ? 3 : 4)]; if (pv === 0) col = r[5]; }
+      else if (style === 'stone') { const row = Math.floor((c.y * 16 + y) / 5), sx = wx + (row & 1) * 4, u = sx % 9, v = (c.y * 16 + y) % 5; col = r[u === 8 || v === 4 ? 1 : v === 0 || u === 0 ? 5 : h2(Math.floor(sx / 9), row, 5) > .6 ? 3 : 4]; }
+      else if (style === 'gym') { col = r[(Math.floor(wx / 8) + Math.floor((c.y * 16 + y) / 8)) & 1 ? 3 : 4]; if (y % 8 === 0) col = r[5]; }
+      else {   // wallpaper: soft vertical stripes with a tiny motif
+        const s = wx % 8; col = r[s < 4 ? 4 : 5];
+        if (s === 2 && (c.y * 16 + y) % 6 === 0) col = r[3];
+      }
+      p.set(x, y, col);
+    }
+    if (top) { p.hline(0, 15, 0, trim[1]); p.hline(0, 15, 1, trim[4]); p.hline(0, 15, 2, trim[3]); p.hline(0, 15, 3, r[2]); }
+    if (lower) {   // wainscot panel + baseboard
+      for (let y = 8; y < 16; y++) for (let x = 0; x < 16; x++) p.set(x, y, trim[(x === 0 || x === 8) ? 1 : y === 8 ? 4 : y === 9 ? 3 : (x === 1 || x === 9) ? 3 : 2]);
+      p.hline(0, 15, 8, trim[4]); p.hline(0, 15, 14, trim[1]); p.hline(0, 15, 15, trim[0]);
+      p.hline(0, 15, 7, G.darkc(r[2], .15));
+    }
+    // decorations
+    const wy0 = lower ? 1 : 3;
+    if (c.wv === 1) {   // window with curtains and daylight
+      const fr = trim, sky = R(['#6aa6d8', '#8cc2ea', '#b4dcf6', '#e2f4ff']);
+      p.rect(2, wy0, 12, 10, fr[1]); p.rect(3, wy0 + 1, 10, 8, sky[1]);
+      for (let y = 0; y < 8; y++) for (let x = 0; x < 10; x++) if (x + y < 6) p.set(3 + x, wy0 + 1 + y, sky[2]);
+      p.line(5, wy0 + 1, 9, wy0 + 5, sky[3]); p.vline(7, wy0 + 1, wy0 + 8, fr[3]); p.hline(3, 12, wy0 + 5, fr[3]);
+      const cur = R(['#a83a4a', '#d0566a', '#ec8a98']);
+      p.rect(2, wy0, 2, 10, cur[1]); p.vline(2, wy0, wy0 + 9, cur[0]); p.rect(12, wy0, 2, 10, cur[1]); p.vline(13, wy0, wy0 + 9, cur[0]); p.vline(3, wy0, wy0 + 9, cur[2]);
+      p.rect(1, wy0 + 10, 14, 2, fr[3]); p.hline(1, 14, wy0 + 11, fr[1]);
+    } else if (c.wv === 2) {   // framed painting: seaside with a lighthouse
+      p.rect(3, wy0 + 1, 10, 8, P('#6a4426')); p.rect(4, wy0 + 2, 8, 6, P('#8cc8f0'));
+      p.rect(4, wy0 + 5, 8, 3, P('#3a78c8')); p.rect(4, wy0 + 7, 8, 1, P('#e8d49a')); p.rect(9, wy0 + 3, 1, 3, P('#f4f4f4')); p.set(9, wy0 + 2, P('#ffd84a'));
+      p.hline(3, 12, wy0 + 1, P('#a8743e')); p.hline(4, 12, wy0 + 9, P('#3a2414'));
+    } else if (c.wv === 3) {   // wall clock
+      p.circ(8, wy0 + 5, 4.6, P('#6a4426')); p.circ(8, wy0 + 5, 3.6, P('#f8f4ea')); p.set(8, wy0 + 3, P('#202020')); p.set(8, wy0 + 4, P('#202020')); p.set(9, wy0 + 5, P('#202020')); p.set(8, wy0 + 5, P('#e84a4a'));
+    }
+    return p.done();
+  }
+
+  // ----------------------------------------------------- tall grass -------
+  // dense blades with a dark outline and bright tips; frame sways the tips.
+  // front=true returns only the lower blades (drawn over a standing sprite).
+  function tallgrass(p, frame, theme, mask = 0, front = false) {
+    const GR = theme === 'snow' ? LEAF.snow : theme === 'dusk' ? R(['#10282c', '#163a3a', '#1e4e48', '#286458', '#347a68', '#46927a', '#5eac8e', '#80c4a4', '#aadcc0']) : theme === 'ash' ? R(['#241c14', '#32281c', '#443624', '#584630', '#6c563a', '#826a46', '#9a8054', '#b49a66', '#ccb680']) : theme === 'beach' ? LEAF.beach : LEAF.grass;
+    const sway = [0, 1, 0, -1][frame % 4];
+    // blade clusters: [baseX, baseY, height, lean]
+    const rows = [
+      [[1, 9, 8, -1], [4, 9, 9, 0], [7, 9, 8, 1], [10, 9, 9, 0], [13, 9, 8, 1]],
+      [[2, 13, 7, 0], [5, 13, 8, 1], [8, 13, 7, -1], [11, 13, 8, 0], [14, 13, 7, -1]],
+      [[0, 17, 7, 1], [3, 17, 8, 0], [6, 17, 7, -1], [9, 17, 8, 1], [12, 17, 7, 0], [15, 17, 7, -1]],
+    ];
+    const H = 20, O = 4;   // painter is 16x20, 4px above the tile
+    for (let ri = 0; ri < rows.length; ri++) {
+      if (front && ri < 2) continue;
+      for (const [bx, by, h, lean] of rows[ri]) {
+        const y0 = by + O - 4;
+        for (let j = 0; j < h; j++) {
+          const t = j / h, yy = y0 - j + 3;
+          const xx = bx + Math.round(lean * t * 2 + (t > .55 ? sway * (t - .55) * 2.2 : 0));
+          const k = t > .82 ? 8 : t > .6 ? 7 : t > .35 ? 5 : ri === 2 ? 4 : 3;
+          p.set(xx, yy, GR[k]);
+          if (t < .7) p.set(xx + 1, yy, GR[Math.max(1, k - 2)]);
+          if (t < .3) p.set(xx - 1, yy, GR[Math.max(1, k - 1)]);
+        }
+      }
+    }
+    if (!front) for (let x = 0; x < 16; x++) for (let y = 12; y < H; y++) if (!p.A(x, y)) p.set(x, y, GR[y > 17 ? 1 : 2]);
+    p.outline(null, { k: .3 });
+  }
+  function flowerSprite(p, v, theme, frame) {
+    const sets = [['#ff5a6a', '#c02a40', '#ffd0d8'], ['#ffe066', '#d0a020', '#fff6c0'], ['#ffffff', '#b8c4dc', '#ffffff'], ['#ff9ad0', '#c8508c', '#ffd8ec'], ['#8ac0ff', '#3a6ad0', '#d8ecff']];
+    const spots = [[3, 4], [11, 3], [7, 9], [2, 12], [12, 11]];
+    const leaf = R(['#1c4e28', '#2f7331', '#4a9a3e']);
+    spots.forEach(([sx, sy], i) => {
+      const pick = sets[(v + i * 2) % sets.length].map(P);
+      const wob = (frame % 2) && (i % 2) ? 1 : 0, x = sx + wob, y = sy;
+      p.set(sx, y + 2, leaf[1]); p.set(sx, y + 3, leaf[1]); p.set(sx - 1, y + 3, leaf[2]); p.set(sx + 1, y + 2, leaf[0]);
+      p.set(x, y - 1, pick[0]); p.set(x - 1, y, pick[0]); p.set(x + 1, y, pick[1]); p.set(x, y + 1, pick[1]);
+      p.set(x - 1, y - 1, pick[2], 160); p.set(x, y, P('#ffe070'));
+    });
+    p.outline(null, { k: .28 });
+  }
+  // hedge block: raised top of clipped leaves, darker front face
+  function hedgeSprite(map, c) {
+    const same = (dx, dy) => { const q = map.cellAny(c.x + dx, c.y + dy); return q && q.g === 'hedge'; };
+    const n = same(0, -1), s = same(0, 1), e = same(1, 0), w = same(-1, 0);
+    const key = `hedge|${map.theme}|${n}${s}${e}${w}|${(c.x + c.y * 3) % 4}`;
+    const img = get(key, 16, 24, p => {
+      const L = leafOf(map.theme === 'snow' ? 'snow' : map.theme === 'ash' ? 'ash' : 'grass');
+      const faceTop = s ? 99 : 13;
+      for (let y = n ? 8 : 1; y < 24; y++) for (let x = 0; x < 16; x++) {
+        if (!w && x === 0 && (y < 4 || y > 21)) continue;
+        if (!e && x === 15 && (y < 4 || y > 21)) continue;
+        const wx = c.x * 16 + x, wy = y;
+        const blob = G.vnoise(wx / 2.6, wy / 2.6, 17), fine = h2(wx, wy + c.y * 16, 18);
+        let k;
+        if (y < faceTop) { k = blob > .62 ? 7 : blob > .38 ? 6 : 5; if (fine > .9) k = 8; if (fine < .08) k = 4; if (y < 3 && !n) k = Math.min(8, k + 1); }
+        else { k = blob > .6 ? 4 : blob > .35 ? 3 : 2; if (fine > .9) k = 5; if (y > 21) k = 1; }
+        if (!w && x < 2) k = Math.max(1, k - 1);
+        if (!e && x > 13) k = Math.max(1, k - 2);
+        p.set(x, y, L[k]);
+      }
+      if (!s) for (let x = 0; x < 16; x++) { p.set(x, faceTop, L[2]); p.set(x, faceTop - 1, L[8]); }
+      p.outline(null, { k: .3 });
+    });
+    return { img, ox: 0, oy: -8, base: 1 };
+  }
+
+  // ------------------------------------------------------------- trees ---
+  // leaf clumps shaded by their own normal blended with the canopy's
+  function canopy(p, clumps, C, L, o = {}) {
+    const Lg = G.LIGHT, n = L.length;
+    clumps.sort((a, b) => a.y - b.y);
+    for (const k of clumps) {
+      for (let y = Math.floor(k.y - k.r); y <= Math.ceil(k.y + k.r); y++) for (let x = Math.floor(k.x - k.r); x <= Math.ceil(k.x + k.r); x++) {
+        const nx = (x + .5 - k.x) / k.r, ny = (y + .5 - k.y) / (k.r * (o.squash || 1)), d2 = nx * nx + ny * ny;
+        if (d2 > 1) continue;
+        const nz = Math.sqrt(1 - d2), Il = nx * Lg[0] + ny * Lg[1] + nz * Lg[2];
+        const gx = (x + .5 - C.x) / C.rx, gy = (y + .5 - C.y) / C.ry, gd = Math.min(1, gx * gx + gy * gy), Ig = gx * Lg[0] + gy * Lg[1] + Math.sqrt(1 - gd) * Lg[2];
+        let I = (Il * .45 + Ig * .55) * .55 + .34 + (o.bias || 0);
+        I += (h2(x, y, o.seed || 1) - .5) * .09;
+        // each leaf clump reads as its own cluster: shadowed underside rim
+        if (d2 > .72 && ny > .15) I -= .16 + (d2 - .72) * .5;
+        p.set(x, y, L[G.clamp(Math.floor(I * n), 1, n - 1)]);
+      }
+    }
+    // leaf texture: little lit crescents with a shadow under them
+    for (let y = 1; y < p.h - 1; y++) for (let x = 1; x < p.w - 1; x++) {
+      if (!p.A(x, y) || !p.A(x, y + 1) || h2(x, y, (o.seed || 1) + 9) > .14) continue;
+      const c = p.get(x, y); p.set(x, y + 1, G.darkc(c, .22)); p.shade(x, y, .16);
+    }
+  }
+  function broadTree(v, theme) {
+    return get(`tree|${v}|${theme}`, 32, 44, p => {
+      const L = leafOf(theme === 'beach' ? 'beach' : theme === 'dusk' ? 'dusk' : theme === 'snow' ? 'snow' : 'grass');
+      // trunk + roots
+      p.cyl(13, 27, 6, 15, BARK);
+      p.set(12, 41, BARK[2]); p.set(12, 40, BARK[3]); p.set(19, 41, BARK[1]); p.set(19, 40, BARK[1]); p.set(11, 41, BARK[2]); p.set(20, 41, BARK[0]);
+      for (let y = 30; y < 41; y += 3) p.set(14 + (y % 2), y, BARK[1]);
+      p.set(16, 33, BARK[6]); p.set(16, 34, BARK[5]);
+      const rng = new G.RNG(700 + v * 31);
+      const C = { x: 16, y: 16, rx: 14.5, ry: 14 };
+      const clumps = [];
+      const ring = 9;
+      for (let i = 0; i < ring; i++) {
+        const a = -Math.PI / 2 + i / ring * Math.PI * 2 + rng.range(-.18, .18);
+        clumps.push({ x: C.x + Math.cos(a) * rng.range(8.5, 10.2), y: C.y + Math.sin(a) * rng.range(7.8, 9.2), r: rng.range(5.2, 6.4) });
+      }
+      for (let i = 0; i < 5; i++) clumps.push({ x: C.x + rng.range(-5.5, 5.5), y: C.y + rng.range(-6, 4), r: rng.range(5.5, 7) });
+      canopy(p, clumps, C, L, { seed: v + 3 });
+      if (theme === 'dusk') for (let i = 0; i < 9; i++) { const x = rng.int(6, 26), y = rng.int(5, 26); if (p.A(x, y)) { p.set(x, y, P('#fff0f8')); p.set(x + 1, y, P('#ffc0e0')); } }
+      if (theme === 'beach' || (theme === 'grass' && v === 2)) for (let i = 0; i < 4; i++) { const x = rng.int(8, 24), y = rng.int(10, 24); if (p.A(x, y)) { p.set(x, y, P('#e8483a')); p.set(x, y - 1, P('#ff8a70')); p.set(x + 1, y + 1, P('#8a1a1a')); } }
+      p.outline(null, { k: .26 });
+    });
+  }
+  function pineTree(v, theme) {
+    return get(`pine|${v}|${theme}`, 30, 48, p => {
+      const snow = theme === 'snow';
+      const L = snow ? LEAF.snow : theme === 'dusk' ? R(['#0c1e26', '#102a32', '#16383e', '#1e4a4c', '#285e5a', '#347268', '#468a7a', '#62a490', '#88c0aa']) : R(['#0a2018', '#0e2c1e', '#143c24', '#1c502c', '#266636', '#327c3e', '#46944a', '#62ae58', '#8ac86c']);
+      p.cyl(13, 37, 4, 9, BARK); p.set(12, 45, BARK[2]); p.set(17, 45, BARK[0]);
+      const cx = 15, tiers = [[2, 13, 6.5], [9, 14, 9], [17, 15, 11.5], [25, 15, 13.5]];
+      const Lg = G.LIGHT, n = L.length;
+      tiers.forEach(([top, h, hw], ti) => {
+        for (let y = top; y < top + h; y++) {
+          const t = (y - top) / h, w = hw * Math.pow(t, .85) + .6;
+          for (let x = Math.floor(cx - w); x <= Math.ceil(cx + w); x++) {
+            const u = (x + .5 - cx) / w; if (Math.abs(u) > 1) continue;
+            // scalloped hem: needles droop in points along the bottom edge
+            if (y > top + h - 3 && (Math.abs(Math.sin((x + ti * 2) * 1.3)) > .55 + (top + h - y) * .12)) continue;
+            const nz = Math.sqrt(Math.max(0, 1 - u * u)), ny = -.45 + t * .5;
+            let I = (u * Lg[0] + ny * Lg[1] + nz * Lg[2]) * .55 + .5 - t * .18;
+            I += (h2(x, y, 5 + v) - .5) * .12;
+            p.set(x, y, L[G.clamp(Math.floor(I * n), 1, n - 1)]);
           }
         }
-        break;
+        // needle strokes
+        for (let y = top + 2; y < top + h - 1; y += 2) for (let x = cx - Math.floor(hw * (y - top) / h); x < cx + hw * (y - top) / h; x += 3) if (p.A(x, y) && p.A(x + 1, y + 1)) { p.set(x + 1, y + 1, G.darkc(p.get(x, y), .25)); }
+        if (snow) {
+          const S = RMP().snow;
+          for (let y = top; y < top + Math.max(3, h * .45); y++) { const t = (y - top) / h, w = hw * Math.pow(t, .85); for (let x = Math.floor(cx - w); x <= cx + w * .6; x++) if (p.A(x, y) && h2(x, y, 3) > .15) p.set(x, y, S[x < cx ? 7 : 5]); }
+          for (let x = Math.floor(cx - hw * .8); x < cx + hw * .7; x++) if (p.A(x, top + h - 3) && h2(x, ti, 4) > .35) p.set(x, top + h - 3, S[6]);
+        }
+      });
+      p.outline(null, { k: .25 });
+    });
+  }
+  function palmTree(theme) {
+    return get(`palm|${theme}`, 32, 46, p => {
+      const T = R(['#3a2414', '#5a3a20', '#7a5230', '#9a6c40', '#b88a56', '#d4a870']);
+      for (let y = 14; y < 44; y++) { const x = 14 + Math.round(Math.sin(y / 7) * 2); p.set(x, y, T[3]); p.set(x + 1, y, T[4]); p.set(x + 2, y, T[2]); p.set(x + 3, y, T[1]); if (y % 3 === 0) { p.set(x, y, T[2]); p.set(x + 3, y, T[0]); } }
+      const L = LEAF.beach;
+      const fronds = [[-13, 5], [13, 5], [-10, -3], [10, -4], [-2, -9], [4, 9], [-6, 8]];
+      for (const [dx, dy] of fronds) {
+        for (let k = 0; k <= 14; k++) {
+          const t = k / 14, x = 16 + dx * t, y = 13 + dy * t + t * t * 6;
+          const wdt = Math.sin(t * Math.PI) * 2.6;
+          for (let s = -wdt; s <= wdt; s += .5) { const yy = Math.round(y + s * .7), xx = Math.round(x - s * .25); p.set(xx, yy, L[s < 0 ? 7 : s > wdt * .5 ? 3 : 5]); }
+          p.set(Math.round(x), Math.round(y), L[8]);
+        }
       }
-      case 'tilefloor': {
-        const a = P(v % 2 ? '#e8ecef' : '#dfe4e8'), b = P('#c4ccd4'), hl = P('#f8fafc');
-        p.fill(a); p.rect(0, 15, 16, 1, b); p.rect(15, 0, 1, 16, b); p.rect(0, 0, 16, 1, hl); p.rect(0, 0, 1, 16, hl);
-        break;
+      p.circ(14, 15, 2, P('#6a4424')); p.circ(18, 16, 2, P('#5a3a1c')); p.set(13, 14, P('#9a6a3a'));
+      p.outline(null, { k: .25 });
+    });
+  }
+  function deadTree(v) {
+    return get(`dead|${v}`, 28, 40, p => {
+      const T = R(['#161010', '#241a18', '#342624', '#463430', '#58443e', '#6c564e']);
+      p.cyl(12, 14, 5, 25, T);
+      const br = [[14, 18, 4, 8], [14, 22, 24, 12], [13, 14, 9, 3], [15, 15, 20, 5], [5, 9, 3, 5], [21, 13, 24, 9]];
+      for (const [x0, y0, x1, y1] of br) { p.line(x0, y0, x1, y1, T[3]); p.line(x0, y0 + 1, x1, y1 + 1, T[1]); }
+      p.set(11, 38, T[2]); p.set(17, 38, T[0]);
+      p.outline(null, { k: .3 });
+    });
+  }
+  function smallTree(theme) {
+    return get(`st|${theme}`, 18, 22, p => {
+      const L = leafOf(theme === 'snow' ? 'snow' : theme === 'beach' ? 'beach' : 'grass');
+      p.cyl(8, 15, 3, 6, BARK);
+      const C = { x: 9, y: 9, rx: 8, ry: 7.5 };
+      canopy(p, [{ x: 9, y: 9, r: 6.5 }, { x: 5.5, y: 10.5, r: 4 }, { x: 12.5, y: 10.5, r: 4 }, { x: 9, y: 5, r: 4.3 }], C, L, { seed: 44 });
+      // cut marks so it reads as cuttable
+      p.line(11, 16, 14, 13, P('#f4ecd0')); p.line(12, 17, 15, 14, P('#c8b890'));
+      p.outline(null, { k: .26 });
+    });
+  }
+  // ------------------------------------------------------------- rocks ---
+  function rockSprite(kind, theme) {
+    return get(`rock|${kind}|${theme}`, 18, 18, p => {
+      const S = theme === 'snow' ? STONE_SNOW : theme === 'ash' ? STONE_ASH : STONE;
+      if (kind === 'boulder') {
+        p.sphere(9, 9, 7.6, 7.4, S, { bias: .05, jitter: .08 });
+        p.line(10, 3, 12, 7, S[2]); p.line(4, 12, 7, 13, S[2]); p.set(5, 5, S[7]); p.set(6, 5, S[6]);
+      } else {
+        p.sphere(9, 11, 8.2, 6, S, { bias: .04, jitter: .1 });
+        p.sphere(6.5, 9, 4.5, 3.5, S, { bias: .1 });
+        if (kind === 'crack') { p.line(9, 6, 8, 10, S[0]); p.line(8, 10, 11, 13, S[0]); p.line(8, 10, 4, 12, S[0]); p.line(11, 13, 13, 15, S[0]); p.set(10, 7, S[6]); }
+        else { p.line(11, 8, 14, 12, S[2]); p.set(12, 8, S[6]); }
+        if (theme !== 'snow' && theme !== 'ash') { p.set(4, 14, P('#3a7a30')); p.set(5, 14, P('#4e9a3a')); p.set(13, 15, P('#3a7a30')); }
+        if (theme === 'snow') for (let x = 3; x < 13; x++) if (p.A(x, 6)) { p.set(x, 5 + (x % 3 === 0 ? 1 : 0), RMP().snow[7]); }
       }
-      case 'carpet': {
-        const c = theme === 'blue' ? pal(['#4a6ab8', '#3a5aa0', '#6a8ad0']) : theme === 'green' ? pal(['#4a9a6a', '#3a8058', '#6ab888']) : pal(['#c84a4a', '#a83a3a', '#e06a6a']);
-        p.fill(c[0]); for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if ((x + y) % 4 === 0) p.set(x, y, c[1]);
-        break;
+      p.outline(null, { k: .3 });
+    });
+  }
+  // ------------------------------------------------------ small props ----
+  function fenceSprite(mask, theme) {
+    return get(`fence|${mask}|${theme}`, 16, 22, p => {
+      const W = theme === 'snow' ? R(['#5a4a3e', '#7a6656', '#a08a76', '#c8b4a0', '#ece2d6']) : R(['#6a6a74', '#9a9aa6', '#c8c8d2', '#e8e8ee', '#ffffff']);
+      const hz = (mask & 2) || (mask & 8) || !(mask & 5);
+      const post = (x) => { for (let y = 6; y < 21; y++) { p.set(x, y, W[3]); p.set(x + 1, y, W[2]); p.set(x + 2, y, W[1]); } p.set(x + 1, 5, W[3]); p.set(x, 6, W[4]); };
+      if (hz) {
+        for (let x = 0; x < 16; x++) { p.set(x, 9, W[4]); p.set(x, 10, W[2]); p.set(x, 15, W[4]); p.set(x, 16, W[2]); }
+        post(1); post(6); post(11);
       }
-      case 'gymfloor': {
-        const base = P(theme || '#8aa0b8'); const dk = G.col.parse(G.col.dark(theme || '#8aa0b8', .18)); const lt = G.col.parse(G.col.light(theme || '#8aa0b8', .25));
-        p.fill(base); p.rect(0, 0, 16, 1, lt); p.rect(0, 0, 1, 16, lt); p.rect(0, 15, 16, 1, dk); p.rect(15, 0, 1, 16, dk);
-        p.set(7, 7, lt); p.set(8, 8, dk);
-        break;
-      }
-      case 'metal': {
-        const c = pal(['#9aa4b0', '#8894a2', '#b8c2cc', '#6a7684']);
-        p.fill(c[0]); for (let y = 0; y < 16; y += 4) p.rect(0, y, 16, 1, c[1]);
-        p.set(2, 2, c[3]); p.set(13, 2, c[3]); p.set(2, 13, c[3]); p.set(13, 13, c[3]); p.rect(0, 0, 16, 1, c[2]);
-        break;
-      }
-      case 'bridge': {
-        const c = pal(['#b88a52', '#9c7040', '#7c5630', '#d4a86c']);
-        for (let x = 0; x < 16; x++) for (let y = 0; y < 16; y++) p.set(x, y, x % 4 === 3 ? c[2] : y < 2 || y > 13 ? c[1] : (G.noise2(x, y, 3) > .85 ? c[1] : c[0]));
-        p.rect(0, 0, 16, 1, c[3]); p.rect(0, 15, 16, 1, c[2]);
-        for (let x = 1; x < 16; x += 4) { p.set(x, 1, c[2]); p.set(x, 14, c[2]); }
-        break;
-      }
-      case 'bridgev': {
-        const c = pal(['#b88a52', '#9c7040', '#7c5630', '#d4a86c']);
-        for (let x = 0; x < 16; x++) for (let y = 0; y < 16; y++) p.set(x, y, y % 4 === 3 ? c[2] : x < 2 || x > 13 ? c[1] : (G.noise2(x, y, 3) > .85 ? c[1] : c[0]));
-        p.rect(0, 0, 1, 16, c[3]); p.rect(15, 0, 1, 16, c[2]);
-        break;
-      }
-      case 'dark': p.fill(P('#0a0a12')); break;
-      case 'mat': {
-        p.fill(P('#c84a4a')); p.rect(1, 1, 14, 14, P('#e06a5a')); p.rect(3, 3, 10, 10, P('#c84a4a'));
-        for (let x = 2; x < 14; x += 2) { p.set(x, 0, P('#f0d070')); p.set(x, 15, P('#f0d070')); }
-        break;
-      }
-    }
+      if ((mask & 1) || (mask & 4)) { for (let y = (mask & 1) ? 0 : 6; y < ((mask & 4) ? 22 : 21); y++) { p.set(6, y, W[3]); p.set(7, y, W[2]); p.set(8, y, W[1]); } post(6); }
+      if (theme === 'snow') for (let x = 0; x < 16; x++) if (p.A(x, 9)) p.set(x, 8, RMP().snow[7]);
+      p.outline(null, { k: .35 });
+    });
   }
-  // ------------------------------------------------------ tall objects --
-  function tree(p, v, theme, kind) {
-    // 16 x 32, trunk at the bottom tile
-    const t = th(theme), L = pal(t.leaf), T = pal(t.trunk);
-    const out = P(theme === 'snow' ? '#1a3a38' : theme === 'dusk' ? '#3a1a34' : theme === 'ash' ? '#241a16' : '#173d1c');
-    p.ell(8, 29.5, 6, 2.2, P('#000000'), 60);
-    if (kind === 'pine' || theme === 'snow') {
-      p.rect(7, 22, 3, 8, T[0]); p.rect(9, 22, 1, 8, T[1]);
-      const layers = [[18, 7.5], [13, 6], [8, 4.5], [4, 3]];
-      for (const [cy, r] of layers) {
-        for (let y = 0; y < 8; y++) { const w = r * (y / 8) + 1.2; for (let x = Math.floor(8 - w); x <= 8 + w; x++) p.set(x, cy - 4 + y, y > 5 ? L[1] : L[0]); }
-      }
-      if (theme === 'snow') for (const [cy, r] of layers) for (let x = Math.floor(8 - r * .6); x <= 8 + r * .6; x++) { p.set(x, cy - 2, L[3]); p.set(x, cy - 3, L[4]); }
-      p.outline(out);
-      return;
-    }
-    if (kind === 'palm') {
-      for (let y = 10; y < 30; y++) { const x = 7 + Math.round(Math.sin(y / 5) * 1.5); p.set(x, y, T[0]); p.set(x + 1, y, T[1]); if (y % 3 === 0) p.set(x, y, T[1]); }
-      const fronds = [[-7, 2], [7, 2], [-5, -3], [5, -3], [0, -5]];
-      for (const [dx, dy] of fronds) for (let k = 0; k <= 10; k++) { const x = 8 + dx * k / 10, y = 10 + dy * k / 10 + (k * k) / 40 * 3; p.set(x, y, L[k < 4 ? 3 : 0]); p.set(x, y + 1, L[1]); }
-      p.circ(7, 11, 1.5, P('#7a5430')); p.circ(9.5, 11.5, 1.5, P('#7a5430'));
-      p.outline(out);
-      return;
-    }
-    if (kind === 'dead') {
-      p.rect(7, 12, 3, 18, T[0]);
-      p.line(8, 14, 3, 8, T[0]); p.line(8, 16, 13, 9, T[0]); p.line(4, 9, 3, 6, T[1]); p.line(12, 10, 14, 7, T[1]); p.line(8, 12, 8, 6, T[0]);
-      p.outline(out); return;
-    }
-    // broadleaf: trunk + cluster canopy
-    p.rect(6, 21, 4, 9, T[0]); p.rect(9, 21, 1, 9, T[1]); p.set(5, 29, T[0]); p.set(10, 29, T[1]);
-    const blobs = v % 2 ? [[8, 12, 7.4], [4.5, 16, 4.2], [11.5, 16, 4.2], [8, 7, 5], [8, 18, 5]] : [[8, 11, 7.2], [5, 15.5, 4.5], [11, 15.5, 4.5], [8, 6.5, 4.8], [7.5, 18, 4.8]];
-    for (const [cx, cy, r] of blobs) p.circ(cx, cy, r, L[1]);
-    for (const [cx, cy, r] of blobs) p.circ(cx - .8, cy - 1, r - 1.4, L[0]);
-    for (const [cx, cy, r] of blobs) p.circ(cx - 1.8, cy - 2.2, r * .38, L[3]);
-    // leaf texture specks
-    const r2 = rng(v * 13 + 5);
-    for (let i = 0; i < 26; i++) { const x = r2.int(1, 14), y = r2.int(2, 21); const c = p.get(x, y); if (c[3]) p.set(x, y, r2.chance(.5) ? L[2] : L[4]); }
-    for (let x = 2; x < 15; x++) for (let y = 17; y < 23; y++) { const c = p.get(x, y); if (c[3] && y > 19) p.set(x, y, L[2]); }
-    if (theme === 'dusk' && v % 3 === 0) { p.set(5, 12, P('#ffe0f0')); p.set(10, 8, P('#ffe0f0')); p.set(9, 15, P('#ffe0f0')); }
-    p.outline(out);
+  function lampSprite(theme) {
+    return get(`lamp|${theme}`, 16, 40, p => {
+      const I = R(['#101218', '#1c2028', '#2a2f3a', '#3c4250', '#566070', '#7a8494']);
+      p.cyl(7, 14, 3, 24, I); p.rect(5, 35, 7, 3, I[2]); p.hline(5, 11, 35, I[4]); p.rect(6, 33, 5, 2, I[3]);
+      // lantern head
+      p.rect(3, 4, 10, 2, I[2]); p.hline(3, 12, 4, I[4]); p.rect(5, 1, 6, 3, I[1]); p.set(7, 0, I[3]); p.set(8, 0, I[2]);
+      const glow = theme === 'dusk' ? R(['#5ab8d8', '#a8ecff', '#ffffff']) : R(['#f0a040', '#ffe08a', '#fffbe0']);
+      p.rect(4, 6, 8, 7, I[1]); p.rect(5, 7, 6, 5, glow[1]); p.rect(5, 7, 2, 5, glow[2]); p.set(10, 11, glow[0]); p.hline(5, 10, 11, glow[0]);
+      p.vline(8, 7, 11, I[2]); p.rect(4, 13, 8, 1, I[3]);
+      p.outline(null, { k: .5 });
+    });
   }
-  function smallTree(p, theme) {
-    const L = pal(th(theme).leaf);
-    p.ell(8, 14.5, 5.5, 1.8, P('#000000'), 60);
-    p.rect(7, 10, 2, 5, P('#7a5030'));
-    p.circ(8, 7, 5.5, L[1]); p.circ(7.2, 6.2, 4.3, L[0]); p.circ(6, 5, 1.8, L[3]);
-    // cut marks (it's cuttable!)
-    p.line(10, 11, 12, 9, P('#e8e0c0')); p.line(11, 12, 13, 10, P('#e8e0c0'));
-    p.outline(P('#173d1c'));
+  function lanternPost() {
+    return get('lanternpost', 16, 22, p => {
+      const W = BARK; p.cyl(7, 8, 3, 13, W);
+      p.rect(4, 1, 8, 8, P('#2a1c16')); p.rect(5, 2, 6, 6, P('#ff9a3a')); p.rect(5, 2, 3, 3, P('#ffe0a0')); p.rect(6, 5, 4, 3, P('#ffc060')); p.hline(3, 12, 1, P('#4a3024')); p.hline(4, 11, 0, P('#4a3024'));
+      p.outline(null, { k: .4 });
+    });
   }
-  function rock(p, kind, theme) {
-    const c = theme === 'snow' ? pal(['#a8b8c8', '#8898aa', '#6a7a8c', '#d8e4f0']) : theme === 'ash' ? pal(['#5a4e4a', '#4a403c', '#3a3230', '#7a6c66']) : pal(['#a8a49c', '#8e8a82', '#706c66', '#cfcbc2']);
-    p.ell(8, 14.5, 6.5, 2, P('#000000'), 60);
-    if (kind === 'boulder') {
-      p.circ(8, 8.5, 6.8, c[1]); p.circ(7.3, 7.5, 5.8, c[0]); p.circ(5.5, 5.5, 2.2, c[3]);
-      p.line(9, 3, 11, 6, c[2]); p.line(4, 11, 7, 12, c[2]);
-    } else {
-      p.ell(8, 10, 7, 5.5, c[1]); p.ell(7.3, 9, 6, 4.4, c[0]); p.ell(5, 7.5, 2.2, 1.4, c[3]);
-      if (kind === 'crack') { p.line(8, 5, 7, 9, c[2]); p.line(7, 9, 9, 11, c[2]); p.line(7, 9, 4, 10, c[2]); p.line(9, 11, 11, 13, c[2]); }
-      else { p.line(10, 7, 12, 10, c[2]); }
-    }
-    p.outline(P('#2a2622'));
+  function crystalSprite(v) {
+    return get(`crystal|${v % 2}`, 18, 20, p => {
+      const c = v % 2 ? R(['#1a4a6a', '#2a7aa8', '#4ab0e0', '#8ae0ff', '#d0f8ff', '#ffffff']) : R(['#3a1e6a', '#5a36a0', '#8a5ad8', '#b88af0', '#e0ccff', '#ffffff']);
+      const shard = (x, y, w, h, lean) => {
+        for (let j = 0; j < h; j++) { const t = j / h, ww = Math.max(1, Math.round(w * Math.min(1, t * 2.5))), xx = Math.round(x + lean * (1 - t)); for (let i = 0; i < ww; i++) p.set(xx + i, y + j, c[i === 0 ? 4 : i === ww - 1 ? 1 : i < ww / 2 ? 3 : 2]); }
+      };
+      shard(7, 1, 4, 16, 0); shard(2, 7, 3, 10, -1); shard(12, 5, 3, 12, 1); shard(10, 10, 2, 7, 0);
+      p.set(8, 3, c[5]); p.set(8, 4, c[5]); p.set(3, 9, c[5]);
+      p.outline(c[0]);
+    });
   }
-  function fence(p, mask, theme) {
-    const c = theme === 'snow' ? pal(['#c8a880', '#a88860', '#86684a', '#f0f4f8']) : pal(['#d8b07a', '#b88c58', '#8a643c', '#f0d2a0']);
-    const hz = (mask & 2) || (mask & 8) || !(mask & 5);
-    if (hz) {
-      p.rect(0, 5, 16, 2, c[0]); p.rect(0, 10, 16, 2, c[0]); p.rect(0, 7, 16, 1, c[2]); p.rect(0, 12, 16, 1, c[2]);
-      p.rect(6, 2, 4, 13, c[1]); p.rect(6, 2, 4, 1, c[3]); p.rect(9, 3, 1, 12, c[2]);
-    }
-    if ((mask & 1) || (mask & 4)) { p.rect(6, 0, 4, 16, c[1]); p.rect(9, 0, 1, 16, c[2]); p.rect(6, 0, 1, 16, c[3]); }
-    if (theme === 'snow') p.rect(6, 2, 4, 1, c[3]);
-    p.ell(8, 15, 4, 1, P('#000000'), 50);
+  // generic small props are painted at 16x16..16x24 and share one outline pass
+  function prop(kind, frame) {
+    const key = `prop|${kind}|${frame}`;
+    const sizes = { sign: [16, 18], mailbox: [16, 20], bench: [16, 16], flowerpot: [16, 18], grave: [16, 18], snowman: [16, 22], fountain: [16, 18], statue: [16, 26], tent: [18, 18], stall: [16, 20], crate: [16, 18], barrel: [16, 18], boat: [16, 16], cauldron: [16, 16], orbball: [16, 16] };
+    const [w, h] = sizes[kind] || [16, 16];
+    const img = get(key, w, h, p => paintProp(p, kind, frame, w, h));
+    return { img, ox: 0, oy: 16 - h };
   }
-  function hedge(p, mask, theme) {
-    const L = pal(th(theme).leaf);
-    p.rect(0, 2, 16, 13, L[1]);
-    for (let y = 2; y < 15; y++) for (let x = 0; x < 16; x++) if (G.noise2(x, y, 6) > .55) p.set(x, y, L[0]);
-    for (let x = 0; x < 16; x++) { p.set(x, 2, L[3]); if (x % 3 === 0) p.set(x, 3, L[4]); p.set(x, 14, L[2]); }
-    if (!(mask & 8)) for (let y = 2; y < 15; y++) p.set(0, y, L[2]);
-    if (!(mask & 2)) for (let y = 2; y < 15; y++) p.set(15, y, L[2]);
-    p.rect(0, 15, 16, 1, P('#1e4a22'));
-  }
-  function ledge(p, v, theme, dir = 'down') {
-    grass(p, v, theme);
-    const c = pal(th(theme).cliff), g = pal(th(theme).g);
-    if (dir === 'down') {
-      p.rect(0, 10, 16, 6, c[1]); p.rect(0, 10, 16, 1, g[3]); p.rect(0, 11, 16, 1, c[0]); p.rect(0, 15, 16, 1, c[3]);
-      for (let x = 1; x < 16; x += 5) p.rect(x, 12, 1, 3, c[2]);
-    } else {
-      const L = dir === 'left';
-      const x0 = L ? 0 : 10;
-      p.rect(x0, 0, 6, 16, c[1]); p.rect(L ? 5 : 10, 0, 1, 16, g[3]); p.rect(L ? 0 : 15, 0, 1, 16, c[3]);
-      for (let y = 2; y < 16; y += 5) p.rect(x0 + 2, y, 2, 1, c[2]);
-    }
-  }
-  function cliff(p, mask, theme, kind) {
-    // mask: 1=N same, 2=E same, 4=S same, 8=W same
-    const c = kind === 'cave' ? pal(['#7a6452', '#66523f', '#523f30', '#9a8068']) : kind === 'crystal' ? pal(['#5a5680', '#4a466c', '#3a3658', '#7a76a8']) : pal(th(theme).cliff);
-    const g = pal(th(theme).g);
-    p.fill(c[1]);
-    // rock strata
-    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
-      const n = G.smoothNoise(x / 4, y / 3, kind === 'cave' ? 14 : 13);
-      if (n > .68) p.set(x, y, c[0]); else if (n < .25) p.set(x, y, c[2]);
-      if ((y + Math.floor(x / 5)) % 6 === 0) p.set(x, y, c[2]);
-    }
-    if (!(mask & 1)) {
-      if (kind === 'cave' || kind === 'crystal') { p.rect(0, 0, 16, 3, c[3]); p.rect(0, 3, 16, 1, c[0]); }
-      else { p.rect(0, 0, 16, 3, g[0]); for (let x = 0; x < 16; x++) { p.set(x, 3, x % 3 ? g[2] : g[1]); if (x % 4 === 1) p.set(x, 4, g[2]); } p.rect(0, 0, 16, 1, g[4]); }
-    }
-    if (!(mask & 4)) { p.rect(0, 14, 16, 2, c[3]); p.rect(0, 13, 16, 1, c[2]); }
-    if (!(mask & 8)) { p.rect(0, 0, 1, 16, c[3]); p.rect(1, 0, 1, 16, c[0]); }
-    if (!(mask & 2)) { p.rect(15, 0, 1, 16, c[3]); p.rect(14, 0, 1, 16, c[2]); }
-    if (kind === 'crystal' && (mask & 1) && G.noise2(mask, 3) > .4) { p.rect(6, 5, 2, 5, P('#a8f0ff')); p.set(6, 4, P('#ffffff')); p.rect(9, 7, 2, 4, P('#c8a8ff')); }
-  }
-  function lamp(p, theme) {
-    p.ell(8, 30, 3, 1.2, P('#000000'), 60);
-    p.rect(7, 12, 2, 18, P('#3a3f4a')); p.rect(7, 12, 1, 18, P('#5a606c'));
-    p.rect(6, 28, 4, 2, P('#2a2e36'));
-    p.rect(4, 5, 8, 7, P('#2a2e36')); p.rect(5, 6, 6, 5, P('#fff2a8')); p.rect(5, 6, 2, 5, P('#ffffff'));
-    p.rect(3, 4, 10, 1, P('#2a2e36')); p.rect(6, 2, 4, 2, P('#2a2e36'));
-    if (theme === 'dusk') { p.rect(5, 6, 6, 5, P('#b8f0ff')); }
-  }
-  function crystal(p, v) {
-    p.ell(8, 14.5, 6, 1.8, P('#000000'), 60);
-    const c = v % 2 ? pal(['#a8f0ff', '#6ad0f0', '#ffffff', '#3a9ac0']) : pal(['#d8b8ff', '#a888e8', '#ffffff', '#6a4ab0']);
-    p.rect(6, 3, 4, 12, c[0]); p.rect(6, 3, 2, 12, c[1]); p.set(7, 2, c[2]); p.set(8, 2, c[0]);
-    p.rect(2, 8, 3, 7, c[0]); p.rect(2, 8, 1, 7, c[1]); p.set(3, 7, c[2]);
-    p.rect(11, 6, 3, 9, c[0]); p.rect(11, 6, 1, 9, c[1]); p.set(12, 5, c[2]);
-    p.rect(8, 5, 1, 4, c[2]);
-    p.outline(c[3]);
-  }
-  // --------------------------------------------------- interior pieces --
-  function wall(p, v, style) {
-    const S = { cream: ['#f4ead2', '#e2d4b4', '#c8b490', '#8a6a4a'], blue: ['#cfe0f4', '#b8cde6', '#98b0d0', '#4a5e80'], green: ['#d4ecd0', '#bcdcb6', '#9cc494', '#3e6a44'], lab: ['#eef2f6', '#dde4ec', '#c4ced8', '#5a6a7c'], gym: ['#3a4458', '#2e3648', '#242a3a', '#10141c'], wood: ['#c8965e', '#b0804c', '#946a3c', '#5a3c20'], stone: ['#8a8e98', '#767a84', '#62666e', '#3a3c42'], rose: ['#f4d4dc', '#e6bcc8', '#d0a0b0', '#7a4a5a'] }[style] || ['#f4ead2', '#e2d4b4', '#c8b490', '#8a6a4a'];
-    const c = pal(S);
-    p.fill(c[0]);
-    if (style === 'wood') { for (let x = 0; x < 16; x += 4) p.rect(x, 0, 1, 16, c[2]); }
-    else if (style === 'stone') { for (let y = 0; y < 16; y += 5) { p.rect(0, y, 16, 1, c[2]); for (let x = (y / 5 % 2) * 4; x < 16; x += 8) p.rect(x, y, 1, 5, c[2]); } }
-    else for (let y = 0; y < 13; y++) for (let x = 0; x < 16; x++) if ((x + (y >> 2) * 2) % 8 === 0 && y % 4 < 2) p.set(x, y, c[1]);
-    p.rect(0, 12, 16, 1, c[2]); p.rect(0, 13, 16, 3, c[3]); p.rect(0, 13, 16, 1, G.col.parse(G.col.light(S[3], .3)));
-    if (v === 1) { // window
-      p.rect(3, 2, 10, 8, P('#5a4630')); p.rect(4, 3, 8, 6, P('#9ad8ff')); p.rect(4, 3, 3, 2, P('#e6f6ff')); p.rect(7, 3, 1, 6, P('#5a4630')); p.rect(4, 6, 8, 1, P('#5a4630'));
-      p.rect(2, 10, 12, 1, P('#7a6040'));
-    }
-    if (v === 2) { p.rect(4, 3, 8, 6, P('#6a4a2a')); p.rect(5, 4, 6, 4, P('#e8d8a8')); p.rect(6, 5, 2, 2, P('#e05a5a')); p.rect(8, 6, 2, 1, P('#4a8a4a')); } // painting
-    if (v === 3) { p.rect(6, 2, 4, 4, P('#f0f0f0')); p.circ(8, 4, 2, P('#ffffff')); p.set(8, 3, P('#303030')); p.set(8, 4, P('#303030')); p.set(9, 4, P('#303030')); } // clock
-  }
-  // joined table: m bits 1=up 2=right 4=down 8=left neighbour is also a table
-  function tableJoin(p, m) {
-    const O = P('#2a2230'), x0 = m & 8 ? 0 : 1, x1 = m & 2 ? 16 : 15, y0 = m & 1 ? 0 : 4, y1 = m & 4 ? 16 : 12;
-    if (!(m & 4)) p.ell(8, 15, 7, 1.5, P('#000000'), 50);
-    p.rect(x0, y0, x1 - x0, y1 - y0, P('#b87e4a'));
-    if (!(m & 1)) p.rect(x0, y0, x1 - x0, 2, P('#d8a068'));
-    if (!(m & 4)) { p.rect(x0, y1 - 1, x1 - x0, 1, P('#8a5a30')); if (!(m & 8)) p.rect(2, 12, 2, 3, P('#8a5a30')); if (!(m & 2)) p.rect(12, 12, 2, 3, P('#8a5a30')); }
-    const cy = Math.round((y0 + y1) / 2); p.circ(8, cy, 2.2, P('#f4f4f8')); p.circ(8, cy, 1.2, P('#e0e0ea'));
-    p.outline(O);
-  }
-  function furniture(p, kind, frame) {
-    const O = P('#2a2230');
-    const sh = () => p.ell(8, 15, 7, 1.5, P('#000000'), 50);
+  function paintProp(p, kind, frame, w, h) {
+    const WD = R(['#2a1a10', '#46301c', '#664628', '#865e36', '#a67a48', '#c4985e', '#dcb47a']);
+    const b = h - 16;   // extra height above the tile
     switch (kind) {
-      case 'counter': p.rect(0, 3, 16, 12, P('#c89058')); p.rect(0, 3, 16, 3, P('#e8c088')); p.rect(0, 14, 16, 2, P('#8a5a30')); p.rect(0, 6, 16, 1, P('#a06a3c')); break;
-      case 'pc': sh(); p.rect(2, 4, 12, 11, P('#5a6474')); p.rect(3, 5, 10, 6, frame % 2 ? P('#6ad0ff') : P('#58c0f0')); p.rect(4, 6, 3, 1, P('#e0f8ff')); p.rect(3, 12, 10, 2, P('#3a4250')); p.rect(6, 14, 4, 1, P('#2a303a')); p.outline(O); break;
-      case 'shelf': p.rect(1, 0, 14, 15, P('#8a5a34')); for (let y = 1; y < 14; y += 5) { p.rect(2, y, 12, 4, P('#5a3a20')); for (let x = 2; x < 14; x += 2) p.rect(x, y + (x % 4 ? 1 : 0), 2, 4 - (x % 4 ? 1 : 0), P(['#c84a4a', '#4a7ac8', '#4ab86a', '#e8b83a', '#9a5ac8'][(x + y) % 5])); } p.outline(O); break;
-      case 'bed_top': // head of a two-tile bed: headboard, pillow, turned-down blanket
-        p.rect(1, 0, 14, 16, P('#e8e8f0')); p.rect(0, 0, 16, 3, P('#8a5a34')); p.rect(0, 0, 16, 1, P('#a8703c'));
-        p.rect(3, 4, 10, 4, P('#ffffff')); p.rect(3, 7, 10, 1, P('#d0d4e0'));
-        p.rect(1, 10, 14, 6, P('#4a7ac8')); p.rect(1, 10, 14, 2, P('#e8ecf6')); p.rect(1, 12, 14, 1, P('#6a9ae0')); p.outline(O); break;
-      case 'bed_bot': // foot of a two-tile bed
-        p.rect(1, 0, 14, 13, P('#4a7ac8')); p.rect(2, 0, 1, 12, P('#6a9ae0')); p.rect(13, 0, 1, 12, P('#3a64aa'));
-        for (let x = 3; x < 13; x += 3) p.set(x, 6, P('#6a9ae0'));
-        p.rect(0, 12, 16, 3, P('#8a5a34')); p.rect(0, 12, 16, 1, P('#a8703c')); p.ell(8, 15.5, 7, 1, P('#000000'), 50); p.outline(O); break;
-      case 'bed': p.rect(1, 1, 14, 14, P('#e8e8f0')); p.rect(1, 6, 14, 9, P('#4a7ac8')); p.rect(1, 6, 14, 2, P('#6a9ae0')); p.rect(3, 2, 10, 3, P('#ffffff')); p.rect(0, 0, 16, 2, P('#8a5a34')); p.outline(O); break;
-      case 'table': sh(); p.rect(1, 4, 14, 8, P('#b87e4a')); p.rect(1, 4, 14, 2, P('#d8a068')); p.rect(2, 12, 2, 3, P('#8a5a30')); p.rect(12, 12, 2, 3, P('#8a5a30')); p.circ(8, 6, 1.6, P('#f0f0f0')); p.outline(O); break;
-      case 'tv': sh(); p.rect(1, 3, 14, 10, P('#2a2a34')); p.rect(2, 4, 12, 7, frame % 2 ? P('#4a8ac8') : P('#5a9ad8')); p.rect(3, 5, 4, 2, P('#a8d8ff')); p.rect(5, 13, 6, 2, P('#3a3a44')); p.outline(O); break;
-      case 'plant': sh(); p.rect(5, 10, 6, 5, P('#c86a3a')); p.rect(5, 10, 6, 1, P('#e88a5a')); p.circ(8, 6, 4, P('#3a8a3a')); p.circ(6, 4, 2.5, P('#5ab05a')); p.circ(10, 5, 2.5, P('#4aa04a')); p.outline(O); break;
-      case 'stairsup': for (let i = 0; i < 4; i++) { p.rect(0, i * 4, 16, 4, P(i % 2 ? '#a88a6a' : '#c8a882')); p.rect(0, i * 4, 16, 1, P('#e0c8a0')); } p.rect(0, 0, 1, 16, P('#6a5040')); p.rect(15, 0, 1, 16, P('#6a5040')); break;
-      case 'stairsdown': p.fill(P('#3a2e28')); for (let i = 0; i < 4; i++) { p.rect(1, i * 4, 14, 3, P(['#8a7058', '#76604a', '#62503e', '#4e4032'][i])); } break;
-      case 'healer': p.rect(0, 2, 16, 13, P('#e8e8f0')); p.rect(0, 2, 16, 3, P('#ffffff')); for (let i = 0; i < 3; i++) { p.circ(3 + i * 5, 8, 1.8, frame % 2 ? P('#ff8aa0') : P('#e85a78')); } p.rect(0, 13, 16, 2, P('#b0b0c0')); p.outline(O); break;
-      case 'crate': sh(); p.rect(1, 2, 14, 13, P('#c8965a')); p.rect(1, 2, 14, 1, P('#e8b87a')); p.line(1, 2, 14, 14, P('#8a6034')); p.line(14, 2, 1, 14, P('#8a6034')); p.rect(1, 8, 14, 1, P('#8a6034')); p.outline(O); break;
-      case 'barrel': sh(); p.ell(8, 8, 6, 7, P('#a8703c')); p.rect(2, 4, 12, 1, P('#5a5a64')); p.rect(2, 11, 12, 1, P('#5a5a64')); p.ell(8, 2.5, 5, 1.5, P('#c89058')); p.outline(O); break;
-      case 'machine': sh(); p.rect(1, 1, 14, 14, P('#6a7484')); p.rect(2, 2, 12, 5, P('#2a303a')); p.rect(3, 3, 3, 3, frame % 2 ? P('#6aff9a') : P('#3ac06a')); p.rect(8, 3, 5, 1, P('#ff6a6a')); p.rect(8, 5, 4, 1, P('#6ad0ff')); for (let x = 3; x < 13; x += 3) p.rect(x, 9, 2, 4, P('#4a5260')); p.outline(O); break;
-      case 'statue': sh(); p.rect(4, 11, 8, 4, P('#8a8e98')); p.rect(5, 3, 6, 8, P('#b8bcc8')); p.circ(8, 3, 3, P('#c8ccd8')); p.rect(5, 3, 2, 8, P('#d8dce8')); p.outline(O); break;
-      case 'sign': p.ell(8, 15, 4, 1, P('#000000'), 60); p.rect(7, 9, 2, 6, P('#7a5030')); p.rect(2, 2, 12, 8, P('#c8965a')); p.rect(3, 3, 10, 6, P('#e8c088')); p.rect(4, 4, 8, 1, P('#8a6034')); p.rect(4, 6, 6, 1, P('#8a6034')); p.outline(O); break;
-      case 'mailbox': p.ell(8, 15, 3, 1, P('#000000'), 60); p.rect(7, 8, 2, 7, P('#6a4a2a')); p.rect(3, 3, 10, 6, P('#e05050')); p.rect(3, 3, 10, 2, P('#ff7a7a')); p.rect(12, 1, 1, 4, P('#3a3a3a')); p.rect(12, 1, 3, 2, P('#ffd84a')); p.outline(O); break;
-      case 'bench': sh(); p.rect(1, 5, 14, 3, P('#b87e4a')); p.rect(1, 9, 14, 2, P('#a06a3c')); p.rect(2, 11, 2, 4, P('#3a3a44')); p.rect(12, 11, 2, 4, P('#3a3a44')); p.rect(1, 5, 14, 1, P('#d8a068')); p.outline(O); break;
-      case 'flowerpot': sh(); p.rect(4, 9, 8, 6, P('#c86a3a')); p.rect(4, 9, 8, 1, P('#e88a5a')); p.circ(6, 6, 2, P('#ff5a7a')); p.circ(10, 6, 2, P('#ffd84a')); p.circ(8, 4, 2, P('#ff9ad0')); p.rect(7, 7, 2, 2, P('#3a8a3a')); p.outline(O); break;
-      case 'grave': p.ell(8, 15, 5, 1.2, P('#000000'), 60); p.rect(4, 4, 8, 11, P('#8a8e98')); p.circ(8, 5, 4, P('#8a8e98')); p.rect(4, 4, 2, 11, P('#a8acb8')); p.rect(7, 6, 2, 5, P('#62666e')); p.rect(6, 7, 4, 1, P('#62666e')); p.outline(O); break;
-      case 'lanternpost': p.ell(8, 15, 3, 1, P('#000000'), 60); p.rect(7, 6, 2, 9, P('#3a2e28')); p.rect(5, 1, 6, 6, P('#3a2e28')); p.rect(6, 2, 4, 4, P('#ffb04a')); p.rect(6, 2, 2, 2, P('#ffe0a0')); p.outline(O); break;
-      case 'snowman': p.ell(8, 15, 5, 1.2, P('#000000'), 50); p.circ(8, 11, 4.5, P('#ffffff')); p.circ(8, 5, 3.2, P('#f4f8fc')); p.set(7, 4, P('#202020')); p.set(9, 4, P('#202020')); p.rect(8, 5, 2, 1, P('#ff8a3a')); p.rect(5, 1, 6, 2, P('#303040')); p.rect(6, 0, 4, 1, P('#303040')); p.outline(P('#6a7a90')); break;
-      case 'fountain': {
-        p.ell(8, 11, 7.5, 4.5, P('#a8acb8')); p.ell(8, 10.5, 6, 3.3, P(frame % 2 ? '#6aa8f0' : '#78b6f6'));
-        p.rect(7, 3, 2, 8, P('#c8ccd8')); p.circ(8, 3, 1.5 + (frame % 2) * .5, P('#c8e6ff'));
-        for (let i = 0; i < 4; i++) p.set(4 + i * 3, 9 + (i + frame) % 2, P('#ffffff'));
-        p.outline(P('#4a4e58')); break;
+      case 'sign': {
+        p.cyl(7, b + 9, 2, 7, WD);
+        for (let y = b + 1; y < b + 10; y++) for (let x = 1; x < 15; x++) p.set(x, y, WD[y === b + 1 ? 6 : y === b + 9 ? 2 : (x + y) % 5 === 0 ? 4 : 5]);
+        p.hline(3, 12, b + 4, WD[3]); p.hline(3, 10, b + 6, WD[3]); p.vline(1, b + 1, b + 9, WD[4]); p.vline(14, b + 1, b + 9, WD[3]);
+        break;
       }
-      case 'boat': p.ell(8, 11, 7.5, 4, P('#b8603a')); p.ell(8, 10, 6.5, 2.8, P('#8a4a2a')); p.rect(2, 8, 12, 1, P('#e8e0c8')); p.outline(O); break;
-      case 'tent': p.ell(8, 15, 7, 1.2, P('#000000'), 50); for (let y = 0; y < 14; y++) { const w = y * .55; p.rect(Math.round(8 - w), y + 1, Math.round(w * 2) + 1, 1, P(y % 4 < 2 ? '#e06a4a' : '#f08a6a')); } p.rect(7, 8, 3, 7, P('#5a2a1a')); p.outline(O); break;
-      case 'stall': p.rect(0, 7, 16, 8, P('#a8703c')); p.rect(0, 7, 16, 2, P('#c89058')); for (let x = 0; x < 16; x += 4) { p.rect(x, 1, 4, 5, P(x % 8 ? '#ffffff' : '#e84a5a')); } p.rect(0, 6, 16, 1, P('#8a3a3a')); p.rect(3, 9, 3, 3, P('#ff8a3a')); p.rect(9, 9, 3, 3, P('#8ae05a')); p.outline(O); break;
-      case 'cauldron': sh(); p.ell(8, 10, 6, 5, P('#3a3a44')); p.ell(8, 6, 5, 1.8, P(frame % 2 ? '#8ae05a' : '#6ac04a')); p.rect(3, 13, 2, 2, P('#2a2a30')); p.rect(11, 13, 2, 2, P('#2a2a30')); p.outline(O); break;
-      case 'rug': p.fill(P('#6a4ab0')); p.rect(1, 1, 14, 14, P('#8a6ad0')); p.rect(3, 3, 10, 10, P('#6a4ab0')); p.rect(6, 6, 4, 4, P('#f0d070')); break;
-      case 'window': wall(p, 1, 'cream'); break;
-      case 'desk': sh(); p.rect(0, 5, 16, 7, P('#8a5a34')); p.rect(0, 5, 16, 2, P('#a8703c')); p.rect(1, 12, 2, 3, P('#5a3a20')); p.rect(13, 12, 2, 3, P('#5a3a20')); p.rect(3, 2, 6, 4, P('#2a303a')); p.rect(4, 3, 4, 2, P('#6ad0ff')); p.rect(11, 3, 3, 3, P('#f0f0f0')); p.outline(O); break;
+      case 'mailbox': {
+        p.cyl(7, b + 9, 2, 7, WD);
+        const Rr = R(['#5a1414', '#8a2020', '#b83030', '#de4a44', '#f47a6a', '#ffb0a0']);
+        for (let y = b + 2; y < b + 9; y++) for (let x = 3; x < 13; x++) p.set(x, y, Rr[y < b + 4 ? 5 : x < 5 ? 4 : x > 11 ? 1 : 3]);
+        for (let x = 4; x < 12; x++) p.set(x, b + 1, Rr[4]);
+        p.rect(12, b, 1, 5, P('#303038')); p.rect(12, b, 3, 2, P('#ffd84a')); p.hline(4, 11, b + 6, Rr[1]);
+        break;
+      }
+      case 'bench': {
+        const Iron = R(['#14161c', '#262a32', '#3a404a']);
+        for (let x = 1; x < 15; x++) { p.set(x, 4, WD[6]); p.set(x, 5, WD[4]); p.set(x, 6, WD[3]); p.set(x, 8, WD[5]); p.set(x, 9, WD[4]); p.set(x, 10, WD[2]); }
+        p.rect(2, 7, 1, 8, Iron[1]); p.rect(13, 7, 1, 8, Iron[1]); p.rect(2, 3, 1, 4, Iron[2]); p.rect(13, 3, 1, 4, Iron[2]);
+        break;
+      }
+      case 'flowerpot': {
+        const T = R(['#5a2a14', '#8a4424', '#b45c34', '#d47a4a', '#ec9c6a']);
+        for (let y = b + 9; y < b + 16; y++) { const inset = y > b + 13 ? 1 : 0; for (let x = 4 + inset; x < 12 - inset; x++) p.set(x, y, T[x < 6 ? 4 : x > 9 ? 1 : 3]); }
+        p.hline(3, 12, b + 9, T[4]); p.hline(3, 12, b + 10, T[2]);
+        const L = LEAF.grass; p.sphere(8, b + 7, 5, 3.6, L, { bias: .05 });
+        [[5, b + 5, '#ff5a7a'], [10, b + 5, '#ffd84a'], [8, b + 3, '#ff9ad0'], [11, b + 8, '#ffffff'], [4, b + 8, '#8ac0ff']].forEach(([x, y, c]) => { const q = P(c); p.set(x, y, q); p.set(x + 1, y, q); p.set(x, y + 1, G.darkc(q, .2)); p.set(x, y - 1, G.mixc(q, [255, 255, 255], .5)); });
+        break;
+      }
+      case 'grave': {
+        const S = STONE;
+        for (let y = b + 3; y < b + 15; y++) for (let x = 4; x < 12; x++) { if (y < b + 5 && (x === 4 || x === 11)) continue; p.set(x, y, S[x < 6 ? 6 : x > 9 ? 3 : 5]); }
+        p.rect(7, b + 6, 2, 6, S[2]); p.rect(6, b + 7, 4, 1, S[2]); p.hline(3, 12, b + 15, S[2]);
+        break;
+      }
+      case 'snowman': {
+        const S = RMP().snow;
+        p.sphere(8, b + 12, 5.6, 5, S, { bias: .15 }); p.sphere(8, b + 5.5, 3.8, 3.5, S, { bias: .15 });
+        p.set(7, b + 5, P('#202028')); p.set(9, b + 5, P('#202028')); p.rect(8, b + 6, 3, 1, P('#ff8a3a'));
+        p.rect(5, b, 6, 2, P('#2a2a34')); p.rect(4, b + 2, 8, 1, P('#2a2a34')); p.hline(5, 10, b + 8, P('#d83a3a')); p.rect(10, b + 8, 1, 3, P('#b82a2a'));
+        break;
+      }
+      case 'fountain': {
+        const S = STONE, Wt = RMP().water;
+        p.ell(8, b + 11, 7.6, 4.6, S[3]); p.ell(8, b + 10.5, 7, 4, S[5]); p.ell(8, b + 10.5, 5.8, 3, Wt[frame % 2 ? 5 : 4]);
+        p.rect(7, b + 3, 2, 8, S[6]); p.rect(8, b + 3, 1, 8, S[4]); p.ell(8, b + 3, 2.4, 1.2, S[5]);
+        p.set(8, b + 1, Wt[8]); p.set(7, b + (frame % 2 ? 2 : 1), Wt[7]); p.set(9, b + (frame % 2 ? 1 : 2), Wt[7]);
+        for (let i = 0; i < 4; i++) p.set(4 + i * 3, b + 10 + (i + frame) % 2, Wt[8]);
+        break;
+      }
+      case 'statue': {
+        const S = R(['#3a3c46', '#50525e', '#686a76', '#80828e', '#9a9ca6', '#b4b6be', '#d0d2d8']);
+        p.rect(3, b + 11, 10, 5, S[3]); p.hline(3, 12, b + 11, S[5]); p.rect(3, b + 15, 10, 1, S[1]);
+        p.sphere(8, b + 7, 4, 5, S, { bias: .08 }); p.sphere(8, b + 2, 3, 3, S, { bias: .1 });
+        p.ell(8, b + 1.2, 3.6, 1.3, S[5]);
+        break;
+      }
+      case 'tent': {
+        const Tn = R(['#5a1a14', '#8a2a1e', '#b43e2a', '#d85a3a', '#f08a5a']);
+        for (let y = 1; y < 16; y++) { const hw = y * .55; for (let x = Math.round(9 - hw); x <= Math.round(9 + hw); x++) p.set(x, y, Tn[x < 9 ? ((y >> 1) % 2 ? 4 : 3) : ((y >> 1) % 2 ? 2 : 1)]); }
+        for (let y = 8; y < 16; y++) for (let x = 8; x < 11; x++) p.set(x, y, P('#2a120c'));
+        break;
+      }
+      case 'stall': {
+        for (let y = b + 8; y < b + 16; y++) for (let x = 0; x < 16; x++) p.set(x, y, WD[y === b + 8 ? 6 : y > b + 14 ? 1 : 4]);
+        for (let x = 0; x < 16; x++) for (let y = b + 1; y < b + 6; y++) p.set(x, y, P(((x >> 2) & 1) ? '#f8f4ec' : '#e0404a'));
+        p.hline(0, 15, b + 6, P('#8a2a2a')); p.rect(3, b + 9, 3, 3, P('#ff8a3a')); p.rect(9, b + 9, 3, 3, P('#8ae05a')); p.set(3, b + 9, P('#ffc08a')); p.set(9, b + 9, P('#c8f8a0'));
+        p.vline(1, b + 5, b + 8, WD[2]); p.vline(14, b + 5, b + 8, WD[2]);
+        break;
+      }
+      case 'crate': {
+        for (let y = b + 2; y < b + 16; y++) for (let x = 1; x < 15; x++) p.set(x, y, WD[y < b + 5 ? 6 : x < 3 ? 5 : x > 12 ? 2 : 4]);
+        p.hline(1, 14, b + 5, WD[2]); p.line(3, b + 6, 12, b + 14, WD[2]); p.line(12, b + 6, 3, b + 14, WD[2]); p.rect(1, b + 10, 14, 1, WD[3]);
+        break;
+      }
+      case 'barrel': {
+        for (let y = b + 2; y < b + 16; y++) { const bulge = Math.round(Math.sin((y - b - 2) / 14 * Math.PI) * 1.5); for (let x = 3 - bulge; x < 13 + bulge; x++) { const u = (x - 8 + .5) / (5 + bulge); p.set(x, y, WD[G.clamp(Math.floor((1 - u) * 2.2 + 2), 1, 6)]); } }
+        p.ell(8, b + 2.5, 4.6, 1.6, WD[5]); p.ell(8, b + 2.5, 3.4, 1, WD[3]);
+        p.hline(2, 13, b + 6, P('#4a4c56')); p.hline(2, 13, b + 12, P('#4a4c56')); p.hline(3, 12, b + 5, P('#8a8c96'));
+        break;
+      }
+      case 'boat': {
+        p.ell(8, 10, 7.6, 4.5, WD[3]); p.ell(8, 9.5, 6.6, 3.2, WD[5]); p.ell(8, 9.8, 5.4, 2.2, WD[2]); p.hline(3, 12, 9, WD[6]);
+        break;
+      }
+      case 'cauldron': {
+        const K = R(['#101014', '#1c1c24', '#2a2a36', '#3c3c4a']);
+        p.sphere(8, 9, 6.4, 5.4, K, { bias: .1 }); p.ell(8, 5.5, 5.2, 1.8, frame % 2 ? P('#8ae05a') : P('#6ac04a')); p.set(6, 5, P('#d0ffa0'));
+        p.rect(3, 13, 2, 3, K[1]); p.rect(11, 13, 2, 3, K[1]);
+        break;
+      }
       case 'orbball': {
-        p.ell(8, 14, 4, 1.3, P('#000000'), 60);
-        p.circ(8, 8.5, 5, P('#e8484a')); for (let y = 9; y < 14; y++) for (let x = 3; x < 14; x++) if ((x - 7.5) ** 2 + (y - 8) ** 2 < 25) p.set(x, y, P('#f4f4f4'));
-        p.rect(3, 8, 11, 1, P('#2a2a2a')); p.circ(8, 8.5, 1.8, P('#2a2a2a')); p.circ(8, 8.5, 1, P('#ffffff')); p.set(6, 5, P('#ffc0c0'));
-        p.outline(O); break;
+        const Rr = R(['#6a1414', '#a82424', '#d83a3a', '#f45a50', '#ff9a8a']), Wh = R(['#8a8a96', '#b8b8c4', '#dcdce4', '#ffffff']);
+        for (let y = 3; y < 15; y++) for (let x = 2; x < 14; x++) {
+          const nx = (x + .5 - 8) / 6, ny = (y + .5 - 9) / 6, d = nx * nx + ny * ny; if (d > 1) continue;
+          const I = G.clamp((nx * G.LIGHT[0] + ny * G.LIGHT[1] + Math.sqrt(1 - d) * G.LIGHT[2]) * .5 + .5, 0, .99);
+          p.set(x, y, y < 9 ? Rr[Math.floor(I * 5)] : Wh[Math.floor(I * 4)]);
+        }
+        p.hline(2, 13, 9, P('#1c1c22')); p.circ(8, 9.5, 2, P('#1c1c22')); p.circ(8, 9.5, 1.1, P('#ffffff')); p.set(5, 5, P('#ffd0c8'));
+        break;
       }
     }
+    p.outline(null, { k: .3 });
   }
 
-  // --------------------------------------------------------- buildings --
-  // w,h in tiles. Returns {img, oy} where oy is extra pixels above the footprint
-  function building(kind, w, h, o = {}) {
-    const key = `bld|${kind}|${w}|${h}|${o.roof || ''}|${o.theme || ''}|${o.label || ''}|${o.frame || 0}`;
-    const extra = kind === 'tower' ? 48 : kind === 'lighthouse' ? 64 : 10;
-    return {
-      img: get(key, w * 16, h * 16 + extra, p => paintBuilding(p, kind, w, h, extra, o)), oy: extra,
+  // --------------------------------------------------------- furniture ---
+  function furniture(kind, frame) {
+    const tall = { shelf: 26, plant: 22, pc: 20, machine: 22, healer: 18, counter: 18, statue: 26, tv: 18 };
+    const h = tall[kind] || 16;
+    const img = get(`fu|${kind}|${frame}`, 16, h, p => paintFurniture(p, kind, frame, h));
+    return { img, ox: 0, oy: 16 - h };
+  }
+  function paintFurniture(p, kind, frame, h) {
+    const b = h - 16, WD = R(['#2a1a10', '#46301c', '#664628', '#865e36', '#a67a48', '#c4985e', '#dcb47a']);
+    const MET = R(['#1e222a', '#30363f', '#454c58', '#5e6674', '#7a8290', '#9aa2ae', '#c0c6ce', '#e4e8ec']);
+    const box = (x, y, w, hh, top, ramp, topK = 5, faceK = 3) => {   // 3/4 box: lit top surface, front face
+      for (let j = 0; j < hh; j++) for (let i = 0; i < w; i++) p.set(x + i, y + j, ramp[j < top ? (j === 0 ? topK + 1 : topK) : j === top ? faceK + 1 : i === 0 ? faceK + 1 : i === w - 1 ? faceK - 1 : faceK]);
+      p.hline(x, x + w - 1, y + top, ramp[Math.max(0, faceK - 2)]);
     };
+    switch (kind) {
+      case 'counter': box(0, b + 2, 16, 14, 5, WD, 5, 3); p.hline(0, 15, b + 15, WD[1]); for (let x = 2; x < 16; x += 5) p.vline(x, b + 9, b + 14, WD[2]); break;
+      case 'pc': {
+        box(1, b + 11, 14, 5, 2, WD, 5, 3);
+        p.rect(2, b + 1, 12, 10, MET[2]); p.rect(3, b + 2, 10, 7, frame % 2 ? P('#5ad0ff') : P('#48b8f0')); p.rect(3, b + 2, 4, 2, P('#d8f6ff'));
+        p.hline(4, 11, b + 5, P('#2a88c8')); p.hline(4, 9, b + 7, P('#2a88c8')); p.rect(6, b + 10, 4, 1, MET[1]); p.hline(2, 13, b + 1, MET[4]);
+        break;
+      }
+      case 'shelf': {
+        box(0, 0, 16, h, 2, WD, 5, 2);
+        const cols = ['#c84a4a', '#4a7ac8', '#4ab86a', '#e8b83a', '#9a5ac8', '#e8e0d0', '#3a8a8a'];
+        for (let r = 0; r < 3; r++) {
+          const y0 = 4 + r * 7;
+          p.rect(1, y0, 14, 6, WD[1]);
+          for (let x = 2; x < 14;) { const bw = 1 + (h2(x, r, 7) > .6 ? 1 : 0), bh = 4 + (h2(x, r, 8) > .5 ? 1 : 0), col = G.rampFrom(cols[Math.floor(h2(x, r, 9) * cols.length)], 3); for (let i = 0; i < bw; i++) for (let j = 0; j < bh; j++) p.set(x + i, y0 + 6 - bh + j, col[i === 0 ? 2 : 1]); x += bw + (h2(x, r, 10) > .8 ? 1 : 0); }
+          p.hline(1, 14, y0 + 6, WD[5]);
+        }
+        break;
+      }
+      case 'bed_top': case 'bed_bot': case 'bed': {
+        const Bl = R(['#1a2a5a', '#243a7a', '#2e4e9e', '#3c66c0', '#5a86dc', '#86aaf0', '#b8d0ff']);
+        const top = kind !== 'bed_bot', bot = kind !== 'bed_top';
+        if (top) { box(0, 0, 16, 4, 1, WD, 5, 3); }
+        const y0 = top ? 4 : 0, y1 = bot ? 13 : 16;
+        for (let y = y0; y < y1; y++) for (let x = 1; x < 15; x++) p.set(x, y, P('#eeeef4'));
+        if (top) { for (let y = 5; y < 9; y++) for (let x = 3; x < 13; x++) p.set(x, y, y === 8 ? P('#c8ccd8') : x === 3 ? P('#ffffff') : P('#f4f4fa')); }
+        const qy = top ? 10 : 0;
+        for (let y = qy; y < y1; y++) for (let x = 1; x < 15; x++) p.set(x, y, Bl[y === qy && top ? 6 : x === 1 ? 5 : x === 14 ? 2 : ((x + y) % 6 === 0 ? 3 : 4)]);
+        if (top) p.hline(1, 14, qy + 1, Bl[5]);
+        p.vline(0, y0, y1 - 1, WD[3]); p.vline(15, y0, y1 - 1, WD[2]);
+        if (bot) box(0, 13, 16, 3, 1, WD, 5, 3);
+        break;
+      }
+      case 'table': box(1, 3, 14, 10, 7, WD, 5, 3); p.rect(2, 13, 2, 3, WD[2]); p.rect(12, 13, 2, 3, WD[1]); p.ell(8, 6, 2.6, 1.6, P('#f4f4f8')); p.ell(8, 6, 1.4, .8, P('#d0d4e0')); break;
+      case 'tv': {
+        box(1, b + 11, 14, 5, 2, WD, 5, 3);
+        p.rect(1, b + 1, 14, 10, MET[1]); p.rect(2, b + 2, 12, 7, frame % 2 ? P('#3a78c8') : P('#4a88d8')); p.rect(3, b + 3, 5, 2, P('#a8d8ff')); p.hline(2, 13, b + 1, MET[3]);
+        break;
+      }
+      case 'plant': {
+        const T = R(['#5a2a14', '#8a4424', '#b45c34', '#d47a4a', '#ec9c6a']);
+        for (let y = b + 10; y < b + 16; y++) for (let x = 4; x < 12; x++) p.set(x, y, T[x < 6 ? 4 : x > 9 ? 1 : 3]);
+        p.hline(3, 12, b + 10, T[4]);
+        const L = LEAF.grass;
+        for (const [dx, dy, r] of [[0, 0, 5], [-3, 3, 3.6], [3, 3, 3.6], [-1, -4, 3.4], [2, -3, 3]]) p.sphere(8 + dx, b + 5 + dy, r, r * .9, L, { bias: .04 });
+        break;
+      }
+      case 'stairsup': case 'stairsdown': break;
+      case 'healer': {
+        box(0, b + 2, 16, 14, 4, R(['#8a8e9a', '#a8acb8', '#c4c8d2', '#dde0e8', '#eef0f4', '#fafbfc', '#ffffff']), 5, 3);
+        for (let i = 0; i < 3; i++) { const on = (frame + i) % 2; p.circ(3 + i * 5, b + 4, 1.8, on ? P('#ff8aa0') : P('#e04a6a')); p.set(2 + i * 5, b + 3, P('#ffe0e8')); }
+        p.rect(5, b + 9, 6, 4, P('#3a8ae0')); p.rect(6, b + 10, 2, 1, P('#b8e0ff'));
+        break;
+      }
+      case 'machine': {
+        box(1, b + 1, 14, 21, 3, MET, 5, 3);
+        p.rect(3, b + 5, 10, 5, MET[0]); p.rect(4, b + 6, 3, 3, frame % 2 ? P('#6aff9a') : P('#3ac06a')); p.hline(8, 11, b + 6, P('#ff6a6a')); p.hline(8, 10, b + 8, P('#6ad0ff'));
+        for (let x = 3; x < 13; x += 3) p.rect(x, b + 12, 2, 6, MET[1]);
+        break;
+      }
+      case 'desk': {
+        box(0, 5, 16, 11, 5, WD, 5, 3); p.rect(1, 13, 2, 3, WD[1]); p.rect(13, 13, 2, 3, WD[1]);
+        p.rect(3, 1, 6, 5, MET[1]); p.rect(4, 2, 4, 3, P('#6ad0ff')); p.rect(11, 3, 3, 3, P('#f4f4f4')); p.hline(11, 13, 3, P('#ffffff'));
+        break;
+      }
+      case 'rug': {
+        const Rg = R(['#2a1650', '#4a2a88', '#6a44b0', '#8a66d0', '#f0d070']);
+        p.fill(Rg[2]); p.rect(1, 1, 14, 14, Rg[3]); p.rect(3, 3, 10, 10, Rg[2]); p.rect(6, 6, 4, 4, Rg[4]); for (let x = 1; x < 16; x += 2) { p.set(x, 0, Rg[4]); p.set(x, 15, Rg[4]); }
+        return;
+      }
+      default: {
+        const pr = prop(kind, frame); return { img: pr.img };
+      }
+    }
+    p.outline(null, { k: .34 });
+  }
+  function tableJoin(m) {
+    return get(`tbl|${m}`, 16, 16, p => {
+      const WD = R(['#2a1a10', '#46301c', '#664628', '#865e36', '#a67a48', '#c4985e', '#dcb47a']);
+      const x0 = m & 8 ? 0 : 1, x1 = m & 2 ? 16 : 15, y0 = m & 1 ? 0 : 3, y1 = m & 4 ? 16 : 11;
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) p.set(x, y, WD[(!(m & 1) && y === y0) ? 6 : (x + y * 3) % 11 === 0 ? 4 : 5]);
+      if (!(m & 4)) { for (let y = y1; y < y1 + 2; y++) for (let x = x0; x < x1; x++) p.set(x, y, WD[3]); p.hline(x0, x1 - 1, y1 + 1, WD[2]); if (!(m & 8)) p.rect(2, 13, 2, 3, WD[2]); if (!(m & 2)) p.rect(12, 13, 2, 3, WD[1]); }
+      if (!(m & 1) && !(m & 4)) { p.ell(8, 6.5, 2.6, 1.5, P('#f4f4f8')); p.ell(8, 6.5, 1.4, .7, P('#d0d4e0')); }
+      p.outline(null, { k: .34 });
+    });
+  }
+
+  // --------------------------------------------------------- buildings ---
+  const ROOFS = { red: '#d4483c', blue: '#3c64c4', green: '#3c9a58', teal: '#22a494', purple: '#7a4cc0', orange: '#e0762c', gray: '#6a707c', brown: '#9a5e32', snow: '#dce6f2', black: '#343644' };
+  // ---- generated object atlas (art_src/build_world.py): buildings, houses, trees and props
+  const WA = { img: null };
+  function loadWorld() {
+    return new Promise(res => {
+      if (!G.WORLD_ATLAS || typeof Image === 'undefined') return res();
+      const im = new Image(); im.onload = () => { WA.img = im; res(); }; im.onerror = () => res(); im.src = G.WORLD_ATLAS.src;
+    });
+  }
+  // tint: optional [r, g, b] multipliers baked in once (darker / cooler variants for depth in woods)
+  function atlas(key, w, tint) {
+    if (!WA.img || !G.WORLD_ATLAS.rects[key]) return null;
+    const ck = 'wa|' + key + '|' + (w || 0) + '|' + (tint ? tint.join(',') : '');
+    let c = cache.get(ck);
+    if (!c) {
+      const [x, y, sw, sh] = G.WORLD_ATLAS.rects[key];
+      const dw = w || sw, dh = w ? Math.round(sh * w / sw) : sh;
+      c = G.makeCanvas(dw, dh); const cx = c.getContext('2d'); cx.imageSmoothingEnabled = false;
+      cx.drawImage(WA.img, x, y, sw, sh, 0, 0, dw, dh);
+      if (tint) {
+        try {
+          const im = cx.getImageData(0, 0, dw, dh), d = im.data;
+          for (let i = 0; i < d.length; i += 4) { d[i] *= tint[0]; d[i + 1] *= tint[1]; d[i + 2] *= tint[2]; }
+          cx.putImageData(im, 0, 0);
+        } catch (e) { /* tainted canvas: keep untinted */ }
+      }
+      cache.set(ck, c);
+    }
+    return c;
+  }
+  const HOUSE_ROOF = { red: 'house_red', blue: 'house_blue', teal: 'house_teal', brown: 'house_brown', gray: 'house_gray', grey: 'house_gray', purple: 'house_purple', orange: 'house_orange', snow: 'house_snow', green: 'house_teal', pink: 'house_orange' };
+  function building(kind, w, h, o = {}) {
+    const ak = kind === 'house' ? (HOUSE_ROOF[o.roof] || 'house_red') : ['haven', 'mart', 'lab', 'gym', 'tower', 'lighthouse'].includes(kind) ? kind : null;
+    const im = ak && atlas(ak, w * 16);
+    if (im) return { img: im, oy: Math.max(0, im.height - h * 16), atlas: true };
+    const extra = kind === 'tower' ? 56 : kind === 'lighthouse' ? 72 : kind === 'gym' ? 22 : 16;
+    const key = `bld|${kind}|${w}|${h}|${o.roof || ''}|${o.door}|${o.accent || ''}|${o.label || ''}`;
+    return { img: get(key, w * 16, h * 16 + extra, p => paintBuilding(p, kind, w, h, extra, o)), oy: extra };
+  }
+  function roofRamp(name) { return G.rampFrom(ROOFS[name] || name || ROOFS.red, 8, { lo: .34, hi: .26, mid: 4 }); }
+  // hip roof: trapezoid front slope with shingle courses; side hips lit/shaded
+  function hipRoof(p, x0, y0, W, H, ramp, o = {}) {
+    const inset = o.inset || Math.min(10, Math.floor(W * .14));
+    for (let y = 0; y < H; y++) {
+      const t = y / Math.max(1, H - 1), a = Math.round(inset * (1 - t)), L = x0 + a - 1, Rt = x0 + W - a;
+      const course = Math.floor(y / 4), cv = y % 4;
+      for (let x = L; x <= Rt; x++) {
+        const u = (x - L) / Math.max(1, Rt - L);
+        let k = 4 + (t < .2 ? 1 : 0) - (u > .8 ? 1 : 0) + (u < .15 ? 1 : 0);
+        const seam = ((x - x0 + (course & 1) * 4) % 8) === 0;
+        if (cv === 3) k -= 2; else if (cv === 0) k += 1;
+        if (seam && cv > 0 && cv < 3) k -= 1;
+        if (h2(x, y, 3) > .96) k -= 1;
+        // hip facets
+        if (x - L < 3 + t * 2 && a > 0) k = Math.max(k, 6) - (cv === 3 ? 2 : 0);
+        if (Rt - x < 3 + t * 2 && a > 0) k = Math.min(k, 2) - (cv === 3 ? 1 : 0);
+        p.set(x, y0 + y, ramp[G.clamp(k, 0, 7)]);
+      }
+    }
+    // ridge cap and eave
+    for (let x = x0 + inset; x <= x0 + W - inset - 1; x++) { p.set(x, y0, ramp[7]); p.set(x, y0 + 1, ramp[6]); }
+    for (let x = x0 - 1; x <= x0 + W; x++) { p.set(x, y0 + H, ramp[1]); p.set(x, y0 + H + 1, ramp[0]); }
+  }
+  function window2(p, x, y, w, hh, frame, o = {}) {
+    const F = o.frame || R(['#3a2a20', '#f4f0e8', '#ffffff']);
+    p.rect(x - 1, y - 1, w + 2, hh + 2, F[0]); p.rect(x, y, w, hh, F[1]);
+    const G1 = R(['#3a6aa8', '#5a92d0', '#8cc0ee', '#d8f0ff']);
+    for (let j = 1; j < hh - 1; j++) for (let i = 1; i < w - 1; i++) { const d = i + j; p.set(x + i, y + j, G1[d < 4 ? 2 : j > hh - 4 ? 0 : 1]); }
+    p.line(x + 2, y + hh - 3, x + Math.min(w - 2, 5), y + 2, G1[3]);
+    p.vline(x + (w >> 1), y + 1, y + hh - 2, F[1]); p.hline(x + 1, x + w - 2, y + (hh >> 1), F[1]);
+    if (o.box) { const T = R(['#6a3a1c', '#9a5a2c', '#c07a40']); p.rect(x - 1, y + hh + 1, w + 2, 2, T[1]); p.hline(x - 1, x + w, y + hh + 1, T[2]); for (let i = 0; i < w + 2; i += 2) p.set(x - 1 + i, y + hh, P(['#ff5a7a', '#ffd84a', '#ffffff', '#ff9ad0'][(i >> 1) % 4])); }
+  }
+  function door(p, x, y, style, o = {}) {
+    if (style === 'glass') {
+      const F = R(['#1e2a3c', '#3a4a64', '#5a6c88']);
+      p.rect(x, y, 16, 20, F[0]); p.rect(x + 1, y + 1, 14, 19, F[1]);
+      const Gl = R(['#2a6ab8', '#4a92e0', '#8ccaff', '#e0f6ff']);
+      for (let j = 2; j < 20; j++) for (let i = 2; i < 14; i++) p.set(x + i, y + j, Gl[j < 6 ? 2 : (i + j) % 9 === 0 ? 3 : 1]);
+      p.vline(x + 8, y + 2, y + 19, F[2]); p.line(x + 3, y + 12, x + 6, y + 3, Gl[3]); p.line(x + 10, y + 12, x + 13, y + 3, Gl[3]);
+      p.rect(x - 2, y - 3, 20, 3, o.awning || P('#e8484a')); p.hline(x - 2, x + 17, y - 3, G.mixc(o.awning || P('#e8484a'), [255, 255, 255], .4));
+      return;
+    }
+    const WD = R(['#2a160c', '#4a2a16', '#6a4022', '#8a5630', '#a86e40', '#c48a56']);
+    p.rect(x + 1, y, 14, 20, WD[0]); p.rect(x + 2, y + 1, 12, 19, WD[3]);
+    p.rect(x + 3, y + 3, 4, 6, WD[4]); p.rect(x + 9, y + 3, 4, 6, WD[4]); p.rect(x + 3, y + 11, 4, 6, WD[4]); p.rect(x + 9, y + 11, 4, 6, WD[4]);
+    p.hline(x + 3, x + 6, y + 3, WD[5]); p.hline(x + 9, x + 12, y + 3, WD[5]); p.vline(x + 2, y + 1, y + 19, WD[4]);
+    p.set(x + 12, y + 10, P('#ffd84a')); p.set(x + 12, y + 11, P('#b88a20'));
+    // step
+    p.rect(x, y + 20, 16, 0, WD[0]);
+    const S = STONE; p.hline(x, x + 15, y + 19, S[5]);
   }
   function paintBuilding(p, kind, w, h, E, o) {
     const W = w * 16, H = h * 16 + E;
-    const roofCols = { red: ['#e0584a', '#c0443a', '#9a342c', '#f48a74'], blue: ['#4a7ad0', '#3a64b4', '#2c4e90', '#7aa4ec'], green: ['#4aa864', '#3a9052', '#2c7040', '#7ccc8a'], teal: ['#2bb3a3', '#1e9486', '#157468', '#6ad8c8'], purple: ['#8a5ac8', '#7048ac', '#56368a', '#b08ae4'], orange: ['#e88a3a', '#cc702a', '#a4581e', '#f4b070'], gray: ['#7a808c', '#666c78', '#50565e', '#a0a6b0'], brown: ['#a86a3a', '#8e562c', '#704220', '#c89060'], snow: ['#e8f0f8', '#d0dcea', '#b0c0d4', '#ffffff'], black: ['#3a3c48', '#2c2e38', '#1e2028', '#5a5c6a'] };
-    const R = pal(roofCols[o.roof] || roofCols.red);
-    const O = P('#2a2230');
-    const wallC = kind === 'haven' ? pal(['#fafafa', '#e8e8ee', '#ccccd8']) : kind === 'mart' ? pal(['#f4f6fa', '#e0e6f0', '#c4ccdc']) : kind === 'lab' ? pal(['#eef2f6', '#dce4ec', '#bcc8d4']) : kind === 'gym' ? pal(['#e8e0d0', '#d4c8b4', '#b4a68e']) : pal(['#f4e8cc', '#e4d4b0', '#c8b490']);
-    // body
-    const roofH = kind === 'tower' || kind === 'lighthouse' ? 0 : Math.max(18, Math.floor(h * 16 * .48));
-    const bodyTop = E + roofH - 4;
-    // shadow
-    p.rect(2, H - 3, W - 4, 3, P('#000000'), 50);
-    if (kind === 'tower') {
-      const g = pal(['#8ab4dc', '#6a94c0', '#4a74a0', '#c8e4ff']);
-      p.rect(0, 0, W, H - 2, g[1]);
-      for (let y = 4; y < H - 20; y += 8) for (let x = 3; x < W - 3; x += 7) { p.rect(x, y, 5, 6, g[0]); p.rect(x, y, 2, 6, g[3]); p.rect(x, y + 5, 5, 1, g[2]); }
-      p.rect(0, 0, W, 3, P('#3a4a64')); p.rect(0, 0, 2, H, P('#3a4a64')); p.rect(W - 2, 0, 2, H, P('#2a3448'));
-      p.rect(0, H - 20, W, 18, P('#e8ecf2')); p.rect(0, H - 20, W, 2, P('#b0bccc'));
-      const dx = Math.floor(W / 2) - 8; p.rect(dx, H - 18, 16, 16, P('#3a4a64')); p.rect(dx + 1, H - 17, 14, 15, P('#9ad8ff')); p.rect(dx + 7, H - 17, 1, 15, P('#3a4a64'));
-      p.rect(dx - 10, H - 30, 36, 8, P('#e8484a')); for (let i = 0; i < 5; i++) p.rect(dx - 7 + i * 7, H - 28, 4, 4, P('#ffffff'));
-      p.outline(O); return;
+    const ramp = roofRamp(o.roof || (kind === 'haven' ? 'red' : kind === 'mart' ? 'blue' : 'red'));
+    if (kind === 'tower') return paintTower(p, w, h, E, o);
+    if (kind === 'lighthouse') return paintLighthouse(p, w, h, E, o);
+    const wallH = kind === 'gym' ? 38 : kind === 'haven' || kind === 'mart' || kind === 'lab' ? 32 : 30;
+    const wallY = H - wallH, roofH = wallY + 2;
+    const wallBase = kind === 'haven' ? '#f4f2ee' : kind === 'mart' ? '#eef2f6' : kind === 'lab' ? '#e6ecf2' : kind === 'gym' ? '#e8dcc6' : ['#f2e6c8', '#ece0d0', '#e8eef2', '#f4e0d0'][(w * 7 + (o.roof || '').length) % 4];
+    const WR = G.rampFrom(wallBase, 7, { lo: .32, hi: .1 });
+    // ---- front wall
+    const siding = kind === 'house';
+    for (let y = wallY; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+      let k = 4;
+      if (siding) { const r = (y - wallY) % 4; if (r === 3) k = 2; else if (r === 0) k = 5; }
+      else if (kind === 'gym') { const r = (y - wallY) % 6, sx = (x + (Math.floor((y - wallY) / 6) & 1) * 6) % 12; if (r === 5 || sx === 0) k = 2; else if (r === 0) k = 5; }
+      else if ((x + y) % 13 === 0 && h2(x, y, 2) > .5) k = 3;
+      if (x < 3) k = Math.min(6, k + 1); if (x > W - 4) k = Math.max(1, k - 2);
+      p.set(x, y, WR[k]);
     }
-    if (kind === 'lighthouse') {
-      const cx = W / 2;
-      for (let y = 20; y < H - 2; y++) { const t = (y - 20) / (H - 22); const hw = 7 + t * 9; p.rect(Math.round(cx - hw), y, Math.round(hw * 2), 1, P(Math.floor((y - 20) / 14) % 2 ? '#e84a4a' : '#f4f4f4')); p.set(Math.round(cx - hw), y, P('#ffffff')); p.set(Math.round(cx + hw) - 1, y, P('#b0b0b8')); }
-      p.rect(cx - 9, 10, 18, 10, P('#3a3c48')); p.rect(cx - 7, 11, 14, 8, P('#fff2a8')); p.rect(cx - 7, 11, 4, 8, P('#ffffff'));
-      p.rect(cx - 10, 8, 20, 2, P('#2a2c36')); p.rect(cx - 6, 3, 12, 5, P('#e84a4a')); p.rect(cx - 2, 0, 4, 3, P('#2a2c36'));
-      p.rect(cx - 11, 20, 22, 2, P('#2a2c36'));
-      p.rect(cx - 5, H - 16, 10, 14, P('#5a3a20')); p.rect(cx - 4, H - 15, 8, 13, P('#7a5030'));
-      p.outline(O); return;
-    }
-    p.rect(1, bodyTop, W - 2, H - bodyTop - 2, wallC[0]);
-    p.rect(1, H - 5, W - 2, 3, wallC[2]); p.rect(1, bodyTop, 2, H - bodyTop - 2, wallC[1]); p.rect(W - 3, bodyTop, 2, H - bodyTop - 2, wallC[2]);
-    if (kind === 'house' || kind === 'gym') for (let y = bodyTop + 3; y < H - 5; y += 4) for (let x = 3; x < W - 3; x++) if ((x + y) % 11 === 0) p.set(x, y, wallC[1]);
-    // roof
-    if (kind === 'haven' || kind === 'mart' || kind === 'lab') {
-      // flat modern roof with overhang band
-      p.rect(0, E, W, roofH - 2, R[1]); p.rect(0, E, W, 3, R[3]); p.rect(0, E + roofH - 5, W, 3, R[2]);
-      for (let x = 2; x < W - 2; x += 6) p.rect(x, E + 4, 3, roofH - 10, R[0]);
-      if (kind === 'lab') { p.rect(W - 18, E - 8, 2, 10, P('#8a8e98')); p.circ(W - 17, E - 9, 3, P('#c8ccd8')); p.rect(W - 18, E - 9, 3, 1, P('#e8484a')); }
+    // foundation
+    for (let x = 1; x < W - 1; x++) { p.set(x, H - 4, STONE[5]); p.set(x, H - 3, STONE[4]); p.set(x, H - 2, STONE[3]); if ((x % 7) === 0) p.set(x, H - 3, STONE[2]); }
+    // under-eave shadow
+    for (let x = 1; x < W - 1; x++) { p.shade(x, wallY, -.35); p.shade(x, wallY + 1, -.2); p.shade(x, wallY + 2, -.08); }
+    // ---- roof
+    if (kind === 'lab') {
+      const LR = roofRamp(o.roof || 'teal');
+      for (let y = 0; y < roofH; y++) for (let x = 0; x < W; x++) { const v = y - E + 2; let k = y < 3 ? 6 : y > roofH - 4 ? 2 : 4; if (x % 12 === 0 && y > 3 && y < roofH - 4) k = 3; p.set(x, y + (E - 8 > 0 ? E - 8 : 0) * 0, LR[k]); }
+      for (let y = 0; y < E - 10; y++) for (let x = 0; x < W; x++) p.clear(x, y);
+      const top = Math.max(0, E - 10);
+      for (let y = top; y < roofH; y++) for (let x = 0; x < W; x++) { let k = y < top + 3 ? 6 : y > roofH - 4 ? 2 : 4; if ((x % 12 === 0) && y > top + 3 && y < roofH - 4) k = 3; if (x < 2) k++; if (x > W - 3) k -= 2; p.set(x, y, LR[G.clamp(k, 0, 7)]); }
+      // vents + antenna dish
+      for (let i = 0; i < Math.floor(w / 3); i++) { const vx = 8 + i * 22; p.rect(vx, top + 5, 8, 5, STONE[5]); p.hline(vx, vx + 7, top + 5, STONE[7]); p.hline(vx + 1, vx + 6, top + 7, STONE[2]); }
+      p.rect(W - 16, 0, 2, top + 6, STONE[3]); p.ell(W - 15, 2, 5, 2.5, STONE[6]); p.ell(W - 15, 2.4, 3.4, 1.4, STONE[4]); p.set(W - 15, 0, P('#ff4a4a'));
+      for (let x = 0; x < W; x++) { p.set(x, roofH - 1, LR[1]); p.set(x, roofH, LR[0]); }
     } else {
-      // gabled shingle roof
-      const top = E - (kind === 'gym' ? 4 : 0);
-      for (let y = top; y < E + roofH; y++) {
-        const t = (y - top) / (roofH + E - top);
-        const inset = Math.max(0, Math.round((1 - t) * 3));
-        const row = Math.floor((y - top) / 4);
-        for (let x = inset; x < W - inset; x++) {
-          let c = row % 2 ? R[0] : R[1];
-          if ((x + (row % 2) * 3) % 6 === 0) c = R[2];
-          if (y === top) c = R[3];
-          if ((y - top) % 4 === 3) c = R[2];
-          p.set(x, y, c);
-        }
+      const top = kind === 'gym' ? 0 : 2;
+      hipRoof(p, 0, top, W, roofH - top, ramp, { inset: kind === 'gym' ? 12 : Math.min(10, Math.floor(W * .13)) });
+      if (kind === 'haven' || kind === 'mart') {
+        // bright band across the roof with the emblem on a white plate
+        const band = Math.floor(roofH * .52);
+        for (let x = 4; x < W - 4; x++) { p.set(x, band, P('#ffffff')); p.set(x, band + 1, P('#e8eef4')); p.set(x, band + 2, G.darkc(ramp[3], .1)); }
+        const cx = W >> 1, cy = band - 2;
+        p.circ(cx, cy, 8.5, P('#1c1c24')); p.circ(cx, cy, 7.5, P('#ffffff'));
+        if (kind === 'haven') { for (let y = -7; y <= 7; y++) for (let x = -7; x <= 7; x++) if (x * x + y * y <= 56 && y < 0) p.set(cx + x, cy + y, ramp[5]); p.hline(cx - 7, cx + 7, cy, P('#1c1c24')); p.circ(cx, cy, 2.6, P('#1c1c24')); p.circ(cx, cy, 1.6, P('#ffffff')); p.set(cx - 4, cy - 4, P('#ffffff')); }
+        else { const B = R(['#18306a', '#2a4ea0', '#4a7ad8']); p.rect(cx - 4, cy - 2, 8, 6, B[1]); p.rect(cx - 3, cy - 5, 6, 3, B[0]); p.rect(cx - 2, cy - 4, 4, 2, P('#ffffff')); p.hline(cx - 4, cx + 3, cy - 2, B[2]); }
       }
-      // ridge highlight & eave
-      p.rect(0, E + roofH - 3, W, 2, R[2]); p.rect(0, E + roofH - 1, W, 1, P('#000000'), 70);
-      if (kind === 'house') { // chimney
-        const cx = W - 14; p.rect(cx, E - 6, 6, 12, P('#a86a4a')); p.rect(cx, E - 6, 6, 2, P('#6a4a3a')); p.rect(cx + 1, E - 4, 1, 10, P('#c88a6a'));
+      if (kind === 'house') {   // chimney
+        const cx = W - 18, CR = R(['#3a1e16', '#5a2e22', '#7a4030', '#9a5640', '#b46e54']);
+        for (let y = 0; y < 12; y++) for (let x = 0; x < 7; x++) p.set(cx + x, y, CR[y < 2 ? 4 : x === 0 ? 3 : x === 6 ? 1 : (y % 3 === 0 ? 1 : 2)]);
+        p.hline(cx - 1, cx + 7, 0, CR[4]); p.hline(cx - 1, cx + 7, 1, CR[2]);
+        // dormer window on wide houses
+        if (w >= 5) { const dx = 10, dy = Math.floor(roofH * .35); p.rect(dx, dy, 12, 10, WR[4]); p.rect(dx - 1, dy - 2, 14, 3, ramp[6]); p.hline(dx - 1, dx + 12, dy - 3, ramp[7]); window2(p, dx + 2, dy + 2, 8, 7, 0); }
       }
-    }
-    // door
-    const dx = (o.door !== undefined ? o.door : Math.floor(w / 2)) * 16;
-    if (kind === 'haven' || kind === 'mart' || kind === 'lab') {
-      p.rect(dx + 1, H - 20, 14, 18, P('#3a4a64')); p.rect(dx + 2, H - 19, 12, 17, P('#9ad8ff')); p.rect(dx + 7, H - 19, 2, 17, P('#3a4a64')); p.rect(dx + 2, H - 19, 4, 5, P('#e6f6ff'));
-      p.rect(dx - 1, H - 22, 18, 2, P('#3a4a64'));
-    } else {
-      p.rect(dx + 2, H - 19, 12, 17, P('#6a4428')); p.rect(dx + 3, H - 18, 10, 16, P('#8a5a36')); p.rect(dx + 3, H - 18, 10, 1, P('#a8703c'));
-      p.rect(dx + 4, H - 16, 3, 6, P('#a8703c')); p.rect(dx + 9, H - 16, 3, 6, P('#a8703c')); p.set(dx + 11, H - 9, P('#ffd84a'));
-      p.rect(dx + 1, H - 20, 14, 1, P('#5a3a20'));
-    }
-    // windows
-    const winY = kind === 'gym' ? H - 26 : H - 18;
-    const nWin = [];
-    for (let tx = 0; tx < w; tx++) if (tx * 16 !== dx && Math.abs(tx * 16 - dx) > 8 && tx > 0 && tx < w - 1 || (w <= 3 && tx !== Math.floor(dx / 16))) nWin.push(tx);
-    for (const tx of nWin) {
-      const x = tx * 16 + 3;
-      if (kind === 'haven' || kind === 'mart' || kind === 'lab') { p.rect(x - 1, winY - 1, 12, 10, P('#3a4a64')); p.rect(x, winY, 10, 8, P('#9ad8ff')); p.rect(x, winY, 3, 3, P('#e6f6ff')); }
-      else {
-        p.rect(x, winY, 10, 9, P('#5a3a20')); p.rect(x + 1, winY + 1, 8, 7, P('#9ad8ff')); p.rect(x + 1, winY + 1, 3, 2, P('#e6f6ff')); p.rect(x + 4, winY + 1, 1, 7, P('#5a3a20')); p.rect(x + 1, winY + 4, 8, 1, P('#5a3a20'));
-        p.rect(x - 1, winY + 9, 12, 2, P('#c89058')); p.set(x + 1, winY + 8, P('#ff6a8a')); p.set(x + 7, winY + 8, P('#ffd84a'));
+      if (kind === 'gym') {
+        // emblem plaque and pillars
+        const cx = W >> 1, acc = P(o.accent || '#ffd84a');
+        p.rect(cx - 14, roofH - 14, 28, 11, P('#20242e')); p.rect(cx - 13, roofH - 13, 26, 9, acc); p.hline(cx - 13, cx + 12, roofH - 13, G.mixc(acc, [255, 255, 255], .5));
+        p.circ(cx, roofH - 9, 3, P('#ffffff')); p.circ(cx, roofH - 9, 1.5, P('#20242e'));
+        for (const px of [6, W - 12]) for (let y = wallY; y < H - 4; y++) for (let x = 0; x < 6; x++) p.set(px + x, y, WR[x === 0 ? 6 : x === 5 ? 1 : x < 3 ? 5 : 3]);
       }
     }
-    // signage
-    if (kind === 'haven') {
-      const sx = Math.floor(W / 2) - 12; p.rect(sx, E + 3, 24, 10, P('#ffffff')); p.rect(sx, E + 3, 24, 1, P('#e0e0e8'));
-      p.rect(sx + 9, E + 4, 6, 8, P('#e8484a')); p.rect(sx + 7, E + 6, 10, 4, P('#e8484a')); p.rect(sx + 10, E + 5, 4, 6, P('#ff8a8a'));
+    // ---- door + windows
+    const dcol = (o.door !== undefined ? o.door : Math.floor(w / 2));
+    const dx = dcol * 16;
+    const glass = kind === 'haven' || kind === 'mart' || kind === 'lab';
+    door(p, dx, H - 21, glass ? 'glass' : 'wood', { awning: kind === 'mart' ? P('#2a64d0') : kind === 'lab' ? P('#22a494') : P('#e8484a') });
+    const winY = kind === 'gym' ? wallY + 10 : wallY + 8;
+    const groups = [];
+    if (dcol > 0) groups.push([0, dcol]);
+    if (dcol < w - 1) groups.push([dcol + 1, w]);
+    for (const [a, bb] of groups) {
+      const span = (bb - a) * 16;
+      if (glass) { const ww = Math.min(span - 8, 28); window2(p, a * 16 + (span - ww) / 2, winY, ww, 12, 0, { frame: R(['#1e2a3c', '#e8eef4', '#ffffff']) }); }
+      else if (span >= 32) { window2(p, a * 16 + 5, winY, 10, 10, 0, { box: kind === 'house' }); window2(p, a * 16 + span - 15, winY, 10, 10, 0, { box: kind === 'house' }); }
+      else window2(p, a * 16 + (span - 10) / 2, winY, 10, 10, 0, { box: kind === 'house' });
     }
-    if (kind === 'mart') {
-      const sx = Math.floor(W / 2) - 14; p.rect(sx, E + 3, 28, 10, P('#ffffff'));
-      // simple "bag" icon + stripes
-      p.rect(sx + 3, E + 6, 6, 5, P('#3a64b4')); p.rect(sx + 4, E + 4, 4, 2, P('#3a64b4')); p.rect(sx + 5, E + 5, 2, 1, P('#ffffff'));
-      for (let i = 0; i < 4; i++) p.rect(sx + 11 + i * 4, E + 6, 3, 5, P('#3a64b4'));
+    // corners
+    for (let y = wallY; y < H - 1; y++) { p.set(0, y, WR[1]); p.set(W - 1, y, WR[0]); }
+    p.outline(null, { k: .3 });
+  }
+  function paintTower(p, w, h, E, o) {
+    const W = w * 16, H = h * 16 + E;
+    const Gl = R(['#16263e', '#20385a', '#2c4c78', '#3c6496', '#5a84b4', '#86aed4', '#bcd8f0', '#eaf6ff']);
+    const F = R(['#1c222c', '#2c3440', '#3e4856', '#58626e', '#7a8490', '#a4acb6', '#d0d6dc']);
+    for (let y = 0; y < H - 18; y++) for (let x = 0; x < W; x++) {
+      const col = x % 12, row = y % 10;
+      let c = Gl[3 + (x < W * .25 ? 1 : x > W * .75 ? -1 : 0)];
+      if (col === 0 || row === 0) c = F[col === 0 && row === 0 ? 5 : 3];
+      else if (col + row < 5) c = Gl[6];
+      else if ((x - y) % 23 === 0) c = Gl[7];
+      p.set(x, y, c);
     }
-    if (kind === 'gym') {
-      const sx = Math.floor(W / 2) - 10; p.rect(sx, E + roofH - 2, 20, 8, P('#2a2e38')); p.rect(sx + 1, E + roofH - 1, 18, 6, P(o.accent || '#ffd84a'));
-      p.circ(Math.floor(W / 2), E + roofH + 2, 2.5, P('#ffffff'));
-      p.rect(0, H - 8, W, 1, P('#8a7a60'));
+    for (let x = 0; x < W; x++) { p.set(x, 0, F[6]); p.set(x, 1, F[4]); p.set(x, 2, F[2]); }
+    // lobby
+    for (let y = H - 18; y < H - 1; y++) for (let x = 0; x < W; x++) p.set(x, y, F[y === H - 18 ? 6 : y === H - 17 ? 1 : 5]);
+    door(p, (W >> 1) - 8, H - 21, 'glass', { awning: P('#e8484a') });
+    p.rect((W >> 1) - 20, H - 32, 40, 8, P('#e8484a')); for (let i = 0; i < 5; i++) p.rect((W >> 1) - 16 + i * 7, H - 30, 4, 4, P('#ffffff'));
+    p.outline(null, { k: .3 });
+  }
+  function paintLighthouse(p, w, h, E, o) {
+    const W = w * 16, H = h * 16 + E, cx = W / 2;
+    const Rd = R(['#5a1414', '#8a2020', '#b83030', '#dc4a42', '#f07a6a']), Wh = R(['#8a8e9a', '#b4b8c4', '#d8dce4', '#f2f4f8', '#ffffff']);
+    for (let y = 26; y < H - 2; y++) {
+      const t = (y - 26) / (H - 28), hw = 8 + t * 10, band = Math.floor((y - 26) / 14) % 2;
+      for (let x = Math.round(cx - hw); x < Math.round(cx + hw); x++) { const u = (x - (cx - hw)) / (hw * 2), k = u < .25 ? 4 : u < .6 ? 3 : u < .85 ? 2 : 1; p.set(x, y, band ? Rd[k] : Wh[k]); }
     }
-    p.outline(O);
+    const I = R(['#101218', '#1c2028', '#2a2f3a', '#3c4250']);
+    p.rect(cx - 11, 22, 22, 4, I[1]); p.hline(cx - 11, cx + 10, 22, I[3]);
+    p.rect(cx - 9, 10, 18, 12, I[1]); p.rect(cx - 7, 12, 14, 9, P('#fff2a8')); p.rect(cx - 7, 12, 5, 9, P('#ffffff')); p.vline(cx, 12, 20, I[2]);
+    for (let y = 2; y < 10; y++) { const hw = (y - 1) * 1.2; for (let x = Math.round(cx - hw); x < Math.round(cx + hw); x++) p.set(x, y, Rd[x < cx ? 3 : 1]); }
+    p.rect(cx - 1, 0, 2, 3, I[2]);
+    p.rect(cx - 6, H - 18, 12, 16, Rd[0]); p.rect(cx - 5, H - 17, 10, 15, P('#6a4022')); p.rect(cx - 4, H - 16, 3, 5, P('#8a5630'));
+    p.outline(null, { k: .3 });
   }
 
-  // --------------------------------------------------------- icons ------
+  // ------------------------------------------------------------- icons ---
   function itemIcon(kind, col) {
     return get('icon|' + kind + '|' + col, 16, 16, p => {
-      const c = P(col), d = G.col.parse(G.col.dark(col, .35)), l = G.col.parse(G.col.light(col, .45)), O = P('#1e1a24'), W = P('#ffffff');
+      const c = P(col), d = G.col.parse(G.col.dark(col, .35)), l = G.col.parse(G.col.light(col, .45)), O = P('#1e1a24'), Wh = P('#ffffff');
       switch (kind) {
         case 'potion': p.rect(6, 1, 4, 3, P('#c8ccd8')); p.rect(5, 4, 6, 1, P('#8a8e98')); p.ell(8, 10, 5, 5, c); p.ell(7, 9, 2, 2.5, l); p.rect(4, 11, 8, 2, d); break;
-        case 'spray': p.rect(5, 4, 6, 10, c); p.rect(5, 4, 2, 10, l); p.rect(6, 1, 4, 3, P('#c8ccd8')); p.rect(10, 2, 3, 1, P('#8a8e98')); p.rect(5, 9, 6, 2, W); break;
+        case 'spray': p.rect(5, 4, 6, 10, c); p.rect(5, 4, 2, 10, l); p.rect(6, 1, 4, 3, P('#c8ccd8')); p.rect(10, 2, 3, 1, P('#8a8e98')); p.rect(5, 9, 6, 2, Wh); break;
         case 'revive': p.rect(3, 6, 10, 4, c); p.rect(6, 3, 4, 10, c); p.rect(6, 3, 2, 10, l); p.rect(3, 6, 10, 1, l); break;
-        case 'bottle': p.rect(6, 1, 4, 3, P('#8a5a34')); p.rect(5, 4, 6, 10, c); p.rect(5, 4, 2, 10, l); p.rect(5, 8, 6, 3, W); break;
-        case 'candy': p.ell(8, 8, 4, 3.5, c); p.ell(7, 7, 1.5, 1, W); p.rect(1, 6, 3, 4, d); p.rect(12, 6, 3, 4, d); break;
-        case 'vitamin': p.rect(5, 3, 6, 11, c); p.rect(5, 3, 6, 3, W); p.rect(5, 3, 2, 11, l); p.rect(5, 8, 6, 1, d); break;
-        case 'orb': p.circ(8, 8, 6, c); for (let y = 8; y < 15; y++) for (let x = 1; x < 15; x++) if ((x - 7.5) ** 2 + (y - 7.5) ** 2 < 36) p.set(x, y, P('#f0f0f4')); p.rect(2, 7, 12, 1, O); p.circ(8, 8, 2, O); p.circ(8, 8, 1.2, W); p.set(5, 4, l); p.set(6, 4, l); break;
-        case 'x': p.rect(3, 3, 10, 10, c); p.rect(3, 3, 10, 2, l); p.line(5, 6, 10, 11, W); p.line(10, 6, 5, 11, W); break;
+        case 'bottle': p.rect(6, 1, 4, 3, P('#8a5a34')); p.rect(5, 4, 6, 10, c); p.rect(5, 4, 2, 10, l); p.rect(5, 8, 6, 3, Wh); break;
+        case 'candy': p.ell(8, 8, 4, 3.5, c); p.ell(7, 7, 1.5, 1, Wh); p.rect(1, 6, 3, 4, d); p.rect(12, 6, 3, 4, d); break;
+        case 'vitamin': p.rect(5, 3, 6, 11, c); p.rect(5, 3, 6, 3, Wh); p.rect(5, 3, 2, 11, l); p.rect(5, 8, 6, 1, d); break;
+        case 'orb': p.circ(8, 8, 6, c); for (let y = 8; y < 15; y++) for (let x = 1; x < 15; x++) if ((x - 7.5) ** 2 + (y - 7.5) ** 2 < 36) p.set(x, y, P('#f0f0f4')); p.rect(2, 7, 12, 1, O); p.circ(8, 8, 2, O); p.circ(8, 8, 1.2, Wh); p.set(5, 4, l); p.set(6, 4, l); break;
+        case 'x': p.rect(3, 3, 10, 10, c); p.rect(3, 3, 10, 2, l); p.line(5, 6, 10, 11, Wh); p.line(10, 6, 5, 11, Wh); break;
         case 'doll': p.circ(8, 5, 3, c); p.ell(8, 11, 4, 3.5, c); p.set(7, 4, O); p.set(9, 4, O); p.circ(5, 3, 1.3, d); p.circ(11, 3, 1.3, d); break;
         case 'berry': p.circ(8, 9, 5, c); p.circ(6.5, 7.5, 1.6, l); p.rect(7, 2, 2, 3, P('#3a8a3a')); p.rect(9, 2, 3, 2, P('#5ab05a')); break;
         case 'food': p.ell(8, 10, 6, 4, c); p.ell(8, 8, 5, 2.5, l); p.rect(6, 6, 4, 2, P('#6ac04a')); break;
-        case 'gem': for (let y = 0; y < 10; y++) { const w = y < 3 ? 2 + y * 2 : 7 - (y - 3); p.rect(8 - w, 3 + y, w * 2, 1, y < 3 ? l : c); } p.set(6, 5, W); break;
-        case 'band': p.ell(8, 8, 6, 3.5, c); p.ell(8, 8, 4, 1.8, P('#000000'), 0); for (let y = 6; y <= 10; y++) for (let x = 5; x <= 11; x++) if (((x - 8) / 4) ** 2 + ((y - 8) / 1.8) ** 2 < 1) p.set(x, y, P('#ffffff'), 0); p.rect(3, 6, 10, 1, l); break;
-        case 'lens': p.circ(8, 7, 5, P('#3a3c48')); p.circ(8, 7, 3.8, c); p.circ(7, 6, 1.5, W); p.rect(11, 11, 3, 3, P('#3a3c48')); break;
-        case 'vest': p.rect(3, 3, 10, 11, c); p.rect(6, 3, 4, 4, P('#000000'), 0); p.rect(7, 3, 2, 3, P('#1e1a24')); p.rect(3, 3, 3, 11, l); break;
+        case 'gem': for (let y = 0; y < 10; y++) { const ww = y < 3 ? 2 + y * 2 : 7 - (y - 3); p.rect(8 - ww, 3 + y, ww * 2, 1, y < 3 ? l : c); } p.set(6, 5, Wh); break;
+        case 'band': p.ell(8, 8, 6, 3.5, c); for (let y = 6; y <= 10; y++) for (let x = 5; x <= 11; x++) if (((x - 8) / 4) ** 2 + ((y - 8) / 1.8) ** 2 < 1) p.clear(x, y); p.rect(3, 6, 10, 1, l); break;
+        case 'lens': p.circ(8, 7, 5, P('#3a3c48')); p.circ(8, 7, 3.8, c); p.circ(7, 6, 1.5, Wh); p.rect(11, 11, 3, 3, P('#3a3c48')); break;
+        case 'vest': p.rect(3, 3, 10, 11, c); p.rect(7, 3, 2, 3, P('#1e1a24')); p.rect(3, 3, 3, 11, l); break;
         case 'helm': p.ell(8, 9, 6, 5, c); p.rect(2, 10, 12, 3, d); for (let x = 3; x < 14; x += 3) p.set(x, 3 + (x % 2), P('#e0e0e8')); break;
         case 'claw': p.line(4, 12, 7, 3, c); p.line(8, 12, 10, 3, c); p.line(12, 12, 13, 5, c); p.rect(3, 12, 11, 2, d); break;
-        case 'bell': p.ell(8, 8, 5, 5, c); p.rect(3, 10, 10, 3, c); p.circ(8, 13, 1.5, d); p.set(6, 5, W); break;
+        case 'bell': p.ell(8, 8, 5, 5, c); p.rect(3, 10, 10, 3, c); p.circ(8, 13, 1.5, d); p.set(6, 5, Wh); break;
         case 'egg': p.ell(8, 9, 4.5, 5.5, c); p.circ(6, 7, 1.2, P('#e84a4a')); p.circ(10, 10, 1, P('#3a8ae0')); break;
-        case 'coin': p.circ(8, 8, 6, c); p.circ(8, 8, 4, d); p.circ(8, 8, 3, c); p.set(6, 5, W); break;
+        case 'coin': p.circ(8, 8, 6, c); p.circ(8, 8, 4, d); p.circ(8, 8, 3, c); p.set(6, 5, Wh); break;
         case 'stone': p.ell(8, 9, 5.5, 5, c); p.ell(7, 7, 2, 1.5, l); p.line(8, 5, 10, 10, d); break;
         case 'cord': for (let t = 0; t < 12; t++) p.set(2 + t, 8 + Math.round(Math.sin(t / 1.8) * 3), c); p.rect(1, 6, 3, 4, P('#e8c040')); p.rect(12, 6, 3, 4, P('#e8c040')); break;
         case 'leaf': p.ell(8, 8, 5, 3, c); p.line(3, 11, 12, 5, d); break;
-        case 'capsule': p.ell(8, 8, 6, 3.5, c); for (let y = 4; y < 12; y++) for (let x = 8; x < 15; x++) if (((x - 8) / 6) ** 2 + ((y - 8) / 3.5) ** 2 < 1) p.set(x, y, W); p.set(5, 7, l); break;
+        case 'capsule': p.ell(8, 8, 6, 3.5, c); for (let y = 4; y < 12; y++) for (let x = 8; x < 15; x++) if (((x - 8) / 6) ** 2 + ((y - 8) / 3.5) ** 2 < 1) p.set(x, y, Wh); p.set(5, 7, l); break;
         case 'cap': p.circ(8, 8, 6, c); for (let a = 0; a < 16; a++) { const an = a / 16 * Math.PI * 2; p.set(8 + Math.cos(an) * 6.5, 8 + Math.sin(an) * 6.5, d); } p.circ(7, 7, 2, l); break;
-        case 'rope': p.circ(8, 8, 5, c); p.circ(8, 8, 3, P('#000000'), 0); for (let y = 5; y < 12; y++) for (let x = 5; x < 12; x++) if ((x - 7.5) ** 2 + (y - 7.5) ** 2 < 6) p.set(x, y, P('#000000'), 0); break;
-        case 'pearl': p.circ(8, 8, 5, c); p.circ(6.5, 6.5, 1.8, W); break;
+        case 'rope': p.circ(8, 8, 5, c); for (let y = 5; y < 12; y++) for (let x = 5; x < 12; x++) if ((x - 7.5) ** 2 + (y - 7.5) ** 2 < 6) p.clear(x, y); break;
+        case 'pearl': p.circ(8, 8, 5, c); p.circ(6.5, 6.5, 1.8, Wh); break;
         case 'dust': for (let i = 0; i < 9; i++) p.circ(4 + (i * 5) % 9, 5 + (i * 7) % 8, 1.4, i % 2 ? c : l); break;
-        case 'fossil': p.ell(8, 9, 6, 5, c); p.line(5, 7, 11, 9, d); p.line(6, 11, 10, 6, d); p.set(8, 8, W); break;
-        case 'tm': p.circ(8, 8, 6.5, c); p.circ(8, 8, 4.5, l); p.circ(8, 8, 1.8, P('#1e1a24')); p.rect(8, 2, 5, 3, W); break;
+        case 'fossil': p.ell(8, 9, 6, 5, c); p.line(5, 7, 11, 9, d); p.line(6, 11, 10, 6, d); p.set(8, 8, Wh); break;
+        case 'tm': p.circ(8, 8, 6.5, c); p.circ(8, 8, 4.5, l); p.circ(8, 8, 1.8, P('#1e1a24')); p.rect(8, 2, 5, 3, Wh); break;
         case 'key': p.circ(5, 6, 3.5, c); p.circ(5, 6, 1.5, P('#1e1a24')); p.rect(8, 5, 7, 2, c); p.rect(12, 7, 2, 3, c); p.rect(10, 7, 1, 2, c); break;
         case 'dex': p.rect(3, 2, 10, 12, c); p.rect(3, 2, 3, 12, d); p.circ(10, 6, 2, P('#6ad0ff')); p.rect(8, 10, 4, 2, l); break;
         case 'book': p.rect(3, 2, 10, 12, c); p.rect(4, 3, 8, 10, l); p.rect(3, 2, 2, 12, d); p.rect(6, 5, 5, 1, d); p.rect(6, 7, 5, 1, d); break;
-        case 'bike': p.circ(4, 11, 3, P('#2a2a30')); p.circ(12, 11, 3, P('#2a2a30')); p.circ(4, 11, 1.5, P('#000000'), 0); p.line(4, 11, 8, 6, c); p.line(8, 6, 12, 11, c); p.line(8, 6, 7, 3, c); p.rect(6, 3, 3, 1, P('#2a2a30')); break;
+        case 'bike': p.circ(4, 11, 3, P('#2a2a30')); p.circ(12, 11, 3, P('#2a2a30')); p.line(4, 11, 8, 6, c); p.line(8, 6, 12, 11, c); p.line(8, 6, 7, 3, c); p.rect(6, 3, 3, 1, P('#2a2a30')); break;
         case 'knife': p.rect(3, 9, 5, 3, P('#6a4428')); p.line(7, 10, 14, 3, P('#d0d4dc')); p.line(7, 9, 13, 3, P('#f0f4f8')); break;
         case 'hammer': p.rect(7, 5, 2, 10, P('#8a5a34')); p.rect(3, 2, 10, 4, c); p.rect(3, 2, 10, 1, l); break;
         case 'boots': p.rect(4, 3, 5, 8, c); p.rect(4, 10, 9, 4, c); p.rect(4, 13, 10, 1, d); p.rect(4, 3, 2, 8, l); break;
-        case 'board': p.ell(8, 8, 3.5, 7, c); p.ell(8, 8, 1, 6, W); break;
+        case 'board': p.ell(8, 8, 3.5, 7, c); p.ell(8, 8, 1, 6, Wh); break;
         case 'whistle': p.ell(9, 9, 5, 4, c); p.rect(1, 7, 6, 3, c); p.circ(10, 8, 1.5, P('#1e1a24')); p.set(8, 6, l); break;
         case 'rod': p.line(2, 14, 13, 2, P('#8a5a34')); p.line(13, 2, 13, 10, P('#e0e0e8')); p.circ(13, 11, 1.2, c); p.circ(5, 11, 1.8, P('#3a3c48')); break;
-        case 'share': p.circ(8, 8, 6, c); p.rect(5, 5, 6, 6, W); p.rect(6, 6, 4, 4, c); break;
+        case 'share': p.circ(8, 8, 6, c); p.rect(5, 5, 6, 6, Wh); p.rect(6, 6, 4, 4, c); break;
         case 'charm': for (let i = 0; i < 5; i++) { const an = i / 5 * Math.PI * 2 - Math.PI / 2; p.line(8, 8, 8 + Math.cos(an) * 6, 8 + Math.sin(an) * 6, c); } p.circ(8, 8, 2.5, l); break;
-        case 'card': p.rect(2, 4, 12, 9, c); p.rect(2, 6, 12, 2, P('#1e1a24')); p.rect(4, 10, 5, 1, W); break;
+        case 'card': p.rect(2, 4, 12, 9, c); p.rect(2, 6, 12, 2, P('#1e1a24')); p.rect(4, 10, 5, 1, Wh); break;
         case 'box': p.rect(2, 4, 12, 10, c); p.rect(2, 4, 12, 2, l); p.rect(7, 4, 2, 10, P('#e8484a')); break;
-        case 'lantern': p.rect(5, 3, 6, 10, P('#3a3c48')); p.rect(6, 4, 4, 8, c); p.rect(6, 4, 2, 3, W); p.rect(7, 1, 2, 2, P('#3a3c48')); break;
+        case 'lantern': p.rect(5, 3, 6, 10, P('#3a3c48')); p.rect(6, 4, 4, 8, c); p.rect(6, 4, 2, 3, Wh); p.rect(7, 1, 2, 2, P('#3a3c48')); break;
         default: p.circ(8, 8, 5, c);
       }
       p.outline(O);
     });
   }
+
+  // compatibility helpers used by older call sites
+  function simple(p, kind, v, frame, theme) {
+    if (kind === 'cave') { const r = G.RAMPS.cave; for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) p.set(x, y, r[3 + (h2(x, y, v) > .7 ? 1 : 0)]); }
+    else if (kind === 'gymfloor') gymFloor(p, 0, 0, theme || '#8aa0b8');
+    else p.fill(P('#202030'));
+  }
   return {
-    get, cache, THEMES, th, tableJoin, grass, flowers, tallgrass, path, water, simple, tree, smallTree, rock, fence, hedge, ledge, cliff, lamp, crystal, wall, furniture, building, itemIcon,
+    get, cache, LEAF, CLIFF, STONE, rockAt,
+    cliffTile, ledgeTile, bridgeTile, woodFloor, tileFloor, gymFloor, carpet, wallTile,
+    tallgrass, flowerSprite, hedgeSprite,
+    broadTree, pineTree, palmTree, deadTree, smallTree, rockSprite, fenceSprite, lampSprite, lanternPost, crystalSprite, prop, furniture, tableJoin,
+    building, itemIcon, simple, atlas, loadWorld,
   };
 })();

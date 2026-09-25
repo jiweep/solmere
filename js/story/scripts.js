@@ -16,11 +16,11 @@
     draw(b) {
       const g = b.createRadialGradient(G.W / 2, G.H / 2, 20, G.W / 2, G.H / 2, 260); g.addColorStop(0, '#2a4a7a'); g.addColorStop(1, '#0a1020');
       b.fillStyle = g; b.fillRect(0, 0, G.W, G.H); this.parts.draw(b);
-      b.fillStyle = 'rgba(255,255,255,.06)'; b.beginPath(); b.ellipse(G.W / 2, 176, 110, 16, 0, 0, Math.PI * 2); b.fill();
-      if (this.show.hale > 0) { b.globalAlpha = this.show.hale; b.drawImage(G.chars.portrait(G.LOOKS.hale, 'point'), G.W / 2 - 40 - (1 - this.show.hale) * 20, 84); b.globalAlpha = 1; }
-      if (this.show.mon > 0) { const im = G.monArt.front('glimmer', false, Math.floor(this.t / 12) % 4); b.globalAlpha = this.show.mon; b.drawImage(im, G.W / 2 + 26, 70 + Math.sin(this.t / 20) * 3); b.globalAlpha = 1; }
-      if (this.show.player > 0) { b.globalAlpha = this.show.player; b.drawImage(G.chars.portrait(G.LOOKS[G.save.look], 'hip'), G.W / 2 - 36, 84); b.globalAlpha = 1; }
-      if (this.show.wren > 0) { b.globalAlpha = this.show.wren; b.drawImage(G.chars.portrait(G.LOOKS.wren, 'point'), G.W / 2 - 36, 84); b.globalAlpha = 1; }
+      b.fillStyle = 'rgba(255,255,255,.06)'; b.beginPath(); b.ellipse(G.W / 2, 160, 110, 16, 0, 0, Math.PI * 2); b.fill();
+      if (this.show.hale > 0) { b.globalAlpha = this.show.hale; { const im = G.chars.portrait(G.LOOKS.hale, 'point'); b.drawImage(im, G.W / 2 - 40 - (im.width - 72) / 2 - (1 - this.show.hale) * 20, 74); }; b.globalAlpha = 1; }
+      if (this.show.mon > 0) { const im = G.monArt.front('glimmer', false, Math.floor(this.t / 12) % 4); b.globalAlpha = this.show.mon; b.drawImage(im, G.W / 2 + 26, 60 + Math.sin(this.t / 20) * 3); b.globalAlpha = 1; }
+      if (this.show.player > 0) { b.globalAlpha = this.show.player; { const im = G.chars.portrait(G.LOOKS[G.save.look], 'hip'); b.drawImage(im, G.W / 2 - 36 - (im.width - 72) / 2, 74); }; b.globalAlpha = 1; }
+      if (this.show.wren > 0) { b.globalAlpha = this.show.wren; { const im = G.chars.portrait(G.LOOKS.wren, 'point'); b.drawImage(im, G.W / 2 - 36 - (im.width - 72) / 2, 74); }; b.globalAlpha = 1; }
     }
   };
   G.pickLook = function () {
@@ -35,7 +35,7 @@
         looks.forEach((k, j) => {
           const x = 52 + j * 72, sel = j === this.i;
           U.panel(x - 4, 30, 64, 116, sel ? 'select' : 'dark', { r: 6 });
-          U.img(G.chars.portrait(G.LOOKS[k], sel ? 'hip' : 'stand'), x - 4, 38 + (sel ? Math.sin(this.t / 8) * 1.5 : 0), { scale: .88 });
+          U.img(G.chars.portrait(G.LOOKS[k], sel ? 'hip' : 'stand'), x - 4 - (G.chars.portrait(G.LOOKS[k], 'stand').width - 72) / 2 * .88, 38 + (sel ? Math.sin(this.t / 8) * 1.5 : 0), { scale: .88 });
           const sheet = G.chars.sheet(G.LOOKS[k]);
           U.img(sheet[['down', 'left', 'up', 'right'][Math.floor(this.t / 30) % 4]][Math.floor(this.t / 10) % 3], x + 20, 122, { scale: 1 });
         });

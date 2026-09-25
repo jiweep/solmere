@@ -17,8 +17,8 @@ G.BattleScene = class {
   // -------------------------------------------------------------- layout
   pos(s, i, n) {
     const mine = s === this.persp;
-    if (n === 1) return mine ? { x: 96, y: 164, sc: 1, back: true } : { x: 282, y: 106, sc: 1, back: false };
-    if (mine) return i === 0 ? { x: 70, y: 166, sc: .92, back: true } : { x: 146, y: 170, sc: .92, back: true };
+    if (n === 1) return mine ? { x: 100, y: 158, sc: 1, back: true } : { x: 282, y: 106, sc: 1, back: false };
+    if (mine) return i === 0 ? { x: 72, y: 160, sc: .8, back: true } : { x: 150, y: 164, sc: .8, back: true };
     return i === 0 ? { x: 252, y: 102, sc: .85, back: false } : { x: 322, y: 96, sc: .85, back: false };
   }
   key(r) { return r.s + ':' + r.i; }
@@ -170,7 +170,7 @@ G.BattleScene = class {
   async playHit(e) {
     const s = this.slot(e.ref); if (!s) return;
     G.audio && G.audio.sfx(e.eff > 1 ? 'hit_super' : e.eff < 1 ? 'hit_weak' : 'hit');
-    if (e.eff > 1 || e.crit) this.shake = 10;
+    if (e.eff > 1 || e.crit) { this.shake = 10; this.punch = { x: s.x, y: s.y - 30, t: 18 }; }
     for (let k = 0; k < 4; k++) { s.blink = k % 2 === 0; await this.wait(4); }
     s.blink = false;
   }
@@ -256,14 +256,20 @@ G.BattleScene = class {
   draw(b) {
     const shx = this.shake ? (G.rand() - .5) * this.shake * .6 : 0, shy = this.shake ? (G.rand() - .5) * this.shake * .4 : 0;
     b.save(); b.translate(Math.round(shx), Math.round(shy));
+    // intro camera: opens pushed in toward the foe's side and pulls back as the field slides in
+    const zi = G.ease.inOutQuad ? G.ease.inOutQuad(Math.min(1, this.intro)) : this.intro;
+    if (zi > .002) { const z = 1 + .18 * zi, cx = G.W / 2 + 70 * zi, cy = G.H * .45; b.translate(cx, cy); b.scale(z, z); b.translate(-cx, -cy); }
+    // impact punch: a quick push toward the target on big hits
+    if (this.punch && this.punch.t > 0) { const k = Math.sin(this.punch.t / 18 * Math.PI) * .05, px = this.punch.x, py = this.punch.y; b.translate(px, py); b.scale(1 + k, 1 + k); b.translate(-px, -py); this.punch.t--; }
     b.drawImage(G.battleBG(this.env, this.o.phase || 'day'), 0, 0);
+    this.drawAmbience(b);
     // platforms
     const n = this.nSlots(), ioff = this.intro * 260;
     const plat = (x, y, w, mine) => {
       const img = G.battlePlatform(this.env, w, mine);
       b.drawImage(img, Math.round(x - img.width / 2 + (mine ? ioff : -ioff)), Math.round(y - img.height / 2 + 2));
     };
-    plat(282, 106, 150, false); plat(96, 166, 180, true);
+    plat(282, 106, 150, false); plat(100, 160, 196, true);
     // hazards (rocks float near foe platform)
     for (const side of [0, 1]) {
       const h = this.hazards[side]; const mine = side === this.persp; const bx = mine ? 96 : 282, by = mine ? 166 : 106;
@@ -275,11 +281,28 @@ G.BattleScene = class {
     // trainers
     for (const t of this.trainers) {
       if (t.alpha <= 0 || !t.look) continue;
-      const img = G.chars.portrait(t.look, t.back ? 'throw' : 'stand', !!t.back);
       b.globalAlpha = t.alpha;
       const sx = t.x + t.off + (t.back ? ioff : -ioff);
-      if (t.back) b.drawImage(img, Math.round(sx - 36 * 1.1), Math.round(t.y - 88 * 1.1 + 10), 72 * 1.1, 88 * 1.1);
-      else { b.save(); b.translate(Math.round(sx + 36), Math.round(t.y - 88)); b.scale(-1, 1); b.drawImage(img, 0, 0); b.restore(); }
+      // generated sprites: idle breathing, action pose while sending out, 4-frame throw for the player
+      const lk = typeof t.look === 'string' ? G.LOOKS[t.look] : t.look;
+      const going = Math.abs(t.off) > .5, prog = Math.min(1, Math.abs(t.off) / 60);
+      const spr = t.back ? G.chars.battleSprite(lk, 'b' + (going ? 1 + Math.min(2, Math.floor(prog * 3)) : 0)) || G.chars.battleSprite(lk, 'b0')
+                         : G.chars.battleSprite(lk, going || t.act > 0 ? 'a' : 'i') || G.chars.battleSprite(lk, 'i');
+      if (spr) {
+        const idle = G.chars.battleSprite(lk, t.back ? 'b0' : 'i') || spr;
+        const breathe = going ? 0 : Math.round(Math.sin((this.t + (t.back ? 20 : 0)) / 22) * .6 + .4);
+        const x = Math.round(sx - idle.width / 2 + (spr.width !== idle.width && !t.back ? (idle.width - spr.width) / 2 : 0));
+        if (t.back) b.drawImage(spr, x, Math.round(t.y + 12 - spr.height + breathe));
+        else {
+          // one-pixel squash from the top reads as breathing without warping the pixels
+          b.drawImage(spr, 0, 0, spr.width, spr.height - breathe, x, Math.round(t.y - spr.height + breathe), spr.width, spr.height - breathe);
+        }
+        if (t.act > 0) t.act--;
+      } else {
+        const img = G.chars.portrait(t.look, t.back ? 'throw' : 'stand', !!t.back);
+        if (t.back) b.drawImage(img, Math.round(sx - 36 * 1.1), Math.round(t.y - 88 * 1.1 + 10), 72 * 1.1, 88 * 1.1);
+        else { b.save(); b.translate(Math.round(sx + 36), Math.round(t.y - 88)); b.scale(-1, 1); b.drawImage(img, 0, 0); b.restore(); }
+      }
       b.globalAlpha = 1;
     }
     // mons: draw foes first then mine
@@ -305,6 +328,36 @@ G.BattleScene = class {
     if (this.dim > 0) { b.fillStyle = `rgba(0,0,10,${this.dim})`; b.fillRect(0, 0, G.W, G.H); for (const k in this.slots) { const s = this.slots[k]; if (s.resonant && s.flash > 0) this.drawMon(b, s, 0); } }
     b.restore();
     if (this.flash > 0) { b.globalAlpha = this.flash / 16; b.fillStyle = this.flashCol; b.fillRect(0, 0, G.W, G.H); b.globalAlpha = 1; }
+  }
+  // living backdrop: drifting clouds, sun shafts, and particles that suit the setting
+  drawAmbience(b) {
+    const E = G.BATTLE_ENVS[this.env] || G.BATTLE_ENVS.grass, ph = this.o.phase || 'day', night = ph === 'night', t = this.t;
+    if (!E.indoor && E.clouds) {
+      if (!G._bclouds) G._bclouds = [0, 1, 2].map(i => {
+        const rng = new G.RNG(300 + i), w = 50 + rng.int(0, 40), p = new G.Painter(w + 10, 18);
+        const L = [G.rgb('#b8c8e0'), G.rgb('#e4ecf8'), G.rgb('#ffffff')];
+        const nk = 5; for (let k = 0; k < nk; k++) { const cx = 6 + (k + .5) * w / nk, cy = 12 - (k > 0 && k < nk - 1 ? rng.range(2, 6) : 0), r = rng.range(6, 9);
+          for (let y = Math.floor(cy - r); y < 16; y++) for (let x = Math.floor(cx - r); x <= cx + r; x++) { if ((x - cx) ** 2 + (y - cy) ** 2 > r * r && y < cy) continue; if (y > 14) continue; p.set(x, y, L[y > 13 ? 0 : (y - cy) < -r * .3 ? 2 : 1]); } }
+        return p.done(); });
+      b.globalAlpha = night ? .25 : .9;
+      G._bclouds.forEach((c, i) => { const x = ((i * 150 - t * (.08 + i * .03)) % (G.W + 120) + G.W + 120) % (G.W + 120) - 90; b.drawImage(c, Math.round(x), 14 + i * 16); });
+      b.globalAlpha = 1;
+    }
+    if (!E.indoor && !night && E.sun) {
+      b.save(); b.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 4; i++) {
+        const life = Math.max(0, Math.sin(t / (300 + i * 70) + i * 2.1)); if (life < .05) continue;
+        const x = 250 + i * 34 + Math.sin(t / 400 + i) * 8, w = 10 + (i % 2) * 10;
+        for (let k = 0; k < 2; k++) { const ww = w * (1 - k * .5); b.fillStyle = `rgba(255,246,210,${(.05 * life * (k ? 1 : .6)).toFixed(3)})`; b.beginPath(); b.moveTo(x - ww / 2, 0); b.lineTo(x + ww / 2, 0); b.lineTo(x + ww / 2 - 90, G.H); b.lineTo(x - ww / 2 - 90, G.H); b.closePath(); b.fill(); }
+      }
+      b.restore();
+    }
+    if (!this.weather && G.settings.fancy !== false) {
+      const env = this.env;
+      if ((env === 'grass' || env === 'forest') && G.rand() < .03) this.parts.add({ x: G.W + 6, y: G.rand() * 120, vx: -.7 - G.rand() * .5, vy: .25 + G.rand() * .2, life: 700, type: 'leaf', size: 1.7, rot: G.rand() * 6, vr: .06, color: G.pick(['#5a9a3a', '#7ab84a', '#c8b04a']), upd: p => { p.vy += Math.sin(p.t / 18) * .01; } });
+      if ((env === 'cave' || env === 'crystal' || env === 'ruins' || env === 'gym' || env === 'league') && G.rand() < .05) this.parts.add({ x: G.rand() * G.W, y: G.rand() * G.H, vx: (G.rand() - .5) * .1, vy: -.06, life: 260, size: 1, color: env === 'crystal' ? '#c8f0ff' : '#fff0c8', alpha: .6, fadeIn: 60, blend: 'lighter' });
+      if (env === 'snow' && G.rand() < .25) this.parts.add({ x: G.rand() * (G.W + 60), y: -4, vx: -.4, vy: .6 + G.rand() * .5, life: 360, size: G.rand() < .3 ? 2 : 1, color: '#ffffff' });
+    }
   }
   drawMon(b, s, ioff) {
     if (!s.visible) return;
@@ -415,14 +468,16 @@ G.BattleScene = class {
 
 // ---------------------------------------------------------------- helpers --
 G.monImgFor = function (sc, s) {
-  const mine = s.side === sc.persp;
-  const img = s.back || mine ? G.monArt.back(s.sp, s.shiny, s.frame) : G.monArt.front(s.sp, s.shiny, s.frame);
+  const mine = s.side === sc.persp, back = !!(s.back || mine);
+  // pixel sprites breathe and sway through a cached idle loop; the vector fallback uses its 4 frames
+  const lt = sc.t * (s.status === 'slp' || s.status === 'frz' ? .35 : 1) + s.slot * 37 + (mine ? 0 : 61);
+  const live = G.monArt.live && G.monArt.live(s.sp, s.shiny, back, lt);
+  const img = live || (back ? G.monArt.back(s.sp, s.shiny, s.frame) : G.monArt.front(s.sp, s.shiny, s.frame));
   if (!img) return null;
-  // idle breathing squash (the frames already animate; add tiny bob)
   const scale = (s.sc || 1) * (s.scale === undefined ? 1 : s.scale);
   const w = img.width * scale, h = img.height * scale;
-  const bob = Math.sin((sc.t + (s.slot * 17)) / 18) * .8;
-  const x = Math.round(s.x - w / 2 + s.offx), y = Math.round(s.y - h + (mine ? 22 : 8) * scale + s.offy + bob);
+  const bob = live ? G.monArt.hover(s.sp, lt) * scale : Math.sin((sc.t + (s.slot * 17)) / 18) * .8;
+  const x = Math.round(s.x - w / 2 + s.offx), y = Math.round(s.y - h + (mine ? (live ? 8 : 22) : 8) * scale + s.offy + bob);
   return { img, x, y, w, h };
 };
 G._bgCache = {};

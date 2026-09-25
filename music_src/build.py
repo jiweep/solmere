@@ -26,7 +26,7 @@ OUT = os.path.join(ROOT, 'music')
 WORK = os.environ.get('SOLMERE_WORK', os.path.join(HERE, '_work'))
 SR = 44100
 MAXTAIL = 10.0   # seconds rendered past the first loop pass, to find where both passes converge
-RENDER = os.path.join(HERE, 'render')
+RENDER = os.path.join(HERE, 'render') if sys.platform == 'darwin' else os.path.join(HERE, 'render_fs.py')
 sys.path.insert(0, HERE)
 import mfw
 import songs  # registers SONGS

@@ -5,8 +5,8 @@ TIDE   the Tidelight / Orrelume motif (D lydian): root, fifth, then the raised f
 WREN   the rival/best-friend motif (F major): bouncy, syncopated major pentatonic.
 CRANE  the villain motif (C minor): chromatic neighbour figure that curls back on itself.
 """
-MAIN_A = ('a4:4 d5:4. e5:8 f#5:4 | a5:2. g5:8 f#5:8 | e5:4. f#5:8 d5:4 b4:4 | d5:2 c#5:2 |'
-          'a4:4 d5:4. e5:8 f#5:4 | b5:2. a5:8 g5:8 | f#5:4. g5:8 a5:4 d6:4 | c#6:2 b5:4 a5:4')
+MAIN_A = ('a4:8 d5:8 -:8 e5:8 f#5:4 a5:4 | -:8 b5:8 a5:8 e5:8 f#5:4 d5:4 | b4:8 d5:8 g5:8 a5:8 b5:4 a5:8 f#5:8 | -:4 e5:8 d5:8 c#5:2 |'
+          'a4:8 d5:8 -:8 e5:8 f#5:4 a5:8 d6:8 | -:4 b5:8 a5:8 g5:4 e5:4 | f#5:8 a5:8 c#6:8 d6:8 -:4 c#6:8 b5:8 | c#6:2. r:4')
 MAIN_CHORDS = 'Dmaj9 | Bm11 | Gmaj9 | A13sus4 A13 | Dmaj9 | Em11 | Bm9 | Gmaj7#11'
 TIDE = 'd5:2 a5:2 | g#5:1'
 WREN = 'c5:8 f5:8 r:8 g5:8 a5:4 c6:4 | a5:8 g5:8 f5:4 d5:4 f5:4'

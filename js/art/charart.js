@@ -130,7 +130,39 @@ G.chars = (function () {
       }
     }
   }
+  // pixel walkers from the walker atlas (12 frames: down, left, right, up x stand/step/step)
+  const WA = { img: null };
+  const TA = { img: null };
+  const loadImg = (atlas, into) => new Promise(res => {
+    if (!atlas || typeof Image === 'undefined') return res();
+    const im = new Image(); im.onload = () => { into.img = im; res(); }; im.onerror = () => res(); im.src = atlas.src;
+  });
+  function load() { return Promise.all([loadImg(G.WALK_ATLAS, WA), loadImg(G.TRAINER_ATLAS, TA)]); }
+  // generated trainer battle sprites (art_src/build_trainers.py): idle 'i', action 'a', player back throw 'b0'..'b3'
+  function hasBattle(a, k) { return !!(a && a.id && TA.img && G.TRAINER_ATLAS.rects[a.id] && G.TRAINER_ATLAS.rects[a.id][k]); }
+  function battleSprite(a, k) {
+    if (!hasBattle(a, k)) return null;
+    const key = 'tb|' + a.id + '|' + k;
+    if (!cache.has(key)) {
+      const [x, y, w, h] = G.TRAINER_ATLAS.rects[a.id][k];
+      const cv = G.makeCanvas(w, h), c = cv.getContext('2d'); c.imageSmoothingEnabled = false;
+      c.drawImage(TA.img, x, y, w, h, 0, 0, w, h); cache.set(key, cv);
+    }
+    return cache.get(key);
+  }
+  function atlasSheet(id) {
+    const A = G.WALK_ATLAS, [x0, y0] = A.rects[id], fw = A.fw, fh = A.fh;
+    const fr = k => { const cv = G.makeCanvas(fw, fh); cv.getContext('2d').drawImage(WA.img, x0 + k * fw, y0, fw, fh, 0, 0, fw, fh); return cv; };
+    const S = {}, dirs = ['down', 'left', 'right', 'up'];
+    dirs.forEach((d, i) => {
+      S[d] = [fr(i * 3), fr(i * 3 + 1), fr(i * 3 + 2)];
+      // surfing: upper body only, from the standing frame
+      const cv = G.makeCanvas(fw, fh - 10); cv.getContext('2d').drawImage(S[d][0], 0, 0, fw, fh - 10, 0, 0, fw, fh - 10); S[d + '_surf'] = [cv];
+    });
+    return S;
+  }
   function sheet(a) {
+    if (a && a.id && WA.img && G.WALK_ATLAS.rects[a.id]) { const k = 'atlas|' + a.id; if (!cache.has(k)) cache.set(k, atlasSheet(a.id)); return cache.get(k); }
     const key = JSON.stringify(a);
     if (cache.has(key)) return cache.get(key);
     const S = {};
@@ -147,6 +179,15 @@ G.chars = (function () {
   function portrait(a, pose = 'stand', back = false) {
     const key = 'por|' + JSON.stringify(a) + pose + back;
     if (cache.has(key)) return cache.get(key);
+    // generated sprite: framed bottom-centre in a 96x88 box (idle and action poses share the anchor)
+    const k = back ? 'b0' : (pose === 'point' || pose === 'throw') ? 'a' : 'i';
+    const spr = battleSprite(a, k) || (k === 'a' ? battleSprite(a, 'i') : null);
+    if (spr) {
+      const cv = G.makeCanvas(96, 88), c = cv.getContext('2d'); c.imageSmoothingEnabled = false;
+      const idle = battleSprite(a, 'i') || spr;
+      c.drawImage(spr, Math.round(48 - idle.width / 2 + (k === 'a' ? (idle.width - spr.width) / 2 : 0)), 88 - spr.height);
+      cv.atlas = true; cache.set(key, cv); return cv;
+    }
     const W = 72, H = 88;
     const cv = G.pix.make(W, H, (c) => {
       const sh = (col, t) => G.col.dark(col, t), lt = (col, t) => G.col.light(col, t);
@@ -226,7 +267,7 @@ G.chars = (function () {
     cache.set(key, cv);
     return cv;
   }
-  return { walker, sheet, portrait, SKIN, HAIR };
+  return { walker, sheet, portrait, battleSprite, hasBattle, load, SKIN, HAIR };
 })();
 
 // ----------------------------------------------------------- appearances --
@@ -294,3 +335,4 @@ G.LOOKS = {
   farmer: { skin: '#c68a5e', hair: '#7a4a2a', hairStyle: 'short', top: '#e8484a', bottom: '#3a5a9a', hat: '#e8c088', hatStyle: 'wide', shoes: '#4a3a2a' },
   officer: { skin: '#e2ae82', hair: '#2a2226', hairStyle: 'short', top: '#2a3a6a', bottom: '#2a3a6a', hat: '#2a3a6a', hatStyle: 'cap', hatMark: '#ffd84a', shoes: '#1e1a24', belt: '#1e1a24' },
 };
+for (const k in G.LOOKS) G.LOOKS[k].id = k;

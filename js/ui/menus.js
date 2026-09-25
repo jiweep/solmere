@@ -74,7 +74,7 @@ G.openTrainerCard = function () {
   return new Promise(res => G.push({
     opaque: true, t: 0, page: 0,
     update(top) { this.t++; if (!top) return; if (G.input.pressed('left') || G.input.pressed('right')) { this.page ^= 1; G.audio && G.audio.sfx('page'); } if (G.input.pressed('b') || G.input.pressed('a')) { G.input.consume('b'); G.input.consume('a'); G.pop(this); res(); } },
-    draw(b) { G.menuBG(b, '#2f6fd6', '#12305e', this.t / 60); const img = G.chars.portrait(G.LOOKS[G.save.look], 'hip'); b.drawImage(img, 290, 60); },
+    draw(b) { G.menuBG(b, '#2f6fd6', '#12305e', this.t / 60); const img = G.chars.portrait(G.LOOKS[G.save.look], 'hip'); b.drawImage(img, 290 - (img.width - 72) / 2, 60); },
     drawUI() {
       const U = G.ui, s = G.save, d = G.dexCount();
       U.panel(10, 10, 270, 196, 'light', { r: 8 });
@@ -102,6 +102,8 @@ G.openOptions = function () {
     { k: 'textSpeed', label: 'Text Speed', vals: [0, 1, 2, 3], names: ['Slow', 'Mid', 'Fast', 'Instant'] },
     { k: 'battleAnims', label: 'Battle Animations', vals: [true, false], names: ['On', 'Off'] },
     { k: 'battleSpeed', label: 'Battle Speed', vals: [1, 1.5, 2, 3], names: ['1x', '1.5x', '2x', '3x'] },
+    { k: 'ffSpeed', label: 'Fast-Forward Speed', vals: [2, 3, 4, 6, 8], names: ['2x', '3x', '4x', '6x', '8x'] },
+    { k: 'ffMode', label: 'Fast-Forward Key (Tab)', vals: ['toggle', 'hold'], names: ['Toggle', 'Hold'] },
     { k: 'battleStyle', label: 'Battle Style', vals: ['switch', 'set'], names: ['Switch', 'Set'], save: true, apply: v => sv.settings.setMode = v === 'set', get: () => sv.settings.setMode ? 'set' : 'switch' },
     { k: 'expShare', label: 'EXP Share', vals: [true, false], names: ['On', 'Off'], save: true, get: () => sv.settings.expShare, apply: v => sv.settings.expShare = v },
     { k: 'hints', label: 'Effectiveness Hints', vals: [true, false], names: ['On', 'Off'] },

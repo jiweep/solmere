@@ -2,12 +2,22 @@
 // ============================================================================
 //  Title screen, new game setup, continue, debug (God Mode) menu
 // ============================================================================
+// stepped pixel glow: concentric rings in a few discrete strengths (no smooth gradients, so light
+// reads as pixel art like the rest of the game)
+G.pxGlow = function (b, x, y, r, rgb, a, steps = 4) {
+  b.save(); b.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < steps; i++) {
+    const rr = Math.round(r * (1 - i / steps));
+    b.fillStyle = `rgba(${rgb},${(a / steps).toFixed(3)})`; b.beginPath(); b.arc(Math.round(x), Math.round(y), rr, 0, Math.PI * 2); b.fill();
+  }
+  b.restore();
+};
 G.TitleScene = class {
   constructor() { this.opaque = true; this.t = 0; this.stage = 'press'; this.parts = new G.Particles(); this.menu = null; }
   enter() { G.audio && G.audio.music('title'); }
   update(top) {
     this.t++; this.parts.update();
-    if (this.t % 3 === 0) this.parts.add({ x: G.rand() * G.W, y: 130 + G.rand() * 20, vx: 0, vy: -.12, life: 200, size: 1, color: '#bff8ff', fadeIn: 60, blend: 'lighter' });
+    if (this.t % 4 === 0) this.parts.add({ x: G.rand() * G.W, y: 150 + G.rand() * 60, vx: -.1, vy: -.18, life: 220, size: 1, color: G.pick(['#bff8ff', '#ffe0b0']), fadeIn: 60, blend: 'lighter' });
     if (!top) return;
     if (this.stage === 'press' && this.t > 40 && G.input.anyKeyThisFrame) { G.input.consumeAll(); G.audio && G.audio.sfx('select'); this.stage = 'menu'; G.run(() => this.mainMenu()); }
   }
@@ -30,49 +40,214 @@ G.TitleScene = class {
       if (id === 'music') { await G.musicRoom(); G.audio && G.audio.music('title'); }
     }
   }
+  // ------------------------------------------------------------------ 3D title scene
+  // A slow camera drifts over a perspective ocean at dusk: the sea is rendered per pixel (waves,
+  // moon glitter, distance fog), the lighthouse is a lit 3D cylinder the camera orbits, and its beam
+  // sweeps in 3D. The opening tilts down from the stars to the horizon.
   draw(b) {
-    const t = this.t;
-    // night sky gradient with aurora
-    const g = b.createLinearGradient(0, 0, 0, 140); g.addColorStop(0, '#081028'); g.addColorStop(.6, '#1a2a5a'); g.addColorStop(1, '#3a4a8a'); b.fillStyle = g; b.fillRect(0, 0, G.W, 140);
-    for (let i = 0; i < 90; i++) { const tw = .4 + .6 * Math.abs(Math.sin(t / 40 + i)); b.fillStyle = `rgba(255,255,255,${tw * .7})`; b.fillRect((i * 97) % G.W, (i * 41) % 110, 1, 1); }
-    b.globalCompositeOperation = 'lighter';
-    for (let k = 0; k < 3; k++) { b.beginPath(); for (let x = 0; x <= G.W; x += 6) { const y = 40 + k * 12 + Math.sin(x / 50 + t / 90 + k) * 10; x ? b.lineTo(x, y) : b.moveTo(x, y); } for (let x = G.W; x >= 0; x -= 6) b.lineTo(x, 70 + k * 12 + Math.sin(x / 40 + t / 80 + k) * 12); b.closePath(); b.fillStyle = ['rgba(90,255,200,.07)', 'rgba(140,120,255,.06)', 'rgba(90,200,255,.05)'][k]; b.fill(); }
-    b.globalCompositeOperation = 'source-over';
-    // moon
-    b.fillStyle = '#f4f0dc'; b.beginPath(); b.arc(310, 34, 12, 0, Math.PI * 2); b.fill();
-    // sea
-    const sg = b.createLinearGradient(0, 130, 0, G.H); sg.addColorStop(0, '#1a3a7a'); sg.addColorStop(1, '#081830'); b.fillStyle = sg; b.fillRect(0, 130, G.W, G.H);
-    for (let i = 0; i < 40; i++) { const y = 134 + (i * 7) % 80, x = ((i * 53) + t * (.3 + (i % 3) * .1)) % (G.W + 40) - 20; b.fillStyle = 'rgba(140,200,255,.18)'; b.fillRect(x, y, 10 + (i % 4) * 4, 1); }
-    // moon reflection
-    for (let y = 134; y < G.H; y += 3) { const w = 6 + Math.sin(y / 3 + t / 10) * 3; b.fillStyle = 'rgba(255,250,220,.18)'; b.fillRect(310 - w, y, w * 2, 1); }
-    // lighthouse on islet
-    b.fillStyle = '#10182a'; b.beginPath(); b.ellipse(70, 134, 46, 8, 0, Math.PI, 0); b.fill();
-    b.fillStyle = '#e8e8f0'; b.fillRect(62, 84, 14, 48); for (let y = 90; y < 132; y += 12) { b.fillStyle = '#d84a4a'; b.fillRect(62, y, 14, 6); }
-    b.fillStyle = '#2a2e38'; b.fillRect(60, 76, 18, 8); b.fillStyle = '#fff4a0'; b.fillRect(63, 77, 12, 6);
-    // lighthouse beam
-    const a = t / 60;
-    b.save(); b.globalCompositeOperation = 'lighter'; b.translate(69, 80);
-    b.rotate(Math.sin(a) * .9);
-    const bg = b.createLinearGradient(0, 0, 260, 0); bg.addColorStop(0, 'rgba(255,245,190,.35)'); bg.addColorStop(1, 'rgba(255,245,190,0)');
-    b.fillStyle = bg; b.beginPath(); b.moveTo(0, 0); b.lineTo(260, -24); b.lineTo(260, 24); b.closePath(); b.fill(); b.restore();
-    // Orrelume silhouette breaching
-    const k = (t % 900) / 900;
-    if (k > .15 && k < .55) {
-      const p = (k - .15) / .4, x = 150 + p * 150, y = 150 - Math.sin(p * Math.PI) * 50;
-      b.save(); b.globalAlpha = Math.sin(p * Math.PI) * .9; b.translate(x, y); b.rotate(-Math.cos(p * Math.PI) * .5);
-      b.drawImage(G.pix.silhouette(G.monArt.front('orrelume', false, 0), '#0a1830'), -48, -48);
+    const t = this.t, W = G.W, H = G.H;
+    const tilt = G.ease.outCubic(Math.min(1, t / 170));
+    const hz = Math.round(330 - (330 - 120) * tilt);            // horizon line
+    const f = 230, camH = 26, camX = Math.sin(t / 700) * 70, camZ = t * .35;
+    const orbit = Math.sin(t / 700) * .5;
+    if (!this._sky) this._sky = this.buildSky();
+    // sky (pre-rendered tall strip, slides as the camera tilts)
+    b.drawImage(this._sky, 0, hz - 330, W, 330);
+    for (let i = 0; i < 110; i++) {
+      const sx = (i * 97 + 13) % W, sy = hz - 330 + (i * 53) % 240;
+      if (sy > hz - 40) continue;
+      const tw = .35 + .65 * Math.abs(Math.sin(t / 37 + i * 1.7));
+      b.fillStyle = `rgba(255,${240 + (i % 3) * 5},${220 + (i % 4) * 10},${tw * (1 - Math.max(0, (sy - (hz - 150)) / 110))})`; b.fillRect(sx, sy, i % 9 === 0 ? 2 : 1, i % 9 === 0 ? 2 : 1);
+    }
+    // moon + glow
+    const mx = 292 - camX * .15, my = hz - 78;
+    b.save(); b.globalCompositeOperation = 'lighter';
+    b.restore(); G.pxGlow(b, mx, my, 30, '255,236,200', .18, 3); b.save();
+    b.restore();
+    b.fillStyle = '#fff6dc'; b.beginPath(); b.arc(Math.round(mx), Math.round(my), 11, 0, Math.PI * 2); b.fill();
+    b.fillStyle = 'rgba(210,200,170,.55)'; b.fillRect(Math.round(mx) - 4, Math.round(my) - 3, 3, 3); b.fillRect(Math.round(mx) + 3, Math.round(my) + 2, 4, 2);
+    // drifting cloud layers (parallax)
+    if (!this._clouds) this._clouds = [0, 1, 2, 3, 4].map(i => this.buildCloud(i));
+    this._clouds.forEach((c, i) => {
+      const depth = .25 + (i % 3) * .2, x = ((i * 131 - camX * depth - t * .06 * (1 + i % 2)) % (W + 160) + W + 160) % (W + 160) - 110;
+      b.globalAlpha = .85; b.drawImage(c, Math.round(x), Math.round(hz - 118 + i * 17)); b.globalAlpha = 1;
+    });
+    // distant islands and mountains on the horizon
+    if (!this._ridge) this._ridge = this.buildRidge();
+    const rx = -((camX * .5) % 256 + 256) % 256;
+    for (let k = -1; k < 3; k++) b.drawImage(this._ridge, Math.round(rx + k * 256), hz - this._ridge.height + 1);
+    // the sea, per pixel
+    this.drawSea(b, hz, f, camH, camX, camZ, mx, t);
+    // lighthouse island (3D): world position, projected
+    const LX = -95, LZ = 330, lz = LZ, s = f / lz;
+    const bx = W / 2 + (LX - camX) * s, by = hz + camH * s;
+    this.drawIsland(b, bx, by, s, orbit, t);
+    // Orrelume breaching far out
+    const k = (t % 1100) / 1100;
+    if (k > .2 && k < .5) {
+      const p = (k - .2) / .3, z = 520, sz = f / z, wx = 80 + p * 90;
+      const x = W / 2 + (wx - camX) * sz, y = hz + camH * sz - Math.sin(p * Math.PI) * 26;
+      b.save(); b.globalAlpha = Math.sin(p * Math.PI) * .9; b.translate(x, y); b.rotate(-Math.cos(p * Math.PI) * .5); b.scale(.55, .55);
+      b.drawImage(G.pix.silhouette(G.monArt.front('orrelume', false, 0), '#101838'), -48, -80);
       b.restore();
-      if (p > .9 || p < .1) for (let i = 0; i < 3; i++) this.parts.add({ x, y: 140, vx: (G.rand() - .5) * 2, vy: -1 - G.rand() * 2, ay: .08, life: 30, size: 1.5, color: '#bfe8ff' });
+      if ((p > .92 || p < .08) && t % 2 === 0) for (let i = 0; i < 2; i++) this.parts.add({ x, y: hz + camH * sz, vx: (G.rand() - .5) * 1.4, vy: -.6 - G.rand() * 1.2, ay: .05, life: 34, size: 1, color: '#d8f4ff' });
     }
     this.parts.draw(b);
+    // vignette
+    // stepped vignette: three hard-edged frames
+    for (let i = 0; i < 3; i++) { b.fillStyle = 'rgba(0,0,12,.12)'; const m = 4 + i * 5; b.fillRect(0, 0, W, m); b.fillRect(0, H - m, W, m); b.fillRect(0, 0, m, H); b.fillRect(W - m, 0, m, H); }
+  }
+  buildSky() {
+    // banded dusk sky with dithered seams: navy -> violet -> rose -> amber at the horizon
+    const W = G.W, Hs = 330, p = new G.Painter(W, Hs);
+    const stops = [[0, '#060a1e'], [.45, '#1a1c4a'], [.68, '#4a2e6e'], [.84, '#a0507a'], [.94, '#e88a6a'], [1, '#ffc27a']].map(([k, c]) => [k, G.rgb(c)]);
+    const bands = 26;
+    const col = (u) => { for (let i = 1; i < stops.length; i++) if (u <= stops[i][0]) { const [k0, c0] = stops[i - 1], [k1, c1] = stops[i]; return G.mixc(c0, c1, (u - k0) / (k1 - k0)); } return stops[stops.length - 1][1]; };
+    for (let y = 0; y < Hs; y++) {
+      const u = y / (Hs - 1), q = Math.floor(u * bands), fr = u * bands - q;
+      const c0 = col(q / bands), c1 = col(Math.min(1, (q + 1) / bands));
+      for (let x = 0; x < W; x++) p.set(x, y, fr > .78 && ((x + y) & 1) ? c1 : c0);
+    }
+    return p.done();
+  }
+  buildCloud(i) {
+    const rng = new G.RNG(900 + i), w = 70 + rng.int(0, 60), p = new G.Painter(w + 10, 26);
+    const L = [G.rgb('#3a2c5a'), G.rgb('#6a4a7e'), G.rgb('#b8708a'), G.rgb('#f0a080')];
+    const n = 4 + rng.int(0, 3);
+    for (let k = 0; k < n; k++) {
+      const cx = 8 + (k + .5) * w / n + rng.range(-4, 4), cy = 18 - rng.range(0, 7), r = rng.range(5, 9);
+      for (let y = Math.floor(cy - r); y < 24; y++) for (let x = Math.floor(cx - r); x <= cx + r; x++) {
+        if ((x - cx) ** 2 + (y - cy) ** 2 > r * r && y < cy) continue;
+        if (y > 21) continue;
+        const lit = (y - cy) < -r * .4 ? 3 : (y - cy) < 0 ? 2 : y > 19 ? 0 : 1;
+        p.set(x, y, L[lit]);
+      }
+    }
+    return p.done();
+  }
+  buildIsle(w, h) {
+    // rocky islet in pixel art: dark outline, lit upper-left faces, a grassy crown with tufts
+    const W = w + 8, H = h + 10, p = new G.Painter(W, H), cx = W / 2, cy = h * .62;
+    const R = G.ramp(['#0e0c18', '#1e1a2c', '#2e2840', '#433a58', '#5a4e6e']), Gr = G.ramp(['#1a3a2c', '#24503a', '#326a44', '#44844e']);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const nx = (x - cx) / (w * .5), ny = (y - cy) / (h * .62);
+      const top = ny < 0 ? nx * nx + (ny * 1.6) ** 2 : nx * nx + (ny * .9) ** 2;
+      if (top > 1) continue;
+      const lit = -nx * .6 - ny * .8 + (G.h2(x >> 1, y >> 1, 3) - .5) * .5;
+      let c = R[lit > .5 ? 4 : lit > .1 ? 3 : lit > -.3 ? 2 : 1];
+      if (ny < -.25 && top < .8) c = Gr[lit > .6 ? 3 : lit > .1 ? 2 : 1];
+      if (top > .9) c = R[0];
+      p.set(x, y, c);
+    }
+    for (let i = 0; i < 14; i++) { const x = Math.round(cx - w * .3 + i * w * .045), y = Math.round(cy - h * .5 + Math.abs(i - 7) * .35); p.set(x, y - 1, Gr[3]); p.set(x + 1, y - 2, Gr[2]); }
+    return p.done();
+  }
+  buildRidge() {
+    const p = new G.Painter(256, 40), A = G.rgb('#1c1838'), B = G.rgb('#2c2450'), C = G.rgb('#4a3060');
+    for (let x = 0; x < 256; x++) {
+      const h = Math.round(6 + G.fbm(x / 34, 3, 3, 3) * 26 * (x > 60 && x < 190 ? 1 : .45));
+      for (let y = 40 - h; y < 40; y++) p.set(x, y, y < 40 - h + 2 ? C : (G.h2(x >> 1, y >> 1, 4) > .75 ? B : A));
+    }
+    return p.done();
+  }
+  drawSea(b, hz, f, camH, camX, camZ, mx, t) {
+    const W = G.W, H = G.H, top = Math.max(0, hz), rows = H - top;
+    if (rows <= 0) return;
+    if (!this._seaImg || this._seaImg.height !== rows) { this._seaCv = G.makeCanvas(W, rows); this._seaCx = this._seaCv.getContext('2d'); this._seaImg = this._seaCx.createImageData(W, rows); }
+    const d = this._seaImg.data;
+    const R = [[10, 18, 48], [14, 30, 74], [22, 48, 104], [36, 72, 136], [60, 104, 168], [96, 144, 196]];
+    const fog = [96, 64, 110], glit = [255, 236, 190];
+    const tt = t * .045;
+    for (let j = 0; j < rows; j++) {
+      const y = top + j, dy = y - hz + .5;
+      if (dy <= 0) continue;
+      const z = f * camH / dy, wz = camZ + z, fogk = Math.min(1, z / 900);
+      for (let x = 0; x < W; x++) {
+        const wx = camX + (x - W / 2) * z / f;
+        // slope of a few crossing swells gives the shading
+        const s1 = Math.cos(wz * .31 + wx * .07 - tt * 2), s2 = Math.cos(wz * .52 - wx * .23 + tt * 2.6), s3 = Math.cos(wx * .6 + wz * .17 + tt * 1.4);
+        const sl = s1 * .55 + s2 * .3 + s3 * .15;
+        let k = Math.max(0, Math.min(5, Math.floor(2.4 + sl * 1.9 + (1 - fogk) * 1.2)));
+        let c = R[k];
+        // moon glitter: a column under the moon, broken up by the swell crests
+        const dxm = Math.abs(x - mx) / (5 + dy * .22);
+        const o = (j * W + x) * 4;
+        let r = c[0], g = c[1], bl = c[2];
+        if (dxm < 1 && sl > .35 + dxm * .5 && ((x + j) % 2 === 0 || dxm < .4)) { r = glit[0]; g = glit[1]; bl = glit[2]; }
+        const fk = fogk * .8;
+        d[o] = r + (fog[0] - r) * fk; d[o + 1] = g + (fog[1] - g) * fk; d[o + 2] = bl + (fog[2] - bl) * fk; d[o + 3] = 255;
+      }
+    }
+    this._seaCx.putImageData(this._seaImg, 0, 0);
+    b.drawImage(this._seaCv, 0, top);
+  }
+  drawIsland(b, bx, by, s, orbit, t) {
+    const sc = s * 1.0;
+    const iw = 150 * sc, ih = 28 * sc;
+    if (!this._isle) this._isle = this.buildIsle(Math.round(iw), Math.round(ih));
+    b.drawImage(this._isle, Math.round(bx - this._isle.width / 2), Math.round(by - ih * .62));
+    // shore foam flickers along the waterline
+    for (let i = 0; i < 26; i++) { const a = i / 26 * Math.PI * 2, fx = bx + Math.cos(a) * iw * .6, fy = by + ih * .32 + Math.sin(a) * ih * .18; if (Math.sin(t / 9 + i * 1.7) > .3) { b.fillStyle = '#d8ecff'; b.fillRect(Math.round(fx), Math.round(fy), 2, 1); } }
+    // lighthouse: a lit cylinder with red/white bands; the lit side follows the camera orbit
+    const r = 9 * sc, h = 78 * sc, x0 = bx + 6 * sc, yb = by - ih * .35, yt = yb - h;
+    const light = -.9 + orbit;   // sun/moon light direction relative to the view
+    for (let px = Math.floor(x0 - r); px <= x0 + r; px++) {
+      const u = (px + .5 - x0) / r; if (Math.abs(u) > 1) continue;
+      const th = Math.asin(u), I = Math.max(0, Math.cos(th - light)) * .75 + .25;
+      const taper = 1 - .18 * 0;   // straight tower
+      for (let py = Math.floor(yt); py < yb; py++) {
+        const v = (py - yt) / h, band = Math.floor(v * 6) % 2;
+        const base = band ? [196, 60, 64] : [232, 228, 236];
+        const k = I * (1 - v * .15);
+        b.fillStyle = `rgb(${base[0] * k | 0},${base[1] * k | 0},${base[2] * k | 0})`; b.fillRect(px, py, 1, 1);
+      }
+    }
+    b.fillStyle = '#12101c'; b.fillRect(Math.floor(x0 - r) - 1, Math.floor(yt), 1, Math.ceil(yb - yt)); b.fillRect(Math.floor(x0 + r) + 1, Math.floor(yt), 1, Math.ceil(yb - yt));
+    // gallery and lamp room
+    b.fillStyle = '#1e222e'; b.fillRect(Math.round(x0 - r - 2), Math.round(yt - 2), Math.round(r * 2 + 4), 3);
+    const lampY = yt - 8 * sc;
+    b.fillStyle = '#2a2e3a'; b.fillRect(Math.round(x0 - r * .7), Math.round(lampY - 2), Math.round(r * 1.4), Math.round(8 * sc));
+    b.fillStyle = '#fff2a8'; b.fillRect(Math.round(x0 - r * .45), Math.round(lampY), Math.round(r * .9), Math.round(5 * sc));
+    b.fillStyle = '#a83a3a'; b.beginPath(); b.moveTo(x0 - r * .9, lampY - 2); b.lineTo(x0, lampY - 9 * sc); b.lineTo(x0 + r * .9, lampY - 2); b.fill();
+    // rotating beam, projected: a wedge whose far end sweeps around the tower in 3D
+    const phi = t / 55, dirx = Math.cos(phi), dirz = Math.sin(phi);
+    const towardCam = Math.max(0, -dirz);
+    const L = 260, ex = x0 + dirx * L * (1 - Math.max(0, dirz) * .6), ey = lampY + 3 + dirz * 18;
+    b.save(); b.globalCompositeOperation = 'lighter';
+    const bw = 10 + 26 * (1 - Math.abs(dirz)) + 30 * towardCam;
+    for (let i = 0; i < 3; i++) {
+      const wk = 1 - i * .3, lk = 1 - i * .28;
+      b.fillStyle = `rgba(255,244,190,${(.1 + towardCam * .1).toFixed(3)})`;
+      b.beginPath(); b.moveTo(x0, lampY + 2); b.lineTo(x0 + (ex - x0) * lk, lampY + 2 + (ey - lampY - 2) * lk - bw * wk * lk); b.lineTo(x0 + (ex - x0) * lk, lampY + 2 + (ey - lampY - 2) * lk + bw * wk * lk); b.closePath(); b.fill();
+    }
+    b.restore();
+    // flare when the beam faces the camera; the lamp's own halo
+    const fl = Math.pow(towardCam, 6);
+    if (fl > .02) G.pxGlow(b, x0, lampY + 2, 16 + fl * 22, '255,248,210', .55 * fl, 4);
+    G.pxGlow(b, x0, lampY + 2, 12, '255,240,170', .7, 3);
+    b.save();
+    b.restore();
+    // warm windows of the keeper's cottage
+    b.fillStyle = '#3a2a2a'; b.fillRect(Math.round(bx - 40 * sc), Math.round(by - ih * .45 - 9 * sc), Math.round(20 * sc), Math.round(10 * sc));
+    b.fillStyle = '#ffd27a'; b.fillRect(Math.round(bx - 36 * sc), Math.round(by - ih * .45 - 6 * sc), 2, 2); b.fillRect(Math.round(bx - 28 * sc), Math.round(by - ih * .45 - 6 * sc), 2, 2);
   }
   drawUI() {
     const U = G.ui, t = this.t, k = Math.min(1, t / 60);
     const y = 26 - (1 - G.ease.outCubic(k)) * 30;
-    U.text('SOLMERE', G.W / 2 + 1.5, y + 1.5, { size: 38, weight: 900, align: 'center', color: '#0a1428', shadow: false, alpha: k });
-    U.text('SOLMERE', G.W / 2, y, { size: 38, weight: 900, align: 'center', color: '#fff4d0', shadow: false, alpha: k, outline: '#3a2a10', outlineW: 2.4 });
+    const c = U.c, S = G.gfx.S;
+    c.save(); c.globalAlpha = k;
+    U.font(38, 900); c.textAlign = 'center'; c.textBaseline = 'top';
+    // extruded depth: stacked copies stepping down-right, darkening
+    for (let d = 5; d >= 1; d--) { c.fillStyle = d > 3 ? '#0a0e22' : '#3a2448'; c.fillText('SOLMERE', U.X(G.W / 2 + d * .5), U.Y(y + d * .7)); }
+    c.lineJoin = 'round'; c.lineWidth = S * 2.4; c.strokeStyle = '#2a1830'; c.strokeText('SOLMERE', U.X(G.W / 2), U.Y(y));
+    // face: warm gradient with a light band sweeping across every few seconds
+    const sh = ((t % 300) / 300) * 1.6 - .3;
+    const g = c.createLinearGradient(U.X(G.W / 2 - 110), U.Y(y), U.X(G.W / 2 + 110), U.Y(y + 38));
+    g.addColorStop(0, '#ffe7a8'); g.addColorStop(Math.max(0, Math.min(1, sh - .06)), '#ffd27a'); g.addColorStop(Math.max(0, Math.min(1, sh)), '#fffdf4'); g.addColorStop(Math.max(0, Math.min(1, sh + .06)), '#ffc766'); g.addColorStop(1, '#f59a58');
+    c.fillStyle = g; c.fillText('SOLMERE', U.X(G.W / 2), U.Y(y));
+    c.restore();
     U.text('— TIDELIGHT —', G.W / 2, y + 44, { size: 9, weight: 800, align: 'center', color: '#8af0e0', alpha: k, outline: 'rgba(0,0,0,.5)' });
-    if (this.stage === 'press' && t > 40 && Math.floor(t / 30) % 2 === 0) U.text('Press Z / Enter', G.W / 2, 150, { size: 8, weight: 800, align: 'center', color: '#fff', outline: 'rgba(0,0,0,.6)' });
+    if (this.stage === 'press' && t > 40 && Math.floor(t / 30) % 2 === 0) U.text('Press Enter', G.W / 2, 150, { size: 8, weight: 800, align: 'center', color: '#fff', outline: 'rgba(0,0,0,.6)' });
     U.text('v' + G.VERSION + '  ·  an original monster-taming adventure', G.W - 6, G.H - 9, { size: 4.8, align: 'right', color: 'rgba(255,255,255,.5)' });
   }
 };
