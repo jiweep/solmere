@@ -7,28 +7,33 @@
   const D = G.defMap;
   // -------------------------------------------------------------- DUSKMERE
   (function () {
+    // Lantern Hill (houses, Mart, the path to the Ruins) sits above a mossy retaining wall; the Haven,
+    // the Gym and the lamplit lakeside promenade are below, the bridge south crosses the mere
     const m = new G.MB(30, 26, '.', 111);
     m.forest(2, 'T', { skip: (x, y) => (x >= 13 && x <= 16 && y <= 2) || y >= 20 });
     m.rect(0, 20, 30, 1, '.'); m.rect(0, 21, 30, 5, '~'); m.put(0, 20, 'T'); m.put(29, 20, 'T');
     m.rect(23, 0, 7, 4, '#'); m.put(26, 3, 'c');
-    m.path([[13, 0], [13, 19]], ':', 4); m.path([[3, 11], [27, 11]], ':', 2); m.path([[26, 4], [26, 11]], ':', 2);
+    m.rect(2, 2, 26, 9, '.'); m.rect(23, 2, 5, 2, '#'); m.put(26, 3, 'c');
+    m.path([[13, 0], [13, 19]], ':', 4); m.path([[26, 4], [26, 12]], ':', 2); m.rect(3, 9, 22, 1, ':');
+    m.rect(2, 11, 26, 2, '#'); m.rect(14, 11, 2, 2, ':'); m.rect(26, 11, 2, 2, ':');
+    m.rect(9, 13, 19, 1, ':'); m.rect(2, 20, 26, 1, 'b');
     m.rect(13, 20, 4, 4, 'I');
     for (const [x, y] of [[12, 6], [17, 6], [12, 15], [17, 15], [8, 18], [21, 19], [3, 19], [27, 18]]) m.put(x, y, 'j');
-    m.rect(5, 19, 4, 1, 'f'); m.rect(19, 9, 3, 1, 'f');
+    m.rect(5, 19, 4, 1, 'f'); m.rect(19, 8, 3, 1, 'f'); m.put(2, 10, 'y'); m.put(20, 10, 'u');
     D({ id: 'duskmere', name: 'Duskmere', subtitle: 'Lanterns on the mist', town: 'duskmere', area: 'duskmere', music: 'duskmere', theme: 'dusk', weather: 'mist', env: 'dusk', grid: m.done(),
       conn: { n: { map: 'route4', off: 3 }, s: { map: 'route5', off: 0 } },
       warps: [{ x: 26, y: 3, to: 'ruins', tx: 11, ty: 19, dir: 'up', kind: 'cave' }],
       enc: { surf: { lv: [26, 30], list: [['lillipad', 40], ['mireel', 30], ['jellume', 20], ['flopfin', 10]] }, fish: { lv: [20, 28], list: [['flopfin', 60], ['mireel', 40]] }, fishpro: { lv: [26, 32], list: [['mireel', 40], ['lillipad', 30], ['riptalon', 10], ['jellume', 20]] } },
       objs: [
-        G.haven(3, 13), G.bld('mart', 21, 6, 5, 4, { roof: 'purple', door: 2, to: 'mart', tx: 6, ty: 6 }),
-        G.bld('gym', 19, 13, 8, 5, { roof: 'purple', accent: '#8a5ac8', door: 4, to: 'dusk_gym', tx: 7, ty: 14 }),
-        G.house(3, 5, 'dusk_house1', 'purple'), G.house(8, 5, 'dusk_house2', 'gray'),
-        { type: 'sign', x: 11, y: 12, text: '{p}DUSKMERE{w}\\n"Where the lanterns remember."' },
-        { type: 'sign', x: 27, y: 12, text: '↑ Ruins of Echo — Please respect the spirits.' },
+        G.haven(3, 14), G.bld('mart', 20, 4, 5, 4, { roof: 'purple', door: 2, to: 'mart', tx: 6, ty: 6 }),
+        G.bld('gym', 19, 14, 8, 5, { roof: 'purple', accent: '#8a5ac8', door: 4, to: 'dusk_gym', tx: 7, ty: 14 }),
+        G.house(2, 4, 'dusk_house1', 'purple'), G.house(7, 4, 'dusk_house2', 'gray'),
+        { type: 'sign', x: 11, y: 14, text: '{p}DUSKMERE{w}\\n"Where the lanterns remember."' },
+        { type: 'sign', x: 25, y: 9, text: '↑ Ruins of Echo — Please respect the spirits.' },
         { type: 'sign', x: 18, y: 18, text: '{p}DUSKMERE GYM{w} — Warden: Mireille\\n"Bring your own light."' },
-        { type: 'npc', id: 'dm_gguard', x: 23, y: 18, look: 'mystic', dir: 'down', script: 'dusk_gym_guard', cond: '!ruins_done' },
+        { type: 'npc', id: 'dm_gguard', x: 23, y: 19, look: 'mystic', dir: 'down', script: 'dusk_gym_guard', cond: '!ruins_done' },
         { type: 'npc', id: 'dm_ode', x: 11, y: 19, look: 'oldman', dir: 'down', script: 'lamplighter' },
-        { type: 'npc', id: 'dm_w1', x: 20, y: 10, look: 'woman', dir: 'left', move: 'wander', radius: 2, text: 'The mist never lifts in Duskmere. We light lanterns so lost spirits can find their way home.' },
+        { type: 'npc', id: 'dm_w1', x: 18, y: 9, look: 'woman', dir: 'left', move: 'wander', radius: 2, text: 'The mist never lifts in Duskmere. We light lanterns so lost spirits can find their way home.' },
         { type: 'npc', id: 'dm_rodguy', x: 16, y: 23, look: 'fisher', dir: 'down', script: 'prorod_guy' },
         { type: 'npc', id: 'dm_kid', x: 10, y: 17, look: 'girl', dir: 'up', move: 'look', text: 'My grandma says Wispurr are the ghosts of cats who loved their families too much to leave. I think that\'s nice.' },
         { type: 'sign', id: 'lant1', x: 12, y: 6, invisible: true, script: 'spirit_lantern', lantern: 1 },

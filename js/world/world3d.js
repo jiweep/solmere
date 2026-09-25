@@ -12,7 +12,7 @@ G.W3 = (function () {
   const T = window.THREE;
   const LEVEL_H = 1.1;          // height of one cliff level, in tiles
   const RES = 2;                // internal resolution multiplier over 384x216
-  let camY = null;
+  let camY = null, night = 0;
   let R = null, cv = null, scene, camera, sun, hemi, cache = new Map(), cur = null, ok = !!T;
 
   // ------------------------------------------------------------- setup
@@ -259,6 +259,7 @@ G.W3 = (function () {
           group.add(m);
         }
       }
+      if (c && c.light && inside) (group.userData.lights || (group.userData.lights = [])).push({ x: x + .5, z: y + .6, y: hv.at(x + .5, y + .5), kind: c.light, ground: !c.o });
       if (!c || !c.o || c.o === 'table' || c.o === 'bed' || c.o === 'rug') continue;
       if (c.cut || c.smash || c.push || c.solidIf) continue;   // stateful props stay dynamic (drawn as ents below)
       let oi; try { oi = G.objImg(rr ? rr.map : map, c, 0); } catch (e) { oi = null; }
@@ -322,6 +323,44 @@ G.W3 = (function () {
     }
   }
 
+  // ------------------------------------------------------------- lights
+  // every lamp, lantern, crystal and lava cell gets an additive glow sprite (faded in by night, lava
+  // always on); a small pool of point lights follows the nearest ones so they light the ground
+  const LIGHT_COL = { lamp: 0xffc47a, lantern: 0xffb060, crystal: 0x7ae0ff, lava: 0xff6a2a, screen: 0x7ab0ff };
+  const LIGHT_LIFT = { lamp: 1.9, lantern: 1.25, crystal: .7, lava: .15, screen: .8 };
+  let glowTex = null;
+  function glowTexture() {
+    if (glowTex) return glowTex;
+    const c = G.makeCanvas(64, 64), x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.18, 'rgba(255,255,255,.55)'); g.addColorStop(.5, 'rgba(255,255,255,.14)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+    glowTex = new T.CanvasTexture(c); glowTex.colorSpace = T.SRGBColorSpace;
+    return glowTex;
+  }
+  function buildGlows(group) {
+    const L = group.userData.lights || []; group.userData.glows = [];
+    for (const l of L) {
+      const mat = new T.SpriteMaterial({ map: glowTexture(), color: LIGHT_COL[l.kind] || 0xffc47a, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 });
+      const sp = new T.Sprite(mat), sz = l.kind === 'lava' ? 2.2 : l.kind === 'crystal' ? 1.8 : 1.5;
+      sp.scale.set(sz, sz, 1); sp.position.set(l.x, l.y + (LIGHT_LIFT[l.kind] || 1), l.z - (l.ground ? 0 : .1));
+      sp.userData.l = l; group.add(sp); group.userData.glows.push(sp);
+    }
+  }
+  const POOL = [];
+  function updateLights(E, fx, fz) {
+    if (!POOL.length) for (let i = 0; i < 6; i++) { const pl = new T.PointLight(0xffc47a, 0, 6, 1.6); scene.add(pl); POOL.push(pl); }
+    const glows = E.group.userData.glows || [];
+    for (const g of glows) { const on = g.userData.l.kind === 'lava' ? .75 : night * .9; g.material.opacity = on * (.85 + Math.sin(G.realTime * 3 + g.position.x * 1.7) * .15); }
+    const near = glows.filter(g => g.userData.l.kind === 'lava' || night > .05).map(g => [g, (g.position.x - fx) ** 2 + (g.position.z - fz) ** 2]).sort((a, b) => a[1] - b[1]).slice(0, POOL.length);
+    POOL.forEach((pl, i) => {
+      const n = near[i];
+      if (!n || n[1] > 400) { pl.intensity = 0; return; }
+      const l = n[0].userData.l; pl.color.setHex(LIGHT_COL[l.kind] || 0xffc47a);
+      pl.position.set(l.x, l.y + (LIGHT_LIFT[l.kind] || 1) * .8, l.z);
+      pl.intensity = (l.kind === 'lava' ? 1.2 : night * 2.2) * (.9 + Math.sin(G.realTime * 4 + i) * .1);
+    });
+  }
+
   // ------------------------------------------------------------- build / cache
   function build(map) {
     if (cache.has(map.id)) return cache.get(map.id);
@@ -329,6 +368,7 @@ G.W3 = (function () {
     buildTerrain(map, hv, group);
     buildProps(map, hv, group);
     buildBuildings(map, hv, group);
+    buildGlows(group);
     const dyn = new T.Group(); group.add(dyn);
     const entry = { map, group, hv, dyn, sprites: new Map() };
     cache.set(map.id, entry);
@@ -368,6 +408,7 @@ G.W3 = (function () {
     const indoor = m.type !== 'outdoor';
     const day = indoor ? 1 : h >= 7 && h <= 17 ? 1 : h > 17 && h < 19.5 ? 1 - (h - 17) / 2.5 : h > 5 && h < 7 ? (h - 5) / 2 : 0;
     const dusk = !indoor && ((h > 16.5 && h < 20) || (h > 5 && h < 7.5));
+    night = indoor ? 0 : 1 - day;
     sun.intensity = .35 + 1.45 * day; sun.color.set(dusk ? 0xffb070 : day > .5 ? 0xfff0d8 : 0x9ab0ff);
     hemi.intensity = .45 + .55 * day; hemi.color.set(day > .3 ? 0xdfeeff : 0x5a6aa8); hemi.groundColor.set(day > .3 ? 0x4a5a3a : 0x1a1e30);
     const sky = indoor ? 0x08080e : dusk ? 0xe8a88a : day > .3 ? 0x9cc8f0 : 0x0a1030;
@@ -391,6 +432,7 @@ G.W3 = (function () {
       if (m.material.transparent !== tr) { m.material.transparent = tr; m.material.depthWrite = !tr; m.material.alphaTest = tr ? .12 : .5; m.material.needsUpdate = true; }
       m.material.opacity = tr ? f : 1;
     }
+    updateLights(cur, fx, fz);
     camY = camY === null || Math.abs(camY - fy) > 4 ? fy : camY + (fy - camY) * .12;
     const dist = 30, cy = Math.sin(PITCH) * dist, cz = Math.cos(PITCH) * dist;
     camera.position.set(fx, camY + cy, fz + cz); camera.lookAt(fx, camY + .6, fz);

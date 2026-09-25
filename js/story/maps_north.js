@@ -179,26 +179,36 @@
   })();
   // ----------------------------------------------------------- CINDERVALE
   (function () {
+    // terraced up the volcano's flank: the Forge on the top shelf between lava runs, the Haven, Mart
+    // and the cave mouth on the middle shelf, the hot springs and homes on the valley floor
     const m = new G.MB(30, 26, 'a', 91);
     m.forest(2, 'X', { skip: (x, y) => (x <= 1 && y >= 11 && y <= 13) || (x >= 13 && x <= 16 && y >= 24) });
     m.rect(0, 0, 30, 2, '#'); m.rect(0, 10, 2, 5, '#'); m.rect(0, 11, 2, 3, 'c'); m.put(0, 12, 'c');
-    m.path([[2, 12], [13, 12]], ':', 2); m.path([[13, 5], [13, 25]], ':', 4); m.path([[4, 17], [26, 17]], ':', 2); m.path([[17, 9], [26, 9]], ':', 2);
-    // hot springs
-    m.put(26, 20, 'O'); m.put(27, 20, 'Q');
-    m.rect(3, 3, 1, 1, 'm'); m.rect(26, 3, 2, 1, 'm'); m.put(10, 22, 'm'); m.rect(3, 23, 7, 1, 'a');
-    m.put(12, 15, 'l'); m.put(18, 15, 'l'); m.put(12, 8, 'l');
+    m.rect(2, 2, 26, 7, 'a'); m.rect(2, 11, 26, 7, 'a'); m.rect(2, 20, 26, 4, 'a');
+    // top shelf: lava runs either side of the Forge
+    m.rect(13, 2, 4, 7, ':'); m.rect(3, 3, 1, 1, 'm'); m.rect(26, 3, 2, 1, 'm'); m.rect(11, 3, 1, 4, 'm'); m.rect(27, 5, 1, 3, 'm');
+    m.put(12, 8, 'l'); m.put(17, 8, 'l'); m.put(9, 5, 'j');
+    // the two shelf walls, each climbed by a stepped ramp on the main road
+    m.rect(2, 9, 26, 2, '#'); m.rect(14, 9, 2, 2, ':');
+    m.rect(2, 18, 26, 2, '#'); m.rect(14, 18, 2, 2, ':');
+    // middle shelf
+    m.path([[2, 12], [13, 12]], ':', 2); m.rect(13, 11, 4, 7, ':'); m.rect(4, 16, 23, 2, ':');
+    m.put(12, 15, 'l'); m.put(18, 15, 'l'); m.put(26, 12, 'j');
+    // valley floor: springs, homes, the road south
+    m.rect(13, 20, 4, 6, ':'); m.put(26, 20, 'O'); m.put(27, 20, 'Q'); m.put(10, 22, 'm'); m.rect(3, 24, 7, 1, 'a');
+    m.put(12, 21, 'l'); m.put(18, 21, 'l');
     D({ id: 'cindervale', name: 'Cindervale', subtitle: 'Forge of the north', town: 'cindervale', area: 'cindervale', music: 'cindervale', theme: 'ash', weather: 'ash', env: 'volcano', grid: m.done(),
       conn: { s: { map: 'route4', off: 3 } },
       warps: [{ x: 0, y: 12, to: 'glimmercave', tx: 36, ty: 15, dir: 'left', kind: 'cave' }, { x: 0, y: 11, to: 'glimmercave', tx: 36, ty: 15, dir: 'left', kind: 'cave' }, { x: 0, y: 13, to: 'glimmercave', tx: 36, ty: 15, dir: 'left', kind: 'cave' }],
       objs: [
-        G.haven(3, 13), G.mart(20, 12),
+        G.haven(4, 12), G.mart(20, 12),
         G.bld('gym', 17, 3, 8, 5, { roof: 'red', accent: '#ee6030', door: 4, to: 'cinder_gym', tx: 7, ty: 15 }),
-        G.house(4, 4, 'cinder_house1', 'brown'), G.house(4, 19, 'cinder_house2', 'red'),
-        G.bld('house', 20, 19, 5, 3, { roof: 'orange', door: 2, to: 'hotspring', tx: 5, ty: 6 }),
-        { type: 'sign', x: 16, y: 18, text: '{o}CINDERVALE{w}\\n"Temper your steel, warm your heart."' },
+        G.house(4, 4, 'cinder_house1', 'brown'), G.house(4, 20, 'cinder_house2', 'red'),
+        G.bld('house', 20, 20, 5, 3, { roof: 'orange', door: 2, to: 'hotspring', tx: 5, ty: 6 }),
+        { type: 'sign', x: 12, y: 23, text: '{o}CINDERVALE{w}\\n"Temper your steel, warm your heart."' },
         { type: 'sign', x: 26, y: 8, text: '{r}CINDERVALE GYM{w} — The Forge\\nWarden: Brann' },
         { type: 'sign', x: 25, y: 22, text: 'Ember Springs — Rest your weary bones!' },
-        { type: 'npc', id: 'cv_smith', x: 9, y: 9, look: 'worker', dir: 'down', move: 'look', text: 'Brann forged the Wardens\' badge cases himself. He says a badge is just metal until someone earns it.' },
+        { type: 'npc', id: 'cv_smith', x: 9, y: 8, look: 'worker', dir: 'down', move: 'look', text: 'Brann forged the Wardens\' badge cases himself. He says a badge is just metal until someone earns it.' },
         { type: 'npc', id: 'cv_old', x: 25, y: 16, look: 'oldwoman', dir: 'left', move: 'look', text: 'The volcano sleeps because the Volcanoth colony beneath us sleeps. Don\'t wake them. Please.' },
         { type: 'npc', id: 'cv_kid', x: 8, y: 17, look: 'boy', dir: 'right', move: 'wander', radius: 3, text: 'Water types feel weaker in Cindervale. It\'s the ash! Probably!' },
         { type: 'trigger', x: 3, y: 11, w: 1, h: 3, script: 'rival2', cond: ['lark1_done', '!rival2_done'] },
