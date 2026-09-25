@@ -6,39 +6,47 @@
   const D = G.defMap;
   // -------------------------------------------------------- GALVAN HARBOR
   (function () {
+    // two tiers: the harbour quarter up on the seawall (docks, Crane tower, museum, gym plaza, the
+    // road to Route 3) and the market town below, crossed by a canal, reached by a grand staircase
     const m = new G.MB(34, 28, '=', 61);
     m.rect(0, 0, 34, 4, '~'); m.rect(6, 1, 2, 3, 'I'); m.rect(25, 1, 2, 3, 'I');
     m.forest(1, 'T', { skip: (x, y) => y < 4 || (y >= 10 && y <= 11 && x >= 32) || (x >= 14 && x <= 17 && y >= 26) });
     m.rect(0, 4, 34, 1, '='); m.put(0, 4, 'T'); m.put(33, 4, 'T');
-    m.rect(14, 26, 4, 2, ':');
-    // park
-    m.rect(9, 21, 16, 4, '.'); m.rect(10, 22, 4, 2, 'f'); m.rect(20, 22, 4, 2, 'f'); m.put(9, 21, 'T'); m.put(24, 21, 'T'); m.put(9, 24, 'T'); m.put(24, 24, 'T');
-    m.put(16, 12, 'o'); m.put(12, 12, 'l'); m.put(21, 12, 'l'); m.put(10, 19, 'l'); m.put(25, 19, 'l');
-    m.put(9, 11, 'u'); m.put(24, 11, 'u');
-    m.text(28, 5, ['QO', 'O ']); m.text(1, 19, ['Q', 'O']);
-    D({ id: 'galvan', name: 'Galvan Harbor', subtitle: 'City of sparks and sails', town: 'galvan', area: 'galvan', music: 'galvan', env: 'city', grid: m.done(),
+    // harbour quarter
+    m.put(17, 7, 'o'); m.put(14, 11, 'l'); m.put(20, 11, 'l'); m.put(9, 11, 'u'); m.put(24, 11, 'u'); m.put(16, 5, 'y'); m.put(19, 5, 'y');
+    m.text(28, 5, ['QO', 'O ']);
+    // the seawall: a grand staircase in the middle, a service ramp to the east
+    m.rect(1, 12, 32, 2, '#'); m.rect(15, 12, 4, 2, '='); m.rect(29, 12, 2, 2, '=');
+    // market town
+    m.put(14, 14, 'l'); m.put(19, 14, 'l'); m.text(1, 19, ['Q', 'O']);
+    m.rect(1, 20, 32, 1, '~'); m.rect(4, 20, 2, 1, 'b'); m.rect(15, 20, 4, 1, 'b'); m.rect(28, 20, 2, 1, 'b');
+    m.put(8, 19, 'y'); m.put(25, 19, 'y');
+    m.rect(9, 22, 16, 4, '.'); m.rect(10, 23, 4, 2, 'f'); m.rect(20, 23, 4, 2, 'f'); m.put(9, 22, 'T'); m.put(24, 22, 'T'); m.put(9, 25, 'T'); m.put(24, 25, 'T');
+    m.rect(1, 26, 32, 1, '='); m.rect(15, 21, 4, 5, '='); m.rect(14, 26, 4, 2, ':'); m.put(10, 26, 'y'); m.put(23, 26, 'y'); m.put(12, 22, 'u'); m.put(21, 22, 'u');
+    D({ id: 'galvan', name: 'Galvan Harbor', subtitle: 'City of sparks and sails', town: 'galvan', area: 'galvan', music: 'galvan', env: 'city', borders: { n: 'water' }, grid: m.done(),
       conn: { s: { map: 'whisperwood', off: -5 }, e: { map: 'route3', off: 0 } },
       enc: { surf: { lv: [15, 20], list: [['flopfin', 50], ['clawdle', 30], ['jellume', 20]] }, fish: { lv: [10, 18], list: [['flopfin', 70], ['clawdle', 30]] }, fishpro: { lv: [18, 26], list: [['clawdle', 40], ['jellume', 35], ['flopfin', 20], ['riptalon', 5]] } },
       objs: [
         G.bld('tower', 2, 5, 6, 5, { door: 3, to: 'crane_lobby', tx: 6, ty: 7 }),
         G.bld('lab', 10, 6, 6, 4, { roof: 'brown', door: 3, to: 'museum', tx: 6, ty: 7 }),
         G.bld('gym', 20, 5, 8, 5, { roof: 'orange', accent: '#f4d040', door: 4, to: 'galvan_gym', tx: 7, ty: 15 }),
-        G.haven(3, 14), G.mart(11, 14),
-        G.bld('house', 19, 14, 5, 4, { roof: 'teal', door: 2, to: 'bikeshop', tx: 5, ty: 6 }),
-        G.house(26, 14, 'galvan_house1', 'gray'), G.house(2, 21, 'galvan_house2', 'brown'), G.house(27, 21, 'galvan_house3', 'blue'),
-        { type: 'sign', x: 18, y: 12, text: '{b}GALVAN HARBOR{w}\\n"Where the current carries you."' },
+        G.haven(3, 15), G.mart(9, 15),
+        G.bld('house', 21, 15, 5, 4, { roof: 'teal', door: 2, to: 'bikeshop', tx: 5, ty: 6 }),
+        G.house(27, 15, 'galvan_house1', 'gray'), G.house(2, 22, 'galvan_house2', 'brown'), G.house(27, 22, 'galvan_house3', 'blue'),
+        { type: 'sign', x: 13, y: 14, text: '{b}GALVAN HARBOR{w}\\n"Where the current carries you."' },
         { type: 'sign', x: 26, y: 10, text: '{y}GALVAN GYM{w}\\nWarden: Ione\\n"Feel the current, drop the beat!"' },
         { type: 'sign', x: 8, y: 10, text: '{c}CRANE DYNAMICS{w} — Galvan Office\\n"Bonds Built to Last."' },
         { type: 'sign', x: 16, y: 10, text: 'Galvan Harbor Museum of Natural History. Fossil Revival Lab inside!' },
-        { type: 'sign', x: 18, y: 25, text: '↓ Whisperwood    → Route 3' },
+        { type: 'sign', x: 19, y: 25, text: '↓ Whisperwood    → Route 3' },
         { type: 'npc', id: 'gv_marv', x: 7, y: 3, look: 'fisher', dir: 'up', script: 'old_salt_marv' },
-        { type: 'npc', id: 'gv_rhoda', x: 30, y: 25, look: 'oldwoman', dir: 'left', script: 'rhoda' },
-        { type: 'npc', id: 'gv_w1', x: 14, y: 19, look: 'worker', dir: 'right', move: 'wander', radius: 3, text: 'Crane Dynamics built the power plant, the new docks, the tram line... this city runs on Crane.' },
-        { type: 'npc', id: 'gv_w2', x: 29, y: 12, look: 'woman', dir: 'left', move: 'look', text: 'They say Director Crane was a brilliant scientist before she ran the company. She hardly ever smiles in photos, though.' },
-        { type: 'npc', id: 'gv_kid', x: 20, y: 20, look: 'kid', dir: 'down', move: 'wander', radius: 2, text: 'Zipsquee glide between the power poles at night! Their cheeks glow like fireflies!' },
-        { type: 'npc', id: 'gv_vsr', x: 5, y: 19, look: 'officer', dir: 'right', script: 'vsrecorder_npc' },
+        { type: 'npc', id: 'gv_rhoda', x: 7, y: 26, look: 'oldwoman', dir: 'left', script: 'rhoda' },
+        { type: 'npc', id: 'gv_w1', x: 12, y: 19, look: 'worker', dir: 'right', move: 'wander', radius: 3, text: 'Crane Dynamics built the power plant, the new docks, the tram line... this city runs on Crane.' },
+        { type: 'npc', id: 'gv_w2', x: 30, y: 9, look: 'woman', dir: 'left', move: 'look', text: 'They say Director Crane was a brilliant scientist before she ran the company. She hardly ever smiles in photos, though.' },
+        { type: 'npc', id: 'gv_kid', x: 19, y: 23, look: 'kid', dir: 'down', move: 'wander', radius: 2, text: 'Zipsquee glide between the power poles at night! Their cheeks glow like fireflies!' },
+        { type: 'npc', id: 'gv_canal', x: 24, y: 19, look: 'sailor', dir: 'down', move: 'look', text: 'The canal runs from the old tide-mill to the sea. Kids race paper boats down it every Sunday. Crane wants to pave it over.' },
+        { type: 'npc', id: 'gv_vsr', x: 6, y: 19, look: 'officer', dir: 'right', script: 'vsrecorder_npc' },
         { type: 'trainer', id: 'gv_sailor_e', x: 25, y: 3, look: 'sailor', dir: 'down', sight: 1, trainer: 'gv_sailor' },
-        { type: 'trainer', id: 'gv_worker_e', x: 31, y: 18, look: 'worker', dir: 'left', sight: 3, trainer: 'gv_worker' },
+        { type: 'trainer', id: 'gv_worker_e', x: 31, y: 19, look: 'worker', dir: 'left', sight: 3, trainer: 'gv_worker' },
         { type: 'trigger', x: 12, y: 10, w: 10, h: 2, script: 'crane_speech', cond: '!crane_speech' },
         { type: 'item', id: 'gv_h1', x: 33, y: 5, item: 'magnet', hidden: true },
         { type: 'item', id: 'gv_i1', x: 29, y: 6, item: 'xspeed', qty: 2 },

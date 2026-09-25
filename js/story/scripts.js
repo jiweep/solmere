@@ -395,10 +395,10 @@
   SC.crane_speech = async (S) => {
     if (!G.flag('wood_done')) { S.set('crane_speech'); return; }
     S.music('crane');
-    const crane = S.spawn({ id: 'gv_crane', x: 16, y: 13, look: 'crane', dir: 'up' });
-    const wr = S.spawn({ id: 'gv_wren', x: 14, y: 13, look: 'wren', dir: 'right' });
-    const c1 = S.spawn({ id: 'gv_c1', x: 18, y: 13, look: 'worker', dir: 'left' });
-    const c2 = S.spawn({ id: 'gv_c2', x: 15, y: 14, look: 'woman', dir: 'up' });
+    const crane = S.spawn({ id: 'gv_crane', x: 17, y: 8, look: 'crane', dir: 'up' });
+    const wr = S.spawn({ id: 'gv_wren', x: 15, y: 9, look: 'wren', dir: 'right' });
+    const c1 = S.spawn({ id: 'gv_c1', x: 19, y: 9, look: 'worker', dir: 'left' });
+    const c2 = S.spawn({ id: 'gv_c2', x: 16, y: 10, look: 'woman', dir: 'up' });
     await S.say('A crowd has gathered by the fountain. A woman in a white coat is speaking.');
     crane.dir = 'down';
     const N = 'Director Crane';

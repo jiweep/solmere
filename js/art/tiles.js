@@ -68,6 +68,8 @@ G.tiles = (function () {
     const type = !s1 ? 'faceB' : (!s2 && n1) ? 'faceU' : 'top';
     const aboveFace = n1 && n2 && !s1;   // faceB directly below a faceU
     const p = new G.Painter(16, 16), X0 = c.x * 16, Y0 = c.y * 16;
+    const masonry = kind === 'cliff' && (map.def.cliffStyle === 'stone' || map.def.env === 'city');
+    if (masonry) return masonryTile(c, type, n1, e1, w1, X0, Y0);
     const GR = kind === 'cliff' ? (th === 'snow' ? RMP().snow : th === 'ash' ? RMP().ash : th === 'beach' ? RMP().beach : th === 'dusk' ? RMP().dusk : RMP().grass) : null;
     const topFill = (x, y) => {
       const wx = X0 + x, wy = Y0 + y;
@@ -106,6 +108,35 @@ G.tiles = (function () {
       p.rect(cx, cy, 3, 5, cc[1]); p.rect(cx, cy, 1, 5, cc[2]); p.set(cx + 1, cy - 1, cc[2]); p.set(cx, cy, cc[3]); p.rect(cx + 2, cy + 1, 1, 4, cc[0]);
       p.rect(cx + 3, cy + 2, 2, 3, cc[1]); p.set(cx + 3, cy + 2, cc[2]);
     }
+    return p.done();
+  }
+
+  // dressed-stone seawall / retaining wall for towns and cities: flagstone top, coursed blocks
+  function masonryTile(c, type, n1, e1, w1, X0, Y0) {
+    const p = new G.Painter(16, 16), S = STONE;
+    const flag = (wx, wy) => { const bx = Math.floor(wx / 8), by = Math.floor(wy / 8), ex = wx % 8, ey = wy % 8; if (ex === 7 || ey === 7) return S[3]; const v = h2(bx, by, 5); return ex === 0 || ey === 0 ? S[6] : S[v > .66 ? 5 : v > .33 ? 5 : 4]; };
+    const block = (wx, wy, dark) => {
+      const course = Math.floor(wy / 5), yy = wy % 5, off = course % 2 ? 5 : 0, bx = (wx + off) % 10, id = Math.floor((wx + off) / 10) * 7 + course * 3;
+      let k = 4 + Math.floor(h2(id, course, 9) * 2);
+      if (yy === 4 || bx === 9) k = 1; else if (yy === 0) k = 6; else if (yy === 3 || bx === 8) k = 3;
+      return S[Math.max(0, k - dark)];
+    };
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      const wx = X0 + x, wy = Y0 + y;
+      let col;
+      if (type === 'top') col = flag(wx, wy);
+      else {
+        const lip = type === 'faceB' && !n1 ? 4 : type === 'faceU' ? 3 : 0;
+        if (y < lip) col = flag(wx, wy);
+        else if (lip && y === lip) col = S[7];
+        else col = block(wx, wy, type === 'faceB' && y >= 13 ? 1 : 0);
+        if (type === 'faceB' && y === 15) col = S[0];
+      }
+      p.set(x, y, col);
+    }
+    if (type === 'top' && !n1) for (let x = 0; x < 16; x++) { p.set(x, 0, S[1]); p.set(x, 1, S[7]); }
+    if (!w1) for (let y = 0; y < 16; y++) p.set(0, y, S[1]);
+    if (!e1) for (let y = 0; y < 16; y++) p.set(15, y, S[1]);
     return p.done();
   }
 

@@ -293,7 +293,9 @@ G.bldCoverage = function (b) {
   return (G._bldCov[key] = cov);
 };
 G.borderCell = function (map, x, y) {
-  const b = map.border();
+  // per-side fill (def.borders = { n: 'water' }) so a harbour opens onto the sea, else the map's default
+  const bs = map.def.borders, side = y < 0 ? 'n' : y >= map.h ? 's' : x < 0 ? 'w' : 'e';
+  const b = (bs && bs[side]) || map.border();
   if (b === 'tree' || b === 'pine' || b === 'palm') return { g: map.ground === 'snow' ? 'snow' : 'grass', o: b, v: (x * 7 + y * 13) & 3, mask: 0, solid: true, x, y };
   if (b === 'water') return { g: 'water', mask: 255, shore: 'sand', v: 0, solid: true, water: true, x, y };
   return { g: b, mask: 255, v: 0, solid: true, x, y };
