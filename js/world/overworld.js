@@ -713,6 +713,13 @@ G.WorldScene = class {
           P.add({ x: (bo.x + bo.w * .72) * 16, y: (bo.y + bo.h * .5) * 16, h3: 3.1 + bo.h * .12, vx: 0, vy: 0, life: 170, size: 2.4, grow: 2.2, color: 'rgba(214,214,224,1)', alpha: .32, fadeIn: 25, type: 'circle',
             upd: p => { p.h3 += .012; p.vx = -.1 - G.wind(this.frame) * .35; } });
         }
+        // hot springs steam
+        if (m.def.hotspring && this.frame % 4 === 0) {
+          if (!m._springs) m._springs = m.cells.filter(c => c.g === 'water');
+          const c = m._springs.length && m._springs[G.randInt(0, m._springs.length - 1)];
+          if (c && Math.abs(c.x - p0.x) < 14 && Math.abs(c.y - p0.y) < 10) P.add({ x: c.x * 16 + 4 + G.rand() * 8, y: c.y * 16 + 8, h3: .15, vx: 0, vy: 0, life: 150, size: 2.4, grow: 2.8, color: 'rgba(240,236,236,1)', alpha: .3, fadeIn: 30, type: 'circle',
+            upd: p => { p.h3 += .016; p.vx = Math.sin(p.t / 30 + p.x) * .12 - G.wind(this.frame) * .2; } });
+        }
         // fountains play
         if (this.frame % 3 === 0) {
           if (!m._fountains) { m._fountains = []; for (const c of m.cells) if (c.o === 'fountain') m._fountains.push(c); }

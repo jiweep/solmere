@@ -169,7 +169,7 @@
     for (const [x, y] of [[8, 12], [11, 21], [13, 23], [19, 6], [28, 20], [35, 10], [28, 13], [33, 18], [6, 8]]) m.put(x, y, 'k');
     m.put(9, 15, 'R'); m.put(18, 12, 'R');
     D({ id: 'glimmercave', name: 'Glimmer Cave', subtitle: 'The singing crystals', area: 'glimmercave', type: 'cave', music: 'cave', crystal: true, env: 'crystal', grid: m.done(),
-      warps: [0, 1, 2].flatMap(k => [{ x: 0, y: 14 + k, to: 'route3', tx: 43, ty: 13, dir: 'left', kind: 'cave' }, { x: 37, y: 14 + k, to: 'cindervale', tx: 2, ty: 12, dir: 'right', kind: 'cave' }]),
+      warps: [0, 1, 2].flatMap(k => [{ x: 0, y: 14 + k, to: 'route3', tx: 43, ty: 13, dir: 'left', kind: 'cave' }, { x: 37, y: 14 + k, to: 'cindervale', tx: 2, ty: 18, dir: 'right', kind: 'cave' }]),
       enc: { cave: { lv: [16, 20], list: [['pebblin', 25], ['duskbat', 25], ['digmole', 18], ['gearling', 12], ['armadrill', 6], ['magmite', 8], ['coffret', 6]] }, rock: { lv: [17, 21], list: [['pebblin', 70], ['armadrill', 30]] }, surf: { lv: [18, 22], list: [['jellume', 60], ['mireel', 40]] } },
       objs: [
         { type: 'trainer', id: 'gc_hiker_e', x: 6, y: 11, look: 'hiker', dir: 'right', sight: 2, trainer: 'gc_hiker' },
@@ -190,45 +190,59 @@
   })();
   // ----------------------------------------------------------- CINDERVALE
   (function () {
-    // terraced up the volcano's flank: the Forge on the top shelf between lava runs, the Haven, Mart
-    // and the cave mouth on the middle shelf, the hot springs and homes on the valley floor
-    const m = new G.MB(30, 26, 'a', 91);
-    m.forest(2, 'X', { skip: (x, y) => (x <= 1 && y >= 11 && y <= 13) || (x >= 13 && x <= 16 && y >= 24) });
-    m.rect(0, 0, 30, 2, '#'); m.rect(0, 10, 2, 5, '#'); m.rect(0, 11, 2, 3, 'c'); m.put(0, 12, 'c');
-    m.rect(2, 2, 26, 7, 'a'); m.rect(2, 11, 26, 7, 'a'); m.rect(2, 20, 26, 4, 'a');
-    // top shelf: lava runs either side of the Forge
-    m.rect(13, 2, 4, 7, ':'); m.rect(3, 3, 1, 1, 'm'); m.rect(26, 3, 2, 1, 'm'); m.rect(11, 3, 1, 4, 'm'); m.rect(27, 5, 1, 3, 'm');
-    m.put(12, 8, 'l'); m.put(17, 8, 'l'); m.put(9, 5, 'j');
-    // the two shelf walls, each climbed by a stepped ramp on the main road
-    m.rect(2, 9, 26, 2, '#'); m.rect(14, 9, 2, 2, ':');
-    m.rect(2, 18, 26, 2, '#'); m.rect(14, 18, 2, 2, ':');
+    // Three shelves up the volcano's flank. Top: the Forge between two glowing lava channels, lava
+    // pools and lanterns. A wall and stair down to the middle shelf: the cave mouth from Glimmer Cave,
+    // the Haven and Mart, a smiths' market and a statue square. A second wall down to the valley floor:
+    // an open-air hot spring ringed with rocks (it steams), the bathhouse, homes and the road south.
+    const m = new G.MB(44, 36, 'a', 91);
+    m.forest(2, 'X', { skip: (x, y) => (x >= 20 && x <= 23 && y >= 34) || (x <= 1 && y >= 17 && y <= 19) });
+    m.rect(0, 0, 44, 2, '#');
+    // the Forge shelf
+    m.rect(2, 2, 40, 10, 'a'); m.rect(20, 7, 4, 5, '='); m.rect(15, 2, 1, 8, 'm'); m.rect(28, 2, 1, 8, 'm');
+    m.blob(9, 4, 2.2, 1.3, 'm'); m.blob(36, 4, 2.2, 1.3, 'm'); m.put(13, 8, 'j'); m.put(30, 8, 'j'); m.put(12, 3, 'j'); m.put(33, 3, 'j');
+    m.rect(4, 10, 16, 1, ':'); m.rect(24, 10, 14, 1, ':'); m.put(2, 3, 'R'); m.put(41, 7, 'R'); m.put(39, 10, 'R'); m.text(34, 7, ['QO']);
+    // first wall: the main stair and a ramp in the east
+    m.rect(2, 12, 40, 2, '#'); m.rect(20, 12, 4, 2, '='); m.rect(38, 12, 2, 2, ':');
     // middle shelf
-    m.path([[2, 12], [13, 12]], ':', 2); m.rect(13, 11, 4, 7, ':'); m.rect(4, 16, 23, 2, ':');
-    m.put(12, 15, 'l'); m.put(18, 15, 'l'); m.put(26, 12, 'j');
-    // valley floor: springs, homes, the road south
-    m.rect(13, 20, 4, 6, ':'); m.put(26, 20, 'O'); m.put(27, 20, 'Q'); m.put(10, 22, 'm'); m.rect(3, 24, 7, 1, 'a');
-    m.put(12, 21, 'l'); m.put(18, 21, 'l');
-    D({ id: 'cindervale', name: 'Cindervale', subtitle: 'Forge of the north', town: 'cindervale', area: 'cindervale', music: 'cindervale', theme: 'ash', weather: 'ash', env: 'volcano', grid: m.done(),
-      conn: { s: { map: 'route4', off: 3 } },
-      warps: [{ x: 0, y: 12, to: 'glimmercave', tx: 36, ty: 15, dir: 'left', kind: 'cave' }, { x: 0, y: 11, to: 'glimmercave', tx: 36, ty: 15, dir: 'left', kind: 'cave' }, { x: 0, y: 13, to: 'glimmercave', tx: 36, ty: 15, dir: 'left', kind: 'cave' }],
+    m.rect(2, 14, 40, 11, 'a'); m.rect(0, 16, 2, 5, '#'); m.rect(0, 17, 2, 3, 'c');
+    m.rect(2, 17, 18, 2, ':'); m.rect(20, 14, 4, 22, ':'); m.rect(24, 14, 15, 1, ':'); m.rect(38, 14, 2, 1, ':');
+    m.rect(27, 19, 12, 4, '='); m.put(32, 20, 'S'); m.put(27, 19, 'l'); m.put(38, 19, 'l'); m.put(27, 22, 'j'); m.put(38, 22, 'j');
+    m.put(27, 16, 'p'); m.put(30, 16, 'p'); m.put(33, 16, 'p'); m.put(36, 16, 'Q'); m.put(37, 16, 'O');
+    m.rect(3, 24, 38, 1, ':'); m.put(18, 15, 'j'); m.put(25, 16, 'l'); m.put(10, 15, 'R');
+    // second wall: the main stair and a west stair
+    m.rect(2, 25, 40, 2, '#'); m.rect(20, 25, 4, 2, '='); m.rect(8, 25, 2, 2, ':');
+    // valley floor: the hot spring
+    m.rect(2, 27, 40, 7, 'a'); m.blob(29, 31, 4.6, 2, '~');
+    for (const [x, y] of [[24, 30], [24, 32], [34, 29], [34, 33], [27, 29], [31, 33]]) m.put(x, y, 'R');
+    m.rect(3, 32, 38, 1, ':'); m.put(17, 28, 'j'); m.put(26, 28, 'l'); m.put(3, 27, 'X');
+    D({ id: 'cindervale', name: 'Cindervale', subtitle: 'Forge of the north', town: 'cindervale', area: 'cindervale', music: 'cindervale', theme: 'ash', weather: 'ash', env: 'volcano', hotspring: true, grid: m.done(),
+      conn: { s: { map: 'route4', off: 10 } },
+      warps: [17, 18, 19].map(y => ({ x: 0, y, to: 'glimmercave', tx: 36, ty: 15, dir: 'left', kind: 'cave' })),
       objs: [
-        G.haven(4, 12), G.mart(20, 12),
-        G.bld('gym', 17, 3, 8, 5, { roof: 'red', accent: '#ee6030', door: 4, to: 'cinder_gym', tx: 7, ty: 15 }),
-        G.house(4, 4, 'cinder_house1', 'brown'), G.house(4, 20, 'cinder_house2', 'red'),
-        G.bld('house', 20, 20, 5, 3, { roof: 'orange', door: 2, to: 'hotspring', tx: 5, ty: 6 }),
-        { type: 'sign', x: 12, y: 23, text: '{o}CINDERVALE{w}\\n"Temper your steel, warm your heart."' },
-        { type: 'sign', x: 26, y: 8, text: '{r}CINDERVALE GYM{w} — The Forge\\nWarden: Brann' },
-        { type: 'sign', x: 25, y: 22, text: 'Ember Springs — Rest your weary bones!' },
-        { type: 'npc', id: 'cv_smith', x: 9, y: 8, look: 'worker', dir: 'down', move: 'look', text: 'Brann forged the Wardens\' badge cases himself. He says a badge is just metal until someone earns it.' },
-        { type: 'npc', id: 'cv_old', x: 25, y: 16, look: 'oldwoman', dir: 'left', move: 'look', text: 'The volcano sleeps because the Volcanoth colony beneath us sleeps. Don\'t wake them. Please.' },
-        { type: 'npc', id: 'cv_kid', x: 8, y: 17, look: 'boy', dir: 'right', move: 'wander', radius: 3, text: 'Water types feel weaker in Cindervale. It\'s the ash! Probably!' },
-        { type: 'trigger', x: 3, y: 11, w: 1, h: 3, script: 'rival2', cond: ['lark1_done', '!rival2_done'] },
-        { type: 'item', id: 'cv_i1', x: 27, y: 14, item: 'charcoal' },
-        { type: 'item', id: 'cv_h1', x: 3, y: 23, item: 'flamestone', hidden: true },
-      ], spawn: [14, 13] });
+        G.haven(4, 20), G.mart(12, 20),
+        G.bld('gym', 18, 2, 8, 5, { roof: 'red', accent: '#ee6030', door: 4, to: 'cinder_gym', tx: 7, ty: 15 }),
+        G.house(4, 6, 'cinder_house1', 'brown'), G.house(4, 28, 'cinder_house2', 'red'), G.house(11, 28, 'cinder_house3', 'gray'),
+        G.bld('house', 36, 27, 5, 3, { roof: 'orange', door: 2, to: 'hotspring', tx: 5, ty: 6 }),
+        { type: 'sign', x: 24, y: 33, text: '{o}CINDERVALE{w}\\n"Temper your steel, warm your heart."' },
+        { type: 'sign', x: 26, y: 7, text: '{r}CINDERVALE GYM{w} — The Forge\\nWarden: Brann' },
+        { type: 'sign', x: 35, y: 30, text: 'Ember Springs — Rest your weary bones! (Bathhouse on the left. Towels provided.)' },
+        { type: 'sign', x: 26, y: 17, text: '{o}SMITHS\' ROW{w}\\nHammers from dawn to dusk. Earplugs sold separately.' },
+        { type: 'npc', id: 'cv_smith', x: 11, y: 9, look: 'worker', dir: 'down', move: 'look', text: 'Brann forged the Wardens\' badge cases himself. He says a badge is just metal until someone earns it.' },
+        { type: 'npc', id: 'cv_old', x: 35, y: 21, look: 'oldwoman', dir: 'left', move: 'look', text: 'The volcano sleeps because the Volcanoth colony beneath us sleeps. Don\'t wake them. Please.' },
+        { type: 'npc', id: 'cv_kid', x: 12, y: 18, look: 'boy', dir: 'right', move: 'wander', radius: 3, text: 'Water types feel weaker in Cindervale. It\'s the ash! Probably!' },
+        { type: 'npc', id: 'cv_bath', x: 23, y: 29, look: 'oldman', dir: 'right', move: 'look', text: 'Ahh. The spring water comes up hot from the mountain\'s heart. My knees are forty years younger. The rest of me, not so much.' },
+        { type: 'npc', id: 'cv_row', x: 31, y: 17, look: 'blackbelt', dir: 'down', move: 'look', text: 'Every blade on this row was tempered in lava from the Forge channels. Don\'t touch the channels.' },
+        { type: 'trigger', x: 2, y: 17, w: 1, h: 3, script: 'rival2', cond: ['lark1_done', '!rival2_done'] },
+        { type: 'item', id: 'cv_i1', x: 40, y: 15, item: 'charcoal' },
+        { type: 'item', id: 'cv_h1', x: 3, y: 33, item: 'flamestone', hidden: true },
+      ], spawn: [21, 20] });
   })();
   G.defHouse('cinder_house1', 'Cindervale House', 1, [{ type: 'npc', id: 'ch1', x: 1, y: 5, look: 'veteran', dir: 'right', script: 'name_rater_cinder' }]);
   G.defHouse('cinder_house2', 'Cindervale House', 0, [{ type: 'npc', id: 'ch2', x: 7, y: 5, look: 'woman', dir: 'left', script: 'mint_lady' }]);
+  G.defHouse('cinder_house3', 'Cindervale House', 1, [
+    { type: 'npc', id: 'ch3', x: 1, y: 5, look: 'hiker', dir: 'right', text: 'I climbed to the crater rim once. You can hear the Volcanoth breathing down there. Slow. Like a lullaby. I didn\'t sleep for a week.' },
+    { type: 'npc', id: 'ch3b', x: 8, y: 5, monSprite: 'kindlet', dir: 'left', text: 'Kindlet is warming its paws by the stove.' },
+  ], { wall: 'wood' });
   D({ id: 'hotspring', name: 'Ember Springs', type: 'indoor', wall: 'wood', music: 'house', floor: '#b88a5a',
     grid: ['WWwWWWWWwWW', 'WWWWWWWWWWW', 'V.~~~~~~~.V', '..~~~~~~~..', '..~~~~~~~..', '...........', 'Y.........Y', '.....M.....'],
     warps: [{ x: 5, y: 7, to: '_back' }],
@@ -276,7 +290,7 @@
     m.put(15, 8, 'r'); m.rect(16, 5, 5, 4, 'a'); m.rect(20, 3, 2, 3, 'a');
     m.scatter('R', 8, 3, 3, 20, 38, 'a'); m.scatter('X', 6, 3, 3, 20, 38, 'a');
     D({ id: 'route4', name: 'Route 4', subtitle: 'The Ashen Way', area: 'route4', music: 'route4', theme: 'ash', weather: 'ash', env: 'volcano', grid: m.done(),
-      conn: { n: { map: 'cindervale', off: -3 }, s: { map: 'duskmere', off: -3 } },
+      conn: { n: { map: 'cindervale', off: -10 }, s: { map: 'duskmere', off: -3 } },
       enc: {
         grass: { lv: [22, 26], list: [['magmite', 20], ['emberjay', 18], ['digmole', 14], ['pebblin', 10], ['bouldrok', 8], ['scrapmonk', 12], ['rascoon', 8], ['snoozle', 5], ['stingle', 5]] },
         night: { lv: [22, 26], list: [['magmite', 22], ['duskbat', 20], ['rascoon', 16], ['maskling', 12], ['emberjay', 12], ['wispurr', 10], ['scrapmonk', 8]] },

@@ -10,7 +10,7 @@ G.SHOWCASE = {
   towns: [
     ['Brinehollow (hometown)', 'brinehollow', 18, 9], ['Route 1', 'route1', 10, 30], ['Fernwick Town', 'fernwick', 21, 21], ['Route 2', 'route2', 10, 10],
     ['Whisperwood', 'whisperwood', 12, 14], ['Galvan Harbor', 'galvan', 22, 19], ['Route 3', 'route3', 10, 10], ['Glimmer Cave', 'glimmercave', 5, 5],
-    ['Cindervale', 'cindervale', 14, 13], ['Route 4', 'route4', 10, 10], ['Duskmere', 'duskmere', 14, 12], ['Route 5', 'route5', 10, 10],
+    ['Cindervale', 'cindervale', 21, 20], ['Route 4', 'route4', 10, 10], ['Duskmere', 'duskmere', 14, 12], ['Route 5', 'route5', 10, 10],
     ['Frostpeak', 'frostpeak', 12, 12], ['Skyreach', 'skyreach', 15, 16], ['Route 6', 'route6', 10, 10], ['The Tidelight', 'tidelight', 12, 12],
     ['Victory Road', 'victoryroad', 5, 28], ['Conclave', 'conclave', 10, 10], ['Starfall Peak', 'starfall', 8, 8],
     ['Hale Lab (interior)', 'lab', 5, 8], ['Your house (interior)', 'home1f', 5, 5], ['Fernwick Gym', 'fernwick_gym', 7, 13],

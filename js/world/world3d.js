@@ -238,6 +238,19 @@ G.W3 = (function () {
         group.userData.water = [gt];
       }
     }
+    // lava: a flowing, self-lit surface over every lava cell (crust plates drifting on a bright melt)
+    { const lp = [], li = [];
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const c = map.cell(x, y); if (!c || c.g !== 'lava') continue;
+        const k = (y * W + x) * 4, b = lp.length / 3, C = hv.corner;
+        lp.push(x, C[k] + .03, y, x + 1, C[k + 1] + .03, y, x, C[k + 2] + .03, y + 1, x + 1, C[k + 3] + .03, y + 1);
+        li.push(b, b + 2, b + 1, b + 1, b + 2, b + 3);
+      }
+      if (lp.length) {
+        const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(lp, 3)); g.setIndex(li);
+        group.add(new T.Mesh(g, lavaMaterial()));
+      }
+    }
     // cliff walls: vertical rock faces where a cell is higher than its east/west/south neighbour
     const rock = rockTexture(map.def.cliffStyle || (map.def.town ? 'stone' : 'rock'));
     const pos = [], uv = [], idx = [];
@@ -304,6 +317,29 @@ G.W3 = (function () {
         }`,
     });
     return waterMat;
+  }
+  let lavaMat = null;
+  function lavaMaterial() {
+    if (lavaMat) return lavaMat;
+    lavaMat = new T.ShaderMaterial({
+      uniforms: { uTime: U3.uTime },
+      vertexShader: `varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+      fragmentShader: `uniform float uTime; varying vec3 vW;
+        float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(h2(i), h2(i + vec2(1, 0)), f.x), mix(h2(i + vec2(0, 1)), h2(i + vec2(1, 1)), f.x), f.y); }
+        void main() {
+          vec2 p = vW.xz * 1.6 + vec2(uTime * .12, uTime * .05);
+          float n = vn(p) * .55 + vn(p * 2.3 - uTime * .2) * .3 + vn(p * 5.1 + uTime * .3) * .15;
+          float crust = smoothstep(.46, .62, n);
+          float pulse = .85 + .15 * sin(uTime * 2.0 + vW.x * 1.3 + vW.z);
+          vec3 melt = mix(vec3(1.0, .82, .32), vec3(1.0, .42, .08), smoothstep(.2, .55, n)) * pulse;
+          vec3 col = mix(melt * 1.25, vec3(.18, .07, .05), crust * .9);
+          gl_FragColor = vec4(col, 1.0);
+          #include <colorspace_fragment>
+        }`,
+    });
+    return lavaMat;
   }
   // 64x64 tile of sparse glints and short wave dashes, pixel-exact, for the scrolling water layers
   function glintTexture(seed) {
