@@ -7,22 +7,26 @@
 //    textures (banded brickwork, plinth, door, windows), a gallery with a
 //    railing, a glazed lantern room, a cap with a vane, and a 3D beam sweeping
 //    round it;
-//  - the sea is a shader surface: waves, the sunset sky mirrored in it, the
-//    headland and the lighthouse reflected, a glitter path, crests, colours
-//    stepped with an ordered dither;
-//  - the rest of the painting (sky, clouds, islands, a sailboat, the headland,
-//    the pier) stands in the scene as cut-outs at their own depths, so the
-//    slowly drifting camera gives real parallax.
-//  Particles (fireflies, smoke, gulls, spray, sparkles) are square pixels that
-//  move with the depth they belong to. Without WebGL the flat painting is used.
+//  - the scenery is a generated painting cut apart (art_src/build_title.py):
+//    the sky, the far islands, the headland with its surf and the two
+//    foreground rock clusters stand as cut-outs at their own depths, so the
+//    slowly drifting camera gives real parallax;
+//  - the sea is a shader surface: the painted sea projected onto the water
+//    plane, rippled by travelling swells, with the sun glitter twinkling live.
+//  Particles (spray off the rocks, sparkles, gulls) are square pixels that
+//  move with the depth they belong to. Without WebGL (or until the pictures
+//  load) the flat procedural painting is used.
 // ============================================================================
 (function () {
   const T = window.THREE; if (!T) return;
   const F = 420, CAMH = 26;   // focal length in art pixels and eye height: the numbers the painting was drawn with
-  const D = { sky: 6000, fx: 5800, cf: 5200, cn: 4600, far: 3200, mist: 3100, boat: 1400, breach: 300, head: 390, fore: 220 };
+  // the composition is the generated dusk seascape (img/battle/water_dusk.png) cut into layers by
+  // art_src/build_title.py: 768x432 art pixels, horizon on row 161, every layer M columns wider each side
+  const AW = 768, AH = 432, HZ = 161, M = 72, SUN = [537, 150];
+  const D = { sky: 6000, fx: 5800, far: 3000, boat: 1400, mid: 575, breach: 140, rocks: 300 };
+  const LIGHT = [742, 294];     // where the Tidelight stands, on the right-hand rocks
   let R = null, glc = null, failed = false, S3 = null, comp = null, cc = null, RW = 0, RH = 0, P = 1, lastT = -1;
-
-  const K = () => G.titleHD.K;
+  const K = () => ({ AW, HZ });
   function texOf(cv, o = {}) {
     const t = new T.CanvasTexture(cv);
     t.magFilter = T.NearestFilter; t.minFilter = o.nearest ? T.NearestFilter : T.LinearFilter; t.generateMipmaps = false;
@@ -85,7 +89,7 @@
     const g = new T.Group(), lam = (col, o = {}) => new T.MeshLambertMaterial({ color: col, flatShading: true, ...o });
     const tt = texOf(towerTex(), { nearest: true });
     // octagonal tower tapering from 17 to 11 art pixels; face 3 is turned to the camera
-    const face3 = Math.atan2(216, 390);
+    const face3 = Math.atan2(-(LIGHT[0] - AW / 2), F);   // the face turned to the camera
     const tower = new T.Mesh(new T.CylinderGeometry(11, 17, TH, 8, 1, false, face3 - 3.5 * Math.PI / 4), lam(0xffffff, { map: tt }));
     tower.position.y = TH / 2; g.add(tower);
     const add = (geo, mat, y, o = {}) => { const m = new T.Mesh(geo, mat); m.position.y = y; if (o.rot) m.rotation.y = o.rot; g.add(m); return m; };
@@ -126,114 +130,113 @@
   }
 
   // ------------------------------------------------------------- the sea
-  function seaMaterial(sky, head, far) {
-    const { AW, AH, HZ, M, SUN } = K();
+  // the painted sea, projected onto the water plane from the starting camera (so it stays in perspective
+  // as the camera drifts), rippled by travelling swells, with the sun's glitter twinkling on the wave facets
+  function seaMaterial(tex) {
     return new T.ShaderMaterial({
       depthTest: false, depthWrite: false, transparent: true,
       uniforms: {
-        uSky: { value: sky }, uHead: { value: head }, uFar: { value: far }, uCam: { value: new T.Vector3() }, uT: { value: 0 }, uNight: { value: 0 },
-        uK: { value: new T.Vector4(AW, AH, HZ, M) }, uF: { value: F }, uCamH: { value: CAMH }, uDh: { value: D.head }, uDf: { value: D.far },
+        uSea: { value: tex }, uCam: { value: new T.Vector3() }, uT: { value: 0 }, uNight: { value: 0 },
+        uK: { value: new T.Vector4(AW, AH, HZ, M) }, uF: { value: F }, uCamH: { value: CAMH },
         uSun: { value: new T.Vector3((SUN[0] - AW / 2) / F, (HZ - SUN[1]) / F, -1).normalize() },
       },
       vertexShader: 'varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position,1.); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
       fragmentShader: `
-        uniform sampler2D uSky, uHead, uFar; uniform vec3 uCam, uSun; uniform float uT, uNight, uF, uCamH, uDh, uDf; uniform vec4 uK;
+        uniform sampler2D uSea; uniform vec3 uCam, uSun; uniform float uT, uNight, uF, uCamH; uniform vec4 uK;
         varying vec3 vW;
-        vec2 art(vec2 cr) { return vec2((cr.x + uK.w) / (uK.x + 2. * uK.w), 1. - cr.y / uK.y); }
-        float bayer(vec2 p) { vec2 q = mod(floor(p), 4.); float i = q.x + q.y * 4.;
-          float b = mod(i * 7., 16.); return (floor(mod(q.x * 2. + q.y * 3., 4.)) * 4. + mod(q.x + q.y * 2., 4.)) / 16.; }
-        // a reflected ray reaching a painted cut-out's plane: its colour there, alpha where it is solid
-        vec4 cut(sampler2D tx, vec3 P, vec3 Rf, float d) {
-          if (Rf.z > -1e-3 || P.z < -d) return vec4(0.);
-          vec3 Q = P + Rf * ((-d - P.z) / Rf.z);
-          vec2 cr = vec2(uK.x * .5 + uF * Q.x / d, uK.z - uF * (Q.y - uCamH) / d);
-          if (cr.y < 0. || cr.y > uK.y) return vec4(0.);
-          return texture2D(tx, art(cr));
-        }
+        float bayer(vec2 p) { vec2 q = mod(floor(p), 4.); return (mod(q.x * 2. + q.y * 3., 4.) * 4. + mod(q.x + q.y * 2., 4.)) / 16.; }
         void main() {
           vec3 V = normalize(vW - uCam);
-          float dist = length(vW.xz - uCam.xz), t = uT * .02;
-          vec2 q = vec2(vW.x, -vW.z + uT * .6);
-          // wave slopes (derivatives of a few travelling swells), fading out where they would alias
-          float fd = 1. - smoothstep(300., 2600., dist);
+          float z = -vW.z, t = uT * .02;
+          vec2 q = vec2(vW.x, z + uT * .5);
+          float fd = 1. - smoothstep(250., 2400., z), near = clamp(uF * uCamH / max(z, 1.) / (uK.y - uK.z), 0., 1.);
           float a1 = q.y * .11 + q.x * .03 - t * 2.2, a2 = q.y * .23 - q.x * .09 + t * 2.9, a3 = q.x * .21 + q.y * .07 + t * 1.7, a4 = q.x * .5 - q.y * .31 - t * 3.3;
           float sl = cos(a1) * .45 + cos(a2) * .28 + cos(a3) * .17 + cos(a4) * .1 * fd;
           float gx = -(sin(a1) * .03 * .45 - sin(a2) * .09 * .28 + sin(a3) * .21 * .17 + sin(a4) * .5 * .1 * fd);
           float gz = -(sin(a1) * .11 * .45 + sin(a2) * .23 * .28 + sin(a3) * .07 * .17 - sin(a4) * .31 * .1 * fd);
-          vec3 N = normalize(vec3(-gx * 1.35 * fd, 1., gz * 1.35 * fd));
-          vec3 Rf = reflect(V, N); Rf.y = max(Rf.y, .002);
-          float cz = max(.02, -Rf.z);
-          vec3 sky = texture2D(uSky, art(vec2(uK.x * .5 + uF * Rf.x / cz, uK.z - uF * Rf.y / cz))).rgb;
-          vec4 fa = cut(uFar, vW, Rf, uDf); sky = mix(sky, fa.rgb * .85, fa.a);
-          vec4 hd = cut(uHead, vW, Rf, uDh); sky = mix(sky, hd.rgb * .7, hd.a);
-          vec3 deep = vec3(.1, .1, .27);
-          float graze = clamp(-V.y * 3.2, 0., 1.);
-          float fres = .38 + .62 * pow(1. - graze, 1.8);
-          vec3 col = mix(deep, sky, fres) * (1. + sl * (.07 + graze * .1));
-          // the sun's glitter path: every wave facet that mirrors the sun
-          float sp = dot(Rf, uSun);
-          col += vec3(1., .9, .66) * (smoothstep(.9965, .9993, sp) * .95 + smoothstep(.985, .999, sp) * .18) * (1. - uNight * .8);
-          if (sl > .8 - graze * .12) col += vec3(.12, .1, .12);                          // crests
-          col = floor(col * 26. + bayer(gl_FragCoord.xy) * .95) / 26.;                   // stepped colour, ordered dither
+          // where this point of the water is in the painting, pushed about by the swell
+          vec2 cr = vec2(uK.x * .5 + uF * vW.x / z, uK.z + uF * uCamH / z);
+          cr += vec2(gx, gz) * (2.5 + near * 9.) + vec2(0., sl * (.4 + near * 1.6));
+          vec2 uv = vec2((cr.x + uK.w) / (uK.x + 2. * uK.w), 1. - clamp(cr.y, uK.z + .5, uK.y - .5) / uK.y);
+          vec3 col = texture2D(uSea, uv).rgb * (1. + sl * (.05 + near * .06));
+          vec3 N = normalize(vec3(-gx * 1.4 * fd, 1., gz * 1.4 * fd)), Rf = reflect(V, N);
+          float sp = dot(Rf, uSun), path = smoothstep(.2, .6, dot(col, vec3(.5, .35, .15)));
+          // glints: single pixels that flicker, on the painted sun path, fewer up close where the facets are big
+          float h = fract(sin(dot(floor(cr) + floor(uT / 5.) * vec2(3.1, 1.7), vec2(12.9898, 78.233))) * 43758.5453);
+          col += vec3(1., .92, .7) * smoothstep(.996, .9993, sp) * path * step(.62, h) * (1. - near * .75) * (1. - uNight * .8);
+          col = floor(col * 40. + bayer(gl_FragCoord.xy) * .9) / 40.;
           gl_FragColor = vec4(clamp(col, 0., 1.), 1.);
         }`,
     });
   }
+  // the sky card sways its high clouds a little, the horizon (and the sun on it) stays put
+  function skyMaterial(tex) {
+    return new T.ShaderMaterial({
+      depthTest: false, depthWrite: false, transparent: true, uniforms: { uMap: { value: tex }, uT: { value: 0 } },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
+      fragmentShader: `uniform sampler2D uMap; uniform float uT; varying vec2 vUv;
+        void main(){ float hi = smoothstep(.55, 1., vUv.y); vec2 uv = vUv + vec2((sin(uT / 900.) * 5. + sin(uT / 377.) * 1.5) * hi / 912., 0.);
+          vec4 c = texture2D(uMap, uv); gl_FragColor = c; }`,
+    });
+  }
 
   // ------------------------------------------------------------- build
+  const IMGS = ['sky', 'far', 'mid', 'sea', 'rocks_l', 'rocks_r'];
+  let pics = null, picsReady = false;
+  function loadPics() {
+    if (pics) return;
+    pics = {}; let n = 0;
+    for (const k of IMGS) { const im = new Image(); im.onload = () => { if (++n === IMGS.length) picsReady = true; }; im.onerror = () => { failed = true; }; im.src = 'img/title/' + k + '.png'; pics[k] = im; }
+  }
   function build() {
-    const { AW, AH, HZ, M, LAMP } = K(), L = G.titleHD.layers();
     const scene = new T.Scene(), fore = new T.Scene();
     const cam = new T.PerspectiveCamera(40, AW / AH, 4, 20000);
     // off-centre frustum: the horizon sits at art row HZ, as in the painting
     const n = 4; cam.projectionMatrix.makePerspective(-AW / 2 / F * n, AW / 2 / F * n, HZ / F * n, -(AH - HZ) / F * n, n, 20000);
     cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert();
-    const W2 = AW + 2 * M;
-    const sky = texOf(L.sky), head = texOf(L.headBare), headLit = texOf(L.head, { raw: true }), far = texOf(L.far);
-    scene.add(card(sky, -M, 0, W2, AH, D.sky, 0));
-    // sun glow, rays and shooting stars: a small canvas redrawn every other frame
+    const W2 = AW + 2 * M, tx = k => texOf(pics[k]);
+    const skyM = skyMaterial(texOf(pics.sky, { raw: true }));   // (a raw texture: this shader writes what it reads)
+    const sky = card(null, -M, 0, W2, AH, D.sky, 0); sky.material = skyM; scene.add(sky);
+    // sun glow breathing and the odd shooting star: a small canvas redrawn every other frame
     const fxCv = G.makeCanvas(AW / 2, AH / 2), fxTex = texOf(fxCv);
     scene.add(card(fxTex, 0, 0, AW, AH, D.fx, 1, { mat: { blending: T.AdditiveBlending } }));
-    const cloud = (cv, r0, d, o, a) => { const tx = texOf(cv, { wrap: true }); tx.repeat.x = W2 / cv.width; const m = card(tx, -M, r0, W2, cv.height, d, o, { mat: { opacity: a } }); scene.add(m); return tx; };
-    const cfT = cloud(L.cf, -20, D.cf, 2, .85);
-    scene.add(card(far, -M, 0, W2, AH, D.far, 3));
-    // a sailboat crossing far out, its lantern lit
+    scene.add(card(tx('far'), -M, 0, W2, AH, D.far, 3));
     const boatCv = canvas(26, 30, (c) => {
-      c.fillStyle = '#1e1630'; c.beginPath(); c.moveTo(1, 26); c.lineTo(25, 26); c.lineTo(21, 30); c.lineTo(4, 30); c.fill();
-      c.fillStyle = '#e8d8e0'; c.beginPath(); c.moveTo(13, 0); c.lineTo(13, 24); c.lineTo(24, 23); c.fill();
-      c.fillStyle = '#b8a0b8'; c.beginPath(); c.moveTo(12, 4); c.lineTo(12, 24); c.lineTo(4, 23); c.fill();
+      c.fillStyle = '#1a1428'; c.beginPath(); c.moveTo(1, 26); c.lineTo(25, 26); c.lineTo(21, 30); c.lineTo(4, 30); c.fill();
+      c.fillStyle = '#f2c6a8'; c.beginPath(); c.moveTo(13, 0); c.lineTo(13, 24); c.lineTo(24, 23); c.fill();
+      c.fillStyle = '#9a6a8a'; c.beginPath(); c.moveTo(12, 4); c.lineTo(12, 24); c.lineTo(4, 23); c.fill();
       c.fillStyle = '#ffdc96'; c.fillRect(2, 23, 2, 2);
     });
-    const boat = card(texOf(boatCv, { nearest: true }), 0, HZ - 21, 26, 30, D.boat, 4); scene.add(boat);
-    const seaM = seaMaterial(texOf(L.sky, { raw: true }), headLit, texOf(L.far, { raw: true }));
+    const boat = card(texOf(boatCv, { nearest: true }), 0, HZ - 22, 26, 30, D.boat, 4); scene.add(boat);
+    const seaM = seaMaterial(texOf(pics.sea, { raw: true }));
     const sea = new T.Mesh(new T.PlaneGeometry(24000, 14000), seaM); sea.rotation.x = -Math.PI / 2; sea.position.set(0, 0, -7010); sea.renderOrder = 5; scene.add(sea);
-    const mist = card(texOf(canvas(4, 34, (c) => { const g = c.createLinearGradient(0, 0, 0, 34); g.addColorStop(0, 'rgba(255,190,170,0)'); g.addColorStop(.5, 'rgba(255,190,170,.28)'); g.addColorStop(1, 'rgba(255,190,170,0)'); c.fillStyle = g; c.fillRect(0, 0, 4, 34); })), -M, HZ - 16, W2, 34, D.mist, 6);
-    scene.add(mist);
-    const cnT = cloud(L.cn, 10, D.cn, 7, .92);
     // Orrelume, clipped at the waterline
     const water = new T.Plane(new T.Vector3(0, 1, 0), 0);
     const orrM = new T.MeshBasicMaterial({ transparent: true, depthTest: false, depthWrite: false, toneMapped: false, clippingPlanes: [water] });
-    const orr = new T.Mesh(new T.PlaneGeometry(1, 1), orrM); orr.renderOrder = 8; orr.visible = false; scene.add(orr);
+    const orr = new T.Mesh(new T.PlaneGeometry(1, 1), orrM); orr.renderOrder = 6; orr.visible = false; scene.add(orr);
     const orrGlow = new T.Mesh(orr.geometry, new T.MeshBasicMaterial({ transparent: true, depthTest: false, depthWrite: false, toneMapped: false, clippingPlanes: [water], blending: T.AdditiveBlending, opacity: .45 }));
-    orrGlow.renderOrder = 9; orrGlow.visible = false; scene.add(orrGlow);
-    scene.add(card(head, -M, 0, W2, AH, D.head, 10));
-    // the lighthouse stands on the cliff top where the painting had it, drawn over the headland cut-out
-    const lh = lighthouse(), s = D.head / F;
-    lh.scale.setScalar(s); lh.position.set((LAMP[0] - AW / 2) * s, CAMH + (HZ - 216) * s, -D.head + 4);
+    orrGlow.renderOrder = 7; orrGlow.visible = false; scene.add(orrGlow);
+    scene.add(card(tx('mid'), -M, 0, W2, AH, D.mid, 8));
+    // the foreground (second pass): the rocks, and the Tidelight standing on the right-hand ones
+    fore.add(card(tx('rocks_l'), -M, 0, W2, AH, D.rocks, 0));
+    fore.add(card(tx('rocks_r'), -M, 0, W2, AH, D.rocks, 1));
+    const lh = lighthouse(), s = D.rocks / F;
+    lh.scale.setScalar(s); lh.position.set((LIGHT[0] - AW / 2) * s, CAMH + (HZ - LIGHT[1]) * s, -D.rocks + 3);
     // everything goes through the transparent pass, which three sorts by renderOrder (the opaque pass would
     // draw first, under the painted cut-outs)
     lh.traverse(o => { if (o.isMesh && o.renderOrder < 30) { o.renderOrder = 20; o.material.transparent = true; } });
-    scene.add(lh);
-    // dusk light: a violet sky, the low sun raking the seaward faces warm orange, a cool fill from the east
-    scene.add(new T.HemisphereLight(0xa888c8, 0x2a1a34, 1.1));
-    const sun = new T.DirectionalLight(0xffa870, 3.4); sun.position.set(1, .22, -.45); scene.add(sun);
-    const fill = new T.DirectionalLight(0x7078d0, .7); fill.position.set(-.6, .35, .8); scene.add(fill);
-    fore.add(card(texOf(L.fore), -M, 0, W2, AH, D.fore, 0));
-    return { scene, fore, cam, fxCv, fxTex, cfT, cnT, boat, seaM, lh, orr, orrM, orrGlow };
+    fore.add(lh);
+    // dusk light: a violet sky, the low sun ahead-left raking the faces turned to it orange, a cool fill
+    fore.add(new T.HemisphereLight(0xb090d0, 0x2a1a34, 1.15));
+    const sun = new T.DirectionalLight(0xffa070, 3.4); sun.position.set(-.55, .2, -1); fore.add(sun);
+    const fill = new T.DirectionalLight(0x7078d0, .75); fill.position.set(.5, .35, .9); fore.add(fill);
+    return { scene, fore, cam, fxCv, fxTex, skyM, boat, seaM, lh, orr, orrM, orrGlow };
   }
 
   function init() {
     if (R || failed) return !!R;
+    loadPics();
+    if (!picsReady) return false;
     try {
       glc = document.createElement('canvas');
       R = new T.WebGLRenderer({ canvas: glc, antialias: false, alpha: true, premultipliedAlpha: true, powerPreference: 'high-performance' });
@@ -248,34 +251,30 @@
   const parts = [];
   function spawn(p) { parts.push(Object.assign({ t: 0, vx: 0, vy: 0, size: 1, a: 1 }, p)); }
   function sq(x, y, s, col, a) { cc.globalAlpha = a; cc.fillStyle = col; cc.fillRect(Math.round(x - s / 2), Math.round(y - s / 2), Math.max(1, Math.round(s)), Math.max(1, Math.round(s))); }
+  // where surf bursts off the rocks (art px, on the rocks' plane), each with its own rhythm
+  const SURF = [[40, 300, 0], [118, 330, 1.3], [178, 350, 2.9], [236, 368, 4.1], [300, 404, 5.3], [560, 406, .7], [604, 386, 2.2], [652, 346, 3.6], [700, 344, 4.8]];
 
   // ------------------------------------------------------------- frame
   function frame(st) {
-    const { AW, AH, HZ, SUN, LAMP, PIER_LAMP } = K(), t = st.t, gx = G.gfx;
+    const t = st.t, gx = G.gfx;
     // render grid: whole screen pixels per render pixel, about one per art pixel
     P = Math.max(1, Math.round(G.W * gx.S / AW));
     const w = Math.max(64, Math.round(G.W * gx.S / P)), h = Math.max(36, Math.round(G.H * gx.S / P));
     if (w !== RW || h !== RH) { RW = w; RH = h; R.setSize(RW, RH, false); comp.width = RW; comp.height = RH; }
     // camera: craning down onto the scene as it fades in, then a slow drift left and right
     const intro = G.ease.outCubic(Math.min(1, t / 170));
-    const camX = Math.sin(t / 760) * 22 + Math.sin(t / 297) * 4, dy = (1 - intro) * 34 + 3 + Math.sin(t / 530) * 3;
+    const camX = Math.sin(t / 760) * 22 + Math.sin(t / 297) * 4, dy = (1 - intro) * 30 + 3 + Math.sin(t / 530) * 3;
     S3.cam.position.set(camX, CAMH + dy, 0); S3.cam.updateMatrixWorld();
     const off = (d) => [-F * camX / d, F * dy / d];                 // where a thing at depth d appears to move, art px
-    // animate
     const fx = S3.fxCv.getContext('2d');
     if (t !== lastT && t % 2 === 0) {
       fx.clearRect(0, 0, AW / 2, AH / 2); fx.save(); fx.scale(.5, .5); fx.globalCompositeOperation = 'lighter';
-      const gl = fx.createRadialGradient(SUN[0], SUN[1], 4, SUN[0], SUN[1], 220); gl.addColorStop(0, `rgba(255,220,160,${.35 + .05 * Math.sin(t / 40)})`); gl.addColorStop(1, 'rgba(255,160,120,0)');
-      fx.fillStyle = gl; fx.fillRect(SUN[0] - 240, SUN[1] - 240, 480, 260);
-      for (let i = 0; i < 9; i++) {
-        const a = -Math.PI / 2 + (i - 4) * .26 + Math.sin(t / 300 + i) * .03, len = 330, bw = .05 + (i % 3) * .02;
-        fx.fillStyle = `rgba(255,214,160,${(.045 + .03 * Math.sin(t / 90 + i * 2)).toFixed(3)})`;
-        fx.beginPath(); fx.moveTo(SUN[0], SUN[1]); fx.lineTo(SUN[0] + Math.cos(a - bw) * len, SUN[1] + Math.sin(a - bw) * len); fx.lineTo(SUN[0] + Math.cos(a + bw) * len, SUN[1] + Math.sin(a + bw) * len); fx.fill();
-      }
-      const ss = t % 700; if (ss < 34) { const q = ss / 34; for (let k = 0; k < 16; k++) { const f2 = k / 16; fx.fillStyle = `rgba(255,255,240,${((1 - q) * f2 * .9).toFixed(3)})`; fx.fillRect(Math.round(120 + q * 220 - (1 - f2) * 40), Math.round(40 + q * 60 - (1 - f2) * 11), 2, 2); } }
+      const gl = fx.createRadialGradient(SUN[0], SUN[1], 4, SUN[0], SUN[1], 170); gl.addColorStop(0, `rgba(255,214,150,${.2 + .06 * Math.sin(t / 40)})`); gl.addColorStop(1, 'rgba(255,150,110,0)');
+      fx.fillStyle = gl; fx.fillRect(SUN[0] - 180, SUN[1] - 180, 360, 190);
+      const ss = t % 700; if (ss < 34) { const q = ss / 34; for (let k = 0; k < 16; k++) { const f2 = k / 16; fx.fillStyle = `rgba(255,255,240,${((1 - q) * f2 * .9).toFixed(3)})`; fx.fillRect(Math.round(250 + q * 200 - (1 - f2) * 40), Math.round(22 + q * 50 - (1 - f2) * 11), 2, 2); } }
       fx.restore(); S3.fxTex.needsUpdate = true;
     }
-    S3.cfT.offset.x = (t * .05 / S3.cfT.image.width) % 1; S3.cnT.offset.x = (t * .12 / S3.cnT.image.width) % 1;
+    S3.skyM.uniforms.uT.value = t;
     { const s = D.boat / F, bx = ((t * .08) % (AW + 200)) - 100; S3.boat.position.x = (bx - AW / 2) * s; }
     const U = S3.seaM.uniforms; U.uCam.value.copy(S3.cam.position); U.uT.value = t; U.uNight.value = st.night || 0;
     // the lamp: two opposed beams turning, the halo swelling as the main one swings round toward you
@@ -295,7 +294,7 @@
       const img = G.monArt.front('orrelume', false, 0), sc = b.glow ? 1.7 : 1.25, dd = D.breach, s = dd / F;
       if (S3.orrM.map !== S3._orrTex) { S3._orrTex = texOf(img, { nearest: true }); S3.orrM.map = S3.orrGlow.material.map = S3._orrTex; S3.orrM.needsUpdate = S3.orrGlow.material.needsUpdate = true; }
       const x0 = b.glow ? 420 : 452, Hh = img.height * sc, p = b.p, rise = Math.pow(Math.sin(p * Math.PI), .6);
-      const yw = HZ + F * CAMH / dd;                                 // its waterline row
+      const yw = HZ + F * CAMH / dd;
       const x = x0 + (p - .5) * 26, y = yw + Hh * .5 - rise * Hh * (b.glow ? .95 : .8);
       S3.orr.scale.set(img.width * sc * s, img.height * sc * s, 1);
       S3.orr.position.set((x - AW / 2) * s, CAMH + (HZ - y) * s, -dd); S3.orr.rotation.z = -((p - .5) * .5 + Math.sin(t / 20) * .02);
@@ -303,49 +302,40 @@
       if (b.glow) { S3.orrGlow.visible = true; S3.orrGlow.position.copy(S3.orr.position); S3.orrGlow.scale.copy(S3.orr.scale); S3.orrGlow.rotation.copy(S3.orr.rotation); }
       bInfo = { x, yw, w: img.width * sc * .45, rise, Hh, p, glow: b.glow };
     }
-    // ---- pass 1: everything but the pier
+    // ---- pass 1: sky, islands, sea, headland
     R.render(S3.scene, S3.cam);
     cc.setTransform(1, 0, 0, 1, 0, 0); cc.globalAlpha = 1; cc.globalCompositeOperation = 'source-over'; cc.imageSmoothingEnabled = false;
     cc.clearRect(0, 0, RW, RH); cc.drawImage(glc, 0, 0);
     const kx = RW / AW, ky = RH / AH;
-    const at = (d, fn) => { const [ox, oy] = off(d); cc.setTransform(kx, 0, 0, ky, ox * kx, oy * ky); fn(); cc.setTransform(1, 0, 0, 1, 0, 0); };
-    const dot = (x, y, s, col, a) => sq(x * kx, y * ky, s * kx, col, a);   // (called with the transform reset)
-    const [hx, hy] = off(D.head);
-    // surf at the foot of the cliff (on the headland's plane)
-    for (let i = 0; i < 30; i++) {
-      const y = HZ + 2 + i * 5.6, x = 200 + 70 * Math.pow(Math.max(0, (y - 214) / 60), 1 / 2.2) + 4 + Math.sin(t / 30 + i) * 3 + (i % 3) * 3, a = Math.max(0, Math.sin(t / 22 + i * 1.3));
-      if (a > .15) { cc.globalAlpha = a * .7; cc.fillStyle = '#f0ecff'; cc.fillRect(Math.round((x + hx) * kx), Math.round((y + hy) * ky), Math.max(1, Math.round((4 + a * 5) * kx)), Math.max(1, Math.round(1.4 * ky))); }
-    }
-    // spawn: chimney smoke, fireflies over the headland, sparkles on the sea
+    // spawn: sparkles on the sun's path, surf bursting off the rocks
     if (t !== lastT) {
-      if (t % 9 === 0) spawn({ x: 99, y: 158, vx: .12, vy: -.25, life: 200, size: 2, grow: .02, col: '#c8b4d2', a: .22, d: D.head });
-      if (t % 12 === 0) spawn({ x: 20 + G.rand() * 240, y: 150 + G.rand() * 70, life: 180, col: '#e8ff9a', glow: true, fly: true, d: D.head });
-      if (t % 3 === 0) { const y = HZ + 6 + G.rand() * 150; spawn({ x: 300 + G.rand() * 460, y, life: 26, col: '#fff2c8', star: true, d: F * CAMH / (y - HZ) }); }
+      if (t % 2 === 0) { const y = HZ + 4 + Math.pow(G.rand(), 1.6) * 250, sp = 8 + (y - HZ) * .45; spawn({ x: SUN[0] + (G.rand() - .5) * 2 * sp, y, life: 22, col: '#fff2c8', star: true, d: F * CAMH / (y - HZ) }); }
+      for (const [sx, sy, ph] of SURF) {
+        const k = (t / 90 + ph) % 6.2;
+        if (k < .5 && t % 2 === 0) for (let i = 0; i < 3; i++) spawn({ spray: true, x: sx + (G.rand() - .5) * 22, y: sy + G.rand() * 4, vx: (G.rand() - .5) * 1.4, vy: -1.2 - G.rand() * 2.4, ay: .08, life: 38, size: 1 + G.rand() * 1.6, col: G.rand() < .7 ? '#f4f0ff' : '#ffd6c8', d: D.rocks, top: true });
+      }
       for (let i = parts.length - 1; i >= 0; i--) {
         const p = parts[i]; p.t++;
-        if (p.fly) { p.vx = Math.sin(p.t / 17 + p.y) * .2; p.vy = Math.cos(p.t / 23 + p.x) * .15; }
-        p.x += p.vx; p.y += p.vy; if (p.grow) p.size += p.grow;
+        p.vy += p.ay || 0; p.x += p.vx; p.y += p.vy;
         if (p.t > p.life) parts.splice(i, 1);
       }
     }
     for (const p of parts) {
-      if (p.spray) continue;
-      const [ox, oy] = off(p.d), life = p.t / p.life, fade = Math.min(1, p.t / 30, (1 - life) * 3);
-      const X = (p.x + ox) * kx, Y = (p.y + oy) * ky;
+      if (p.top) continue;
+      const [ox, oy] = off(p.d), life = p.t / p.life, X = (p.x + ox) * kx, Y = (p.y + oy) * ky;
       if (p.star) { const a = Math.sin(life * Math.PI); sq(X, Y, 1, p.col, a); if (a > .6) { sq(X - 1, Y, 1, p.col, a * .5); sq(X + 1, Y, 1, p.col, a * .5); sq(X, Y - 1, 1, p.col, a * .5); sq(X, Y + 1, 1, p.col, a * .5); } }
-      else if (p.glow) { sq(X, Y, 3, p.col, .18 * fade); sq(X, Y, 1, p.col, fade); }
-      else sq(X, Y, p.size * kx, p.col, p.a * fade);
+      else if (p.spray) { if (p.y > HZ + F * CAMH / p.d + 1) continue; sq(X, Y, p.size * kx, p.col, Math.min(1, (1 - life) * 2)); }
     }
-    // gulls: pixel wings flapping (between the headland and the camera)
+    // gulls: pixel wings flapping
     for (const gu of G.titleHD.gulls) {
-      const [ox, oy] = off(420);
-      const x = ((gu.x + t * gu.v) % (AW + 80)) - 40 + ox, y = gu.y + Math.sin(t / 60 + gu.ph) * 8 + oy, up = Math.sin(t / 7 + gu.ph) > 0, s = Math.round(2 + gu.s * 2);
-      cc.globalAlpha = 1; cc.fillStyle = '#2a1e36';
+      const [ox, oy] = off(900);
+      const x = ((gu.x + t * gu.v) % (AW + 80)) - 40 + ox, y = gu.y * .55 + 20 + Math.sin(t / 60 + gu.ph) * 8 + oy, up = Math.sin(t / 7 + gu.ph) > 0, s = Math.round(2 + gu.s * 2);
+      cc.globalAlpha = 1; cc.fillStyle = '#2a1a30';
       const X = Math.round(x * kx), Y = Math.round(y * ky);
       cc.fillRect(X, Y, 1, 1);
-      for (let k = 1; k <= s; k++) { const lift = up ? Math.round(k * .8) : Math.round(k * .3) - (k > s - 1 ? -1 : 0); cc.fillRect(X - k, Y - lift, 1, 1); cc.fillRect(X + k, Y - lift, 1, 1); }
+      for (let k = 1; k <= s; k++) { const lift = up ? Math.round(k * .8) : Math.round(k * .3); cc.fillRect(X - k, Y - lift, 1, 1); cc.fillRect(X + k, Y - lift, 1, 1); }
     }
-    // breach: churned water, rings and spray, on its plane
+    // breach: churned water and rings on its plane
     if (bInfo) {
       const [ox, oy] = off(D.breach), B = bInfo, X = (B.x + ox) * kx, Y = (B.yw + oy) * ky;
       cc.globalAlpha = .35 + .25 * B.rise; cc.fillStyle = '#ebf4ff';
@@ -353,32 +343,23 @@
       for (let yy = -Math.ceil(eh); yy <= Math.ceil(eh); yy++) { const hw = Math.round(ew * Math.sqrt(Math.max(0, 1 - (yy / eh) ** 2))); cc.fillRect(Math.round(X - hw), Math.round(Y + yy), hw * 2, 1); }
       for (let r = 0; r < 3; r++) {
         const q = ((t / 55 + r / 3) % 1), rw = (B.w + q * 80) * kx, rh = (3 + q * 11) * ky; cc.globalAlpha = (1 - q) * .4 * (.4 + B.rise); cc.fillStyle = '#e6f0ff';
-        const n = Math.round(rw * 2.4); for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; cc.fillRect(Math.round(X + Math.cos(a) * rw), Math.round(Y + 2 * ky + Math.sin(a) * rh), 1, 1); }
+        const nn = Math.round(rw * 2.4); for (let i = 0; i < nn; i++) { const a = i / nn * Math.PI * 2; cc.fillRect(Math.round(X + Math.cos(a) * rw), Math.round(Y + 2 * ky + Math.sin(a) * rh), 1, 1); }
       }
       if (t !== lastT) {
         if ((B.p < .22 || B.p > .8) && t % 2 === 0) for (let i = 0; i < 5; i++) spawn({ spray: true, x: B.x + (G.rand() - .5) * B.w * 2, y: B.yw, vx: (G.rand() - .5) * 2, vy: -1.6 - G.rand() * 2.8, ay: .09, life: 44, size: 1 + G.rand() * 1.5, col: '#eef6ff', d: D.breach });
         if (B.rise > .3 && t % 2 === 0) spawn({ spray: true, x: B.x + (G.rand() - .5) * B.w * 1.6, y: B.yw - B.rise * B.Hh * .5 + G.rand() * B.rise * B.Hh * .4, vy: .6, ay: .14, life: 26, size: 1, col: '#d8ecff', d: D.breach });
       }
-      if (B.glow) { cc.globalCompositeOperation = 'lighter'; for (let i = 0; i < 5; i++) { cc.globalAlpha = .06 * B.rise; cc.fillStyle = '#78c8ff'; const r = (140 - i * 26) * kx; cc.beginPath(); cc.arc(X, (B.yw - 40 + oy) * ky, r, 0, 7); cc.fill(); } cc.globalCompositeOperation = 'source-over'; }
+      if (B.glow) { cc.globalCompositeOperation = 'lighter'; for (let i = 0; i < 5; i++) { cc.globalAlpha = .06 * B.rise; cc.fillStyle = '#78c8ff'; const r = (140 - i * 26) * kx; cc.beginPath(); cc.arc(X, (B.yw - 40 + oy) * ky, r, 0, Math.PI * 2); cc.fill(); } cc.globalCompositeOperation = 'source-over'; }
     }
-    for (const p of parts) if (p.spray) {
-      if (t !== lastT) p.vy += p.ay || 0;
-      const [ox, oy] = off(p.d); if (p.y > HZ + F * CAMH / p.d + 1) continue;
-      sq((p.x + ox) * kx, (p.y + oy) * ky, p.size * kx, p.col, Math.min(1, (1 - p.t / p.life) * 2));
-    }
-    // ---- pass 2: the pier and the rocks in front
+    // ---- pass 2: the rocks and the Tidelight
     R.render(S3.fore, S3.cam);
     cc.globalAlpha = 1; cc.drawImage(glc, 0, 0);
-    // pier lamp: a stepped glow and its light trembling on the water below
-    { const [ox, oy] = off(D.fore), X = (PIER_LAMP[0] + ox) * kx, Y = (PIER_LAMP[1] - 4 + oy) * ky;
-      cc.globalCompositeOperation = 'lighter';
-      for (let i = 0; i < 4; i++) { cc.globalAlpha = .1 + i * .04; cc.fillStyle = '#ffd896'; cc.beginPath(); cc.arc(Math.round(X), Math.round(Y), Math.round((40 - i * 9) * kx), 0, 7); cc.fill(); }
-      for (let k2 = 0; k2 < 6; k2++) { cc.globalAlpha = .2 - k2 * .03; cc.fillStyle = '#ffd28c'; cc.fillRect(Math.round((PIER_LAMP[0] - 2 + Math.sin(t / 20 + k2) * 2 + ox) * kx), Math.round((362 + k2 * 6 + oy) * ky), Math.round(4 * kx), Math.max(1, Math.round(2 * ky))); }
-      cc.globalCompositeOperation = 'source-over'; cc.globalAlpha = 1; }
+    // surf spray in front of the rocks
+    for (const p of parts) if (p.top) { const [ox, oy] = off(p.d); sq((p.x + ox) * kx, (p.y + oy) * ky, p.size * kx, p.col, Math.min(1, (1 - p.t / p.life) * 2.2)); }
     // vignette (in stepped rings) and the fade in
     for (let i = 0; i < 5; i++) {
-      cc.globalAlpha = .1; cc.fillStyle = '#00000c'; const inset = (i + 1) * .05;
-      cc.beginPath(); cc.rect(0, 0, RW, RH); cc.ellipse(RW / 2, RH / 2, RW * (.78 - inset), RH * (.86 - inset), 0, 0, Math.PI * 2); cc.fill('evenodd');
+      cc.globalAlpha = .08; cc.fillStyle = '#00000c'; const inset = (i + 1) * .05;
+      cc.beginPath(); cc.rect(0, 0, RW, RH); cc.ellipse(RW / 2, RH / 2, RW * (.8 - inset), RH * (.88 - inset), 0, 0, Math.PI * 2); cc.fill('evenodd');
     }
     cc.globalAlpha = 1;
     if (intro < 1) { cc.fillStyle = `rgba(0,0,0,${(1 - intro).toFixed(3)})`; cc.fillRect(0, 0, RW, RH); }
@@ -386,8 +367,9 @@
   }
 
   G.title3d = {
-    prewarm() { init(); },
-    // draws the scene into the game viewport; false when WebGL is unavailable (the flat painting is used)
+    prewarm() { loadPics(); },
+    // draws the scene into the game viewport; false when WebGL is unavailable or the pictures are still
+    // loading (the flat painting is used)
     draw(c, st) {
       if (!init()) return false;
       try { frame(st); } catch (e) { console.warn('3D title failed', e); failed = true; return false; }
