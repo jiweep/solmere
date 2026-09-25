@@ -284,6 +284,7 @@ G.objImg = function (map, c, frame) {
     case 'counter': case 'pc': case 'shelf': case 'tv': case 'plant': case 'healer': case 'machine': case 'desk': case 'statue':
     case 'dresser': case 'sidetable': case 'armchair': case 'fridge': case 'stove': case 'sink': case 'boxes': case 'floorlamp': case 'vending': case 'display': case 'whiteboard': case 'plant2':
       return { ...T.furniture(c.o, ['pc', 'tv', 'healer', 'machine', 'vending'].includes(c.o) ? frame % 2 : 0), ao: !['counter', 'shelf', 'fridge', 'stove', 'sink', 'dresser'].includes(c.o) };
+    case 'orbball': return { img: G.orbArt('orb', 14), ox: 1, oy: 1, aoW: 5 };
     case 'fountain': {
       const F = G.fountainOf(map, c.x | 0, c.y | 0);
       if (F.w === 1 && F.h === 1) return { ...T.prop('fountain', frame % 2), aoW: 6 };

@@ -917,9 +917,55 @@ G.tiles = (function () {
     return c;
   }
   const HOUSE_ROOF = { red: 'house_red', blue: 'house_blue', teal: 'house_teal', brown: 'house_brown', gray: 'house_gray', grey: 'house_gray', purple: 'house_purple', orange: 'house_orange', snow: 'house_snow', green: 'house_teal', pink: 'house_orange' };
+  // Solmere's own look for the healing Haven and the Mart (the generated art leaned on a familiar red / blue
+  // roof with a white band and a round badge): roofs re-hued (Haven sea-teal, Mart amber; window glass
+  // kept) and a new badge painted over the old one: a heart riding a wave, a coin purse.
+  const _restyled = new WeakMap();
+  function restyleShop(kind, src) {
+    const hit = _restyled.get(src); if (hit) return hit;
+    const W = src.width, H = src.height, cv = G.makeCanvas(W, H), c = cv.getContext('2d');
+    c.drawImage(src, 0, 0);
+    const id = c.getImageData(0, 0, W, H), d = id.data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 20) continue;
+      const r = d[i] / 255, g = d[i + 1] / 255, b = d[i + 2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, dl = mx - mn;
+      if (dl < .12) continue;
+      const sat = dl / (1 - Math.abs(2 * l - 1) + 1e-6);
+      let h = mx === r ? ((g - b) / dl) % 6 : mx === g ? (b - r) / dl + 2 : (r - g) / dl + 4; h = (h * 60 + 360) % 360;
+      let nh = null;
+      if (kind === 'haven' && (h < 22 || h > 338) && sat > .3) nh = 176;                 // red roof -> sea-teal
+      if (kind === 'mart' && h > 208 && h < 250 && sat > .3 && (i / 4 / W) < H * .62) nh = 34;   // blue roof -> amber (not the glass)
+      if (nh === null) continue;
+      const C = dl, X = C * (1 - Math.abs((nh / 60) % 2 - 1)), m = l - C / 2;
+      const [rr, gg, bb] = nh < 60 ? [C, X, 0] : nh < 120 ? [X, C, 0] : nh < 180 ? [0, C, X] : [0, X, C];
+      d[i] = (rr + m) * 255; d[i + 1] = (gg + m) * 255; d[i + 2] = (bb + m) * 255;
+    }
+    c.putImageData(id, 0, 0);
+    // the badge
+    const cx = Math.round(W * (kind === 'haven' ? .503 : .496)), cy = Math.round(H * (kind === 'haven' ? .555 : .55)), R = 9;
+    const P = hx => { const n = parseInt(hx.slice(1), 16); return `rgb(${n >> 16 & 255},${n >> 8 & 255},${n & 255})`; };
+    c.fillStyle = P('#1c2a30'); c.beginPath(); c.arc(cx + .5, cy + .5, R + .6, 0, 7); c.fill();
+    c.fillStyle = P('#fff8ec'); c.beginPath(); c.arc(cx + .5, cy + .5, R - .6, 0, 7); c.fill();
+    const px = (x, y, col) => { c.fillStyle = P(col); c.fillRect(cx + x, cy + y, 1, 1); };
+    if (kind === 'haven') {
+      // a heart over a wave
+      const heart = ['.XX.XX.', 'XXXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...'];
+      heart.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === 'X') px(x - 3, y - 5, y === 0 || x === 0 ? '#ff8a9a' : '#e8405a'); }));
+      for (let x = -6; x <= 6; x++) { const y = 3 + Math.round(Math.sin(x * .9) * 1.2); px(x, y, '#1aa8a0'); px(x, y + 1, '#0e6a6a'); }
+    } else {
+      // a coin purse with a clasp and a coin
+      const bag = ['..XXX..', '.X...X.', 'XXXXXXX', 'XXXXXXX', 'XXXXXXX', 'XXXXXXX', '.XXXXX.'];
+      bag.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === 'X') px(x - 4, y - 4, y < 2 ? '#8a5a1a' : x === 0 || y === 2 ? '#e0a040' : '#c07820'); }));
+      px(-1, -2, '#fff0a0'); px(0, -2, '#fff0a0');
+      for (const [x, y] of [[3, 1], [4, 1], [3, 2], [4, 2]]) px(x, y, y === 1 ? '#fff0a0' : '#e8c040');
+    }
+    _restyled.set(src, cv);
+    return cv;
+  }
   function building(kind, w, h, o = {}) {
     const ak = kind === 'house' ? (HOUSE_ROOF[o.roof] || 'house_red') : ['haven', 'mart', 'lab', 'gym', 'tower', 'lighthouse'].includes(kind) ? kind : null;
-    const im = ak && atlas(ak, w * 16);
+    let im = ak && atlas(ak, w * 16);
+    if (im && (ak === 'haven' || ak === 'mart')) im = restyleShop(ak, im);
     if (im) return { img: im, oy: Math.max(0, im.height - h * 16), atlas: true };
     const extra = kind === 'tower' ? 56 : kind === 'lighthouse' ? 72 : kind === 'gym' ? 22 : 16;
     const key = `bld|${kind}|${w}|${h}|${o.roof || ''}|${o.door}|${o.accent || ''}|${o.label || ''}`;

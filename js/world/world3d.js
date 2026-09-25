@@ -1343,8 +1343,8 @@ G.W3 = (function () {
 
   // ------------------------------------------------------------- per-frame
   function entImage(w, e) {
-    if (e.kind === 'item') { if (e.hidden) return null; return G.tiles.get('fu|orbball|0', 16, 16, p => G.tiles.furniture(p, 'orbball', 0)); }
-    if (e.kind === 'sign') { if (e.invisible && !e.deco) return null; return e.deco ? null : (G.tiles.atlas && G.tiles.atlas('sign')); }
+    if (e.kind === 'item') { if (e.hidden) return null; return G.orbArt('orb', 14); }
+    if (e.kind === 'sign') { if (e.invisible && !e.deco) return null; if (e.deco) { const [k, col] = e.deco.split(':'); return k === 'orbball' ? G.orbArt('orb', 12, col) : null; } return G.tiles.atlas && G.tiles.atlas('sign'); }
     if (e.monSprite) return G.monArt.overworld(e.monSprite, !!e.shiny, e.dir, Math.floor(w.frame / 16) % 2);
     if (!e.look) return null;
     const sh = G.chars.sheet(e.look), surf = e === w.player && w.surfing;

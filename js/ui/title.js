@@ -296,7 +296,7 @@ G.openDebugMenu = async function () {
     const tog = (k, l) => ({ id: 't_' + k, label: `${l}: ${g[k] ? 'ON' : 'off'}` });
     const items = [tog('invincible', 'Invincible'), tog('ohko', 'One-hit KOs'), tog('noclip', 'Walk through walls'), tog('noEnc', 'No encounters'), tog('catch100', '100% catch'), tog('speed', 'Fast walk'),
       { id: 'heal', label: 'Heal party' }, { id: 'chapter', label: 'Jump to chapter…' }, { id: 'warp', label: 'Warp to map…' }, { id: 'mon', label: 'Give mon…' }, { id: 'item', label: 'Give item…' },
-      { id: 'kit', label: 'Give key items + TMs + $' }, { id: 'lvl', label: 'Party +10 levels' }, { id: 'dex', label: 'Complete Dex' }, { id: 'time', label: 'Set time of day…' }, { id: 'trainer', label: 'Battle trainer…' }, { id: 'badges', label: 'Give all badges' }, { id: 'close', label: 'Close' }];
+      { id: 'kit', label: 'Give key items + Skill Discs + $' }, { id: 'lvl', label: 'Party +10 levels' }, { id: 'dex', label: 'Complete Dex' }, { id: 'time', label: 'Set time of day…' }, { id: 'trainer', label: 'Battle trainer…' }, { id: 'badges', label: 'Give all badges' }, { id: 'close', label: 'Close' }];
     const k = await G.choose(items, { x: 8, y: 8, w: 150, maxRows: 14, title: 'GOD MODE', cancel: items.length - 1 });
     if (k < 0 || items[k].id === 'close') return false;
     const id = items[k].id;

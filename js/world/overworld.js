@@ -985,13 +985,13 @@ G.WorldScene = class {
     const m = this.map;
     if (e.kind === 'item') {
       if (e.hidden) return;
-      const img = G.tiles.get('fu|orbball|0', 16, 16, p => G.tiles.furniture(p, 'orbball', 0));
+      const img = G.orbArt('orb', 14);
       b.drawImage(img, e.px - ox, e.py - oy + Math.sin(this.frame / 20) * .5); return;
     }
     if (e.kind === 'sign') {
       if (e.deco) { // decorative prop drawn on a surface, e.g. the starter Orbs on the lab table
         const [kind, col] = e.deco.split(':');
-        const img = G.tiles.get(`deco|${e.deco}`, 16, 16, p => { G.tiles.furniture(p, kind, 0); if (col) { p.circ(8, 8.5, 1.3, G.col.parse(col)); p.set(8, 8, G.col.parse('#ffffff')); } });
+        const img = kind === 'orbball' ? G.orbArt('orb', 12, col) : G.tiles.get(`deco|${e.deco}`, 16, 16, p => G.tiles.furniture(p, kind, 0));
         const glint = Math.floor(this.frame / 8 + e.x * 5) % 24 === 0;
         b.drawImage(img, e.px - ox, e.py - oy - 4);
         if (glint) { b.fillStyle = '#ffffff'; b.fillRect(e.px - ox + 5, e.py - oy - 1, 1, 1); }

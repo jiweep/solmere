@@ -15,7 +15,7 @@ G.TextBox = class {
     this.pages = []; this.page = 0; this.chars = 0; this.speaker = null; this.state = 'idle'; this.color = o.color;
   }
   set(text, speaker, look) {
-    text = G.fmtText(text);
+    text = G.fmtText(G.renameText ? G.renameText(text) : text);
     if (this.speaker !== (speaker || null)) this.pt = 0;
     this.speaker = speaker || null; this.look = look || G.lookForSpeaker(speaker);
     const parts = text.split('\\p');

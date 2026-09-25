@@ -350,7 +350,7 @@ G.BattleScene = class {
     // mons: draw foes first then mine
     const keys = Object.keys(this.slots).sort((a, c) => (this.slots[a].side === this.persp) - (this.slots[c].side === this.persp));
     for (const k of keys) this.drawMon(b, this.slots[k], ioff);
-    if (this.thrown) { const th = this.thrown; b.save(); b.translate(th.x, th.y); b.rotate(th.rot); b.drawImage(G.tiles.itemIcon('orb', G.ITEMS[th.ball] ? G.ITEMS[th.ball].ic : '#e8484a'), -8, -8); b.restore(); }
+    if (this.thrown) { const th = this.thrown; b.save(); b.translate(th.x, th.y); b.rotate(th.rot); b.drawImage(G.orbArt(G.ORB_STYLE[th.ball] ? th.ball : 'orb', 16), -8, -8); b.restore(); }
     this.parts.draw(b); this.fxp.draw(b);
     if (this.animLayer) this.animLayer(b);
     // stat overlays
@@ -468,7 +468,7 @@ G.BattleScene = class {
       for (const side of [0, 1]) {
         const mine = side === this.persp, B = this.balls[side]; if (!B) continue;
         const x0 = mine ? 12 : G.W - 70, y0 = mine ? 38 : 32;
-        for (let i = 0; i < Math.min(6, B.count); i++) U.img(G.tiles.itemIcon('orb', i < B.alive ? '#e8484a' : '#606070'), x0 + i * 10, y0, { scale: .6 });
+        for (let i = 0; i < Math.min(6, B.count); i++) U.img(G.orbArt('orb', 10, i < B.alive ? null : '#606070'), x0 + i * 10, y0);
       }
     }
     // screens/field indicators
@@ -504,7 +504,7 @@ G.BattleScene = class {
     const nw = U.measure(name, 6.3, 800);
     if (s.gender) U.text(s.gender === 'm' ? '♂' : '♀', x + 10 + nw, y + 2, { size: 6, weight: 800, color: s.gender === 'm' ? '#6ab0ff' : '#ff7aa0', shadow: false });
     U.text('Lv' + s.lvl, x + w - 7, y + 2.4, { size: 5.4, weight: 800, align: 'right', color: '#ffd35c', shadow: false });
-    if (!mine && this.bt && this.bt.wild && G.save && G.save.dex.caught[s.sp]) U.img(G.tiles.itemIcon('orb', '#e8484a'), x + w - 30, y + 2.2, { scale: .42 });
+    if (!mine && this.bt && this.bt.wild && G.save && G.save.dex.caught[s.sp]) U.img(G.orbArt('orb', 7), x + w - 30, y + 2.2);
     const f = s.maxhp ? s.dispHp / s.maxhp : 0;
     U.para(x + 8, y + 11, w - 17, 3.4, 1.2, 'rgba(255,255,255,.12)');
     U.para(x + 8, y + 11, (w - 17) * Math.max(0, f), 3.4, 1.2, U.hpColor(f));

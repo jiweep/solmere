@@ -11,7 +11,9 @@ G.itemHD = (function () {
     if (!img) { img = new Image(); img.onload = () => { ok = true; }; img.src = A.src; }
     if (!ok) return null;
     if (cache[id]) return cache[id];
-    const it = G.ITEMS[id]; let m = A.map[id];
+    const it = G.ITEMS[id];
+    if (it && it.pocket === 'orb' && G.orbArt) { const o = G.orbArt(G.ORB_STYLE[id] ? id : 'orb', 48); o.dispW = 16; o.dispH = 16; return (cache[id] = o); }   // Solmere's own Orbs
+    let m = A.map[id];
     if (!m && it && A.kind[it.icon]) m = [A.kind[it.icon], it.icon === 'tm' ? 1 : 0];
     if (!m) return null;
     const [x, y] = A.rects[m[0]], S = A.size, cv = G.makeCanvas(S, S), c = cv.getContext('2d');

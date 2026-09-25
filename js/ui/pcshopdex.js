@@ -156,7 +156,7 @@ G.ShopScene = class {
     const it = G.ITEMS[id], price = it.price;
     if (G.save.money < price) { await G.say('You don\'t have enough money.'); return; }
     const max = it.pocket === 'tm' || it.pocket === 'key' ? 1 : Math.min(99, Math.floor(G.save.money / price));
-    if ((it.pocket === 'tm') && G.bag.has(id)) { await G.say('You already have that TM. TMs never break!'); return; }
+    if ((it.pocket === 'tm') && G.bag.has(id)) { await G.say('You already have that Skill Disc. Discs never wear out!'); return; }
     const n = max === 1 ? 1 : await G.askNumber({ min: 1, max, start: 1, price, text: `${it.name}? How many?` });
     if (n <= 0) return;
     if (!await G.yesno(`${it.name}${n > 1 ? ' ×' + n : ''} will be $${(price * n).toLocaleString()}. OK?`)) return;
@@ -243,7 +243,7 @@ G.DexScene = class {
         if (sel) { U.para(15, y, 144, 13.5, 3, '#07060c'); U.para(12, y - 1.5, 144, 13.5, 3, '#ff3b4e'); }
         U.hot(12, y - 1.5, 144, 15, () => { if (this.i !== i) { this.i = i; G.audio && G.audio.sfx('cursor'); } }, () => { this.i = i; G.input.tap('a'); });
         U.text(String(S2.num).padStart(3, '0'), 18, y + 2, { size: 6.4, weight: 800, color: sel ? '#ffe0e4' : '#8a90a0', shadow: false });
-        if (ct) U.img(G.tiles.itemIcon('orb', '#e8484a'), 38, y + 1, { scale: .55 });
+        if (ct) U.img(G.orbArt('orb', 9), 38, y + 1);
         U.text(sn ? S2.name : '— — —', 50, y + 1.6, { size: 7, weight: sel ? 800 : 700, color: sel ? '#fff' : sn ? '#283040' : '#aab', shadow: sel ? '#7a0f1c' : false });
         if (G.save.dex.shiny[sid]) U.text('★', 150, y + 1.6, { size: 6, color: '#d99a14', align: 'right' });
       });
