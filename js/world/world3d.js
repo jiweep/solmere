@@ -407,17 +407,18 @@ G.W3 = (function () {
   }
 
   // ------------------------------------------------------------- characters
-  // Characters stand upright (so they never sink into a wall behind them) and are stretched by the
-  // camera's foreshortening, so on screen they read pixel-for-pixel as drawn. Nearest sampling keeps
-  // them crisp. Shading comes from the silhouette: a normal is estimated from the alpha edges and lit
-  // by the sun, with a warm rim on the lit side and a little occlusion at the feet, so they read as
-  // rounded figures instead of cut-outs. Their tint follows the time of day and the lamps nearby.
-  const STRETCH = 1 / Math.cos(.8);
+  // Characters stand upright (so they never sink into a wall behind them), at DS proportions: a person
+  // is about as tall as a tile is wide on screen, a house wall two to three people tall. The plane is
+  // stretched by the camera's foreshortening so the pixel art reads as drawn, sampled nearest. They are
+  // lit like the ground they stand on (Lambert with an upward-facing normal, receiving the sun's
+  // shadows and the lamps' light), and the silhouette gets a little rounding: faces turned toward the
+  // sun (estimated from the alpha edges) are a touch brighter, the feet a touch darker.
+  const STRETCH = 1 / Math.cos(.8), ENT_SC = .58;
   let blobMat = null, blobGeo = null;
   function blob() {
     if (!blobMat) {
       const c = G.makeCanvas(32, 32), x = c.getContext('2d'), g = x.createRadialGradient(16, 16, 0, 16, 16, 16);
-      g.addColorStop(0, 'rgba(0,0,0,.55)'); g.addColorStop(.55, 'rgba(0,0,0,.3)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      g.addColorStop(0, 'rgba(0,0,0,.5)'); g.addColorStop(.55, 'rgba(0,0,0,.26)'); g.addColorStop(1, 'rgba(0,0,0,0)');
       x.fillStyle = g; x.fillRect(0, 0, 32, 32);
       const t = new T.CanvasTexture(c);
       blobMat = new T.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, color: 0x101828 });
@@ -425,43 +426,48 @@ G.W3 = (function () {
     }
     const m = new T.Mesh(blobGeo, blobMat); m.renderOrder = 2; return m;
   }
-  function entGeo(img) { const w = img.width / 16, h = img.height / 16 * STRETCH, g = new T.PlaneGeometry(w, h); g.translate(0, h / 2, 0); return g; }
+  function entGeo(img) {
+    const w = img.width / 16 * ENT_SC, h = img.height / 16 * ENT_SC * STRETCH, g = new T.PlaneGeometry(w, h); g.translate(0, h / 2, 0);
+    const n = g.attributes.normal; for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, .82, .57);   // lit like the ground, a little toward the camera
+    return g;
+  }
   function entSprite(img) {
     const t = texPx(img);
-    const u = { uTint: { value: new T.Color(1, 1, 1) }, uRim: { value: new T.Color(0, 0, 0) }, uTexel: { value: new T.Vector2(1 / img.width, 1 / img.height) } };
-    const mat = new T.MeshBasicMaterial({ map: t, alphaTest: .5, side: T.DoubleSide });
+    const u = { uTexel: { value: new T.Vector2(1 / img.width, 1 / img.height) } };
+    const mat = new T.MeshLambertMaterial({ map: t, alphaTest: .5, side: T.DoubleSide });
     mat.onBeforeCompile = sh => {
       Object.assign(sh.uniforms, u);
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uTint; uniform vec3 uRim; uniform vec2 uTexel;')
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec2 uTexel;')
         .replace('#include <alphatest_fragment>', `#include <alphatest_fragment>
           { vec2 d = uTexel * 1.6;
             float aL = texture2D(map, vMapUv - vec2(d.x, 0.0)).a, aR = texture2D(map, vMapUv + vec2(d.x, 0.0)).a;
             float aU = texture2D(map, vMapUv + vec2(0.0, d.y)).a, aD = texture2D(map, vMapUv - vec2(0.0, d.y)).a;
             vec3 n = normalize(vec3(aL - aR, aD - aU, 1.1));
             float lit = dot(n, normalize(vec3(-.62, .5, .6)));
-            float edge = 1.0 - texture2D(map, vMapUv + vec2(-uTexel.x, uTexel.y)).a;
-            float foot = mix(.8, 1.0, smoothstep(0.0, .3, vMapUv.y));
-            diffuseColor.rgb = diffuseColor.rgb * uTint * (.94 + .24 * lit) * foot * (vec3(1.0) + edge * uRim); }`);
+            float foot = mix(.84, 1.0, smoothstep(0.0, .3, vMapUv.y));
+            diffuseColor.rgb *= (.96 + .18 * lit) * foot; }`);
     };
-    mat.customProgramCacheKey = () => 'entspr';
+    mat.customProgramCacheKey = () => 'entspr2';
     const m = new T.Mesh(entGeo(img), mat);
-    m.castShadow = true;
+    m.castShadow = true; m.receiveShadow = true;
     m.customDepthMaterial = new T.MeshDepthMaterial({ depthPacking: T.RGBADepthPacking, map: t, alphaTest: .5 });
     const b = blob(); m.add(b); m.userData.blob = b;
     m.userData.u = u; m.userData.tex = t; m.userData.img = img; m.userData.w = img.width; m.userData.h = img.height; m.userData.ent = true;
     return m;
   }
+
   function setBillboardImage(m, img) {
     if (m.userData.img === img) return;
     const ent = m.userData.ent, t = ent ? texPx(img) : tex(img);
-    if (ent) m.userData.u.uTexel.value.set(1 / img.width, 1 / img.height); m.material.map = t; m.material.needsUpdate = true; m.customDepthMaterial.map = t; m.customDepthMaterial.needsUpdate = true;
+    if (ent) m.userData.u.uTexel.value.set(1 / img.width, 1 / img.height);
+    m.material.map = t; m.material.needsUpdate = true; m.customDepthMaterial.map = t; m.customDepthMaterial.needsUpdate = true;
     if (m.userData.w !== img.width || m.userData.h !== img.height) { m.geometry.dispose(); if (ent) m.geometry = entGeo(img); else { m.geometry = new T.PlaneGeometry(img.width / 16, img.height / 16); m.geometry.translate(0, img.height / 32, 0); } m.userData.w = img.width; m.userData.h = img.height; }
     if (m.userData.tex) m.userData.tex.dispose(); m.userData.tex = t; m.userData.img = img;
   }
 
   // ------------------------------------------------------------- props
   function buildProps(map, hv, group) {
-    const W = map.w, H = map.h, PADT = 12;
+    const W = map.w, H = map.h, PADT = 12, trees = {};
     for (let y = -PADT; y < H + PADT; y++) for (let x = -PADT; x < W + PADT; x++) {
       const inside = x >= 0 && y >= 0 && x < W && y < H;
       // beyond the edge: the connected map's own cell if there is one, otherwise the border fill
@@ -481,6 +487,11 @@ G.W3 = (function () {
       if (c && c.light && inside) (group.userData.lights || (group.userData.lights = [])).push({ x: x + .5, z: y + .6, y: hv.at(x + .5, y + .5), kind: c.light, ground: !c.o });
       if (!c || !c.o || c.o === 'table' || c.o === 'bed' || c.o === 'rug') continue;
       if (c.cut || c.smash || c.push || c.solidIf) continue;   // stateful props stay dynamic (drawn as ents below)
+      // trees and lamps are real 3D models
+      const tk = treeKind(rr ? rr.map : map, c, x, y);
+      if (tk) { const gy = hv.at(G.clamp(x + .5, 0, W - .01), G.clamp(y + .55, 0, H - .01)); (trees[tk] || (trees[tk] = [])).push([x + .5 + (G.h2(x, y, 5) - .5) * .25, gy, y + .6 + (G.h2(x, y, 6) - .5) * .2, G.h2(x, y, 7), c]); continue; }
+      if (c.o === 'fountain' && inside) { group.add(fountainModel(x + .5, hv.at(G.clamp(x + .5, 0, W - .01), G.clamp(y + .5, 0, H - .01)), y + .5)); continue; }
+      if (c.o === 'lamp' || c.o === 'lanternpost') { group.add(lampModel(c.o, x + .5, hv.at(G.clamp(x + .5, 0, W - .01), G.clamp(y + .5, 0, H - .01)), y + .55)); continue; }
       let oi; try { oi = G.objImg(rr ? rr.map : map, c, 0); } catch (e) { oi = null; }
       if (!oi || !oi.img || oi.flat) continue;
       const leafy = /tree|palm|pine|bush|shrub|reed|fern|plant|willow|sapling|blossom|flower/.test(c.o);
@@ -490,6 +501,252 @@ G.W3 = (function () {
       group.add(m);
       if (oi.img.height > 24) { m.userData.hw = oi.img.width / 32; m.userData.ht = oi.img.height / 16; m.userData.fade = 1; (group.userData.tall || (group.userData.tall = [])).push(m); }
     }
+    for (const k in trees) plantTrees(group, k, trees[k], map);
+  }
+
+  // ------------------------------------------------------------- 3D trees
+  // Stylised low-poly trees, instanced per kind so a whole forest is a handful of draw calls:
+  // broadleaf crowns built from several lumpy, faceted leaf clusters (dark underneath, sunlit on top,
+  // a leaf pattern on every facet), conifers from stacked jagged cones (snow-capped in the north),
+  // palms with a leaning ringed trunk and drooping fronds, and bare dead trees. Crowns sway in the
+  // wind, and any tree between the camera and the player dissolves (screen-door dither) so the player
+  // is never hidden. Unit: tiles; a grown tree is about three and a half tiles tall.
+  const TREE_CACHE = {};
+  let leafTex = null, barkTex = null;
+  // a clump of leaves with an alpha edge: one "card" of a crown. Greyscale; the crown's vertex colours tint it
+  function leafTexture() {
+    if (leafTex) return leafTex;
+    const c = G.makeCanvas(64, 64), x = c.getContext('2d'), rng = new G.RNG(404);
+    for (let i = 0; i < 70; i++) {
+      const a = rng.next() * Math.PI * 2, r = Math.sqrt(rng.next()) * 22, px = 32 + Math.cos(a) * r, py = 32 + Math.sin(a) * r;
+      const lr = 4 + rng.next() * 3.5, ang = rng.next() * Math.PI, v = 150 + ((py < 32 ? 1 : 0) * 40) + rng.int(0, 65);
+      x.fillStyle = `rgb(${v},${v},${v})`; x.beginPath(); x.ellipse(px, py, lr, lr * .5, ang, 0, Math.PI * 2); x.fill();
+      x.fillStyle = 'rgba(255,255,255,.35)'; x.beginPath(); x.ellipse(px - 1, py - 1, lr * .5, lr * .2, ang, 0, Math.PI * 2); x.fill();
+    }
+    leafTex = new T.CanvasTexture(c); leafTex.colorSpace = T.SRGBColorSpace; leafTex.anisotropy = 4;
+    return leafTex;
+  }
+  function barkTexture() {
+    if (barkTex) return barkTex;
+    const c = G.makeCanvas(32, 64), x = c.getContext('2d'), rng = new G.RNG(77);
+    x.fillStyle = '#c8c8c8'; x.fillRect(0, 0, 32, 64);
+    for (let i = 0; i < 26; i++) { const px = rng.next() * 32, v = 90 + rng.int(0, 80); x.fillStyle = `rgb(${v},${v},${v})`; x.fillRect(px, 0, 1 + rng.int(0, 2), 64); }
+    for (let i = 0; i < 30; i++) { x.fillStyle = 'rgba(40,40,40,.4)'; x.fillRect(rng.next() * 32, rng.next() * 64, 3, 1); }
+    barkTex = new T.CanvasTexture(c); barkTex.wrapS = barkTex.wrapT = T.RepeatWrapping; barkTex.colorSpace = T.SRGBColorSpace;
+    return barkTex;
+  }
+  // non-indexed merge of simple geometries (position, normal, uv, color)
+  function merge(list) {
+    const P = [], N = [], U = [], C = [];
+    for (const g0 of list) {
+      const g = g0.index ? g0.toNonIndexed() : g0;
+      P.push(...g.attributes.position.array); N.push(...g.attributes.normal.array);
+      U.push(...(g.attributes.uv ? g.attributes.uv.array : new Float32Array(g.attributes.position.count * 2)));
+      C.push(...(g.attributes.color ? g.attributes.color.array : new Float32Array(g.attributes.position.count * 3).fill(1)));
+    }
+    const o = new T.BufferGeometry();
+    o.setAttribute('position', new T.Float32BufferAttribute(P, 3)); o.setAttribute('normal', new T.Float32BufferAttribute(N, 3));
+    o.setAttribute('uv', new T.Float32BufferAttribute(U, 2)); o.setAttribute('color', new T.Float32BufferAttribute(C, 3));
+    return o;
+  }
+  // colour every vertex from a function of its position; flat facets
+  function paint(g, fn) {
+    g = g.index ? g.toNonIndexed() : g;
+    const p = g.attributes.position, col = new Float32Array(p.count * 3);
+    for (let i = 0; i < p.count; i++) { const c = fn(p.getX(i), p.getY(i), p.getZ(i), i); col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2]; }
+    g.setAttribute('color', new T.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
+    return g;
+  }
+  function lumpy(g, amp, seed) {
+    const p = g.attributes.position, rng = new G.RNG(seed), seen = new Map();
+    for (let i = 0; i < p.count; i++) {
+      const key = p.getX(i).toFixed(3) + ',' + p.getY(i).toFixed(3) + ',' + p.getZ(i).toFixed(3);
+      if (!seen.has(key)) seen.set(key, 1 + (rng.next() - .5) * amp);
+      const k = seen.get(key); p.setXYZ(i, p.getX(i) * k, p.getY(i) * k, p.getZ(i) * k);
+    }
+    return g;
+  }
+  const hexc = h => { const n = parseInt(h.slice(1), 16); return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255].map(v => Math.pow(v, 1.6)); };   // between display and linear: saturated, not murky
+  const mixc = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+  function treeGeo(kind, v) {
+    const key = kind + v; if (TREE_CACHE[key]) return TREE_CACHE[key];
+    const rng = new G.RNG(key.length * 131 + v * 17 + kind.charCodeAt(0));
+    let trunk, crown;
+    const barkC = kind === 'dead' ? hexc('#8a7a6a') : kind === 'palm' ? hexc('#a88a64') : hexc('#6a4a32');
+    if (kind === 'broad' || kind === 'fruit') {
+      const t = new T.CylinderGeometry(.08, .15, 2.0, 7, 1); t.translate(0, 1.0, 0);
+      const br = new T.CylinderGeometry(.03, .06, .6, 5, 1); br.rotateZ(.9); br.translate(.2, 1.75, 0);
+      const br2 = new T.CylinderGeometry(.03, .05, .55, 5, 1); br2.rotateZ(-.8); br2.rotateY(1.9); br2.translate(-.1, 1.7, .15);
+      trunk = merge([paint(t, () => barkC), paint(br, () => barkC), paint(br2, () => barkC)]);
+      // crown: leaf-cluster cards scattered through a few overlapping lumps, each card's normal pointing
+      // out from the crown centre so the whole crown shades like one soft rounded mass; a dark core
+      // behind them fills any gap
+      const base = kind === 'fruit' ? hexc('#56a83e') : [hexc('#3e9a36'), hexc('#52aa3c'), hexc('#2f8a3e')][v % 3];
+      const cy0 = 2.45, lumps = [[0, cy0, 0, .62]];
+      for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + rng.next() * .6; lumps.push([Math.cos(a) * .38, cy0 - .15 + rng.next() * .35, Math.sin(a) * .38, .42 + rng.next() * .12]); }
+      lumps.push([0, cy0 + .45, 0, .4]);
+      const P = [], N = [], U = [], C = [];
+      const quad = (cx, cy, cz, sz, rot) => {
+        const n = new T.Vector3(cx, cy - cy0, cz).normalize(), up = Math.abs(n.y) > .9 ? new T.Vector3(1, 0, 0) : new T.Vector3(0, 1, 0);
+        const t1 = new T.Vector3().crossVectors(n, up).normalize(), t2 = new T.Vector3().crossVectors(n, t1).normalize();
+        const cs = Math.cos(rot), sn = Math.sin(rot), A = t1.clone().multiplyScalar(cs).addScaledVector(t2, sn), B = t1.clone().multiplyScalar(-sn).addScaledVector(t2, cs);
+        const h = (cy - (cy0 - .9)) / 1.8, col = mixc(mixc(base, [.02, .12, .06], .6), mixc(base, [.9, 1, .6], .28), G.clamp(h, 0, 1));
+        const pts = [[-1, -1], [1, -1], [1, 1], [-1, -1], [1, 1], [-1, 1]], uvs = [[0, 0], [1, 0], [1, 1], [0, 0], [1, 1], [0, 1]];
+        pts.forEach(([u2, v2], k) => { P.push(cx + (A.x * u2 + B.x * v2) * sz, cy + (A.y * u2 + B.y * v2) * sz, cz + (A.z * u2 + B.z * v2) * sz); N.push(n.x, n.y, n.z); U.push(...uvs[k]); C.push(...col); });
+      };
+      for (const [lx, ly, lz, lr] of lumps) for (let i = 0; i < 22; i++) {
+        const u = rng.next() * 2 - 1, th = rng.next() * Math.PI * 2, rr = lr * (.72 + rng.next() * .3), sq = Math.sqrt(1 - u * u);
+        quad(lx + Math.cos(th) * sq * rr, ly + u * rr * .85, lz + Math.sin(th) * sq * rr, .3 + rng.next() * .12, rng.next() * 6.28);
+      }
+      const cards = new T.BufferGeometry();
+      cards.setAttribute('position', new T.Float32BufferAttribute(P, 3)); cards.setAttribute('normal', new T.Float32BufferAttribute(N, 3));
+      cards.setAttribute('uv', new T.Float32BufferAttribute(U, 2)); cards.setAttribute('color', new T.Float32BufferAttribute(C, 3));
+      cards.userData.cards = true;
+      const core = new T.IcosahedronGeometry(.5, 1); core.translate(0, cy0 + .05, 0);
+      const coreP = paint(core, () => mixc(base, [0, .06, .03], .7)); coreP.deleteAttribute('uv'); coreP.setAttribute('uv', new T.Float32BufferAttribute(new Float32Array(coreP.attributes.position.count * 2).fill(.5), 2));
+      crown = merge([coreP, cards]); crown.userData.cards = true;
+    } else if (kind === 'pine' || kind === 'pinesnow') {
+      const t = new T.CylinderGeometry(.07, .13, 1.0, 6, 1); t.translate(0, .5, 0); trunk = paint(t, () => barkC);
+      const parts = [], base = [hexc('#2a6a4a'), hexc('#2f7550'), hexc('#255e44')][v % 3];
+      const tiers = [[.8, 1.0, .6], [.66, .95, 1.15], [.5, .9, 1.65], [.34, .8, 2.12], [.2, .65, 2.55]];
+      for (const [r, h, y0] of tiers) {
+        const g = new T.ConeGeometry(r, h, 9, 1); g.translate(0, y0 + h / 2, 0);
+        const p = g.attributes.position; for (let i = 0; i < p.count; i++) if (p.getY(i) < y0 + .01) { const a = Math.atan2(p.getZ(i), p.getX(i)); const j = 1 + Math.sin(a * 9 + y0 * 7) * .12 + (rng.next() - .5) * .1; p.setXYZ(i, p.getX(i) * j, p.getY(i) - rng.next() * .12, p.getZ(i) * j); }
+        parts.push(paint(g, (x, y, z) => { const loc = (y - y0) / h; let c = mixc(mixc(base, [0, .08, .06], .5), mixc(base, [.7, .9, .6], .25), loc); if (kind === 'pinesnow' && loc > .35) c = mixc(c, [.93, .96, 1], .75); return c; }));
+      }
+      crown = merge(parts);
+    } else if (kind === 'palm') {
+      const segs = [], H = 2.9, bend = .5;
+      for (let i = 0; i < 7; i++) { const y0 = i / 7 * H, c = new T.CylinderGeometry(.1 - i * .006, .13 - i * .006, H / 7 + .02, 7, 1); const xo = bend * Math.pow(y0 / H, 2); c.translate(xo, y0 + H / 14, 0); segs.push(paint(c, () => i % 2 ? barkC : mixc(barkC, [0, 0, 0], .2))); }
+      trunk = merge(segs);
+      const tx = bend, ty = H, fr = [];
+      for (let k = 0; k < 8; k++) {
+        const a = k / 8 * Math.PI * 2 + rng.next() * .3, P = [], L = 1.5 + rng.next() * .4;
+        for (let s2 = 0; s2 <= 6; s2++) {
+          const t = s2 / 6, w = .32 * Math.sin(Math.PI * Math.min(1, t * 1.1 + .05)), d = t * L, y = ty + .15 + t * .5 - t * t * 1.2;
+          const cx = tx + Math.cos(a) * d, cz = Math.sin(a) * d, px = -Math.sin(a) * w, pz = Math.cos(a) * w;
+          P.push([cx + px, y, cz + pz], [cx - px, y, cz - pz], [cx, y + .06, cz]);
+        }
+        const pos = []; for (let s2 = 0; s2 < 6; s2++) { const A = P[s2 * 3], B = P[s2 * 3 + 1], M = P[s2 * 3 + 2], A2 = P[s2 * 3 + 3], B2 = P[s2 * 3 + 4], M2 = P[s2 * 3 + 5]; pos.push(...A, ...M, ...A2, ...A2, ...M, ...M2, ...M, ...B, ...M2, ...M2, ...B, ...B2); }
+        const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(new Float32Array(pos.length / 3 * 2), 2));
+        fr.push(paint(g, (x, y, z) => mixc(hexc('#2f7a36'), hexc('#7ab84a'), Math.min(1, Math.max(0, (y - ty + .6) / 1.2)))));
+      }
+      crown = merge(fr);
+    } else {   // dead
+      const t = new T.CylinderGeometry(.08, .17, 2.2, 6, 1); t.translate(0, 1.1, 0);
+      const bs = [paint(t, () => barkC)];
+      for (let k = 0; k < 4; k++) { const b = new T.CylinderGeometry(.03, .07, .9, 5, 1); b.rotateZ(.7 + rng.next() * .5); b.rotateY(k * 1.6 + rng.next()); b.translate(0, 1.3 + k * .22, 0); bs.push(paint(b, () => barkC)); }
+      trunk = merge(bs); crown = null;
+    }
+    // leaf-pattern UVs: planar from the side, tiled
+    { const p = trunk.attributes.position, uv = trunk.attributes.uv; for (let i = 0; i < p.count; i++) uv.setXY(i, Math.atan2(p.getZ(i), p.getX(i)) / Math.PI, p.getY(i) * 1.5); }
+    return (TREE_CACHE[key] = { trunk, crown, h: kind === 'palm' ? 3.4 : kind === 'dead' ? 2.6 : 3.5 });
+  }
+  function treeKind(map, c, x, y) {
+    if (!c || !c.o) return null;
+    const th = map.theme, snow = th === 'snow';
+    if (c.o === 'pine') return snow ? 'pinesnow' : 'pine';
+    if (c.o === 'palm') return 'palm';
+    if (c.o === 'deadtree') return 'dead';
+    if (c.o === 'tree') { if (snow) return 'pinesnow'; const hh = G.h2(c.x | 0, c.y | 0, 77); if ((!th || th === 'grass') && hh < .3) return 'pine'; return hh > .93 ? 'fruit' : 'broad'; }
+    return null;
+  }
+  const TU = T ? { uPlayer: { value: new T.Vector3() }, uCamP: { value: new T.Vector3() } } : null;
+  function treeMaterial(map, crown, h, cards) {
+    const m = cards ? new T.MeshLambertMaterial({ map: leafTexture(), vertexColors: true, alphaTest: .5, alphaToCoverage: true, side: T.DoubleSide })
+      : new T.MeshLambertMaterial({ map: crown ? null : barkTexture(), vertexColors: true, flatShading: !!crown, side: crown ? T.DoubleSide : T.FrontSide });
+    const u = { uH: { value: h } };
+    m.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, U3, TU, u);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uTime; uniform float uWind; uniform float uH; varying vec3 vWP;')
+        .replace('#include <begin_vertex>', `#include <begin_vertex>
+          { vec4 o = modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0); float ph = o.x * .71 + o.z * .43;
+            float k = clamp(position.y / uH, 0.0, 1.0); k = k * k;
+            float gust = 1.0 + 1.1 * max(0.0, sin(uTime * .8 - (o.x * .9 + o.z * .5) * .22));
+            float s = (sin(uTime * 1.3 + ph) * .5 + sin(uTime * 3.1 + ph * 2.3) * .15) * gust + uWind * .6;
+            transformed.x += s * .09 * k; transformed.z += cos(uTime * 1.1 + ph) * .03 * k; }`)
+        .replace('#include <project_vertex>', '#include <project_vertex>\n vWP = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uPlayer; uniform vec3 uCamP; varying vec3 vWP;')
+        .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+          { vec3 toC = normalize(uCamP - uPlayer), toP = vWP - (uPlayer + vec3(0.0, .6, 0.0)); float al = dot(toP, toC);
+            float d = length(toP - toC * al), occ = step(.4, al) * (1.0 - smoothstep(1.0, 1.9, d));
+            float ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715))));
+            if (ign < occ * .78) discard; }`);
+    };
+    m.customProgramCacheKey = () => 'tree' + (crown ? 1 : 0) + (cards ? 'c' : '');
+    return m;
+  }
+  function plantTrees(group, kind, list, map) {
+    const variants = kind === 'palm' || kind === 'dead' ? 2 : 3;
+    for (let v = 0; v < variants; v++) {
+      const L = list.filter(t => Math.floor(t[3] * variants) === v); if (!L.length) continue;
+      const geo = treeGeo(kind, v), mats = [];
+      for (const [g, crown] of [[geo.trunk, false], [geo.crown, true]]) {
+        if (!g) continue;
+        const cards = !!(g.userData && g.userData.cards), mesh = new T.InstancedMesh(g, treeMaterial(map, crown, geo.h, cards), L.length);
+        const M = new T.Matrix4(), Q = new T.Quaternion(), S = new T.Vector3(), Pv = new T.Vector3(), E = new T.Euler();
+        L.forEach((t, i) => {
+          const sc = .88 + G.h2(t[0] * 10 | 0, t[2] * 10 | 0, 3) * .3, ry = t[3] * 40;
+          E.set(0, ry, 0); Q.setFromEuler(E); S.set(sc, sc * (.95 + t[3] * .12), sc); Pv.set(t[0], t[1], t[2]);
+          M.compose(Pv, Q, S); mesh.setMatrixAt(i, M);
+          if (crown) { const sh = G.h2(t[4].x | 0, t[4].y | 0, 91), k = sh < .4 ? .78 : sh < .75 ? .9 : 1; mesh.setColorAt(i, new T.Color(k, k, k)); }
+        });
+        mesh.castShadow = true; mesh.receiveShadow = true;
+        mesh.customDepthMaterial = new T.MeshDepthMaterial(cards ? { depthPacking: T.RGBADepthPacking, map: leafTexture(), alphaTest: .5 } : { depthPacking: T.RGBADepthPacking });
+        group.add(mesh); mats.push(mesh);
+      }
+    }
+  }
+
+  // ------------------------------------------------------------- fountain
+  // a stone basin two tiles across with a moulded rim, live water, a fluted column and an upper bowl
+  // (the spray itself is particles from the overworld)
+  function fountainModel(x, y, z) {
+    const g = new T.Group(), st = new T.MeshLambertMaterial({ color: 0xc8c2b4 }), stD = new T.MeshLambertMaterial({ color: 0x9a9486 });
+    const add = (geo, mat, py) => { const m = new T.Mesh(geo, mat); m.position.y = py; m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
+    add(new T.CylinderGeometry(.8, .86, .34, 20), stD, .17);
+    add(new T.TorusGeometry(.76, .07, 6, 24), st, .36).rotation.x = Math.PI / 2;
+    const bed = new T.Mesh(new T.CircleGeometry(.72, 24), new T.MeshLambertMaterial({ color: 0x2e6aa8 })); bed.rotation.x = -Math.PI / 2; bed.position.y = .27; g.add(bed);
+    const w = new T.Mesh(new T.CircleGeometry(.72, 24), waterMaterial()); w.rotation.x = -Math.PI / 2; w.position.y = .3; w.renderOrder = 1; g.add(w);
+    add(new T.CylinderGeometry(.14, .2, 1.0, 10), st, .75);
+    add(new T.CylinderGeometry(.42, .16, .18, 14), st, 1.28);
+    const bed2 = new T.Mesh(new T.CircleGeometry(.36, 16), new T.MeshLambertMaterial({ color: 0x3a78b8 })); bed2.rotation.x = -Math.PI / 2; bed2.position.y = 1.34; g.add(bed2);
+    const w2 = new T.Mesh(new T.CircleGeometry(.36, 16), waterMaterial()); w2.rotation.x = -Math.PI / 2; w2.position.y = 1.36; w2.renderOrder = 1; g.add(w2);
+    add(new T.CylinderGeometry(.05, .08, .35, 8), st, 1.5);
+    add(new T.SphereGeometry(.09, 8, 6), st, 1.7);
+    g.position.set(x, y, z);
+    return g;
+  }
+
+  // ------------------------------------------------------------- street lamps
+  // cast-iron lamp posts about two people tall (a plinth, a fluted pole, a lantern with glowing panes and
+  // a cap), and low stone lanterns for the old quarters; the panes light up at dusk
+  const LAMP_GLASS = new Set();
+  let lampParts = null;
+  function lampModel(kind, x, y, z) {
+    if (!lampParts) {
+      const iron = new T.MeshLambertMaterial({ color: 0x23262e }), stone = new T.MeshLambertMaterial({ color: 0x8a8478 }), stoneD = new T.MeshLambertMaterial({ color: 0x5e5a52 });
+      const glass = new T.MeshLambertMaterial({ color: 0xfff0c0, emissive: 0xffc870, emissiveIntensity: .2 }); LAMP_GLASS.add(glass);
+      lampParts = { iron, stone, stoneD, glass };
+    }
+    const g = new T.Group(), L = lampParts, add = (geo, mat, px, py, pz) => { const m = new T.Mesh(geo, mat); m.position.set(px, py, pz); m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
+    if (kind === 'lamp') {
+      add(new T.CylinderGeometry(.16, .2, .28, 8), L.iron, 0, .14, 0);
+      add(new T.CylinderGeometry(.045, .065, 2.35, 8), L.iron, 0, 1.45, 0);
+      add(new T.CylinderGeometry(.09, .06, .12, 8), L.iron, 0, 2.62, 0);
+      add(new T.BoxGeometry(.3, .38, .3), L.glass, 0, 2.86, 0);
+      for (const [dx, dz] of [[-.15, -.15], [.15, -.15], [-.15, .15], [.15, .15]]) add(new T.BoxGeometry(.035, .42, .035), L.iron, dx, 2.86, dz);
+      add(new T.ConeGeometry(.26, .22, 4), L.iron, 0, 3.16, 0).rotation.y = Math.PI / 4;
+      add(new T.SphereGeometry(.04, 6, 4), L.iron, 0, 3.3, 0);
+    } else {
+      add(new T.BoxGeometry(.5, .22, .5), L.stoneD, 0, .11, 0);
+      add(new T.BoxGeometry(.2, .55, .2), L.stone, 0, .5, 0);
+      add(new T.BoxGeometry(.42, .08, .42), L.stoneD, 0, .81, 0);
+      add(new T.BoxGeometry(.3, .3, .3), L.glass, 0, 1.0, 0);
+      add(new T.ConeGeometry(.36, .26, 4), L.stone, 0, 1.28, 0).rotation.y = Math.PI / 4;
+    }
+    g.position.set(x, y, z);
+    return g;
   }
 
   // ------------------------------------------------------------- buildings
@@ -504,7 +761,7 @@ G.W3 = (function () {
       const bi = G.tiles.building(b.kind, b.w, b.h, { roof: b.roof, door: b.door, accent: b.accent, label: b.label });
       const img = bi.img, ax = bi.atlas ? G.bldAlign(b) : 0;
       const baseY = hv.at(b.x + b.w / 2, Math.min(map.h - .01, b.y + b.h - .5));
-      const x0 = b.x + ax / 16, x1 = x0 + b.w, zF = b.y + b.h, zB = b.y + .3;
+      const x0 = b.x + ax / 16, x1 = x0 + b.w, zF = b.y + b.h, zB = b.y + .12;
       const g = new T.Group(); group.add(g);
       if (b.kind === 'tower' || b.kind === 'lighthouse') {
         // tall landmarks: stand the art up as a thick cut-out with side walls
@@ -546,14 +803,17 @@ G.W3 = (function () {
         sc.fillStyle = `rgb(${Math.min(255, col[0] * 1.02) | 0},${Math.min(255, col[1] * 1.02) | 0},${Math.min(255, col[2] * 1.02) | 0})`; for (let y = 0; y < 16; y += 4) sc.fillRect(0, y, 16, 1);
       }
       const rt = tex(rside); rt.wrapS = rt.wrapT = T.RepeatWrapping; const mRoofEnd = new T.MeshLambertMaterial({ map: rt, emissive: 0xffffff }); mRoofEnd.emissiveMap = mRoofEnd.map; SIDES.add(mRoofEnd);
-      const wallH = Math.min(1.9, wallPx / 16), depth = zF - zB;
-      const mFac = new T.MeshLambertMaterial({ map: tex(facade), alphaTest: .4, alphaToCoverage: true, side: T.DoubleSide });
+      // walls stand taller than the art draws them (a house is two to three people tall), the facade
+      // stretched to fit; the art's transparent margins are filled with its own colours so no face is holey
+      const KW = 1.35, wallH = Math.min(3.4, wallPx / 16 * KW), depth = zF - zB;
+      const solid = (cv, col) => { const o = G.makeCanvas(cv.width, cv.height), c2 = o.getContext('2d'); c2.fillStyle = col; c2.fillRect(0, 0, o.width, o.height); c2.drawImage(cv, 0, 0); return o; };
+      const roofAvg = (() => { let r = 0, gg = 0, bb = 0, n = 0; const d = roof.getContext('2d').getImageData(0, 0, roof.width, roof.height).data; for (let i = 0; i < d.length; i += 16) if (d[i + 3] > 200) { r += d[i]; gg += d[i + 1]; bb += d[i + 2]; n++; } return n ? [r / n, gg / n, bb / n] : [150, 70, 60]; })();
+      const mFac = new T.MeshLambertMaterial({ map: tex(solid(facade, rgbS(wallCol, .9))) });
       const mSide = new T.MeshLambertMaterial({ map: tex(side), emissive: 0xffffff, emissiveIntensity: .0 }); mSide.emissiveMap = mSide.map; SIDES.add(mSide);
-      const mRoof = new T.MeshLambertMaterial({ map: tex(roof), alphaTest: .4, alphaToCoverage: true, side: T.DoubleSide });
-      // body
+      const mRoof = new T.MeshLambertMaterial({ map: tex(solid(roof, rgbS(roofAvg, .9))), side: T.DoubleSide });
       const wt2 = tex(wside); wt2.wrapS = T.RepeatWrapping; wt2.repeat.set(Math.max(1, Math.round(depth)), 1);
       const mWall = new T.MeshLambertMaterial({ map: wt2, emissive: 0xffffff }); mWall.emissiveMap = wt2; SIDES.add(mWall);
-      const body = new T.Mesh(new T.BoxGeometry(b.w - .1, wallH, depth - .05), [mWall, mWall, mSide, mSide, mFac, mSide]);
+      const body = new T.Mesh(new T.BoxGeometry(b.w - .1, wallH, depth), [mWall, mWall, mSide, mSide, mFac, mSide]);
       body.position.set(x0 + b.w / 2, baseY + wallH / 2, zB + depth / 2); body.castShadow = body.receiveShadow = true; g.add(body);
       if (FLAT_ROOF.has(b.kind)) {
         // modern flat roof: a shallow slab carrying the roof art on top, with a lit parapet edge
@@ -561,25 +821,28 @@ G.W3 = (function () {
         slab.position.set(x0 + b.w / 2, baseY + wallH + .16, zB + depth / 2); slab.castShadow = slab.receiveShadow = true; g.add(slab);
         continue;
       }
-      // one closed wedge: a single roof plane from the front eave up to the back ridge carries the whole
-      // roof art; its rise is solved so that, seen from the camera, it is as tall as the art draws it.
-      // Triangular gables and a back wall close it, so every edge meets another face.
-      const want = roofPx / 16, sp = Math.sin(PITCH_CAM), cp = Math.cos(PITCH_CAM);
-      const rise = G.clamp((want - depth * sp) / cp, .35, 2.6);
-      const ov = .14, X0 = x0 + .05 - ov, X1 = x1 - .05 + ov, Y0 = baseY + wallH, Y1 = Y0 + rise, ZF = zF - .025 + ov, ZB = zB + .025;
+      // a proper gable roof: two slopes meeting at a ridge along the middle of the footprint, closed at
+      // both ends by triangular gable walls, so nothing stands proud of the house from any side. The roof
+      // art is laid across both slopes in proportion to how tall each looks from the camera (the back
+      // slope is mostly hidden, so the art's top sliver lands there and the ridge falls where it's drawn).
+      const sp = Math.sin(PITCH_CAM), cp = Math.cos(PITCH_CAM), half = depth / 2, R = Math.min(half * .95, 2.2);
+      const ov = .16, X0 = x0 + .05 - ov, X1 = x1 - .05 + ov, Y0 = baseY + wallH, YR = Y0 + R, zM = zB + half, ZF = zF + ov, ZB = zB - ov;
+      const hF = half * sp + R * cp, hB = Math.max(0, half * sp - R * cp), vr = hF / (hF + hB);
       const quad = (P, U, mat, shadow = true) => {
         const g2 = new T.BufferGeometry(); g2.setAttribute('position', new T.Float32BufferAttribute(P, 3)); g2.setAttribute('uv', new T.Float32BufferAttribute(U, 2));
         g2.setIndex(P.length === 12 ? [0, 2, 1, 1, 2, 3] : [0, 1, 2]); g2.computeVertexNormals();
         const m = new T.Mesh(g2, mat); m.castShadow = shadow; m.receiveShadow = true; g.add(m); return m;
       };
-      // roof (eave at the front, overhanging a little on three sides)
-      quad([X0, Y0 - ov * .45, ZF, X1, Y0 - ov * .45, ZF, X0, Y1, ZB - .02, X1, Y1, ZB - .02], [0, 0, 1, 0, 0, 1, 1, 1], mRoof);
-      // gables: triangles under the roof plane on both sides, and the back wall up to the ridge
-      const gx0 = x0 + .05, gx1 = x1 - .05, gzF = zF - .025, gzB = zB + .025;
-      const rv = rise * 1.5;
-      quad([gx0, Y0, gzF, gx0, Y1 - .01, gzB, gx0, Y0, gzB], [0, 0, depth, rv, depth, 0], mRoofEnd);   // wound to face outward (west)
-      quad([gx1, Y0, gzF, gx1, Y0, gzB, gx1, Y1 - .01, gzB], [0, 0, depth, 0, depth, rv], mRoofEnd);   // (east)
-      quad([gx0, Y0, gzB, gx1, Y0, gzB, gx0, Y1 - .01, gzB, gx1, Y1 - .01, gzB], [0, 0, 1, 0, 0, 1, 1, 1], mSide);
+      const dropF = ov * R / half, dropB = ov * R / half;   // eaves continue the slope past the walls
+      quad([X0, Y0 - dropF, ZF, X1, Y0 - dropF, ZF, X0, YR, zM, X1, YR, zM], [0, 0, 1, 0, 0, vr, 1, vr], mRoof);   // front slope
+      quad([X0, YR, zM, X1, YR, zM, X0, Y0 - dropB, ZB, X1, Y0 - dropB, ZB], [0, vr, 1, vr, 0, 1, 1, 1], mRoof);   // back slope
+      // ridge cap
+      const cap = new T.Mesh(new T.BoxGeometry(X1 - X0, .1, .16), new T.MeshLambertMaterial({ color: new T.Color(`rgb(${roofAvg[0] * .55 | 0},${roofAvg[1] * .55 | 0},${roofAvg[2] * .55 | 0})`) }));
+      cap.position.set((X0 + X1) / 2, YR + .02, zM); cap.castShadow = true; g.add(cap);
+      // gable ends: wall-coloured triangles closing the roof at both sides
+      const gx0 = x0 + .05, gx1 = x1 - .05, rv = R;
+      quad([gx0, Y0, zF, gx0, YR, zM, gx0, Y0, zB], [0, 0, .5, rv / wallH, 1, 0], mWall);
+      quad([gx1, Y0, zF, gx1, Y0, zB, gx1, YR, zM], [0, 0, 1, 0, .5, rv / wallH], mWall);
     }
   }
 
@@ -752,7 +1015,7 @@ G.W3 = (function () {
   // every lamp, lantern, crystal and lava cell gets an additive glow sprite (faded in by night, lava
   // always on); a small pool of point lights follows the nearest ones so they light the ground
   const LIGHT_COL = { lamp: 0xffc47a, lantern: 0xffb060, crystal: 0x7ae0ff, lava: 0xff6a2a, screen: 0x7ab0ff };
-  const LIGHT_LIFT = { lamp: 1.9, lantern: 1.25, crystal: .7, lava: .15, screen: .8 };
+  const LIGHT_LIFT = { lamp: 2.86, lantern: 1.0, crystal: .7, lava: .15, screen: .8 };
   let glowTex = null;
   function glowTexture() {
     if (glowTex) return glowTex;
@@ -822,12 +1085,9 @@ G.W3 = (function () {
       if (!m) { m = entSprite(img); E.sprites.set(key, m); E.dyn.add(m); }
       setBillboardImage(m, img); m.visible = true;
       const fx = px / 16 + .5, fz = py / 16 + 1, gy = H.at(G.clamp(fx, 0, H.W - .01), G.clamp(fz - .5, 0, H.H - .01));
-      m.position.set(fx, gy + lift / 16, fz - .3);
+      m.position.set(fx, gy + lift / 16 * ENT_SC, fz - .45);
       // contact shadow stays on the ground (hops lift the figure, not the shadow)
-      const bl = m.userData.blob; bl.position.set(0, gy - m.position.y + .03, .05); const bw = img.width / 16 * .8; bl.scale.set(bw, 1, bw * .5); bl.visible = lift > -2;
-      // tint: time of day plus nearby lamps
-      const u = m.userData.u; u.uTint.value.copy(entTint); u.uRim.value.copy(entRim);
-      for (const pl of POOL) if (pl.intensity > 0) { const d2 = (pl.position.x - fx) ** 2 + (pl.position.z - fz) ** 2; if (d2 < 36) { const k = (1 - Math.sqrt(d2) / 6) ** 2 * pl.intensity * .22; u.uTint.value.r += pl.color.r * k; u.uTint.value.g += pl.color.g * k; u.uTint.value.b += pl.color.b * k; } }
+      const bl = m.userData.blob; bl.position.set(0, gy - m.position.y + .03, .05); const bw = img.width / 16 * .7 * ENT_SC; bl.scale.set(bw, 1, bw * .55); bl.visible = lift > -2;
     };
     for (const e of w.ents) if (e.visible && !e.hidden) {
       // swimmers sink to the chest: the opaque water surface hides the rest
@@ -852,10 +1112,8 @@ G.W3 = (function () {
     hemi.intensity = .45 + .55 * day; hemi.color.set(day > .3 ? 0xdfeeff : 0x5a6aa8); hemi.groundColor.set(day > .3 ? 0x4a5a3a : 0x1a1e30);
     const sky = indoor ? 0x08080e : dusk ? 0xe8a88a : day > .3 ? 0x9cc8f0 : 0x0a1030;
     scene.background = new T.Color(sky);
-    // characters: full brightness by day, warm at golden hour, cool and dim at night
-    if (dusk) entTint.setRGB(1.05, .9, .8); else entTint.setRGB(.42 + .63 * day, .46 + .58 * day, .68 + .36 * day);
-    entRim.copy(sun.color).multiplyScalar(.28 * day);
     for (const m of SIDES) m.emissiveIntensity = .34 * day + .04;
+    for (const m of LAMP_GLASS) m.emissiveIntensity = .15 + 1.6 * night;
     WU.uSky.value.set(dusk ? 0xffc8a0 : day > .3 ? 0xcfe8ff : 0x28386a); WU.uSun.value.copy(sun.color).multiplyScalar(day > .1 ? 1 : .35);
     WU.uNight.value = night; WU.uDeep.value.set(day > .3 ? 0x1c5a8a : 0x0c1a38);
     scene.fog = indoor ? null : new T.Fog(sky, 26, 60);
@@ -883,7 +1141,7 @@ G.W3 = (function () {
     camY = camY === null || Math.abs(camY - fy) > 4 ? fy : camY + (fy - camY) * .12;
     const dist = 23.5, cy = Math.sin(PITCH) * dist, cz = Math.cos(PITCH) * dist;
     camera.position.set(fx, camY + cy, fz + cz); camera.lookAt(fx, camY + .6, fz);
-    WU.uCam.value.copy(camera.position);
+    WU.uCam.value.copy(camera.position); TU.uCamP.value.copy(camera.position); TU.uPlayer.value.set(fx, fy, fz + .1);
     syncParticles(w, cur.hv);
     updateRays(w, fx, fy, fz);
     // shadow camera snapped to its own texel grid, so shadows don't crawl as the player moves

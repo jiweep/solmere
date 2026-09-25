@@ -411,7 +411,7 @@ G.WorldScene = class {
   drawUI3d(c) {
     const U = G.ui;
     for (const e of [...this.ents, this.player, this.follower].filter(Boolean)) if (e.emote) {
-      const q = G.W3.project(e.px + 8, e.py + 16, 2.4); if (!q) continue;
+      const q = G.W3.project(e.px + 8, e.py + 16, 1.75); if (!q) continue;
       const k = Math.min(1, e.emoteT / 6); U.img(G.EMOTES(e.emote), q.x - 6.5, q.y - 12 - k * 4);
     }
     if (G.flag('race_active')) {
@@ -726,7 +726,7 @@ G.WorldScene = class {
           for (const c of m._fountains) {
             if (Math.abs(c.x - p0.x) > 12 || Math.abs(c.y - p0.y) > 9) continue;
             const a = G.rand() * Math.PI * 2, sp = .35 + G.rand() * .35;
-            this.fx.add({ x: c.x * 16 + 8, y: c.y * 16 + 6, vx: Math.cos(a) * sp, vy: -1.6 - G.rand() * .5, ay: .085, life: 34, size: 1.1, color: 'rgba(210,236,255,1)', alpha: .85, type: 'circle' });
+            this.fx.add({ x: c.x * 16 + 8, y: c.y * 16 + 8 - 27, z0: c.y * 16 + 8, vx: Math.cos(a) * sp * 1.4, vy: -.9 - G.rand() * .5, ay: .06, life: 40, size: 1.1, color: 'rgba(210,236,255,1)', alpha: .85, type: 'circle' });
             if (this.frame % 30 === 0) this.fx.add({ x: c.x * 16 + 8, y: c.y * 16 + 11, life: 40, type: 'ring', size: 3, grow: 1.6, color: 'rgba(255,255,255,.5)', lw: .8 });
           }
         }
