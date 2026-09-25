@@ -223,24 +223,61 @@ G.musicRoom = function () {
   const F = G.MUSIC_FILES || {};
   const list = G.MUSIC_ORDER.filter(id => F[id]);
   if (!list.length) return G.say('The soundtrack files are missing. (Run the game through Play.command so the music can load.)');
+  const A = () => G.audio;
+  // the secret list: every track (auditions included) by when it was last worked on, newest first
+  const recent = Object.keys(F).filter(id => !id.includes('@') && !id.startsWith('j_') && F[id].worked).sort((x, y) => F[y].worked - F[x].worked).slice(0, 14);
+  const ago = t => { const s = Date.now() / 1000 - t; return s < 3600 ? Math.max(1, Math.round(s / 60)) + ' min ago' : s < 86400 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' d ago'; };
   return new Promise(res => G.push({
-    opaque: true, i: 0, scroll: 0, t: 0, night: false, playing: null, rows: 12,
-    enter() { if (G.audio) G.audio.forceVariant = 'day'; },
-    exit() { if (G.audio) G.audio.forceVariant = null; },
+    opaque: true, i: 0, scroll: 0, t: 0, night: false, playing: null, rows: 12, secret: false, si: 0, drag: false, dragPos: null,
+    enter() { if (A()) A().forceVariant = 'day'; G.input.keyHook = e => G.top() === this && this.onKey(e); },
+    exit() { if (A()) A().forceVariant = null; G.input.keyHook = null; },
+    play(id) { this.playing = id; if (A()) { A().forceVariant = this.night ? 'night' : 'day'; A().stopMusic(); A().music(id); } },
+    step(d) { const n = list.length; this.i = ((list.indexOf(this.playing) >= 0 ? list.indexOf(this.playing) : this.i) + d + n) % n; this.play(list[this.i]); },
+    seekBy(ds) { const np = A() && A().nowPlaying(); if (np) A().seek(np.pos + ds); },
+    togglePause() { const au = A(); if (!au) return; if (au.isPaused()) au.resume(); else if (au.nowPlaying()) au.pause(); else this.play(list[this.i]); },
+    // music-player keys (claimed before the normal key map): Space/K pause, ←/→ seek 5 s (Shift 15 s),
+    // J/L seek 10 s, , and . previous / next track, N day/night, 0 or Home restart, W the secret list
+    onKey(e) {
+      if (e.repeat && !['ArrowLeft', 'ArrowRight', 'KeyJ', 'KeyL'].includes(e.code)) return ['Space', 'KeyK'].includes(e.code);
+      switch (e.code) {
+        case 'Space': case 'KeyK': this.togglePause(); return true;
+        case 'ArrowLeft': case 'ArrowRight': { if (this.secret || !(A() && A().nowPlaying())) return false; this.seekBy((e.code === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 15 : 5)); return true; }
+        case 'KeyJ': this.seekBy(-10); return true;
+        case 'KeyL': this.seekBy(10); return true;
+        case 'Comma': this.step(-1); return true;
+        case 'Period': this.step(1); return true;
+        case 'KeyN': this.toggleNight(); return true;
+        case 'Digit0': case 'Home': if (A() && A().nowPlaying()) A().seek(0); return true;
+        case 'KeyW': this.secret = !this.secret; this.si = 0; A() && A().sfx(this.secret ? 'select' : 'back'); return true;
+      }
+      return false;
+    },
     update(top) {
-      this.t++; if (!top) return; const I = G.input, n = list.length;
-      if (I.repeat('up')) { this.i = (this.i + n - 1) % n; G.audio && G.audio.sfx('cursor'); }
-      if (I.repeat('down')) { this.i = (this.i + 1) % n; G.audio && G.audio.sfx('cursor'); }
+      this.t++; if (!top) return; const I = G.input, n = list.length, M = I.mouse;
+      if (this.secret) {
+        if (I.repeat('up')) this.si = (this.si + recent.length - 1) % recent.length;
+        if (I.repeat('down')) this.si = (this.si + 1) % recent.length;
+        if (I.pressed('a')) { I.consume('a'); this.play(recent[this.si]); }
+        if (I.pressed('b')) { I.consume('b'); this.secret = false; A() && A().sfx('back'); }
+        return;
+      }
+      if (I.repeat('up')) { this.i = (this.i + n - 1) % n; A() && A().sfx('cursor'); }
+      if (I.repeat('down')) { this.i = (this.i + 1) % n; A() && A().sfx('cursor'); }
       if (this.i < this.scroll) this.scroll = this.i;
       if (this.i >= this.scroll + this.rows) this.scroll = this.i - this.rows + 1;
-      if (I.pressed('a')) { I.consume('a'); this.playing = list[this.i]; if (G.audio) { G.audio.forceVariant = this.night ? 'night' : 'day'; G.audio.stopMusic(); G.audio.music(this.playing); } }
-      if ((I.pressed('left') || I.pressed('right')) && this.playing && F[this.playing + '@night']) this.toggleNight();
-      if (I.pressed('b')) { I.consume('b'); G.audio && G.audio.sfx('back'); G.pop(this); res(); }
+      if (I.pressed('a')) { I.consume('a'); this.play(list[this.i]); }
+      if (I.pressed('b')) { I.consume('b'); A() && A().sfx('back'); G.pop(this); res(); }
+      // the seek bar: click or drag anywhere on it; the audio follows on release (and every few frames while dragging)
+      const np = A() && A().nowPlaying(), B = this.bar;
+      if (np && B && M.down && (this.drag || (M.x >= B.x - 2 && M.x <= B.x + B.w + 2 && M.y >= B.y - 5 && M.y <= B.y + B.h + 5))) {
+        this.drag = true; this.dragPos = G.clamp((M.x - B.x) / B.w, 0, 1) * np.loopEnd;
+        if (this.t % 8 === 0) A().seek(this.dragPos);
+      } else if (this.drag) { this.drag = false; if (np && this.dragPos !== null) A().seek(this.dragPos); this.dragPos = null; }
     },
     draw(b) { G.menuBG(b, '#1f4f7a', '#0b0c16', this.t / 60); },
     toggleNight() {
-      if (!(this.playing && F[this.playing + '@night'])) { G.audio && G.audio.sfx('buzz'); return; }
-      this.night = !this.night; if (G.audio) { G.audio.forceVariant = this.night ? 'night' : 'day'; G.audio.switchVariantNow && G.audio.switchVariantNow(); } G.audio && G.audio.sfx('cursor');
+      if (!(this.playing && F[this.playing + '@night'])) { A() && A().sfx('buzz'); return; }
+      this.night = !this.night; if (A()) { A().forceVariant = this.night ? 'night' : 'day'; A().switchVariantNow && A().switchVariantNow(); } A() && A().sfx('cursor');
     },
     drawUI() {
       const U = G.ui, t = this.t, ease = G.ease;
@@ -253,39 +290,63 @@ G.musicRoom = function () {
         U.text(String(j + 1).padStart(2, '0'), x + 8, y + 2.6, { size: 6, weight: 800, color: sel ? '#ffe0e4' : '#8a8fa0', shadow: false });
         U.text((playing ? '♪ ' : '') + (m.title || id), x + 24, y + 2.2, { size: 6.6, weight: sel ? 800 : 700, color: playing && !sel ? '#8af0e0' : '#fff', shadow: sel ? '#7a0f1c' : false });
         if (F[id + '@night']) U.text('☾', x + 190, y + 2.2, { size: 6.5, align: 'right', color: sel ? '#fff' : '#9aa0d0', shadow: false });
-        U.pick(8, y, 200, 14, sel, () => { this.i = j; });
+        U.pick(8, y, 200, 14, sel, () => { if (this.i === j) this.play(id); else this.i = j; });
       });
       if (this.scroll > 0) U.text('▲', 108, 20, { size: 5, align: 'center', color: '#ff3b4e' });
       if (this.scroll + this.rows < list.length) U.text('▼', 108, 200, { size: 5, align: 'center', color: '#ff3b4e' });
-      // now playing card
+      // now playing card with a seek bar and transport buttons
       const cx = 226, cw = G.W - 234;
       U.para(cx - 4, 10, cw + 4, 100, 6, '#07060c'); U.para(cx - 4, 10, cw + 4, 2, 6, '#ff3b4e');
       U.text('NOW PLAYING', cx + 6, 15, { size: 6, weight: 800, color: '#ff3b4e', shadow: false });
-      const np = G.audio && G.audio.nowPlaying && G.audio.nowPlaying();
+      const np = A() && A().nowPlaying();
+      const fmt = x => `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, '0')}`;
+      this.bar = { x: cx + 6, y: 56, w: cw - 16, h: 5 };
+      const B = this.bar;
       if (np) {
-        const m = F[np.id] || {};
-        G.ui.wrap(m.title || np.id, cw - 12, 8).slice(0, 2).forEach((l, k) => U.text(l, cx + 6, 27 + k * 11, { size: 8, weight: 800, color: '#fff' }));
-        const frac = np.loopEnd ? Math.min(1, np.pos / np.loopEnd) : 0;
-        U.para(cx + 6, 58, cw - 16, 4, 1, 'rgba(255,255,255,.15)'); U.para(cx + 6, 58, (cw - 16) * frac, 4, 1, '#8af0e0');
-        const fmt = x => `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, '0')}`;
-        U.text(fmt(np.pos), cx + 6, 65, { size: 5.5, color: '#b8bccb', shadow: false });
-        if (m.bpm) U.text(`${Math.round(m.bpm)} bpm`, cx + cw - 10, 65, { size: 5.5, align: 'right', color: '#b8bccb', shadow: false });
-      } else U.text('Pick a track to play it', cx + cw / 2, 40, { size: 6.5, align: 'center', color: '#b8bccb' });
-      // buttons: day/night and back
+        const m = F[np.id] || F[np.id.split('@')[0]] || {};
+        G.ui.wrap(m.title || np.id, cw - 12, 8).slice(0, 2).forEach((l, k) => U.text(l, cx + 6, 25 + k * 11, { size: 8, weight: 800, color: '#fff' }));
+        const pos = this.dragPos !== null && this.drag ? this.dragPos : np.pos, len = np.loopEnd || 1, frac = Math.min(1, pos / len);
+        U.para(B.x, B.y, B.w, B.h, 1, 'rgba(255,255,255,.15)'); U.para(B.x, B.y, B.w * frac, B.h, 1, np.paused ? '#b8bccb' : '#8af0e0');
+        if (np.loopStart) { const lx = B.x + B.w * np.loopStart / len; U.para(lx, B.y - 1, .7, B.h + 2, 0, 'rgba(255,255,255,.45)'); }   // where the loop begins
+        const hx = B.x + B.w * frac; U.para(hx - 2, B.y - 2, 4, B.h + 4, 1, '#fff');
+        U.text(fmt(pos) + ' / ' + fmt(len), cx + 6, B.y + 8, { size: 5.5, color: '#b8bccb', shadow: false });
+        if (m.bpm) U.text(`${Math.round(m.bpm)} bpm`, cx + cw - 10, B.y + 8, { size: 5.5, align: 'right', color: '#b8bccb', shadow: false });
+        U.hot(B.x - 2, B.y - 5, B.w + 4, B.h + 10, null, () => { const M = G.input.mouse; A().seek(G.clamp((M.x - B.x) / B.w, 0, 1) * len); });   // click to jump; dragging is followed in update
+      } else U.text('Pick a track to play it', cx + cw / 2, 36, { size: 6.5, align: 'center', color: '#b8bccb' });
       const btn = (x, y, w, label, on, click, dis) => {
         U.para(x + 2, y + 2, w, 13, 4, '#07060c'); U.para(x, y, w, 13, 4, dis ? '#2a2a34' : on ? '#ff3b4e' : '#12131c');
         U.text(label, x + w / 2 + 2, y + 3, { size: 6.4, weight: 800, align: 'center', color: dis ? '#6a6e7c' : '#fff', shadow: false });
         U.hot(x, y, w + 4, 14, null, click);
       };
+      const paused = A() && A().isPaused && A().isPaused();
+      const tw = (cw - 14) / 5;
+      [['|◀', () => this.step(-1)], ['◀◀', () => this.seekBy(-10)], [paused || !np ? '▶' : 'II', () => this.togglePause()], ['▶▶', () => this.seekBy(10)], ['▶|', () => this.step(1)]]
+        .forEach(([l, fn], k) => btn(cx + 4 + k * tw, 74, tw - 4, l, k === 2 && !paused && !!np, fn));
       const hasNight = this.playing && F[this.playing + '@night'];
-      btn(cx + 4, 80, 50, '☀ Day', !this.night, () => { if (this.night) this.toggleNight(); }, !hasNight);
-      btn(cx + 60, 80, 50, '☾ Night', this.night, () => { if (!this.night) this.toggleNight(); }, !hasNight);
-      btn(cx + 4, 118, 50, 'Stop', false, () => { this.playing = null; G.audio && G.audio.stopMusic(); });
+      btn(cx + 4, 94, 50, '☀ Day', !this.night, () => { if (this.night) this.toggleNight(); }, !hasNight);
+      btn(cx + 60, 94, 50, '☾ Night', this.night, () => { if (!this.night) this.toggleNight(); }, !hasNight);
+      btn(cx + 4, 118, 50, 'Stop', false, () => { this.playing = null; A() && A().stopMusic(); });
       btn(cx + 60, 118, 50, 'Back', false, () => G.input.tap('b'));
       U.panel(cx, 142, cw - 4, 66, 'glass', { r: 6 });
-      ['Original soundtrack in the DS-era style:', 'sequenced MIDI through a sampled GS', 'sound bank, mixed for seamless loops.'].forEach((l, k) => U.text(l, cx + 8, 149 + k * 10, { size: 5.6, color: '#dfe6f2' }));
+      ['Space pause · ← → seek (Shift 15 s)', 'J / L jump 10 s · , . prev / next', 'N day / night · 0 restart · X back'].forEach((l, k) => U.text(l, cx + 8, 149 + k * 10, { size: 5.4, color: '#dfe6f2' }));
       U.text(`${Object.keys(F).filter(k => k.includes('@night')).length} night arrangements`, cx + 8, 186, { size: 5.6, weight: 800, color: '#8af0e0' });
-      U.text('Click or Z play · ◀ ▶ day/night · X back', cx + 8, 197, { size: 5, color: '#8a90a0' });
+      U.text('Click the bar to jump anywhere', cx + 8, 197, { size: 5, color: '#8a90a0' });
+      // the secret list (W)
+      if (this.secret) {
+        U.para(0, 0, G.W, G.H, 0, 'rgba(5,6,12,.72)');
+        const x0 = 40, y0 = 18, w = G.W - 80;
+        U.para(x0 + 3, y0 + 3, w, 180, 6, '#000'); U.para(x0, y0, w, 180, 6, '#101226'); U.para(x0, y0, w, 3, 6, '#8af0e0');
+        U.text('RECENTLY WORKED ON', x0 + 10, y0 + 8, { size: 7.5, weight: 900, color: '#8af0e0' });
+        U.text('newest first · W to close', x0 + w - 10, y0 + 9, { size: 5.4, align: 'right', color: '#8a90a0', shadow: false });
+        recent.forEach((id, k) => {
+          const y = y0 + 22 + k * 11, sel = k === this.si, m = F[id];
+          if (sel) U.para(x0 + 6, y - 1, w - 12, 10, 3, '#ff3b4e');
+          U.text((id === (np && np.id.split('@')[0]) ? '♪ ' : '') + (m.title || id), x0 + 12, y, { size: 6.2, weight: sel ? 800 : 700, color: '#fff', shadow: false });
+          if (m.hidden) U.text('AUDITION', x0 + w - 70, y + .5, { size: 5, weight: 900, color: sel ? '#fff' : '#ffb84a', shadow: false });
+          U.text(ago(m.worked), x0 + w - 12, y + .5, { size: 5.2, align: 'right', color: sel ? '#ffe0e4' : '#8a90a0', shadow: false });
+          U.hot(x0 + 6, y - 1, w - 12, 10, () => { this.si = k; }, () => { this.si = k; this.play(id); });
+        });
+      }
     },
   }));
 };

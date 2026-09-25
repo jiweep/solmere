@@ -272,6 +272,7 @@ G.audio = (function () {
     if (A.forceVariant) return A.forceVariant === 'night' ? n : id;
     return G.clock && G.clock.isNight && G.save && G.clock.isNight() ? n : id;
   }
+  let paused = null;   // { id, pos, meta } while the Music Room has the track paused
   function startTrack(id, buf, offset, fade) {
     const m = MF()[id], now = ctx.currentTime, t0 = now + .02;
     const src = ctx.createBufferSource(); src.buffer = buf;
@@ -364,6 +365,7 @@ G.audio = (function () {
     music(id) {
       if (!id) return;
       id = ALIAS[id] || id;
+      if (paused && paused.id.split('@')[0] !== id) paused = null;
       if (id === curId && (track || cur || pending)) return;
       curId = id;
       if (!ctx) return;
@@ -389,10 +391,20 @@ G.audio = (function () {
       const want = variantFor(curId);
       if (want !== track.id) syncSwitch(want, .25);
     },
-    stopMusic() { musicTicket++; pending = null; if (track) { fadeOutTrack(track, .5); track = null; } stopSynth(); curId = null; },
+    stopMusic() { musicTicket++; pending = null; paused = null; if (track) { fadeOutTrack(track, .5); track = null; } stopSynth(); curId = null; },
+    // music-player controls (Music Room): jump to a time, pause and pick up again where it stopped
+    seek(t) {
+      if (paused) { paused.pos = Math.max(0, Math.min(t, (paused.meta.loopEnd || paused.meta.duration) - .05)); return; }
+      if (!ctx || !track || !buffers.has(track.id)) return;
+      const m = track.meta; t = Math.max(0, Math.min(t, (m.loopEnd || m.duration) - .05));
+      startTrack(track.id, touch(track.id), t, .04);
+    },
+    pause() { if (!ctx || !track || paused) return; paused = { id: track.id, pos: position(track), meta: track.meta }; fadeOutTrack(track, .06); track = null; },
+    resume() { if (!ctx || !paused) return; const p = paused; paused = null; if (buffers.has(p.id)) startTrack(p.id, touch(p.id), p.pos, .06); else load(p.id).then(buf => startTrack(p.id, buf, p.pos, .06)).catch(() => { }); },
+    isPaused: () => !!paused,
     currentMusic: () => curId,
     // what is playing right now, for the sound test / debugging
-    nowPlaying() { if (!track) return null; const m = track.meta; return { id: track.id, title: m.title, pos: position(track), loopStart: m.loopStart, loopEnd: m.loopEnd }; },
+    nowPlaying() { if (paused) { const m = paused.meta; return { id: paused.id, title: m.title, pos: paused.pos, loopStart: m.loopStart, loopEnd: m.loopEnd, paused: true }; } if (!track) return null; const m = track.meta; return { id: track.id, title: m.title, pos: position(track), loopStart: m.loopStart, loopEnd: m.loopEnd }; },
     jingle(id) {
       if (!ctx) return;
       const jid = 'j_' + id;

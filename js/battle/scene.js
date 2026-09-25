@@ -388,11 +388,24 @@ G.BattleScene = class {
     // and softens a touch when the camera closes in on a mon (a shallow depth of field)
     this.applyCam(c, .5);
     const dx = Math.sin(this.t / 700) * 6, dy = Math.sin(this.t / 900) * 2, sc = 1.08;
+    // crisp: the backdrop is first scaled up by a whole number with nearest sampling, so the final smooth
+    // stretch to the screen is small (sharp-bilinear); depth of field only softens the distance: a
+    // pre-blurred copy masked to the upper half fades in with the camera's focus, the floor stays sharp
+    const k = Math.max(1, Math.floor(G.W * S * sc / hd.width));
+    if (!this._bk || this._bk.src !== hd || this._bk.k !== k) {
+      const W = hd.width * k, H = hd.height * k, sharp = G.makeCanvas(W, H), xs = sharp.getContext('2d');
+      xs.imageSmoothingEnabled = false; xs.drawImage(hd, 0, 0, W, H);
+      const soft = G.makeCanvas(W, H), xb = soft.getContext('2d');
+      xb.filter = `blur(${(2.4 * k).toFixed(1)}px)`; xb.drawImage(sharp, 0, 0); xb.filter = 'none';
+      xb.globalCompositeOperation = 'destination-in';
+      const g = xb.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#000'); g.addColorStop(.36, '#000'); g.addColorStop(.55, 'rgba(0,0,0,0)'); xb.fillStyle = g; xb.fillRect(0, 0, W, H);
+      this._bk = { src: hd, k, sharp, soft };
+    }
     c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
     const blur = this.cam ? Math.max(0, (this.cam.z - 1.02) * 26) : 0;
-    if (blur > .15) c.filter = `blur(${(blur * S / 3).toFixed(2)}px)`;
-    c.drawImage(hd, -G.W * (sc - 1) / 2 + dx, -G.H * (sc - 1) / 2 + dy, G.W * sc, G.H * sc);
-    c.filter = 'none';
+    const X = -G.W * (sc - 1) / 2 + dx, Y = -G.H * (sc - 1) / 2 + dy;
+    c.drawImage(this._bk.sharp, X, Y, G.W * sc, G.H * sc);
+    if (blur > .1) { c.globalAlpha = Math.min(1, blur / 1.6); c.drawImage(this._bk.soft, X, Y, G.W * sc, G.H * sc); c.globalAlpha = 1; }
     c.restore(); c.imageSmoothingEnabled = false;
   }
   drawAmbience(b) {

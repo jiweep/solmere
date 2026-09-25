@@ -47,6 +47,8 @@ G.input = (function () {
       if (textListener && !e.metaKey && !e.ctrlKey) {
         if (textListener(e)) { e.preventDefault(); return; }
       }
+      // a scene can claim raw keys first (the Music Room's player keys); it returns true to swallow one
+      if (I.keyHook && !e.metaKey && !e.ctrlKey && I.keyHook(e)) { e.preventDefault(); if (G.audio) G.audio.unlock(); return; }
       const b = keymap[e.code];
       if (b) { if (!e.repeat) tapQ[b] = true; kbState[b] = true; e.preventDefault(); I.lastDevice = 'kb'; }
       if (G.audio) G.audio.unlock();
@@ -64,8 +66,9 @@ G.input = (function () {
     window.addEventListener('mousedown', e => {
       if (e.target && e.target.id === 'ff') return;
       const p = toGame(e); if (!p) return; M.x = p[0]; M.y = p[1]; M.active = true;
-      if (e.button === 0) M.click = true; else if (e.button === 2) M.rclick = true;
+      if (e.button === 0) { M.click = true; M.down = true; } else if (e.button === 2) M.rclick = true;
     });
+    window.addEventListener('mouseup', e => { if (e.button === 0) M.down = false; });
     window.addEventListener('contextmenu', e => { if (e.target && e.target.tagName === 'CANVAS') e.preventDefault(); });
     // wheel and trackpad: accumulate the real scroll distance and step once per notch-sized amount, so a
     // trackpad's stream of tiny deltas (and its momentum tail) scrolls at a controlled pace, not a blur
@@ -77,7 +80,7 @@ G.input = (function () {
       while (Math.abs(M.wheelAcc) >= step) { M.wheel += Math.sign(M.wheelAcc); M.wheelAcc -= Math.sign(M.wheelAcc) * step; }
     }, { passive: true });
   }
-  const M = { x: -1, y: -1, moved: false, click: false, rclick: false, wheel: 0, active: false };
+  const M = { x: -1, y: -1, moved: false, click: false, rclick: false, wheel: 0, active: false, down: false };
   I.mouse = M;
   I.tap = function (b) { tapQ[b] = true; };
   // hotspots registered while drawing (G.ui.hot); only the top scene's respond

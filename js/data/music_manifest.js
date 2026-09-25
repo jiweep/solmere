@@ -8,7 +8,104 @@ G.MUSIC_FILES = {
 "duration": 58.37687,
 "bpm": 168.0,
 "title": "Battle! (Fellowship Admin)",
-"intro": 5.71429
+"intro": 5.71429,
+"worked": 1790323538
+},
+"aud1": {
+"file": "music/aud1.mp3",
+"loop": true,
+"loopStart": 11.848,
+"loopEnd": 90.10886,
+"duration": 91.60887,
+"bpm": 92.00001,
+"title": "Audition 1 - Hymn",
+"intro": 5.21739,
+"worked": 1790340097,
+"hidden": true
+},
+"aud2": {
+"file": "music/aud2.mp3",
+"loop": true,
+"loopStart": 9.08821,
+"loopEnd": 66.23107,
+"duration": 67.73107,
+"bpm": 126.0,
+"title": "Audition 2 - Hop",
+"intro": 3.80952,
+"worked": 1790340092,
+"hidden": true
+},
+"aud3": {
+"file": "music/aud3.mp3",
+"loop": true,
+"loopStart": 10.80204,
+"loopEnd": 82.80204,
+"duration": 84.30204,
+"bpm": 100.0,
+"title": "Audition 3 - Tide",
+"intro": 4.8,
+"worked": 1790340094,
+"hidden": true
+},
+"aud4": {
+"file": "music/aud4.mp3",
+"loop": true,
+"loopStart": 9.22834,
+"loopEnd": 99.22834,
+"duration": 100.72834,
+"bpm": 80.0,
+"title": "Audition 4 - Call and Answer",
+"intro": 6.0,
+"worked": 1790340098,
+"hidden": true
+},
+"aud5": {
+"file": "music/aud5.mp3",
+"loop": true,
+"loopStart": 6.80983,
+"loopEnd": 61.3553,
+"duration": 62.85531,
+"bpm": 131.99998,
+"title": "Audition 5 - Bossa",
+"intro": 3.63636,
+"worked": 1790340083,
+"hidden": true
+},
+"aud6": {
+"file": "music/aud6.mp3",
+"loop": true,
+"loopStart": 11.67324,
+"loopEnd": 71.67324,
+"duration": 73.17324,
+"bpm": 120.0,
+"title": "Audition 6 - Swing",
+"intro": 4.0,
+"worked": 1790340089,
+"hidden": true
+},
+"aud7": {
+"file": "music/aud7.mp3",
+"loop": true,
+"loopStart": 14.96984,
+"loopEnd": 74.96984,
+"duration": 76.46984,
+"bpm": 120.0,
+"title": "Audition 7 - Two of Us",
+"intro": 8.0,
+"worked": 1790340092,
+"hidden": true
+},
+"aud8": {
+"file": "music/aud8.mp3",
+"loop": true,
+"loopStart": 11.19615,
+"loopEnd": 80.79615,
+"duration": 82.29615,
+"bpm": 150.0,
+"title": "Audition 8 - Musette Waltz",
+"intro": 4.8,
+"worked": 1790340087,
+"hidden": true
 },
 "bike": {
 "file": "music/bike.mp3",
@@ -18,7 +115,8 @@ G.MUSIC_FILES = {
 "duration": 30.15011,
 "bpm": 160.0,
 "title": "Cycling!",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323431
 },
 "brinehollow": {
 "file": "music/brinehollow.mp3",
@@ -28,7 +126,8 @@ G.MUSIC_FILES = {
 "duration": 108.04349,
 "bpm": 87.99999,
 "title": "Brinehollow",
-"intro": 5.45455
+"intro": 5.45455,
+"worked": 1790326598
 },
 "brinehollow@night": {
 "file": "music/brinehollow_night.mp3",
@@ -38,7 +137,8 @@ G.MUSIC_FILES = {
 "duration": 102.53601,
 "bpm": 87.99999,
 "title": "Brinehollow",
-"intro": 5.45455
+"intro": 5.45455,
+"worked": 1790326632
 },
 "cave": {
 "file": "music/cave.mp3",
@@ -48,7 +148,8 @@ G.MUSIC_FILES = {
 "duration": 53.35837,
 "bpm": 87.99998,
 "title": "Glimmer Cave",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323441
 },
 "champ_room": {
 "file": "music/champ_room.mp3",
@@ -58,7 +159,8 @@ G.MUSIC_FILES = {
 "duration": 31.59955,
 "bpm": 72.0,
 "title": "The Champion's Hall",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323860
 },
 "champion": {
 "file": "music/champion.mp3",
@@ -68,7 +170,8 @@ G.MUSIC_FILES = {
 "duration": 67.12753,
 "bpm": 183.99997,
 "title": "Battle! (Champion Sable)",
-"intro": 10.43478
+"intro": 10.43478,
+"worked": 1790323590
 },
 "cindervale": {
 "file": "music/cindervale.mp3",
@@ -78,7 +181,8 @@ G.MUSIC_FILES = {
 "duration": 70.30567,
 "bpm": 96.0,
 "title": "Cindervale",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323779
 },
 "cindervale@night": {
 "file": "music/cindervale_night.mp3",
@@ -88,7 +192,8 @@ G.MUSIC_FILES = {
 "duration": 65.36689,
 "bpm": 96.0,
 "title": "Cindervale",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323778
 },
 "conclave": {
 "file": "music/conclave.mp3",
@@ -98,7 +203,8 @@ G.MUSIC_FILES = {
 "duration": 52.93433,
 "bpm": 87.99998,
 "title": "The Conclave",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323857
 },
 "crane": {
 "file": "music/crane.mp3",
@@ -108,7 +214,8 @@ G.MUSIC_FILES = {
 "duration": 47.40227,
 "bpm": 96.0,
 "title": "V. Crane",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323868
 },
 "crane_battle": {
 "file": "music/crane_battle.mp3",
@@ -118,7 +225,8 @@ G.MUSIC_FILES = {
 "duration": 72.24224,
 "bpm": 157.99998,
 "title": "Battle! (V. Crane)",
-"intro": 6.07595
+"intro": 6.07595,
+"worked": 1790323567
 },
 "credits": {
 "file": "music/credits.mp3",
@@ -128,7 +236,8 @@ G.MUSIC_FILES = {
 "duration": 144.07415,
 "bpm": 96.0,
 "title": "Solmere \u2014 Ending Theme",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790326639
 },
 "duskmere": {
 "file": "music/duskmere.mp3",
@@ -138,7 +247,8 @@ G.MUSIC_FILES = {
 "duration": 40.53878,
 "bpm": 120.0,
 "title": "Duskmere",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323784
 },
 "elite": {
 "file": "music/elite.mp3",
@@ -148,7 +258,8 @@ G.MUSIC_FILES = {
 "duration": 64.06984,
 "bpm": 175.99997,
 "title": "Battle! (Elite Four)",
-"intro": 5.45455
+"intro": 5.45455,
+"worked": 1790323559
 },
 "elite_room": {
 "file": "music/elite_room.mp3",
@@ -158,7 +269,8 @@ G.MUSIC_FILES = {
 "duration": 31.26259,
 "bpm": 80.0,
 "title": "Chamber of the Four",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323856
 },
 "encounter": {
 "file": "music/encounter.mp3",
@@ -168,7 +280,8 @@ G.MUSIC_FILES = {
 "duration": 25.61224,
 "bpm": 150.0,
 "title": "Eyes Meet! (Trainer)",
-"intro": 3.2
+"intro": 3.2,
+"worked": 1790323607
 },
 "encounter_boss": {
 "file": "music/encounter_boss.mp3",
@@ -178,7 +291,8 @@ G.MUSIC_FILES = {
 "duration": 27.29467,
 "bpm": 128.0,
 "title": "Eyes Meet! (Warden)",
-"intro": 3.75
+"intro": 3.75,
+"worked": 1790323612
 },
 "encounter_villain": {
 "file": "music/encounter_villain.mp3",
@@ -188,7 +302,8 @@ G.MUSIC_FILES = {
 "duration": 26.98957,
 "bpm": 140.0,
 "title": "Eyes Meet! (Crane Fellowship)",
-"intro": 3.42857
+"intro": 3.42857,
+"worked": 1790323611
 },
 "evolution": {
 "file": "music/evolution.mp3",
@@ -198,7 +313,8 @@ G.MUSIC_FILES = {
 "duration": 24.00317,
 "bpm": 100.0,
 "title": "What? Something's happening!",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323686
 },
 "fernwick": {
 "file": "music/fernwick.mp3",
@@ -208,7 +324,8 @@ G.MUSIC_FILES = {
 "duration": 47.85714,
 "bpm": 168.0,
 "title": "Fernwick Town",
-"intro": 2.14286
+"intro": 2.14286,
+"worked": 1790326606
 },
 "fernwick@night": {
 "file": "music/fernwick_night.mp3",
@@ -218,7 +335,8 @@ G.MUSIC_FILES = {
 "duration": 48.10159,
 "bpm": 168.0,
 "title": "Fernwick Town",
-"intro": 2.14286
+"intro": 2.14286,
+"worked": 1790326621
 },
 "forest": {
 "file": "music/forest.mp3",
@@ -228,7 +346,8 @@ G.MUSIC_FILES = {
 "duration": 41.19712,
 "bpm": 131.99998,
 "title": "Whisperwood",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323437
 },
 "frostpeak": {
 "file": "music/frostpeak.mp3",
@@ -238,7 +357,8 @@ G.MUSIC_FILES = {
 "duration": 69.39236,
 "bpm": 92.00002,
 "title": "Frostpeak",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323794
 },
 "frostpeak@night": {
 "file": "music/frostpeak_night.mp3",
@@ -248,7 +368,8 @@ G.MUSIC_FILES = {
 "duration": 70.72433,
 "bpm": 92.00002,
 "title": "Frostpeak",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323801
 },
 "galvan": {
 "file": "music/galvan.mp3",
@@ -258,7 +379,8 @@ G.MUSIC_FILES = {
 "duration": 54.56624,
 "bpm": 151.99997,
 "title": "Galvan City",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323765
 },
 "galvan@night": {
 "file": "music/galvan_night.mp3",
@@ -268,7 +390,8 @@ G.MUSIC_FILES = {
 "duration": 57.65422,
 "bpm": 151.99997,
 "title": "Galvan City",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323765
 },
 "gate": {
 "file": "music/gate.mp3",
@@ -278,7 +401,8 @@ G.MUSIC_FILES = {
 "duration": 30.31565,
 "bpm": 96.0,
 "title": "Victory Gate",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323852
 },
 "gym": {
 "file": "music/gym.mp3",
@@ -288,7 +412,8 @@ G.MUSIC_FILES = {
 "duration": 39.50134,
 "bpm": 132.00001,
 "title": "Warden's Hall",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323848
 },
 "gym_battle": {
 "file": "music/gym_battle.mp3",
@@ -298,7 +423,8 @@ G.MUSIC_FILES = {
 "duration": 71.46549,
 "bpm": 170.0,
 "title": "Battle! (Warden)",
-"intro": 5.64706
+"intro": 5.64706,
+"worked": 1790323528
 },
 "halloffame": {
 "file": "music/halloffame.mp3",
@@ -308,7 +434,8 @@ G.MUSIC_FILES = {
 "duration": 49.14467,
 "bpm": 96.0,
 "title": "Hall of Fame",
-"intro": 5.0
+"intro": 5.0,
+"worked": 1790323664
 },
 "haven": {
 "file": "music/haven.mp3",
@@ -318,7 +445,8 @@ G.MUSIC_FILES = {
 "duration": 77.75465,
 "bpm": 112.0,
 "title": "Tamer Haven",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790326631
 },
 "home": {
 "file": "music/home.mp3",
@@ -328,7 +456,8 @@ G.MUSIC_FILES = {
 "duration": 51.92508,
 "bpm": 91.99998,
 "title": "Home Sweet Home",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323833
 },
 "house": {
 "file": "music/house.mp3",
@@ -338,7 +467,8 @@ G.MUSIC_FILES = {
 "duration": 50.51193,
 "bpm": 86.00001,
 "title": "A Neighbour's House",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323839
 },
 "hq": {
 "file": "music/hq.mp3",
@@ -348,7 +478,8 @@ G.MUSIC_FILES = {
 "duration": 38.21036,
 "bpm": 124.00004,
 "title": "Crane Fellowship HQ",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323863
 },
 "icecave": {
 "file": "music/icecave.mp3",
@@ -358,7 +489,8 @@ G.MUSIC_FILES = {
 "duration": 49.83483,
 "bpm": 91.99998,
 "title": "Glacia Pass",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323444
 },
 "intro": {
 "file": "music/intro.mp3",
@@ -368,7 +500,8 @@ G.MUSIC_FILES = {
 "duration": 55.68073,
 "bpm": 84.0,
 "title": "Welcome to Solmere",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323652
 },
 "j_badge": {
 "file": "music/j_badge.mp3",
@@ -378,7 +511,8 @@ G.MUSIC_FILES = {
 "duration": 11.53764,
 "bpm": 112,
 "title": "Badge get!",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323873
 },
 "j_caught": {
 "file": "music/j_caught.mp3",
@@ -388,7 +522,8 @@ G.MUSIC_FILES = {
 "duration": 8.66567,
 "bpm": 138,
 "title": "Caught!",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323867
 },
 "j_dex": {
 "file": "music/j_dex.mp3",
@@ -398,7 +533,8 @@ G.MUSIC_FILES = {
 "duration": 3.94653,
 "bpm": 150,
 "title": "Registered!",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323874
 },
 "j_evolved": {
 "file": "music/j_evolved.mp3",
@@ -408,7 +544,8 @@ G.MUSIC_FILES = {
 "duration": 9.55764,
 "bpm": 118,
 "title": "Evolved!",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323875
 },
 "j_heal": {
 "file": "music/j_heal.mp3",
@@ -418,7 +555,8 @@ G.MUSIC_FILES = {
 "duration": 7.59726,
 "bpm": 112,
 "title": "Healed!",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323865
 },
 "j_itemget": {
 "file": "music/j_itemget.mp3",
@@ -428,7 +566,8 @@ G.MUSIC_FILES = {
 "duration": 5.75576,
 "bpm": 140,
 "title": "Got an item!",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323871
 },
 "j_keyitem": {
 "file": "music/j_keyitem.mp3",
@@ -438,7 +577,8 @@ G.MUSIC_FILES = {
 "duration": 6.36571,
 "bpm": 120,
 "title": "Key item!",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323871
 },
 "j_learn": {
 "file": "music/j_learn.mp3",
@@ -448,7 +588,8 @@ G.MUSIC_FILES = {
 "duration": 4.00844,
 "bpm": 160,
 "title": "Learned a move!",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323875
 },
 "j_levelup": {
 "file": "music/j_levelup.mp3",
@@ -458,7 +599,8 @@ G.MUSIC_FILES = {
 "duration": 4.70812,
 "bpm": 150,
 "title": "Level up!",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323869
 },
 "j_newmon": {
 "file": "music/j_newmon.mp3",
@@ -468,7 +610,8 @@ G.MUSIC_FILES = {
 "duration": 7.04095,
 "bpm": 130,
 "title": "A new partner!",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323873
 },
 "lab": {
 "file": "music/lab.mp3",
@@ -478,7 +621,8 @@ G.MUSIC_FILES = {
 "duration": 41.94744,
 "bpm": 116.00001,
 "title": "Professor Hale's Lab",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323839
 },
 "legend": {
 "file": "music/legend.mp3",
@@ -488,7 +632,8 @@ G.MUSIC_FILES = {
 "duration": 71.23819,
 "bpm": 137.99999,
 "title": "Battle! (Orrelume)",
-"intro": 6.95652
+"intro": 6.95652,
+"worked": 1790323594
 },
 "lighthouse": {
 "file": "music/lighthouse.mp3",
@@ -498,7 +643,8 @@ G.MUSIC_FILES = {
 "duration": 51.61814,
 "bpm": 140.0,
 "title": "The Tidelight \u2014 Ascent",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323826
 },
 "mart": {
 "file": "music/mart.mp3",
@@ -508,7 +654,8 @@ G.MUSIC_FILES = {
 "duration": 37.42714,
 "bpm": 124.00004,
 "title": "Supply Shop",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323844
 },
 "rival": {
 "file": "music/rival.mp3",
@@ -518,7 +665,8 @@ G.MUSIC_FILES = {
 "duration": 58.7895,
 "bpm": 170.00003,
 "title": "Battle! (Wren)",
-"intro": 5.64706
+"intro": 5.64706,
+"worked": 1790323506
 },
 "route1": {
 "file": "music/route1.mp3",
@@ -528,7 +676,8 @@ G.MUSIC_FILES = {
 "duration": 82.10794,
 "bpm": 128.0,
 "title": "Route 1 \u2014 First Steps",
-"intro": 3.75
+"intro": 3.75,
+"worked": 1790326588
 },
 "route1@night": {
 "file": "music/route1_night.mp3",
@@ -538,7 +687,8 @@ G.MUSIC_FILES = {
 "duration": 84.04853,
 "bpm": 128.0,
 "title": "Route 1 \u2014 First Steps",
-"intro": 3.75
+"intro": 3.75,
+"worked": 1790326585
 },
 "route2": {
 "file": "music/route2.mp3",
@@ -548,7 +698,8 @@ G.MUSIC_FILES = {
 "duration": 53.64236,
 "bpm": 131.99998,
 "title": "Route 2 \u2014 Hedgerow Lane",
-"intro": 3.63636
+"intro": 3.63636,
+"worked": 1790323383
 },
 "route2@night": {
 "file": "music/route2_night.mp3",
@@ -558,7 +709,8 @@ G.MUSIC_FILES = {
 "duration": 55.93215,
 "bpm": 131.99998,
 "title": "Route 2 \u2014 Hedgerow Lane",
-"intro": 3.63636
+"intro": 3.63636,
+"worked": 1790323385
 },
 "route3": {
 "file": "music/route3.mp3",
@@ -568,7 +720,8 @@ G.MUSIC_FILES = {
 "duration": 46.77732,
 "bpm": 150.0,
 "title": "Route 3 \u2014 Ember Road",
-"intro": 3.2
+"intro": 3.2,
+"worked": 1790323395
 },
 "route3@night": {
 "file": "music/route3_night.mp3",
@@ -578,7 +731,8 @@ G.MUSIC_FILES = {
 "duration": 45.6,
 "bpm": 150.0,
 "title": "Route 3 \u2014 Ember Road",
-"intro": 3.2
+"intro": 3.2,
+"worked": 1790323397
 },
 "route4": {
 "file": "music/route4.mp3",
@@ -588,7 +742,8 @@ G.MUSIC_FILES = {
 "duration": 59.47429,
 "bpm": 116.00001,
 "title": "Route 4 \u2014 Rainmoor",
-"intro": 4.13793
+"intro": 4.13793,
+"worked": 1790323411
 },
 "route4@night": {
 "file": "music/route4_night.mp3",
@@ -598,7 +753,8 @@ G.MUSIC_FILES = {
 "duration": 59.49424,
 "bpm": 116.00001,
 "title": "Route 4 \u2014 Rainmoor",
-"intro": 4.13793
+"intro": 4.13793,
+"worked": 1790323411
 },
 "ruins": {
 "file": "music/ruins.mp3",
@@ -608,7 +764,8 @@ G.MUSIC_FILES = {
 "duration": 64.03311,
 "bpm": 72.0,
 "title": "The Sunken Ruins",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323452
 },
 "skyreach": {
 "file": "music/skyreach.mp3",
@@ -618,7 +775,8 @@ G.MUSIC_FILES = {
 "duration": 60.21918,
 "bpm": 124.00001,
 "title": "Skyreach",
-"intro": 3.87097
+"intro": 3.87097,
+"worked": 1790323806
 },
 "skyreach@night": {
 "file": "music/skyreach_night.mp3",
@@ -628,7 +786,8 @@ G.MUSIC_FILES = {
 "duration": 58.88222,
 "bpm": 124.00001,
 "title": "Skyreach",
-"intro": 3.87097
+"intro": 3.87097,
+"worked": 1790323813
 },
 "spire": {
 "file": "music/spire.mp3",
@@ -638,7 +797,8 @@ G.MUSIC_FILES = {
 "duration": 42.22156,
 "bpm": 109.99999,
 "title": "The Battle Spire",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323850
 },
 "spire_battle": {
 "file": "music/spire_battle.mp3",
@@ -648,7 +808,8 @@ G.MUSIC_FILES = {
 "duration": 55.07574,
 "bpm": 168.0,
 "title": "Battle! (Battle Spire)",
-"intro": 2.85714
+"intro": 2.85714,
+"worked": 1790323608
 },
 "starfall": {
 "file": "music/starfall.mp3",
@@ -658,7 +819,8 @@ G.MUSIC_FILES = {
 "duration": 58.59209,
 "bpm": 75.99998,
 "title": "Starfall Hollow",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323462
 },
 "surf": {
 "file": "music/surf.mp3",
@@ -668,7 +830,8 @@ G.MUSIC_FILES = {
 "duration": 56.93166,
 "bpm": 124.00001,
 "title": "Across the Mere",
-"intro": 3.87097
+"intro": 3.87097,
+"worked": 1790323425
 },
 "surf@night": {
 "file": "music/surf_night.mp3",
@@ -678,7 +841,8 @@ G.MUSIC_FILES = {
 "duration": 59.60558,
 "bpm": 124.00001,
 "title": "Across the Mere",
-"intro": 3.87097
+"intro": 3.87097,
+"worked": 1790323428
 },
 "tidelight": {
 "file": "music/tidelight.mp3",
@@ -688,7 +852,8 @@ G.MUSIC_FILES = {
 "duration": 54.28091,
 "bpm": 131.99998,
 "title": "Tidelight Isle \u2014 The Storm",
-"intro": 3.63636
+"intro": 3.63636,
+"worked": 1790323821
 },
 "tidelight_calm": {
 "file": "music/tidelight_calm.mp3",
@@ -698,7 +863,8 @@ G.MUSIC_FILES = {
 "duration": 53.01179,
 "bpm": 84.0,
 "title": "Tidelight Isle \u2014 After the Storm",
-"intro": 0.0
+"intro": 0.0,
+"worked": 1790323834
 },
 "title": {
 "file": "music/title.mp3",
@@ -708,7 +874,8 @@ G.MUSIC_FILES = {
 "duration": 94.34104,
 "bpm": 100.0,
 "title": "Solmere \u2014 Main Theme",
-"intro": 9.6
+"intro": 9.6,
+"worked": 1790323682
 },
 "trainer": {
 "file": "music/trainer.mp3",
@@ -718,7 +885,8 @@ G.MUSIC_FILES = {
 "duration": 69.1917,
 "bpm": 172.00002,
 "title": "Battle! (Trainer)",
-"intro": 5.58139
+"intro": 5.58139,
+"worked": 1790323499
 },
 "victory_champion": {
 "file": "music/victory_champion.mp3",
@@ -728,7 +896,8 @@ G.MUSIC_FILES = {
 "duration": 50.15385,
 "bpm": 103.99998,
 "title": "Victory! (Champion)",
-"intro": 9.23077
+"intro": 9.23077,
+"worked": 1790323643
 },
 "victory_gym": {
 "file": "music/victory_gym.mp3",
@@ -738,7 +907,8 @@ G.MUSIC_FILES = {
 "duration": 44.33515,
 "bpm": 126.0,
 "title": "Victory! (Warden)",
-"intro": 7.61905
+"intro": 7.61905,
+"worked": 1790323631
 },
 "victory_trainer": {
 "file": "music/victory_trainer.mp3",
@@ -748,7 +918,8 @@ G.MUSIC_FILES = {
 "duration": 45.22259,
 "bpm": 132.00001,
 "title": "Victory! (Trainer)",
-"intro": 7.27273
+"intro": 7.27273,
+"worked": 1790323625
 },
 "victory_wild": {
 "file": "music/victory_wild.mp3",
@@ -758,7 +929,8 @@ G.MUSIC_FILES = {
 "duration": 26.78005,
 "bpm": 140.0,
 "title": "Victory! (Wild)",
-"intro": 3.42857
+"intro": 3.42857,
+"worked": 1790323617
 },
 "victoryroad": {
 "file": "music/victoryroad.mp3",
@@ -768,7 +940,8 @@ G.MUSIC_FILES = {
 "duration": 57.77857,
 "bpm": 128.0,
 "title": "Victory Road",
-"intro": 3.75
+"intro": 3.75,
+"worked": 1790323462
 },
 "villain_battle": {
 "file": "music/villain_battle.mp3",
@@ -778,7 +951,8 @@ G.MUSIC_FILES = {
 "duration": 61.68156,
 "bpm": 163.99998,
 "title": "Battle! (Crane Fellowship)",
-"intro": 5.85366
+"intro": 5.85366,
+"worked": 1790323520
 },
 "wanderer": {
 "file": "music/wanderer.mp3",
@@ -788,7 +962,8 @@ G.MUSIC_FILES = {
 "duration": 57.59644,
 "bpm": 183.99997,
 "title": "Battle! (The Wanderer)",
-"intro": 5.21739
+"intro": 5.21739,
+"worked": 1790323603
 },
 "wild": {
 "file": "music/wild.mp3",
@@ -798,6 +973,7 @@ G.MUSIC_FILES = {
 "duration": 52.81807,
 "bpm": 175.99997,
 "title": "Battle! (Wild)",
-"intro": 2.72727
+"intro": 2.72727,
+"worked": 1790323488
 }
 };
