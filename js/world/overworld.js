@@ -27,7 +27,7 @@ G.Ent = class {
     this.px += dx * this.speed; this.py += dy * this.speed; this.prog += this.speed;
     if (this.jump) { this.jump.t++; const k = this.jump.t / this.jump.n; this.hop = Math.sin(k * Math.PI) * 10; }
     const total = this.jump ? this.jump.d * 16 : 16;
-    if (this.prog >= total) {
+    if (this.prog >= total - 1e-6) {
       this.x = this.nx; this.y = this.ny; this.px = this.x * 16; this.py = this.y * 16; this.moving = false; this.hop = 0;
       if (this.jump) { this.jump = null; this.landed = true; }
       return true; // arrived
@@ -177,7 +177,7 @@ G.WorldScene = class {
     if (arrived) this.afterStep();
     if (this.pendingTrigger && !this.busy && !p.moving) {
       const q = this.pendingTrigger; this.pendingTrigger = null;
-      if (q.map === this.map.id && p.x === q.x && p.y === q.y && G.checkCond(q.t.cond)) { G.run(() => G.runScript(q.t.script, { trigger: q.t })); return; }
+      if (q.map === this.map.id && p.x === q.x && p.y === q.y && G.checkCond(q.t.cond)) { this.lockRun(() => G.runScript(q.t.script, { trigger: q.t })); return; }
     }
     if (top && !this.busy && !p.moving) this.control();
     else if (top && !this.busy && p.moving && p.prog >= 16 - p.speed && !p.jump) { /* chain handled in afterStep */ }
@@ -210,12 +210,12 @@ G.WorldScene = class {
     this.tryStep(d);
   }
   moveSpeed() {
-    // original DS pacing: walk 16 frames/tile, run & surf 8, bike 4 (speeds divide the 16px tile evenly)
-    if (this.surfing) return 2;
+    // DS pacing, a touch brisker: walk 13 frames/tile, run & surf 7, bike 4
+    if (this.surfing) return 16 / 7;
     if (this.biking) return 4;
     const run = G.settings.autoRun ? !G.input.isDown('run') : G.input.isDown('run');
-    if (run && this.map.type !== 'indoor' || run && this.map.def.canRun) return 2;
-    return G.save.god.speed ? 8 : 1;
+    if (run && this.map.type !== 'indoor' || run && this.map.def.canRun) return 16 / 7;
+    return G.save.god.speed ? 8 : 16 / 13;
   }
   tryStep(d) {
     const p = this.player; const [dx, dy] = G.DIRS[d]; const nx = p.x + dx, ny = p.y + dy;
@@ -301,7 +301,7 @@ G.WorldScene = class {
     if (G.save.repel > 0) { G.save.repel--; if (G.save.repel === 0) { G.run(() => this.repelOut()); return; } }
     // warps
     const w = m.warps.find(w => w.x === p.x && w.y === p.y && G.checkCond(w.cond));
-    if (w && this.map === m) { G.run(() => this.doWarp(w)); return; }
+    if (w && this.map === m) { this.lockRun(() => this.doWarp(w)); return; }
     if (this.busy) {
       // a trigger stepped on while a script is finishing must not be skipped (that let players slip
       // past story blockers): remember it and fire once the world is free, if still standing on it
@@ -311,7 +311,7 @@ G.WorldScene = class {
     }
     // triggers
     for (const t of m.objs.filter(o => o.type === 'trigger')) {
-      if (p.x >= t.x && p.x < t.x + (t.w || 1) && p.y >= t.y && p.y < t.y + (t.h || 1) && G.checkCond(t.cond)) { G.run(() => G.runScript(t.script, { trigger: t })); return; }
+      if (p.x >= t.x && p.x < t.x + (t.w || 1) && p.y >= t.y && p.y < t.y + (t.h || 1) && G.checkCond(t.cond)) { this.lockRun(() => G.runScript(t.script, { trigger: t })); return; }
     }
     // gym switches
     if (c && c.sw && !G.flag(c.sw)) { G.setFlag(c.sw); G.audio && G.audio.sfx('switch'); this.shake = 6; G.toast('Click! Something powered up...'); }
@@ -405,6 +405,9 @@ G.WorldScene = class {
     }
     return false;
   }
+  // start a script and hold the world still from this very frame (G.run starts it a tick later,
+  // which let a running player take one more step past story blockers)
+  lockRun(fn) { this.busy++; G.run(async () => { try { await fn(); } finally { this.busy--; } }); }
   // physical feedback for each step: surface footsteps, grass rustle and blades, running dust
   stepFeel(p) {
     const c = this.cellAt(p.x, p.y); if (!c) return;
@@ -453,16 +456,39 @@ G.WorldScene = class {
     const p = this.player;
     if (w.locked && !G.checkCond(w.unlock)) { await G.say(w.lockedMsg || 'It\'s locked.'); p.startMove(G.OPP[p.dir] || 'down', 1); this.busy--; return; }
     G.audio && G.audio.sfx(w.kind === 'door' ? 'door' : w.kind === 'cave' ? 'stairs' : 'stairs');
-    await G.fadeOut(12);
+    const outdoorDoor = w.kind === 'door' && this.map.type === 'outdoor';
+    if (outdoorDoor) {
+      // the door swings open, warm light spills out, and you step inside
+      this.doorFx = { x: w.x, y: w.y, t: 0, mode: 'open' };
+      await G.wait(9);
+      const f = G.fadeOut(14);
+      for (let i = 0; i < 10; i++) { p.py -= .8; await G.wait(1); }
+      await f;
+    } else await G.fadeOut(12);
+    this.doorFx = null;
     let to = w.to, tx = w.tx, ty = w.ty, dir = w.dir || p.dir;
     if (to === '_back') { const r = G.save.returnTo || G.save.lastOutdoor; to = r.map; tx = r.x; ty = r.y; dir = 'down'; }
     const src = this.map;
     if (w.kind === 'door' && src.type === 'outdoor') G.save.returnTo = { map: src.id, x: w.x, y: w.y + 1 };
     if (G.MAPDEFS[to] && G.MAPDEFS[to].isHaven) G.save.lastHeal = { map: to, x: 7, y: 6, back: { map: src.id, x: w.x, y: w.y + 1 } };
     this.enterMap(to, tx, ty, dir);
+    // stepping back outside: the door you came through closes behind you
+    const back = this.map.type === 'outdoor' && src.type !== 'outdoor' && G.save.returnTo && to === G.save.returnTo.map;
+    if (back) this.doorFx = { x: tx, y: ty - 1, t: 0, mode: 'close' };
     await G.wait(4);
     await G.fadeIn(12);
+    if (back) { await G.wait(12); this.doorFx = null; }
     this.busy--;
+  }
+  drawDoorFx(b, ox, oy) {
+    const d = this.doorFx; if (!d) return;
+    d.t++;
+    const k = d.mode === 'open' ? Math.min(1, d.t / 8) : Math.max(0, 1 - d.t / 10);
+    if (k <= 0) return;
+    const cx = d.x * 16 + 8 - ox, by = d.y * 16 + 14 - oy, w = Math.round(12 * k), h = 15;
+    b.fillStyle = '#14101c'; b.fillRect(Math.round(cx - w / 2), by - h, w, h);
+    b.fillStyle = 'rgba(255,196,110,.55)'; b.fillRect(Math.round(cx - w / 2) + 1, by - h + 2, Math.max(0, w - 2), h - 2);
+    b.fillStyle = 'rgba(255,226,160,.35)'; b.beginPath(); b.moveTo(cx - w / 2, by); b.lineTo(cx + w / 2, by); b.lineTo(cx + w / 2 + 4 * k, by + 5 * k); b.lineTo(cx - w / 2 - 4 * k, by + 5 * k); b.closePath(); b.fill();
   }
   async warpTo(map, x, y, dir, fade = true) {
     this.busy++;
@@ -725,7 +751,7 @@ G.WorldScene = class {
     // buildings (current + neighbours)
     const drawBld = (mm, bo, offx, offy) => {
       const bi = G.tiles.building(bo.kind, bo.w, bo.h, { roof: bo.roof, door: bo.door, accent: bo.accent, label: bo.label });
-      const dx = (bo.x + offx) * 16 - ox, dy = (bo.y + offy) * 16 - oy - bi.oy;
+      const dx = (bo.x + offx) * 16 - ox + (bi.atlas ? G.bldAlign(bo) : 0), dy = (bo.y + offy) * 16 - oy - bi.oy;
       if (dx > G.W + 32 || dy > G.H + 32 || dx + bi.img.width < -32 || dy + bi.img.height < -32) return;
       const base = (bo.y + offy + bo.h) * 16 - oy;
       sprites.push({ y: (bo.y + offy + bo.h) * 16 - 1, d: () => G.leanDraw(b, bi.img, dx, dy, base, { side: !bi.atlas }) });
@@ -737,6 +763,7 @@ G.WorldScene = class {
     for (const e of ents) sprites.push({ y: e.py + 15 + (e.kind === 'item' ? -1 : 0), d: () => this.drawEnt(b, e, ox, oy) });
     if (this.follower && !this.follower.hidden) { const f = this.follower; sprites.push({ y: f.py + 14, d: () => this.drawFollower(b, f, ox, oy) }); }
     if (this.partner && this.partner.map === m.id && this.partner.visible) { const e = this.partner; sprites.push({ y: e.py + 15, d: () => { this.drawEnt(b, e, ox, oy); if (e.followerMon) this.drawFollower(b, e.fol, ox, oy); } }); }
+    if (this.doorFx) sprites.push({ y: (this.doorFx.y + 1) * 16 - .75, d: () => this.drawDoorFx(b, ox, oy) });
     sprites.push({ y: this.player.py + 15.5, d: () => this.drawEnt(b, this.player, ox, oy) });
     sprites.sort((a, c) => a.y - c.y);
     for (const s of sprites) s.d();
@@ -797,7 +824,9 @@ G.WorldScene = class {
         return;
       }
       if (e.invisible) return;
-      const img = G.tiles.get('fu|sign|0', 16, 16, p => G.tiles.furniture(p, 'sign', 0)); b.drawImage(img, e.px - ox, e.py - oy); return;
+      const at = G.tiles.atlas && G.tiles.atlas('sign');
+      if (at) { b.drawImage(at, Math.round(e.px - ox + 8 - at.width / 2), Math.round(e.py - oy + 17 - at.height)); return; }
+      const img = G.tiles.prop('sign', 0).img; b.drawImage(img, e.px - ox, e.py - oy - 2); return;
     }
     if (e.monSprite) {
       const im = G.monArt.overworld(e.monSprite, !!e.shiny, e.dir, Math.floor(this.frame / 16) % 2);

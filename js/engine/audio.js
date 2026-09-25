@@ -443,7 +443,9 @@ G.audio = (function () {
         case 'buzz': tone(140, .12, 'sq50', .09); break;
         case 'bump': tone(90, .08, 'tri', .18, { slide: 60 }); break;
         case 'page': noise(.06, 'highpass', 3000, .08); break;
-        case 'text': tone(1800, .01, 'sq50', .02); break;
+        case 'text': tone(880 + Math.random() * 120, .025, 'sq25', .025); break;
+        case 'menu_open': tone(660, .04, 'sq25', .06); tone(990, .05, 'sq25', .06, { at: .035 }); noise(.05, 'highpass', 4000, .04); break;
+        case 'menu_close': tone(990, .04, 'sq25', .05); tone(660, .05, 'sq25', .05, { at: .035 }); break;
         case 'door': noise(.25, 'lowpass', 2000, .15, { to: 300 }); tone(220, .1, 'tri', .08); break;
         case 'stairs': for (let i = 0; i < 3; i++) tone(300 - i * 40, .05, 'tri', .1, { at: i * .08 }); break;
         case 'jump': tone(400, .15, 'sq25', .08, { slide: 900 }); break;

@@ -12,7 +12,7 @@ G.input = (function () {
     ShiftLeft: 'run', ShiftRight: 'run',
     KeyF: 'bike', KeyQ: 'l', KeyE: 'r', KeyR: 'r', Tab: 'turbo', KeyP: 'photo', Backquote: 'debug', F2: 'debug', KeyH: 'help',
   };
-  const down = {}, prev = {}, held = {}, pressedQ = {};
+  const down = {}, prev = {}, held = {}, pressedQ = {}, repT = {}, repN = {};
   let textListener = null;   // for naming screens: receives raw characters
   const I = {
     down, held, lastDevice: 'kb',
@@ -21,9 +21,15 @@ G.input = (function () {
     released(b) { return !down[b] && prev[b]; },
     isDown(b) { return !!down[b]; },
     // menu-style repeat: true on press and then every N frames while held
+    // measured in real time, so menus scroll at the same pace when the game is fast-forwarding
     repeat(b, delay = 14, rate = 4) {
-      if (pressedQ[b]) return true;
-      const h = held[b] || 0; return down[b] && h > delay && (h - delay) % rate === 0;
+      if (pressedQ[b]) { repT[b] = performance.now(); repN[b] = 0; return true; }
+      if (!down[b] || repT[b] === undefined) return false;
+      const ms = performance.now() - repT[b] - delay * 16.7;
+      if (ms < 0) return false;
+      const n = Math.floor(ms / (rate * 16.7)) + 1;
+      if (n > repN[b]) { repN[b] = n; return true; }
+      return false;
     },
     consume(b) { pressedQ[b] = false; },
     consumeAll() { for (const b of BTN) pressedQ[b] = false; },

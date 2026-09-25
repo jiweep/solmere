@@ -266,9 +266,10 @@ G.terrain = (function () {
       const x = (b.x + ox) * 16 - X0, y = (b.y + oy) * 16 - Y0;
       if (x > CS + 16 || y > CS + 140 || x + b.w * 16 + 120 < 0 || y + b.h * 16 < -16) continue;
       const bi = G.tiles.building(b.kind, b.w, b.h, { roof: b.roof, door: b.door, accent: b.accent, label: b.label });
-      castShadow(sx, bi.img, x, y - bi.oy, y + b.h * 16 - 1, { kx: .3, ky: .14 });
-      // foundation occlusion line
-      gx.fillStyle = 'rgba(12,16,36,.32)'; gx.fillRect(x + 1, y + b.h * 16, b.w * 16 - 2, 2);
+      const ax = bi.atlas ? G.bldAlign(b) : 0;
+      castShadow(sx, bi.img, x + ax, y - bi.oy, y + b.h * 16 - 1, { kx: .3, ky: .14 });
+      // foundation occlusion line (code-drawn buildings; generated ones carry their own base)
+      if (!bi.atlas) { gx.fillStyle = 'rgba(12,16,36,.32)'; gx.fillRect(x + 1, y + b.h * 16, b.w * 16 - 2, 2); }
     }
     // ---- assemble
     const mk = (arr) => { const cv = G.makeCanvas(CS, CS), c2 = cv.getContext('2d'), id = c2.createImageData(CS, CS); id.data.set(arr); c2.putImageData(id, 0, 0); return cv; };

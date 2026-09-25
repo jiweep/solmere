@@ -4,7 +4,7 @@
 // ============================================================================
 G.openPauseMenu = async function () {
   const w = G.world.scene; if (!w) return;
-  w.busy++;
+  w.busy++; G.audio && G.audio.sfx('menu_open');
   try {
     let start = G.pauseIndex || 0;
     while (true) {
@@ -102,7 +102,7 @@ G.openOptions = function () {
     { k: 'textSpeed', label: 'Text Speed', vals: [0, 1, 2, 3], names: ['Slow', 'Mid', 'Fast', 'Instant'] },
     { k: 'battleAnims', label: 'Battle Animations', vals: [true, false], names: ['On', 'Off'] },
     { k: 'battleSpeed', label: 'Battle Speed', vals: [1, 1.5, 2, 3], names: ['1x', '1.5x', '2x', '3x'] },
-    { k: 'ffSpeed', label: 'Fast-Forward Speed', vals: [2, 3, 4, 6, 8], names: ['2x', '3x', '4x', '6x', '8x'] },
+    { k: 'ffSpeed', label: 'Fast-Forward Speed', vals: [2, 3, 4, 6, 8, 12, 16, 24], names: ['2x', '3x', '4x', '6x', '8x', '12x', '16x', '24x'] },
     { k: 'ffMode', label: 'Fast-Forward Key (Tab)', vals: ['toggle', 'hold'], names: ['Toggle', 'Hold'] },
     { k: 'battleStyle', label: 'Battle Style', vals: ['switch', 'set'], names: ['Switch', 'Set'], save: true, apply: v => sv.settings.setMode = v === 'set', get: () => sv.settings.setMode ? 'set' : 'switch' },
     { k: 'expShare', label: 'EXP Share', vals: [true, false], names: ['On', 'Off'], save: true, get: () => sv.settings.expShare, apply: v => sv.settings.expShare = v },

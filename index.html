@@ -79,6 +79,8 @@
       G.gfx.fill = !!G.settings.fill;
       G.boot();
       document.getElementById('ff').addEventListener('click', ev => { ev.preventDefault(); G.setTurbo(!G.turbo); G.ffButton = G.turbo; ev.currentTarget.blur(); });
+      // right-click the button to step through speeds: 2x … 24x
+      document.getElementById('ff').addEventListener('contextmenu', ev => { ev.preventDefault(); const V = [2, 3, 4, 6, 8, 12, 16, 24]; const i = V.indexOf(G.ffSpeed()); G.settings.ffSpeed = V[(i + 1) % V.length]; G.setTurbo(true); G.ffButton = true; });
       // the sprite atlas is an embedded image: decode it before the title shows
       Promise.all([G.monArt.load(), G.chars.load(), G.tiles.loadWorld(), G.loadFonts()]).then(() => { G.push(new G.TitleScene()); document.getElementById('boot').remove(); });
       window.addEventListener('beforeunload', () => { try { G.persist.saveSettings(); } catch (e) {} });

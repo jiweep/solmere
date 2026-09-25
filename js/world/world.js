@@ -73,7 +73,13 @@ G.WorldMap = class {
     this.buildings = this.objs.filter(o => o.type === 'building');
     this.warps = (def.warps || []).map(w => ({ ...w }));
     for (const b of this.buildings) {
-      for (let yy = b.y; yy < b.y + b.h; yy++) for (let xx = b.x; xx < b.x + b.w; xx++) { const c = this.cell(xx, yy); if (c) { c.solid = true; c.bld = b; } }
+      const cov = G.bldCoverage(b);
+      for (let yy = b.y; yy < b.y + b.h; yy++) for (let xx = b.x; xx < b.x + b.w; xx++) {
+        const c = this.cell(xx, yy); if (!c) continue;
+        // generated art does not always fill its footprint: only cells the sprite actually covers are walls
+        if (cov && cov[(yy - b.y) * b.w + (xx - b.x)] < .3) continue;
+        c.solid = true; c.bld = b;
+      }
       const dx = b.x + (b.door !== undefined ? b.door : Math.floor(b.w / 2)), dy = b.y + b.h - 1;
       if (b.to) { const c = this.cell(dx, dy); if (c) { c.solid = false; c.door = true; } this.warps.push({ x: dx, y: dy, to: b.to, tx: b.tx, ty: b.ty, dir: 'up', kind: 'door', cond: b.cond, locked: b.locked }); }
       else { const c = this.cell(dx, dy); if (c) c.lockedDoor = b.lockMsg || 'The door is locked.'; }
@@ -266,6 +272,25 @@ G.objImg = function (map, c, frame) {
       return { ...T.furniture(c.o, ['pc', 'tv', 'healer', 'machine'].includes(c.o) ? frame % 2 : 0), ao: c.o === 'plant' || c.o === 'statue' };
     default: return { ...T.prop(c.o, ['fountain', 'cauldron'].includes(c.o) ? frame % 2 : 0), aoW: 6 };
   }
+};
+// share of each footprint cell covered by the building's generated sprite (null for code-drawn art)
+G._bldCov = {};
+G.bldAlign = b => b.door !== undefined ? Math.round((b.door + .5) * 16 - b.w * 8) : 0;
+G.bldCoverage = function (b) {
+  if (typeof document === 'undefined' || !G.tiles || !G.tiles.building) return null;
+  const bi = G.tiles.building(b.kind, b.w, b.h, { roof: b.roof, door: b.door, accent: b.accent, label: b.label });
+  if (!bi.atlas) return null;
+  const key = [b.kind, b.w, b.h, b.roof, b.door].join('|');
+  if (G._bldCov[key]) return G._bldCov[key];
+  const im = bi.img, W = b.w * 16, H = b.h * 16, sx = G.bldAlign(b);
+  let d; try { d = im.getContext('2d').getImageData(0, im.height - H, im.width, H).data; } catch (e) { return null; }
+  const cov = new Float32Array(b.w * b.h);
+  for (let cy = 0; cy < b.h; cy++) for (let cx = 0; cx < b.w; cx++) {
+    let n = 0, t = 0;
+    for (let y = cy * 16; y < cy * 16 + 16; y += 2) for (let x = cx * 16; x < cx * 16 + 16; x += 2) { const ix = x - sx; t++; if (ix >= 0 && ix < im.width && d[(y * im.width + ix) * 4 + 3] > 100) n++; }
+    cov[cy * b.w + cx] = n / t;
+  }
+  return (G._bldCov[key] = cov);
 };
 G.borderCell = function (map, x, y) {
   const b = map.border();

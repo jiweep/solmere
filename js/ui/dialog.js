@@ -33,7 +33,10 @@ G.TextBox = class {
     this.t++;
     const I = G.input;
     if (this.state === 'typing') {
+      const before = Math.floor(this.chars);
       this.chars += this.speed();
+      // voice blips: a soft tick every few letters while text types out
+      if (G.audio && Math.floor(this.chars / 3) > Math.floor(before / 3) && this.chars < this.pageLen() && !G.turbo) G.audio.sfx('text');
       if (top && (I.pressed('a') || I.pressed('b'))) { this.chars = 9999; I.consume('a'); I.consume('b'); }
       if (this.chars >= this.pageLen()) { this.chars = 9999; this.state = 'wait'; this.waitT = 0; }
       return false;
