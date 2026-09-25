@@ -78,6 +78,7 @@ G.WorldScene = class {
     const prev = this.map;
     const m = G.maps.get(id);
     this.map = m;
+    if (G.audio && G.audio.ambience) G.audio.ambience(this.ambienceFor(m));
     G.save.pos = { map: id, x, y, dir: dir || (this.player ? this.player.dir : 'down') };
     if (m.type === 'outdoor') { G.save.lastOutdoor = { map: id, x, y }; if (m.def.town) G.save.visited[m.def.town] = true; }
     if (!this.player) this.player = new G.Ent({ id: 'player', x, y, dir: dir || 'down', look: G.LOOKS[G.save.look] || G.LOOKS.player_a, kind: 'player' });
@@ -184,6 +185,7 @@ G.WorldScene = class {
     // camera smoothing
     const t = this.camTarget(); this.cam.x = t.x; this.cam.y = t.y;
     if (this.shake > 0) this.shake--;
+    if (G.audio && G.audio.ambience && this.frame % 60 === 0) G.audio.ambience(this.ambienceFor(this.map));   // after audio unlocks; follows day/night
     this.updateWeather();
     if (G.net) G.net.tick();
     this.tickAutosave(top);
@@ -258,6 +260,7 @@ G.WorldScene = class {
     const p = this.player, m = this.map;
     this.lastMoved = true;
     G.save.stats.steps++;
+    this.stepFeel(p);
     // map edge -> neighbour map (seamless)
     if (p.x < 0 || p.y < 0 || p.x >= m.w || p.y >= m.h) {
       const r = m.resolve(p.x, p.y);
@@ -272,6 +275,7 @@ G.WorldScene = class {
         if (r.map.type === 'outdoor') { G.save.lastOutdoor = { map: r.map.id, x: p.x, y: p.y }; if (r.map.def.town) G.save.visited[r.map.def.town] = true; }
         const mus = typeof r.map.def.music === 'function' ? r.map.def.music() : r.map.def.music;
         if (mus && G.audio) G.audio.music(mus);
+        if (G.audio && G.audio.ambience) G.audio.ambience(this.ambienceFor(r.map));
         if (r.map.def.banner !== false) G.showBanner(r.map.name, r.map.def.subtitle);
         this.weather = r.map.def.weather ? (typeof r.map.def.weather === 'function' ? r.map.def.weather() : r.map.def.weather) : null;
         if (G.net) G.net.sendPos(true);
@@ -369,8 +373,32 @@ G.WorldScene = class {
     }
     return false;
   }
+  // physical feedback for each step: surface footsteps, grass rustle and blades, running dust
+  stepFeel(p) {
+    const c = this.cellAt(p.x, p.y); if (!c) return;
+    const g = c.g, A = G.audio;
+    const fs = g === 'tall' ? 'rustle' : g === 'grass' || g === 'flowers' ? 'fs_grass' : g === 'sand' || g === 'path' || g === 'ash' ? 'fs_sand' : g === 'bridge' || g === 'bridgev' || g === 'wood' ? 'fs_wood' : g === 'pave' || g === 'tilefloor' || g === 'gymfloor' || g === 'metal' ? 'fs_stone' : g === 'snow' ? 'fs_snow' : null;
+    if (A && fs && !this.surfing) A.sfx(fs);
+    const fx = p.px + 8, fy = p.py + 14;
+    if (g === 'tall') for (let i = 0; i < 5; i++) this.fx.add({ x: fx + (G.rand() - .5) * 10, y: fy - 4, vx: (G.rand() - .5) * 1.2, vy: -.8 - G.rand() * .8, ay: .08, life: 22, type: 'leaf', size: 1.4, rot: G.rand() * 6, vr: .2, color: G.pick(['#3a8a3a', '#5aa84a', '#2a6a30']) });
+    if (p.speed >= 2 && !this.surfing && (g === 'path' || g === 'sand' || g === 'ash' || g === 'snow'))
+      for (let i = 0; i < 2; i++) this.fx.add({ x: fx - G.DIRS[p.dir][0] * 6 + (G.rand() - .5) * 4, y: fy + 1, vx: -G.DIRS[p.dir][0] * .3 + (G.rand() - .5) * .3, vy: -.25, life: 18, type: 'circle', size: 2 + G.rand() * 1.5, grow: .06, color: g === 'snow' ? 'rgba(255,255,255,1)' : 'rgba(214,190,150,1)', alpha: .5 });
+  }
+  ambienceFor(m) {
+    if (m.type === 'cave') return 'cave';
+    if (m.type !== 'outdoor') return null;
+    if (m.theme === 'snow') return 'wind';
+    if (m.theme === 'beach' || m.cells.filter(c => c.water).length > m.cells.length * .15) return 'coast';
+    return G.clock.isNight() ? null : 'birds';
+  }
   updateNPC(e, top) {
     if (e.kind !== 'npc' && e.kind !== 'trainer') return;
+    // townsfolk notice you: a glance when you walk up close
+    if (e.kind === 'npc' && (e.move === 'wander' || e.move === 'look') && !e.moving && !e.scripted) {
+      const p = this.player, d = Math.abs(p.x - e.x) + Math.abs(p.y - e.y);
+      if (d <= 2 && !e.glanced && !this.busy) { e.glanced = true; e.dir = Math.abs(p.x - e.x) > Math.abs(p.y - e.y) ? (p.x < e.x ? 'left' : 'right') : (p.y < e.y ? 'up' : 'down'); e.wanderT = 120; }
+      else if (d > 3) e.glanced = false;
+    }
     if (this.busy || e.moving || e.scripted) return;
     if (!e.move || e.move === 'static') return;
     if (--e.wanderT > 0) return;

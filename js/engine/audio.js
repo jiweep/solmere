@@ -387,6 +387,33 @@ G.audio = (function () {
       }
       synthJingle(id);
     },
+    // ambient beds (procedural): waves, birds, wind, cave drips; crossfade on change
+    ambience(kind) {
+      if (!ctx || A._ambKind === kind) return;
+      A._ambKind = kind;
+      const old = A._amb; A._amb = null;
+      if (old) { old.g.gain.setTargetAtTime(0, ctx.currentTime, .6); setTimeout(() => { try { old.stop(); } catch (e) { } }, 3000); }
+      if (!kind || A.muted || A.silent) return;
+      const g = ctx.createGain(); g.gain.value = 0; g.connect(sfxBus); g.gain.setTargetAtTime(1, ctx.currentTime, .8);
+      const nodes = [], timers = [];
+      const loopNoise = (type, f, q, v) => { const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q; const gg = ctx.createGain(); gg.gain.value = v; s.connect(fl); fl.connect(gg); gg.connect(g); s.start(); nodes.push(s); return { s, fl, gg }; };
+      const lfo = (param, rate, depth, base) => { const o = ctx.createOscillator(); o.frequency.value = rate; const d = ctx.createGain(); d.gain.value = depth; o.connect(d); d.connect(param); param.value = base; o.start(); nodes.push(o); };
+      if (kind === 'coast') { const w = loopNoise('lowpass', 500, .7, .05); lfo(w.gg.gain, .11, .035, .045); lfo(w.fl.frequency, .11, 260, 520); }
+      if (kind === 'wind' || kind === 'coast') { const w = loopNoise('bandpass', 700, 1.2, .018); lfo(w.fl.frequency, .07, 300, 700); }
+      if (kind === 'birds') {
+        const chirp = () => { if (!A._amb || A._amb.kind !== 'birds') return; const t0 = ctx.currentTime + .02, n = 2 + Math.floor(Math.random() * 3), f0 = 2600 + Math.random() * 1400;
+          for (let i = 0; i < n; i++) playNote(g, 'sine', f0 * (1 + (i % 2) * .12), t0 + i * .09, .06, .012, [.004, .02, .5, .03], { slide: f0 * 1.25 });
+          timers.push(setTimeout(chirp, 1500 + Math.random() * 5000)); };
+        timers.push(setTimeout(chirp, 800));
+        const w = loopNoise('bandpass', 900, .8, .006); lfo(w.fl.frequency, .05, 300, 900);
+      }
+      if (kind === 'cave') {
+        const drip = () => { if (!A._amb || A._amb.kind !== 'cave') return; const t0 = ctx.currentTime + .02, f = 900 + Math.random() * 900; playNote(g, 'sine', f, t0, .09, .03, [.001, .02, .3, .08], { slide: f * 1.6 }); timers.push(setTimeout(drip, 900 + Math.random() * 3500)); };
+        timers.push(setTimeout(drip, 500));
+        const w = loopNoise('lowpass', 200, .5, .02);
+      }
+      A._amb = { kind, g, stop() { for (const n of nodes) try { n.stop(); } catch (e) { } for (const t of timers) clearTimeout(t); g.disconnect(); } };
+    },
     update() {
       if (!ctx) return;
       schedule();
@@ -404,6 +431,13 @@ G.audio = (function () {
       const noise = (d, fType, fq, v = .2, o = {}) => { const s = ctx.createBufferSource(); s.buffer = noiseBuf; const f = ctx.createBiquadFilter(); f.type = fType; f.frequency.setValueAtTime(fq, t + (o.at || 0)); if (o.to) f.frequency.exponentialRampToValueAtTime(o.to, t + (o.at || 0) + d); const g = ctx.createGain(); g.gain.setValueAtTime(v, t + (o.at || 0)); g.gain.exponentialRampToValueAtTime(.001, t + (o.at || 0) + d); s.connect(f); f.connect(g); g.connect(B); s.start(t + (o.at || 0), Math.random() * .3); s.stop(t + (o.at || 0) + d + .05); };
       switch (id) {
         case 'cursor': tone(1320, .03, 'sq50', .06); break;
+        // footsteps by surface (kept very quiet: felt more than heard)
+        case 'fs_grass': noise(.07, 'bandpass', 2600, .035); break;
+        case 'fs_sand': noise(.09, 'lowpass', 1400, .045); break;
+        case 'fs_wood': tone(170, .05, 'tri', .07, { slide: 120 }); noise(.03, 'bandpass', 1200, .03); break;
+        case 'fs_stone': tone(420, .025, 'tri', .035); noise(.03, 'highpass', 3500, .025); break;
+        case 'fs_snow': noise(.12, 'lowpass', 900, .05, { to: 400 }); break;
+        case 'rustle': noise(.18, 'bandpass', 3200, .09, { to: 1800 }); noise(.1, 'highpass', 5000, .04, { at: .06 }); break;
         case 'select': tone(990, .04, 'sq25', .08); tone(1480, .06, 'sq25', .08, { at: .04 }); break;
         case 'back': tone(880, .04, 'sq25', .07); tone(660, .06, 'sq25', .07, { at: .04 }); break;
         case 'buzz': tone(140, .12, 'sq50', .09); break;
