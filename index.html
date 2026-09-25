@@ -21,11 +21,37 @@
   #dim:hover { opacity: 1; }
   #dim.on { background: rgba(80,200,210,.85); color: #06201f; border-color: rgba(255,255,255,.6); }
   #ff.on { background: rgba(255,196,40,.9); color: #1a1405; opacity: .95; border-color: rgba(255,255,255,.6); }
-  #boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: #8af0e0; font: 600 18px "Avenir Next", sans-serif; letter-spacing: .1em; }
+  /* loading screen: a night sea, the title, a bobbing Orb and a real progress bar */
+  #boot { position: fixed; inset: 0; z-index: 10; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+    background: radial-gradient(120% 80% at 50% 18%, #1d3b6a 0%, #0c1834 45%, #050914 100%); color: #dff6f2; font: 600 14px "Avenir Next", system-ui, sans-serif; transition: opacity .45s; }
+  #boot.done { opacity: 0; pointer-events: none; }
+  #boot .stars { position: absolute; inset: 0; background-image: radial-gradient(1px 1px at 12% 22%, #fff9, transparent), radial-gradient(1px 1px at 78% 14%, #fffa, transparent), radial-gradient(1.5px 1.5px at 42% 8%, #fff, transparent), radial-gradient(1px 1px at 64% 30%, #fff8, transparent), radial-gradient(1px 1px at 88% 40%, #fff7, transparent), radial-gradient(1px 1px at 24% 36%, #fff6, transparent), radial-gradient(1.5px 1.5px at 6% 12%, #fffc, transparent); animation: twinkle 3.2s ease-in-out infinite alternate; }
+  @keyframes twinkle { from { opacity: .55; } to { opacity: 1; } }
+  #boot .sea { position: absolute; left: -10%; right: -10%; bottom: 0; height: 30%; background: linear-gradient(#10305a, #081428); }
+  #boot .sea::before, #boot .sea::after { content: ""; position: absolute; left: 0; right: 0; top: -14px; height: 28px; background: repeating-radial-gradient(circle at 20px -6px, transparent 0 16px, #2a6aa0 17px 19px, transparent 20px) 0 0 / 40px 28px; animation: tide 6s linear infinite; opacity: .8; }
+  #boot .sea::after { top: 8px; opacity: .45; animation-duration: 9s; animation-direction: reverse; }
+  @keyframes tide { to { background-position: 40px 0; } }
+  #boot .beam { position: absolute; top: 34%; left: 50%; width: 140vmax; height: 90px; margin-left: -70vmax; background: linear-gradient(90deg, transparent 20%, #fff4c822 48%, #fff4c844 50%, #fff4c822 52%, transparent 80%); transform-origin: 50% 50%; animation: sweep 7s ease-in-out infinite alternate; filter: blur(6px); }
+  @keyframes sweep { from { transform: rotate(-8deg); } to { transform: rotate(8deg); } }
+  #boot .orb { position: relative; width: 58px; height: 58px; border-radius: 50%; background: radial-gradient(circle at 36% 30%, #fff 0 8%, #8af0e0 14%, #2fb8c8 42%, #0e4a66 100%); box-shadow: 0 0 34px #2fb8c888, inset -6px -8px 14px #0006; animation: bob 2.4s ease-in-out infinite; }
+  #boot .orb::after { content: ""; position: absolute; left: -16px; right: -16px; top: 22px; height: 12px; border-radius: 50%; border: 3px solid #d8a84a; border-top-color: transparent; transform: rotate(-16deg); }
+  @keyframes bob { 50% { transform: translateY(-8px); } }
+  #boot h1 { position: relative; margin: 0; font: 900 clamp(34px, 7vw, 64px)/1 "Avenir Next", system-ui, sans-serif; letter-spacing: .14em; color: #fff; text-shadow: 0 3px 0 #0e4a66, 0 0 26px #2fb8c866; }
+  #boot h2 { position: relative; margin: -8px 0 0; font: 700 13px "Avenir Next", system-ui, sans-serif; letter-spacing: .5em; color: #8af0e0; }
+  #boot .bar { position: relative; width: min(320px, 70vw); height: 8px; border-radius: 5px; background: #ffffff18; overflow: hidden; box-shadow: inset 0 0 0 1px #ffffff22; }
+  #boot .bar i { position: absolute; inset: 0 auto 0 0; width: 4%; border-radius: 5px; background: linear-gradient(90deg, #2fb8c8, #8af0e0); transition: width .35s ease-out; }
+  #boot .tip { position: relative; max-width: 80vw; min-height: 1.4em; color: #9fb4c8; font-weight: 500; font-size: 13px; text-align: center; transition: opacity .3s; }
 </style>
 </head>
 <body>
-<div id="boot">SOLMERE · loading…</div>
+<div id="boot"><div class="stars"></div><div class="beam"></div><div class="sea"></div>
+  <div class="orb"></div><h1>SOLMERE</h1><h2>TIDELIGHT</h2><div class="bar"><i></i></div><div class="tip">Waking the tide…</div></div>
+<script>
+  // loading screen: a rotating tip until the game is ready (progress is set as each part finishes loading)
+  (function () { const tips = ['Hold Shift to run. Hold it in the water to swim fast.', 'Tab fast-forwards everything.', 'Your lead mon walks behind you. Talk to it!', 'Press W in the Music Room for the newest tracks.', 'The 3D / 2D button in the top bar switches the view.', 'Every town has a Haven: teal roof, a heart on a wave.'];
+    let k = 0; const el = document.querySelector('#boot .tip'); window._bootTips = setInterval(() => { if (!el) return; el.style.opacity = 0; setTimeout(() => { el.textContent = tips[k++ % tips.length]; el.style.opacity = 1; }, 300); }, 2400);
+    window._bootProgress = f => { const b = document.querySelector('#boot .bar i'); if (b) b.style.width = Math.max(4, Math.round(f * 100)) + '%'; }; })();
+</script>
 <canvas id="game"></canvas>
 <button id="ff" title="Fast-forward (Tab)">▶▶</button>
 <button id="sc" title="Showcase (F1): jump to any town, battle or scene">SHOWCASE</button>
@@ -108,10 +134,12 @@
       // right-click the button to step through speeds: 2x … 24x
       document.getElementById('ff').addEventListener('contextmenu', ev => { ev.preventDefault(); const V = [2, 3, 4, 6, 8, 12, 16, 24]; const i = V.indexOf(G.ffSpeed()); G.settings.ffSpeed = V[(i + 1) % V.length]; G.setTurbo(true); G.ffButton = true; });
       // the sprite atlas is an embedded image: decode it before the title shows
-      Promise.all([G.monArt.load(), G.chars.load(), G.tiles.loadWorld(), G.loadFonts()]).then(() => { G.loadBattleArt && G.loadBattleArt(); G.itemHD && G.itemHD("potion"); G.push(new G.TitleScene()); document.getElementById('boot').remove(); if (/[?&]showcase\b/.test(location.search)) { history.replaceState(null, '', location.pathname); G.run(() => G.openShowcase()); } });
+      const parts = [G.monArt.load(), G.chars.load(), G.tiles.loadWorld(), G.loadFonts()]; let doneN = 0;
+      parts.forEach(p => Promise.resolve(p).then(() => window._bootProgress && window._bootProgress(++doneN / parts.length)));
+      Promise.all(parts).then(() => { G.loadBattleArt && G.loadBattleArt(); G.itemHD && G.itemHD("potion"); G.push(new G.TitleScene()); const bt = document.getElementById('boot'); clearInterval(window._bootTips); bt.classList.add('done'); setTimeout(() => bt.remove(), 500); if (/[?&]showcase\b/.test(location.search)) { history.replaceState(null, '', location.pathname); G.run(() => G.openShowcase()); } });
       window.addEventListener('beforeunload', () => { try { G.persist.saveSettings(); } catch (e) {} });
     } catch (e) {
-      document.getElementById('boot').textContent = 'Failed to start: ' + e.message;
+      { clearInterval(window._bootTips); const tip = document.querySelector('#boot .tip'); if (tip) { tip.style.opacity = 1; tip.style.color = '#ff9aa6'; tip.textContent = 'Failed to start: ' + e.message; } else document.getElementById('boot').textContent = 'Failed to start: ' + e.message; }
       console.error(e);
     }
   })();

@@ -20,8 +20,8 @@ G.BattleScene = class {
     // the foe stands well into the meadow (a third of the way down from the horizon), not on the horizon
     // line, so the ground between the two sides reads as depth
     if (n === 1) return mine ? { x: 112, y: 180, sc: .84, back: true } : { x: 268, y: 150, sc: .92, back: false };
-    if (mine) return i === 0 ? { x: 88, y: 180, sc: .72, back: true } : { x: 166, y: 186, sc: .72, back: true };
-    return i === 0 ? { x: 236, y: 154, sc: .84, back: false } : { x: 306, y: 147, sc: .8, back: false };
+    if (mine) return i === 0 ? { x: 72, y: 182, sc: .72, back: true } : { x: 146, y: 190, sc: .72, back: true };
+    return i === 0 ? { x: 206, y: 158, sc: .84, back: false } : { x: 272, y: 150, sc: .8, back: false };   // clear of the two trainers behind
   }
   key(r) { return r.s + ':' + r.i; }
   slot(r) { return this.slots[this.key(r)]; }
@@ -115,7 +115,7 @@ G.BattleScene = class {
     const foeTr = e.sides[1 - this.persp].trainers.filter(t => t.name);
     const myTr = e.sides[this.persp].trainers;
     this.trainers = [];
-    foeTr.forEach((t, k) => this.trainers.push({ side: 1 - this.persp, look: t.sprite, x: foeTr.length > 1 ? 262 + k * 52 : 292, y: 149, alpha: 1, off: 0, name: t.name, cls: t.cls }));
+    foeTr.forEach((t, k) => this.trainers.push({ side: 1 - this.persp, look: t.sprite, x: foeTr.length > 1 ? 284 + k * 40 : 292, y: 149, alpha: 1, off: 0, name: t.name, cls: t.cls }));
     myTr.forEach((t, k) => this.trainers.push({ side: this.persp, look: t.sprite, x: myTr.length > 1 ? 44 + k * 60 : 64, y: 206, alpha: 1, off: 0, back: true, name: t.name }));
     this.balls = e.wild ? null : e.sides.map(s => s.trainers.reduce((a, t) => ({ count: a.count + t.count, alive: a.alive + t.alive }), { count: 0, alive: 0 }));
     // slide in
@@ -136,7 +136,7 @@ G.BattleScene = class {
     // the player's back sprite leaves the frame; the opponent steps back behind their mon and stays in view
     for (const t of this.trainers) if (t.side === e.ref.s && t.alpha > 0) {
       if (mine) G.tween(t, { off: -120, alpha: 0 }, 22, G.ease.inQuad);
-      else if (!t.backed) { t.backed = true; t.act = 24; const two = this.trainers.filter(q => !q.back).length > 1; G.tween(t, { off: two ? 34 : 42, y: t.y - 6 }, 30, G.ease.outCubic); }
+      else if (!t.backed) { t.backed = true; t.act = 24; const two = this.trainers.filter(q => !q.back).length > 1; G.tween(t, { off: two ? 22 : 42, y: t.y - (two ? 9 : 6) }, 30, G.ease.outCubic); }
     }
     this.hudShow[e.ref.s] = 1;
     if (e.wild && e.initial) {
@@ -324,7 +324,7 @@ G.BattleScene = class {
         let k = et >= 0 && et < 48 ? 'e' + Math.floor(et / 8) : t.act > 0 ? 'e5' : 'n' + SEQ[Math.floor(this.t / 12) % SEQ.length];
         if (!G.chars.hasBattle(lk, k)) k = 'n0';
         const spr = G.chars.battleSprite(lk, k);
-        b.drawImage(spr, Math.round(sx - G.chars.battleFeet(lk, k)), Math.round(t.y - spr.height));
+        b.drawImage(spr, Math.min(Math.round(sx - G.chars.battleFeet(lk, k)), G.W - spr.width - 2), Math.round(t.y - spr.height));   // never cut by the right edge
         if (t.act > 0) t.act--;
         b.globalAlpha = 1; continue;
       }
@@ -333,7 +333,8 @@ G.BattleScene = class {
       if (spr) {
         const idle = G.chars.battleSprite(lk, t.back ? 'b0' : 'i') || spr;
         const breathe = (t.back && going) ? 0 : Math.round(Math.sin((this.t + (t.back ? 20 : 0)) / 22) * .6 + .4);
-        const x = Math.round(sx - idle.width / 2 + (spr.width !== idle.width && !t.back ? (idle.width - spr.width) / 2 : 0));
+        let x = Math.round(sx - idle.width / 2 + (spr.width !== idle.width && !t.back ? (idle.width - spr.width) / 2 : 0));
+        if (!t.back) x = Math.min(x, G.W - spr.width - 2);
         if (t.back) b.drawImage(spr, x, Math.round(t.y + 12 - spr.height + breathe));
         else {
           // one-pixel squash from the top reads as breathing without warping the pixels
@@ -480,7 +481,7 @@ G.BattleScene = class {
     if (this.balls && this.intro < .5 && Object.keys(this.slots).length < 2 * n) {
       for (const side of [0, 1]) {
         const mine = side === this.persp, B = this.balls[side]; if (!B) continue;
-        const x0 = mine ? 12 : G.W - 70, y0 = mine ? 38 : 32;
+        const x0 = mine ? 12 : G.W - 70, y0 = n === 1 ? (mine ? 38 : 32) : (mine ? 64 : 52);   // below the HUD cards
         for (let i = 0; i < Math.min(6, B.count); i++) U.img(G.orbArt('orb', 10, i < B.alive ? null : '#606070'), x0 + i * 10, y0);
       }
     }
@@ -553,11 +554,24 @@ G.monImgFor = function (sc, s) {
   const live = G.monArt.live && G.monArt.live(s.sp, s.shiny, back, lt);
   const img = live || (back ? G.monArt.back(s.sp, s.shiny, s.frame) : G.monArt.front(s.sp, s.shiny, s.frame));
   if (!img) return null;
-  const scale = (s.sc || 1) * (s.scale === undefined ? 1 : s.scale);
+  let scale = (s.sc || 1) * (s.scale === undefined ? 1 : s.scale);
+  // doubles: wide creatures (spread wings, long tails) shrink until they fit their half of the field
+  if (sc.nSlots && sc.nSlots() === 2) { const ow = G.opaqueWidth(img, s.sp + (back ? ':b' : ':f')) * scale, cap = back ? 76 : 66; if (ow > cap) scale *= cap / ow; }
   const w = img.width * scale, h = img.height * scale;
   const bob = live ? G.monArt.hover(s.sp, lt) * scale : Math.sin((sc.t + (s.slot * 17)) / 18) * .8;
   const x = Math.round(s.x - w / 2 + s.offx), y = Math.round(s.y - h + (mine ? (live ? 8 : 22) : 8) * scale + s.offy + bob);
   return { img, x, y, w, h };
+};
+// width of a sprite's visible pixels, measured once per key
+G._opW = new Map();
+G.opaqueWidth = function (img, key) {
+  if (G._opW.has(key)) return G._opW.get(key);
+  let w = img.width;
+  try {
+    const d = img.getContext ? img.getContext('2d').getImageData(0, 0, img.width, img.height).data : null;
+    if (d) { let x0 = img.width, x1 = -1; for (let y = 0; y < img.height; y++) for (let x = 0; x < img.width; x++) if (d[(y * img.width + x) * 4 + 3] > 40) { if (x < x0) x0 = x; if (x > x1) x1 = x; } if (x1 >= x0) w = x1 - x0 + 1; }
+  } catch (e) { }
+  G._opW.set(key, w); return w;
 };
 G._bgCache = {};
 G.battleBG = function (env, phase) {

@@ -875,10 +875,12 @@ G.W3 = (function () {
             // require it to be in front of the player; a light screen-door, off while stepping through a door
             vec3 toC = normalize(uCamP - uPlayer), Rr = normalize(cross(vec3(0.0, 1.0, 0.0), toC)), Uu = cross(toC, Rr);
             vec3 toP = vWPo - (uPlayer + Uu); float al = dot(toP, toC);
-            float px = abs(dot(toP, Rr)), py = abs(dot(toP, Uu));
-            float occ = uOccOn * smoothstep(.25, .7, al) * (1.0 - smoothstep(.4, .72, px)) * (1.0 - smoothstep(.9, 1.25, py));
-            float ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715))));
-            if (ign < occ * .5) discard; }`);
+            float ex = dot(toP, Rr) / .62, ey = dot(toP, Uu) / 1.15, e = sqrt(ex * ex + ey * ey);   // an ellipse round the sprite
+            float occ = uOccOn * smoothstep(.25, .7, al) * (1.0 - smoothstep(.45, 1.0, e));
+            // ordered 4x4 dither: an even, regular screen-door on the pixel grid (random noise read as ragged squares)
+            vec2 q = mod(floor(gl_FragCoord.xy), 4.0);
+            float bay = (mod(q.x + q.y * 2.0, 4.0) * 4.0 + mod(q.x * 2.0 + q.y * 3.0, 4.0) + .5) / 16.0;
+            if (bay < occ * .5) discard; }`);
     };
     mat.customProgramCacheKey = () => 'occ' + (mat.map ? 1 : 0) + (mat.vertexColors ? 1 : 0) + (mat.alphaTest ? 1 : 0) + (mat.emissiveMap ? 1 : 0);
     return mat;
@@ -1444,9 +1446,12 @@ G.W3 = (function () {
       C.x += Rx * dr + Ux * du; C.y += Ry * dr + Uy * du; C.z += Rz * dr + Uz * du; camera.updateMatrixWorld();
       PIX.offX = -PIX.k + Math.round(dr * 16 * PIX.k); PIX.offY = -PIX.k - Math.round(du * 16 * PIX.k); }
     WU.uCam.value.copy(camera.position); TU.uCamP.value.copy(camera.position); TU.uPlayer.value.set(fx, fy, fz + .1);
-    { // buildings stay solid while you stand in (or step through) a doorway
+    { // see-through only when you are really behind a building: north of its front wall, within its width,
+      // not beside it, not in front of it, never in a doorway
       const onDoor = (map.warps || []).some(wp => (wp.x === p.x && wp.y === p.y) || (p.moving && wp.x === p.nx && wp.y === p.ny));
-      TU.uOccOn.value += ((onDoor ? 0 : 1) - TU.uOccOn.value) * .4; }
+      const px = p.px / 16 + .5, py = p.py / 16 + .5;
+      const behind = !onDoor && (map.buildings || []).some(b => px > b.x + .15 && px < b.x + b.w - .15 && py < b.y + b.h - .6 && py > b.y - 2.5);
+      TU.uOccOn.value += ((behind ? 1 : 0) - TU.uOccOn.value) * .3; }
     syncParticles(w, cur.hv);
     updateRays(w, fx, fy, fz);
     // shadow camera snapped to its own texel grid, so shadows don't crawl as the player moves
