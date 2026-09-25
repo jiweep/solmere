@@ -142,7 +142,7 @@
     m.rect(3, 14, 20, 2, ':'); m.rect(22, 12, 2, 4, ':'); m.rect(23, 12, 7, 2, ':');
     m.rect(9, 10, 4, 3, 'f'); m.put(13, 16, 'l'); m.put(17, 16, 'l'); m.put(19, 16, 'u'); m.put(2, 11, 'y'); m.put(2, 13, 'y');
     // sunken garden (lower): stairs down, a pond and a cottage behind a hedge
-    m.rect(2, 16, 10, 2, '#'); m.rect(3, 16, 2, 2, ':'); m.rect(12, 16, 1, 9, 'h');
+    m.rect(2, 16, 10, 2, '#'); m.rect(3, 16, 2, 2, ':'); m.rect(12, 16, 1, 9, 'F');
     m.rect(2, 18, 5, 7, '.'); m.rect(7, 22, 5, 3, '.'); m.rect(3, 18, 2, 2, ':');
     m.blob(3.6, 22, 1.7, 1.5, '~'); m.rect(5, 18, 2, 1, 'f'); m.rect(7, 23, 4, 1, 'f'); m.put(11, 24, 'T'); m.put(6, 21, 'u');
     // flower meadow

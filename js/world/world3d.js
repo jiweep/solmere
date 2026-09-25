@@ -12,6 +12,7 @@ G.W3 = (function () {
   const T = window.THREE;
   const LEVEL_H = 1.1;          // height of one cliff level, in tiles
   const RES = 2;                // internal resolution multiplier over 384x216
+  let camY = null;
   let R = null, cv = null, scene, camera, sun, hemi, cache = new Map(), cur = null, ok = !!T;
 
   // ------------------------------------------------------------- setup
@@ -41,7 +42,26 @@ G.W3 = (function () {
   // ------------------------------------------------------------- heights
   // Levels come from the cliffs: cliff cells separate regions, the region north of a cliff is one
   // level above the region south of it. Walkable cells cut through a cliff line are ramps.
-  function levels(map) {
+  // world base level per map: breadth-first over the map connections from the first town, matching
+  // the ground level along each shared edge (cached; maps are static)
+  let bases = null;
+  function worldBase(id) {
+    if (!bases) {
+      bases = {}; const edges = {}, OPP = { n: 's', s: 'n', e: 'w', w: 'e' };
+      const E = mid => { if (!(mid in edges)) { try { const d = G.MAPDEFS[mid]; edges[mid] = d && (d.type || 'outdoor') === 'outdoor' ? levels(G.maps.get(mid), true).edge : null; } catch (e) { edges[mid] = null; } } return edges[mid]; };
+      const q = [];
+      for (const root of ['brinehollow', ...Object.keys(G.MAPDEFS)]) {
+        if (root in bases || !E(root)) continue;
+        bases[root] = 0; q.push(root);
+        while (q.length) {
+          const a = q.shift(), ea = E(a), conn = G.MAPDEFS[a].conn || {};
+          for (const d of ['n', 's', 'e', 'w']) { const c = conn[d]; if (!c || c.map in bases) continue; const eb = E(c.map); if (!eb) continue; bases[c.map] = bases[a] + (ea[d] || 0) - (eb[OPP[d]] || 0); q.push(c.map); }
+        }
+      }
+    }
+    return bases[id] || 0;
+  }
+  function levels(map, raw) {
     const W = map.w, H = map.h, N = W * H;
     const cliff = c => c && (c.g === 'cliff' || c.g === 'cavewall' || c.g === 'crystalwall');
     const isRamp = (x, y) => { const c = map.cell(x, y); if (!c || cliff(c) || c.solid && !c.ledge) return false; return cliff(map.cell(x - 1, y)) || cliff(map.cell(x + 1, y)) || (cliff(map.cell(x - 2, y)) && !cliff(map.cell(x - 1, y)) && isRampLine(x - 1, y)) || (cliff(map.cell(x + 2, y)) && isRampLine(x + 1, y)); };
@@ -84,17 +104,17 @@ G.W3 = (function () {
       lv[r0] = 0; const q = [r0];
       while (q.length) { const r = q.shift(); for (const [u, d] of edges) { if (u === r && lv[d] === null) { lv[d] = lv[r] - 1; q.push(d); } if (d === r && lv[u] === null) { lv[u] = lv[r] + 1; q.push(u); } } }
     }
-    // anchor: the ground at the map's connection edges sits at height 0, so neighbouring maps meet flush
-    let minL = Math.min(0, ...lv.filter(v => v !== null));
-    { const cnt = new Map(), conn = (map.def && map.def.conn) || {};
-      const edge = (x, y) => { const i = y * W + x; if (walk[i] && lv[reg[i]] !== null) cnt.set(lv[reg[i]], (cnt.get(lv[reg[i]]) || 0) + 1); };
-      if (conn.n) for (let x = 0; x < W; x++) edge(x, 0); if (conn.s) for (let x = 0; x < W; x++) edge(x, H - 1);
-      if (conn.w) for (let y = 0; y < H; y++) edge(0, y); if (conn.e) for (let y = 0; y < H; y++) edge(W - 1, y);
-      let best = null, bc = 0; for (const [l, c] of cnt) if (c > bc) { bc = c; best = l; }
-      if (best !== null) minL = best; }
+    // raw levels start at 0; each map then gets a world base so every seam meets its neighbour flush
+    const minL = Math.min(0, ...lv.filter(v => v !== null));
+    const edge = {};
+    { const side = (cells) => { const cnt = new Map(); for (const [x, y] of cells) { const i = y * W + x; if (walk[i] && lv[reg[i]] !== null) { const l = lv[reg[i]] - minL; cnt.set(l, (cnt.get(l) || 0) + 1); } } let best = null, bc = 0; for (const [l, c] of cnt) if (c > bc) { bc = c; best = l; } return best; };
+      const row = y => Array.from({ length: W }, (_, x) => [x, y]), col = x => Array.from({ length: H }, (_, y) => [x, y]);
+      edge.n = side(row(0)); edge.s = side(row(H - 1)); edge.w = side(col(0)); edge.e = side(col(W - 1)); }
+    if (raw) return { edge };
+    const base = worldBase(map.id);
     // per-cell corner heights (NW, NE, SW, SE)
     const flat = new Float32Array(N);
-    for (let i = 0; i < N; i++) if (kind[i] === 0) flat[i] = (lv[reg[i]] - minL) * LEVEL_H;
+    for (let i = 0; i < N; i++) if (kind[i] === 0) flat[i] = (lv[reg[i]] - minL + base) * LEVEL_H;
     const upDn = (x, y) => {
       let up = null, dn = null;
       for (let k = 1; k <= 4 && up === null; k++) { const yy = y - k; if (yy < 0) break; if (kind[yy * W + x] === 0) up = flat[yy * W + x]; }
@@ -153,7 +173,7 @@ G.W3 = (function () {
       mesh.receiveShadow = true; group.add(mesh);
     }
     // cliff walls: vertical rock faces where a cell is higher than its east/west/south neighbour
-    const rock = rockTexture();
+    const rock = rockTexture(map.def.cliffStyle || (map.def.town ? 'stone' : 'rock'));
     const pos = [], uv = [], idx = [];
     const face = (x0, z0, x1, z1, yTop0, yTop1, yBot) => {
       const b = pos.length / 3, hgt = Math.max(yTop0, yTop1) - yBot;
@@ -174,14 +194,28 @@ G.W3 = (function () {
       const m = new T.Mesh(g, new T.MeshLambertMaterial({ map: rock, side: T.DoubleSide })); m.receiveShadow = true; m.castShadow = true; group.add(m);
     }
   }
-  let rockTex = null;
-  function rockTexture() {
-    if (rockTex) return rockTex;
-    const p = new G.Painter(16, 16), Rm = G.ramp(['#4a3a2e', '#5e4a3a', '#735c48', '#8a7058', '#a0866a']);
-    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) p.set(x, y, G.tiles.rockAt(x, y, Rm.concat([Rm[4], Rm[4], Rm[4]]), 7, 7, 5.5));
-    for (let x = 0; x < 16; x++) { p.set(x, 0, G.rgb('#5aa446')); p.set(x, 1, G.rgb('#3e7a34')); }
-    rockTex = tex(p.done()); rockTex.wrapS = rockTex.wrapT = T.RepeatWrapping;
-    return rockTex;
+  const rockTex = {};
+  function rockTexture(style = 'rock') {
+    if (rockTex[style]) return rockTex[style];
+    const p = new G.Painter(16, 16);
+    if (style === 'stone') {
+      // dressed stone courses: offset blocks, dark mortar, lit top edges, a grass lip
+      const C = ['#8a8478', '#9a9486', '#a8a292', '#b6b09e'], mortar = G.rgb('#4e4a44'), hi = G.rgb('#cfc8b4'), lo = G.rgb('#6e685e');
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+        const course = Math.floor((y - 2) / 5), yy = (y - 2) % 5, off = course % 2 ? 4 : 0, bx = (x + off) % 8;
+        const block = Math.floor((x + off) / 8) + course * 3, base = G.rgb(C[((block * 7 + 3) % 4 + 4) % 4]);
+        let col = base;
+        if (yy === 4 || bx === 7) col = mortar; else if (yy === 0) col = hi; else if (yy === 3 || bx === 6) col = lo;
+        else if (((x * 13 + y * 7) % 11) === 0) col = lo;
+        p.set(x, y, col);
+      }
+    } else {
+      const Rm = G.ramp(['#4a3a2e', '#5e4a3a', '#735c48', '#8a7058', '#a0866a']);
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) p.set(x, y, G.tiles.rockAt(x, y, Rm.concat([Rm[4], Rm[4], Rm[4]]), 7, 7, 5.5));
+    }
+    for (let x = 0; x < 16; x++) { p.set(x, 0, G.rgb('#5aa446')); p.set(x, 1, G.rgb(x % 3 ? '#3e7a34' : '#5aa446')); }
+    const t = tex(p.done()); t.wrapS = t.wrapT = T.RepeatWrapping;
+    return (rockTex[style] = t);
   }
 
   // ------------------------------------------------------------- billboards
@@ -357,8 +391,9 @@ G.W3 = (function () {
       if (m.material.transparent !== tr) { m.material.transparent = tr; m.material.depthWrite = !tr; m.material.alphaTest = tr ? .12 : .5; m.material.needsUpdate = true; }
       m.material.opacity = tr ? f : 1;
     }
+    camY = camY === null || Math.abs(camY - fy) > 4 ? fy : camY + (fy - camY) * .12;
     const dist = 30, cy = Math.sin(PITCH) * dist, cz = Math.cos(PITCH) * dist;
-    camera.position.set(fx, fy + cy, fz + cz); camera.lookAt(fx, fy + .6, fz);
+    camera.position.set(fx, camY + cy, fz + cz); camera.lookAt(fx, camY + .6, fz);
     sun.position.set(fx - 10, fy + 22, fz + 6); sun.target.position.set(fx, fy, fz);
     // canvas placed exactly over the game viewport
     const S = G.gfx.S, dpr = window.devicePixelRatio || 1;
@@ -374,5 +409,5 @@ G.W3 = (function () {
     return { x: (v.x + 1) / 2 * G.W, y: (1 - v.y) / 2 * G.H };
   }
   const active = (s) => ok && s && s.isWorld && G.settings.render3d && s.map && s.map.type === 'outdoor';
-  return { _cur: () => cur, levels, active, render, hide, project, invalidate: id => { const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
+  return { _cur: () => cur, _bases: () => bases, levels, active, render, hide, project, invalidate: id => { const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
 })();
