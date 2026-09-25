@@ -299,6 +299,66 @@ G.MUSIC_FILES = {
 "worked": 1790358367,
 "hidden": true
 },
+"aud31": {
+"file": "music/aud31.mp3",
+"loop": true,
+"loopStart": 11.55295,
+"loopEnd": 90.30295,
+"duration": 91.80295,
+"bpm": 96.0,
+"title": "Audition 31 - Evening Waltz, resolved",
+"intro": 3.75,
+"worked": 1790359359,
+"hidden": true
+},
+"aud32": {
+"file": "music/aud32.mp3",
+"loop": true,
+"loopStart": 13.92041,
+"loopEnd": 118.92041,
+"duration": 120.42041,
+"bpm": 96.0,
+"title": "Audition 32 - Rooftop, resolved",
+"intro": 5.0,
+"worked": 1790359365,
+"hidden": true
+},
+"aud33": {
+"file": "music/aud33.mp3",
+"loop": true,
+"loopStart": 16.78927,
+"loopEnd": 76.78927,
+"duration": 78.28927,
+"bpm": 104.0,
+"title": "Audition 33 - Neon Pier",
+"intro": 9.23077,
+"worked": 1790359358,
+"hidden": true
+},
+"aud34": {
+"file": "music/aud34.mp3",
+"loop": true,
+"loopStart": 14.39478,
+"loopEnd": 127.72812,
+"duration": 129.22812,
+"bpm": 72.0,
+"title": "Audition 34 - Keepsake Piano",
+"intro": 6.66667,
+"worked": 1790359361,
+"hidden": true
+},
+"aud35": {
+"file": "music/aud35.mp3",
+"loop": true,
+"loopStart": 11.96083,
+"loopEnd": 65.75394,
+"duration": 67.25395,
+"bpm": 115.99999,
+"title": "Audition 35 - Plaza Parade",
+"intro": 4.13793,
+"worked": 1790359355,
+"hidden": true
+},
 "aud4": {
 "file": "music/aud4.mp3",
 "loop": true,
