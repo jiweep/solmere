@@ -3,60 +3,56 @@ from mfw import *
 
 
 # ============================================================================ ROUTE 1
-# "First Steps", written to STYLE_DP.md in the Route 203 idiom: G major, 132, straight eighths.
-# One motif: a scale run that pushes over the beat into a held note, answered by a short
-# arpeggio (x y x' y'). A: I IV7 V42 vi (Ichinose's IV7-V42-vi turn) to a half cadence; A': V7/ii and
-# the borrowed minor iv to an authentic close; B jumps up a minor third to Bb for the climax and
-# drops home through Eb7-D7.
-R1_A = ('d5:8 g5:8 a5:8 b5:8 -:4 a5:8 g5:8 | e5:8 g5:8 c6:4 b5:2 | d5:8 f#5:8 a5:8 c6:8 -:4 b5:8 a5:8 | b5:8 g5:8 e6:4 d6:2 |'
-        'c6:8 b5:8 a5:8 e5:8 -:4 c6:4 | d6:8 c6:8 b5:8 f#5:8 -:4 d6:4 | e6:4. d6:8 c6:4 b5:4 | a5:2. r:4')
-R1_A2 = ('d5:8 g5:8 a5:8 b5:8 -:4 a5:8 g5:8 | e5:8 g5:8 c6:4 b5:2 | d5:8 f#5:8 a5:8 c6:8 -:4 b5:8 a5:8 | b5:8 d6:8 f#6:4 e6:4 g#5:4 |'
-         'a5:8 b5:8 c6:8 e6:8 -:4 d6:8 c6:8 | eb6:4. d6:8 c6:4 g5:4 | b5:4 g5:4 a5:4 f#5:4 | g5:2. r:4')
-R1_B = ('g5:4 bb5:4 d6:2 | c6:4. a5:8 -:2 | f5:4 a5:4 c6:2 | d6:4. bb5:8 -:2 |'
-        'eb6:4 g6:4 f6:4 eb6:4 | d6:2 c6:4 a5:4 | d6:2 bb5:4 f5:4 | g5:4 bb5:4 c6:4 a5:4')
+# "First Steps", STYLE_DP.md third pass: G major, 124, straight. The drive comes from the band
+# (staccato strings, bass eighths, a light pop beat); the tune is sparse (~1.6 beats per note) and
+# built on one catchy 2-bar cell, a dotted lift then a held note (q. e q q | h. r), sequenced over
+# jazz-coloured chords: maj9 / m11 / 13sus4, a Lydian Bbmaj7#11 side-step, the borrowed minor iv,
+# and a B section a minor third up (Bb) that returns through Ebmaj7#11 to D7b9.
+R1_A = ('b5:4. a5:8 b5:4 d6:4 | a5:2. r:4 | c6:4. b5:8 c6:4 e6:4 | b5:2. r:4 |'
+        'd6:4. c#6:8 d6:4 f#6:4 | e6:2. r:4 | c6:4 b5:4 a5:4 g5:4 | a5:2. r:4')
+R1_A2 = ('b5:4. a5:8 b5:4 d6:4 | a5:2. r:4 | c6:4. b5:8 c6:4 e6:4 | eb6:2. r:4 |'
+         'd6:4. c#6:8 d6:4 f#6:4 | e6:2 d6:2 | c6:4 b5:4 a5:4 f#5:4 | g5:2. r:4')
+R1_B = ('g5:4 bb5:4 d6:2 | c6:2 d6:2 | f6:2. e6:4 | d6:1 |'
+        'eb6:4 g6:4 f6:2 | d6:2. c6:4 | bb5:4 d6:4 a6:2 | g6:2 f#6:2')
 
 
 @song('route1', variants=('day', 'night'))
 def route1(v):
     night = v == 'night'
-    s = Song('route1', bpm=132, swing=.5, title='Route 1 — First Steps', room=1.7, reverb=1.0, key='G')
+    s = Song('route1', bpm=124, swing=.5, title='Route 1 — First Steps', room=1.7, reverb=1.0, key='G')
     s.no_push = True
-    s.section('intro', 2, 'Cmaj7 | D7sus4 D7', intro=True)
-    s.section('A', 8, 'G | Cmaj7 | D/C | Em7 | Am7 | Bm7 | Cmaj7 | D7sus4 D7')
-    s.section('A2', 8, 'G | Cmaj7 | D/C | Bm7 E7 | Am9 | Cm6 | G/D D7 | G')
-    s.section('B', 8, 'Ebmaj7 | F/Eb | Dm7 | Gm7 | Cm9 | F13 | Bbmaj7 | Eb7 D7')
-    s.section('A3', 8, 'G | Cmaj7 | D/C | Bm7 E7 | Am9 | Cm6 | G/D D7 | G')
+    s.section('intro', 2, 'Cmaj9 | D13sus4 D13', intro=True)
+    s.section('A', 8, 'Gmaj9 | Em11 | Cmaj9 | D13sus4 D13 | Bm11 | Bbmaj7#11 | Am11 | D13sus4 D7b9')
+    s.section('A2', 8, 'Gmaj9 | Em11 | Cmaj9 | Cm6 | Bm11 | E7 | Am11 D13 | Gmaj9')
+    s.section('B', 8, 'Ebmaj9 | F13sus4 F13 | Dm11 | Gm11 | Cm11 | F13 | Ebmaj7#11 | D13sus4 D7b9')
+    s.section('A3', 8, 'Gmaj9 | Em11 | Cmaj9 | Cm6 | Bm11 | E7 | Am11 D13 | Gmaj9')
     s.shape = {'A': -4, 'A2': 2, 'B': 6, 'A3': 3}
 
-    lead = s.part('lead', TRUMPET if not night else FLUTE, pan=.05, rev=.26 if not night else .34, delay=.1,
+    lead = s.part('lead', TRUMPET if not night else FLUTE, pan=.05, rev=.28 if not night else .36, delay=.1,
                   layer=[FLUTE] if not night else []); lead.autovib = True; lead.layer_gain = .6
-    lead.write('A', R1_A, vel=94 if not night else 84); lead.write('A2', R1_A2, vel=96 if not night else 86); lead.write('A3', R1_A2, vel=96 if not night else 86)
+    lead.write('A', R1_A, vel=92 if not night else 84); lead.write('A2', R1_A2, vel=94 if not night else 86); lead.write('A3', R1_A2, vel=94 if not night else 86)
     gl = s.part('glock', GLOCK if not night else VIBES, pan=.3, rev=.4, role='sparkle')
-    gl.write('A2', R1_A2, transpose=12 if not night else 0, vel=58)
-    hn = s.part('horn', HORN if not night else CLARINET, pan=-.15, rev=.34, layer=[VIOLIN] if not night else [], role='lead'); hn.autovib = True
-    hn.write('B', R1_B, vel=92 if not night else 84)
-    # last A: the horn answers the tune with a slow guide-tone line
-    hn.write('A3', 'b4:2 d5:2 | e5:1 | f#5:2 e5:2 | d5:2 b4:2 | c5:1 | eb5:2 c5:2 | d5:2 c5:2 | b4:2. r:4', vel=72 if not night else 66)
-    # intro fanfare in three-part brass
+    gl.write('A2', R1_A2, transpose=12 if not night else 0, vel=54)
+    hn = s.part('horn', HORN if not night else CLARINET, pan=-.15, rev=.36, layer=[VIOLIN] if not night else [], role='lead'); hn.autovib = True
+    hn.write('B', R1_B, vel=90 if not night else 82)
+    # last A: the horn holds guide tones under the tune
+    hn.write('A3', 'b4:1 | b4:1 | b4:1 | eb5:1 | d5:1 | d5:1 | c5:2 c5:2 | b4:2. r:4', vel=66 if not night else 60)
     br = s.part('brass', BRASS if not night else HORN, vol=0 if not night else -3, pan=-.1, rev=.28)
-    harm(br, s.sec['intro'], 'g5:8 a5:8 b5:4 c6:8 b5:8 a5:4 | d6:2. r:4', n=3, vel=100 if not night else 74)
-    # bouncing staccato strings (the DP route sound) + offbeat piano
+    harm(br, s.sec['intro'], 'e5:4. d5:8 e5:4 g5:4 | a5:2. r:4', n=3, vel=96 if not night else 72)
     sp = s.part('stacc', STRINGS if not night else PIZZ, pan=.25, rev=.25, role='comp')
-    sp.gen('A A2 B A3', comp, style='pulse8', lo=55, hi=72, n=3, vel=56)
-    pn = s.part('piano', BRIGHT if not night else EPIANO, pan=-.2, rev=.22, role='comp', chorus=.3 if night else 0)
-    pn.gen('intro A A2 A3', comp, style='offbeat', lo=55, hi=74, vel=58)
+    sp.gen('A A2 B A3', comp, style='pulse8', lo=55, hi=71, n=3, vel=52)
     st = s.part('strings', SLOWSTR, pan=0, rev=.4, width=1.2, role='pad')
-    st.gen('B A3', pads, lo=55, hi=79, vel=60); st.swell('B', 0, 32, 80, 122)
+    st.gen('B A3', pads, lo=53, hi=72, vel=56); st.swell('B', 0, 32, 80, 120)
     bs = s.part('bass', FINGERBASS if not night else FRETLESS, rev=.04)
-    bs.gen('intro A A2 B A3', bass_line, style='pop8' if not night else 'two', vel=94, octave_pop=False)
+    bs.gen('intro A A2 B A3', bass_line, style='two', vel=94, approach=False)
     if not night:
         dr = s.drums(kit=KIT_STD, rev=.14)
-        dr.gen('intro', groove, name='march', fills=2, fill='tom', vel=90)
-        dr.gen('A A2', groove, name='pop', fills=8, fill='snare', vel=90)
-        dr.gen('B A3', groove, name='pop2', fills=8, fill='tom', vel=94)
+        dr.gen('intro', groove, name='march', fills=2, fill='tom', vel=88)
+        dr.gen('A A2', groove, name='pop', fills=8, fill='snare', vel=86)
+        dr.gen('B A3', groove, name='pop2', fills=8, fill='tom', vel=90)
     else:
         dr = s.drums(kit=KIT_BRUSH, vol=-2, rev=.2)
-        dr.gen('intro A A2 B A3', groove, name='soft', fills=8, fill='brush', vel=66, crash=False)
+        dr.gen('intro A A2 B A3', groove, name='soft', fills=8, fill='brush', vel=64, crash=False)
     return s
 
 

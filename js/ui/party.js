@@ -306,6 +306,7 @@ G.SummaryScene = class {
     const U = G.ui;
     m.moves.forEach((mv, k) => {
       const M = G.MOVES[mv.id], y = py + 8 + k * 24, sel = this.moveMode && this.mi === k, sw = this.swapMove === k;
+      U.pick(px + 8, y, 222, 21, sel, () => { if (!this.moveMode) { this.moveMode = true; } this.mi = k; }, () => { if (!this.moveMode) { this.moveMode = true; this.mi = k; } else { this.mi = k; G.input.tap('a'); } });
       U.rrect(px + 8, y, 222, 21, 4); U.c.fillStyle = sel ? 'rgba(255,211,92,.5)' : sw ? 'rgba(255,90,90,.25)' : 'rgba(40,48,64,.06)'; U.c.fill();
       U.typeBadge(M.type, px + 12, y + 3, 30, 8.6, 5.2); U.catBadge(M.cat, px + 12, y + 12.4);
       U.text(M.name, px + 48, y + 3, { size: 7.4, weight: 800 });
@@ -325,6 +326,7 @@ G.SummaryScene.prototype.drawMoves = (function (orig) {
     const U = G.ui;
     m.moves.forEach((mv, k) => {
       const M = G.MOVES[mv.id], y = py + 8 + k * 24, sel = this.moveMode && this.mi === k, sw = this.swapMove === k;
+      U.pick(px + 8, y, 222, 21, sel, () => { if (!this.moveMode) { this.moveMode = true; } this.mi = k; }, () => { if (!this.moveMode) { this.moveMode = true; this.mi = k; } else { this.mi = k; G.input.tap('a'); } });
       U.rrect(px + 8, y, 222, 21, 4); U.c.fillStyle = sel ? 'rgba(255,211,92,.5)' : sw ? 'rgba(255,90,90,.25)' : 'rgba(40,48,64,.06)'; U.c.fill();
       U.typeBadge(M.type, px + 12, y + 3, 30, 8.6, 5.2); U.catBadge(M.cat, px + 12, y + 12.4);
       U.text(M.name, px + 48, y + 3, { size: 7.4, weight: 800 });
@@ -375,6 +377,7 @@ G.MoveForgetScene = class {
     const all = [...this.m.moves.map(x => x.id), this.nm];
     all.forEach((id, k) => {
       const M = G.MOVES[id], y = 28 + k * 19 + (k === 4 ? 4 : 0), sel = this.i === k;
+      U.pick(28, y, 200, 17, sel, () => { this.i = k; });
       U.rrect(28, y, 200, 17, 4); U.c.fillStyle = sel ? 'rgba(255,211,92,.55)' : k === 4 ? 'rgba(42,168,106,.15)' : 'rgba(40,48,64,.06)'; U.c.fill();
       U.typeBadge(M.type, 32, y + 4, 28, 8.6, 5); U.text(M.name, 64, y + 4, { size: 7, weight: 800 });
       U.text(k === 4 ? 'NEW' : `PP ${this.m.moves[k].pp}`, 222, y + 4.5, { size: 5.8, align: 'right', weight: 800, color: k === 4 ? '#2aa86a' : '#6a7080' });

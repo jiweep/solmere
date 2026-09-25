@@ -229,6 +229,8 @@ G.NumberScene = class {
     U.text('×' + String(this.v).padStart(2, '0'), x + 10, y + 5, { size: 10, weight: 800 });
     if (o.price) U.text('$' + (o.price * this.v).toLocaleString(), x + w - 7, y + 8, { size: 7, align: 'right', weight: 700, color: '#2aa86a' });
     U.text('▲', x + 22, y - 1, { size: 5, color: '#e8484a', align: 'center' }); U.text('▼', x + 22, y + 21, { size: 5, color: '#e8484a', align: 'center' });
+    U.hot(x, y, w, 26, null, () => G.input.tap('a'));
+    U.hot(x + 8, y - 5, 28, 9, null, () => G.input.tap('up')); U.hot(x + 8, y + 19, 28, 9, null, () => G.input.tap('down'));
   }
 };
 G.askNumber = function (o) { return new Promise(res => G.push(new G.NumberScene(o, res))); };
@@ -295,12 +297,14 @@ G.NamingScene = class {
     U.panel(gx - 8, gy - 6, cw * 10 + 16, ch * (this.rows.length + 1) + 12, 'dark');
     this.rows.forEach((r, y) => [...r].forEach((chx, x) => {
       const sel = this.cx === x && this.cy === y;
+      U.pick(gx + x * cw, gy + y * ch, cw - 3, ch - 3, sel, () => { this.cx = x; this.cy = y; this.gridMode = true; });
       if (sel) { U.rrect(gx + x * cw, gy + y * ch, cw - 3, ch - 3, 3); U.c.fillStyle = '#ffd35c'; U.c.fill(); }
       U.text(chx === ' ' ? '␣' : chx, gx + x * cw + (cw - 3) / 2, gy + y * ch + 2.5, { size: 8, weight: 700, align: 'center', color: sel ? '#3a2800' : '#dfe6f2' });
     }));
     const by = gy + this.rows.length * ch;
     ['Delete', 'Reset', 'OK'].forEach((l, i) => {
       const sel = this.cy === this.rows.length && Math.floor(this.cx / 3.34) === i;
+      U.pick(gx + i * 88, by + 1, 80, ch - 3, sel, () => { this.cy = this.rows.length; this.cx = [0, 4, 8][i]; this.gridMode = true; });
       U.rrect(gx + i * 88, by + 1, 80, ch - 3, 3); U.c.fillStyle = sel ? '#ffd35c' : (i === 2 ? '#2bb3a3' : '#3a4a66'); U.c.fill();
       U.text(l, gx + i * 88 + 40, by + 3.5, { size: 7.5, weight: 800, align: 'center', color: sel ? '#3a2800' : '#fff' });
     });

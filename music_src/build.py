@@ -410,12 +410,17 @@ def _build_one(key):
             if m < bestv: best, bestv = k, m
         T = best / SR
         ls = I + T; le = ls + L
-        keep = int((le + .6) * SR)
-        out = out[:keep]
-        # make the seam continuous: fade the audio just before loopEnd into the audio just before loopStart
-        w = int(.08 * SR); a, b = int(round(le * SR)), int(round(ls * SR))
+        # make the seam exact: fade the audio before loopEnd into the audio before loopStart, then make
+        # everything after loopEnd a literal copy of what follows loopStart. Players that land a little
+        # late or early (MP3 decoder delay differs between browsers) still jump between identical audio.
+        post = 1.5
+        a, b = int(round(le * SR)), int(round(ls * SR)); n = int(post * SR)
+        out = out[:a + n]
+        if len(out) < a + n: out = np.concatenate([out, np.zeros((a + n - len(out), out.shape[1]))])
+        w = int(.12 * SR)
         f = np.sin(np.linspace(0, math.pi / 2, w)) ** 2
         out[a - w:a] = out[a - w:a] * (1 - f)[:, None] + out[b - w:b] * f[:, None]
+        out[a:a + n] = out[b:b + n]
     else:
         # trim trailing silence, short fade
         a = np.abs(out).max(axis=1); idx = np.where(a > 10 ** (-62 / 20))[0]

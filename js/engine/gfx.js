@@ -118,6 +118,10 @@ G.ui = {
   _hot: [], _hotNext: [], _scene: null,
   // clickable region for the mouse, in game units; registered while drawing, owned by the drawing scene
   hot(x, y, w, h, hover, click) { this._hotNext.push({ x, y, w, h, hover, click, scene: this._scene }); },
+  // list/grid cell: hovering selects it (with the cursor blip), clicking selects then confirms
+  pick(x, y, w, h, sel, onSel, onClick) {
+    this.hot(x, y, w, h, () => { if (!sel) { onSel(); G.audio && G.audio.sfx('cursor'); } }, () => { onSel(); if (onClick) onClick(); else G.input.tap('a'); });
+  },
   X(x) { return G.gfx.ox + x * G.gfx.S; },
   Y(y) { return G.gfx.oy + y * G.gfx.S; },
   font(size, weight = 600, fam = G.FONT) {

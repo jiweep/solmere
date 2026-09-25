@@ -323,6 +323,7 @@ G.NewGameScene = class {
     U.text('New Journey — Challenge Setup', G.W / 2, 12, { size: 8.4, weight: 900, align: 'center' });
     R.forEach((r, k) => {
       const y = 26 + k * 9.4, sel = k === this.i;
+      U.pick(22, y - 1.4, G.W - 44, 9.2, sel, () => { this.i = k; }, () => { this.i = k; G.input.tap(r.start ? 'a' : 'right'); });
       if (sel) { U.rrect(22, y - 1.4, G.W - 44, 9.2, 3); U.c.fillStyle = r.start ? 'rgba(42,168,106,.3)' : 'rgba(27,167,184,.18)'; U.c.fill(); }
       U.text(r.label, 30, y, { size: 6.4, weight: r.start ? 900 : 700, color: r.start ? '#2a7a4a' : r.dep ? '#5a6070' : '#283040' });
       if (!r.start) { const vi = r.vals.indexOf(this.v[r.k]); U.text('◀ ' + r.names[vi] + ' ▶', G.W - 30, y, { size: 6.4, weight: 800, align: 'right', color: sel ? '#1e9486' : '#4a5060' }); }
@@ -410,45 +411,58 @@ G.musicRoom = function () {
       if (this.i < this.scroll) this.scroll = this.i;
       if (this.i >= this.scroll + this.rows) this.scroll = this.i - this.rows + 1;
       if (I.pressed('a')) { I.consume('a'); this.playing = list[this.i]; if (G.audio) { G.audio.forceVariant = this.night ? 'night' : 'day'; G.audio.stopMusic(); G.audio.music(this.playing); } }
-      if ((I.pressed('left') || I.pressed('right')) && this.playing && F[this.playing + '@night']) {
-        this.night = !this.night; if (G.audio) G.audio.forceVariant = this.night ? 'night' : 'day';
-        G.audio && G.audio.sfx('cursor');
-      }
+      if ((I.pressed('left') || I.pressed('right')) && this.playing && F[this.playing + '@night']) this.toggleNight();
       if (I.pressed('b')) { I.consume('b'); G.audio && G.audio.sfx('back'); G.pop(this); res(); }
     },
-    draw(b) { G.menuBG(b, '#1f5f7a', '#0e2436', this.t / 60); },
+    draw(b) { G.menuBG(b, '#1f4f7a', '#0b0c16', this.t / 60); },
+    toggleNight() {
+      if (!(this.playing && F[this.playing + '@night'])) { G.audio && G.audio.sfx('buzz'); return; }
+      this.night = !this.night; if (G.audio) G.audio.forceVariant = this.night ? 'night' : 'day'; G.audio && G.audio.sfx('cursor');
+    },
     drawUI() {
-      const U = G.ui;
-      U.panel(10, 8, 200, 200, 'light', { r: 8 });
-      U.text('Music Room', 110, 13, { size: 9, weight: 900, align: 'center' });
+      const U = G.ui, t = this.t, ease = G.ease;
+      U.c.globalAlpha = .55; U.para(214, 0, 260, G.H, -40, '#07060c'); U.c.globalAlpha = 1;
+      U.pHeader('MUSIC ROOM', 6, 4, { sub: `${list.length} tracks` });
       list.slice(this.scroll, this.scroll + this.rows).forEach((id, k) => {
-        const j = k + this.scroll, y = 28 + k * 14.2, sel = j === this.i, m = F[id];
-        if (sel) { U.rrect(16, y - 2, 188, 13, 3); U.c.fillStyle = 'rgba(40,150,180,.2)'; U.c.fill(); }
-        U.text(String(j + 1).padStart(2, '0'), 22, y + .5, { size: 6, weight: 700, color: '#8a90a0' });
-        U.text(m.title || id, 38, y, { size: 6.8, weight: sel ? 800 : 600, color: id === this.playing ? '#1f8aa8' : '#2a3040' });
-        if (F[id + '@night']) U.text('☾', 198, y, { size: 6.5, align: 'right', color: '#6a70a0' });
+        const j = k + this.scroll, sel = j === this.i, m = F[id], y = 26 + k * 14.4, playing = id === this.playing;
+        const e = ease.outBack(G.clamp((t - k * 1.1) / 8, 0, 1)), x = 8 + k * 1.2 + (1 - e) * -120 + (sel ? 5 : 0);
+        if (sel) { U.para(x + 3, y + 3, 196, 12, 4, '#07060c'); U.para(x, y, 196, 12, 4, '#ff3b4e'); } else U.para(x, y, 196, 12, 4, 'rgba(12,13,22,.88)');
+        U.text(String(j + 1).padStart(2, '0'), x + 8, y + 2.6, { size: 6, weight: 800, color: sel ? '#ffe0e4' : '#8a8fa0', shadow: false });
+        U.text((playing ? '♪ ' : '') + (m.title || id), x + 24, y + 2.2, { size: 6.6, weight: sel ? 800 : 700, color: playing && !sel ? '#8af0e0' : '#fff', shadow: sel ? '#7a0f1c' : false });
+        if (F[id + '@night']) U.text('☾', x + 190, y + 2.2, { size: 6.5, align: 'right', color: sel ? '#fff' : '#9aa0d0', shadow: false });
+        U.pick(8, y, 200, 14, sel, () => { this.i = j; });
       });
-      if (this.scroll > 0) U.text('▲', 110, 22, { size: 5, align: 'center', color: '#e8484a' });
-      if (this.scroll + this.rows < list.length) U.text('▼', 110, 199, { size: 5, align: 'center', color: '#e8484a' });
-      // now playing
-      U.panel(218, 8, G.W - 226, 110, 'dark', { r: 8 });
-      U.text('NOW PLAYING', 218 + (G.W - 226) / 2, 14, { size: 6, weight: 900, align: 'center', color: '#8af0e0' });
+      if (this.scroll > 0) U.text('▲', 108, 20, { size: 5, align: 'center', color: '#ff3b4e' });
+      if (this.scroll + this.rows < list.length) U.text('▼', 108, 200, { size: 5, align: 'center', color: '#ff3b4e' });
+      // now playing card
+      const cx = 226, cw = G.W - 234;
+      U.para(cx - 4, 10, cw + 4, 100, 6, '#07060c'); U.para(cx - 4, 10, cw + 4, 2, 6, '#ff3b4e');
+      U.text('NOW PLAYING', cx + 6, 15, { size: 6, weight: 800, color: '#ff3b4e', shadow: false });
       const np = G.audio && G.audio.nowPlaying && G.audio.nowPlaying();
       if (np) {
         const m = F[np.id] || {};
-        G.ui.wrap(m.title || np.id, G.W - 240, 8).slice(0, 2).forEach((l, k) => U.text(l, 226, 30 + k * 11, { size: 8, weight: 800, color: '#fff' }));
-        U.text(np.id.includes('@night') ? 'Night arrangement' : (F[np.id.split('@')[0] + '@night'] ? 'Day arrangement' : ''), 226, 56, { size: 6, color: '#bcd' });
+        G.ui.wrap(m.title || np.id, cw - 12, 8).slice(0, 2).forEach((l, k) => U.text(l, cx + 6, 27 + k * 11, { size: 8, weight: 800, color: '#fff' }));
         const frac = np.loopEnd ? Math.min(1, np.pos / np.loopEnd) : 0;
-        U.rrect(226, 72, G.W - 242, 5, 2); U.c.fillStyle = 'rgba(255,255,255,.15)'; U.c.fill();
-        U.rrect(226, 72, (G.W - 242) * frac, 5, 2); U.c.fillStyle = '#8af0e0'; U.c.fill();
+        U.para(cx + 6, 58, cw - 16, 4, 1, 'rgba(255,255,255,.15)'); U.para(cx + 6, 58, (cw - 16) * frac, 4, 1, '#8af0e0');
         const fmt = x => `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, '0')}`;
-        U.text(fmt(np.pos), 226, 81, { size: 5.5, color: '#bcd' });
-        if (m.bpm) U.text(`${Math.round(m.bpm)} bpm`, G.W - 16, 81, { size: 5.5, align: 'right', color: '#bcd' });
-      } else U.text('Press Z to play a track', 218 + (G.W - 226) / 2, 50, { size: 6.5, align: 'center', color: '#bcd' });
-      U.text('Z play  ·  ◀ ▶ day / night  ·  X back', 218 + (G.W - 226) / 2, 106, { size: 5.4, align: 'center', color: '#8a90a0' });
-      U.panel(218, 124, G.W - 226, 84, 'glass', { r: 8 });
-      ['An original soundtrack in the style of the', 'DS era: sequenced MIDI played through a', 'sampled Roland GS sound bank, mixed and', 'mastered for loops that never seam.'].forEach((l, k) => U.text(l, 226, 132 + k * 10, { size: 5.6, color: '#dfe6f2' }));
-      U.text(`${list.length} tracks  ·  ${Object.keys(F).filter(k => k.includes('@night')).length} night arrangements`, 226, 178, { size: 5.6, weight: 800, color: '#8af0e0' });
+        U.text(fmt(np.pos), cx + 6, 65, { size: 5.5, color: '#b8bccb', shadow: false });
+        if (m.bpm) U.text(`${Math.round(m.bpm)} bpm`, cx + cw - 10, 65, { size: 5.5, align: 'right', color: '#b8bccb', shadow: false });
+      } else U.text('Pick a track to play it', cx + cw / 2, 40, { size: 6.5, align: 'center', color: '#b8bccb' });
+      // buttons: day/night and back
+      const btn = (x, y, w, label, on, click, dis) => {
+        U.para(x + 2, y + 2, w, 13, 4, '#07060c'); U.para(x, y, w, 13, 4, dis ? '#2a2a34' : on ? '#ff3b4e' : '#12131c');
+        U.text(label, x + w / 2 + 2, y + 3, { size: 6.4, weight: 800, align: 'center', color: dis ? '#6a6e7c' : '#fff', shadow: false });
+        U.hot(x, y, w + 4, 14, null, click);
+      };
+      const hasNight = this.playing && F[this.playing + '@night'];
+      btn(cx + 4, 80, 50, '☀ Day', !this.night, () => { if (this.night) this.toggleNight(); }, !hasNight);
+      btn(cx + 60, 80, 50, '☾ Night', this.night, () => { if (!this.night) this.toggleNight(); }, !hasNight);
+      btn(cx + 4, 118, 50, 'Stop', false, () => { this.playing = null; G.audio && G.audio.stopMusic(); });
+      btn(cx + 60, 118, 50, 'Back', false, () => G.input.tap('b'));
+      U.panel(cx, 142, cw - 4, 66, 'glass', { r: 6 });
+      ['Original soundtrack in the DS-era style:', 'sequenced MIDI through a sampled GS', 'sound bank, mixed for seamless loops.'].forEach((l, k) => U.text(l, cx + 8, 149 + k * 10, { size: 5.6, color: '#dfe6f2' }));
+      U.text(`${Object.keys(F).filter(k => k.includes('@night')).length} night arrangements`, cx + 8, 186, { size: 5.6, weight: 800, color: '#8af0e0' });
+      U.text('Click or Z play · ◀ ▶ day/night · X back', cx + 8, 197, { size: 5, color: '#8a90a0' });
     },
   }));
 };

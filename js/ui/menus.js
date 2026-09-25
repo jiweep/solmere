@@ -277,6 +277,7 @@ G.openTownMap = function (o = {}) {
     },
     drawUI() {
       const U = G.ui, t = towns[this.i];
+      towns.forEach((tw, k) => U.pick(tw.x - 7, tw.y - 7, 14, 14, k === this.i, () => { this.i = k; }));
       const here = G.TOWNS.find(x => x.id === (cur.def.town || cur.def.region));
       if (here) { const bob = Math.sin(this.t / 8) * 1.5; U.img(G.chars.sheet(G.LOOKS[G.save.look]).down[0], here.x - 8, here.y - 26 + bob); }
       const bob = Math.sin(this.t / 6) * 1.5;

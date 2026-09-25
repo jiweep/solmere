@@ -34,6 +34,7 @@
         U.text('Which one is you?', G.W / 2, 14, { size: 9, weight: 900, color: '#fff', align: 'center' });
         looks.forEach((k, j) => {
           const x = 52 + j * 72, sel = j === this.i;
+          U.pick(x - 4, 30, 64, 116, sel, () => { this.i = j; });
           U.panel(x - 4, 30, 64, 116, sel ? 'select' : 'dark', { r: 6 });
           U.img(G.chars.portrait(G.LOOKS[k], sel ? 'hip' : 'stand'), x - 4 - (G.chars.portrait(G.LOOKS[k], 'stand').width - 72) / 2 * .88, 38 + (sel ? Math.sin(this.t / 8) * 1.5 : 0), { scale: .88 });
           const sheet = G.chars.sheet(G.LOOKS[k]);

@@ -88,6 +88,7 @@ G.PCScene = class {
     U.text('PARTY', 38, 9, { size: 6, weight: 900, color: '#bfe', align: 'center' });
     for (let k = 0; k < 7; k++) {
       const y = 20 + k * 26, sel = this.side === 'party' && this.i === k; const m = G.save.party[k];
+      if (!this.sub && k <= G.save.party.length && k < 6 + (this.held ? 0 : 1)) U.pick(10, y, 56, 22, sel, () => { this.side = 'party'; this.i = k; });
       if (k === 6 || (k === G.save.party.length && !this.held)) { if (k === G.save.party.length) { U.panel(10, y, 56, 22, sel ? 'select' : 'glass', { r: 5 }); U.text(this.held ? 'Place' : 'Close', 38, y + 7, { size: 6.4, weight: 800, align: 'center', color: sel ? '#3a2800' : '#dde' }); } break; }
       U.panel(10, y, 56, 22, sel ? 'select' : 'glass', { r: 5 });
       if (m) { U.img(G.monArt.icon(m.sp, m.shiny, sel ? Math.floor(this.t / 10) % 2 : 0), 12, y - 6, { scale: .75 }); U.text('Lv' + m.lvl, 62, y + 12, { size: 5.4, weight: 800, align: 'right', color: sel ? '#3a2800' : '#dde' }); }
@@ -97,9 +98,11 @@ G.PCScene = class {
     U.panel(bx, by, 196, 180, 'light', { r: 6 });
     U.panel(bx, by, 196, 18, this.o.grave ? 'dark' : 'teal', { r: 6 });
     U.text(this.o.grave ? '✝ Graveyard ✝' : `◀  ${G.save.boxNames[this.box]}  ▶`, bx + 98, by + 4, { size: 7.6, weight: 900, color: '#fff', align: 'center' });
+    if (!this.o.grave && !this.sub) { U.hot(bx, by, 60, 18, null, () => G.input.tap('l')); U.hot(bx + 136, by, 60, 18, null, () => G.input.tap('r')); }
     const list = this.boxList;
     for (let k = 0; k < 30; k++) {
       const x = bx + 6 + (k % 6) * 31, y = by + 24 + Math.floor(k / 6) * 30, sel = this.side === 'box' && this.i === k;
+      if (!this.sub) U.pick(x, y, 28, 27, sel, () => { this.side = 'box'; this.i = k; });
       U.rrect(x, y, 28, 27, 4); U.c.fillStyle = sel ? 'rgba(255,211,92,.6)' : 'rgba(40,48,64,.07)'; U.c.fill();
       const m = list[k]; if (m) U.img(G.monArt.icon(m.sp, m.shiny, sel ? Math.floor(this.t / 10) % 2 : 0), x - 4, y - 5, { scale: 1, alpha: this.o.grave ? .6 : 1 });
     }
@@ -162,30 +165,37 @@ G.ShopScene = class {
     if (it.ball && n >= 10) { const b = Math.floor(n / 10); G.bag.add('healorb', b); bonus = `\\pHere, have ${b} Heal Orb${b > 1 ? 's' : ''} as a thank-you bonus!`; }
     await G.say('Here you are! Thank you!' + bonus);
   }
-  draw(b) { G.menuBG(b, '#3a64b4', '#1a2e5a', this.t / 60); }
+  draw(b) { G.menuBG(b, '#2a4a8a', '#0b0c16', this.t / 60); }
   drawUI() {
-    const U = G.ui;
-    U.panel(8, 8, 220, 200, 'light', { r: 6 });
-    U.text('SHOP', 118, 12, { size: 8.4, weight: 900, align: 'center' });
+    const U = G.ui, t = this.t, ease = G.ease;
+    U.c.globalAlpha = .6; U.para(212, 0, 260, G.H, -40, '#07060c'); U.c.globalAlpha = 1;
+    U.pHeader('SHOP', 6, 4);
+    const bar = (k, sel, draw) => {
+      const e = ease.outBack(G.clamp((t - k * 1.1) / 8, 0, 1)), x = 10 + k * 1.6 + (1 - e) * -120 + (sel ? 6 : 0), y = 28 + k * 17;
+      if (sel) { U.para(x + 3, y + 3, 196, 14, 4, '#07060c'); U.para(x, y, 196, 14, 4, '#ff3b4e'); } else U.para(x, y, 196, 14, 4, 'rgba(12,13,22,.88)');
+      draw(x, y, sel);
+      U.pick(10, y, 200, 16, sel, () => { this.i = k + this.scroll; });
+    };
     this.stock.slice(this.scroll, this.scroll + 10).forEach((id, k) => {
-      const i = k + this.scroll, it = G.ITEMS[id], y = 28 + k * 16, sel = i === this.i;
-      if (sel) { U.rrect(12, y - 2, 212, 15, 3); U.c.fillStyle = 'rgba(59,130,224,.16)'; U.c.fill(); U.cursor(14, y + 5); }
-      U.img(G.itemIconFor(id), 22, y - 2, { scale: .8 });
-      U.text(it.name, 38, y + 1, { size: 7, weight: 700 });
-      U.text('$' + it.price.toLocaleString(), 218, y + 1, { size: 6.8, weight: 800, align: 'right', color: G.save.money >= it.price ? '#2aa86a' : '#c8484a' });
+      const i = k + this.scroll, it = G.ITEMS[id];
+      bar(k, i === this.i, (x, y, sel) => {
+        U.img(G.itemIconFor(id), x + 6, y - 1.5, { scale: .8 });
+        U.text(it.name, x + 24, y + 3, { size: 7, weight: sel ? 800 : 700, color: '#fff', shadow: sel ? '#7a0f1c' : false });
+        U.text('$' + it.price.toLocaleString(), x + 190, y + 3.3, { size: 6.6, weight: 800, align: 'right', color: G.save.money >= it.price ? (sel ? '#e8fff0' : '#6ee0a0') : '#ff9aa6', shadow: false });
+      });
     });
-    const ey = 28 + Math.min(10, this.stock.length - this.scroll) * 16;
-    if (this.stock.length - this.scroll < 10) { if (this.i >= this.stock.length) U.cursor(14, ey + 5); U.text('Done', 38, ey + 1, { size: 7, weight: 700, color: '#8a90a0' }); }
-    U.panel(234, 8, 142, 40, 'dark', { r: 6 });
-    U.text('Money', 242, 13, { size: 6, color: '#bcd' }); U.text('$' + G.save.money.toLocaleString(), 368, 26, { size: 10, weight: 900, color: '#8ae8a0', align: 'right' });
+    const k = Math.min(10, this.stock.length - this.scroll);
+    if (this.stock.length - this.scroll < 10) bar(k, this.i >= this.stock.length, (x, y, sel) => U.text('Done', x + 24, y + 3, { size: 7, weight: 700, color: sel ? '#fff' : '#8a8fa0', shadow: false }));
+    U.para(236, 8, 146, 34, 6, '#07060c'); U.para(236, 40, 146, 2, 0, '#ff3b4e');
+    U.text('Money', 246, 12, { size: 6, color: '#b8bccb', shadow: false }); U.text('$' + G.save.money.toLocaleString(), 372, 24, { size: 10, weight: 800, color: '#6ee0a0', align: 'right' });
     const id = this.stock[this.i];
-    U.panel(234, 54, 142, 154, 'paper', { r: 6 });
+    U.panel(240, 52, 136, 156, 'paper', { r: 5, slab: true });
     if (id) {
       const it = G.ITEMS[id];
-      U.img(G.itemIconFor(id), 285, 60, { scale: 2.5 });
-      U.text(it.name, 305, 104, { size: 7.4, weight: 800, align: 'center', color: '#4a3a20' });
-      G.ui.wrap(it.desc, 128, 6).slice(0, 7).forEach((l, k) => U.text(l, 242, 116 + k * 9, { size: 6, color: '#5a4a30' }));
-      U.text(`In bag: ${G.bag.count(id)}`, 305, 196, { size: 6, align: 'center', color: '#8a7550', weight: 700 });
+      U.img(G.itemIconFor(id), 284, 58 + Math.sin(t / 22) * 1.5, { scale: 2.5 });
+      U.text(it.name, 308, 102, { size: 7.4, weight: 800, align: 'center', color: '#4a3a20' });
+      G.ui.wrap(it.desc, 124, 6).slice(0, 7).forEach((l, k2) => U.text(l, 246, 114 + k2 * 9, { size: 6, color: '#5a4a30' }));
+      U.text(`In bag: ${G.bag.count(id)}`, 308, 196, { size: 6, align: 'center', color: '#8a7550', weight: 700 });
     }
   }
 };
