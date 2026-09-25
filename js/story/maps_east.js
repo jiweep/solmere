@@ -153,30 +153,36 @@
   })();
   // ------------------------------------------------------------- FROSTPEAK
   (function () {
+    // a mountain village in three steps: the Haven and Gym on the top shelf where the road from
+    // Route 5 arrives, the crossroads shelf (Starfall trail west, Glacia Pass cave east, the Mart),
+    // and the lower shelf with the skaters' frozen pond
     const m = new G.MB(30, 26, '*', 131);
     m.forest(2, 'P', { skip: (x, y) => (x >= 12 && x <= 15 && y <= 1) || (x <= 1 && y >= 10 && y <= 11) });
+    m.rect(2, 2, 25, 6, '*'); m.rect(2, 10, 25, 6, '*'); m.rect(2, 19, 26, 5, '*');
     m.rect(27, 8, 3, 8, '#'); m.put(28, 12, 'c'); m.put(29, 12, 'c'); m.put(27, 12, ':');
-    m.path([[12, 0], [12, 20]], ':', 4); m.path([[0, 10], [27, 10]], ':', 2); m.path([[26, 10], [26, 12], [27, 12]], ':', 2);
-    m.put(10, 15, 'z'); m.put(20, 4, 'z'); m.put(11, 6, 'l'); m.put(17, 6, 'l'); m.put(11, 16, 'l'); m.put(17, 16, 'l');
-    m.blob(22, 20, 4, 2, 'i'); m.rect(2, 23, 8, 1, '*'); m.put(2, 9, '*');
+    m.path([[12, 0], [12, 22]], ':', 4); m.path([[0, 10], [27, 10]], ':', 2); m.path([[26, 10], [26, 12], [27, 12]], ':', 2);
+    m.rect(2, 8, 25, 2, '#'); m.rect(13, 8, 2, 2, ':');
+    m.rect(2, 17, 26, 2, '#'); m.rect(13, 17, 2, 2, ':');
+    m.put(10, 15, 'z'); m.put(16, 4, 'z'); m.put(11, 6, 'l'); m.put(17, 6, 'l'); m.put(11, 16, 'l'); m.put(17, 16, 'l'); m.put(11, 20, 'l'); m.put(17, 22, 'l');
+    m.blob(22, 21.5, 4, 1.8, 'i'); m.put(25, 19, 'z'); m.put(10, 23, 'u');
     D({ id: 'frostpeak', name: 'Frostpeak Village', subtitle: 'Hearths above the clouds', town: 'frostpeak', area: 'frostpeak', music: 'frostpeak', theme: 'snow', weather: 'snow', env: 'snow', grid: m.done(),
       conn: { n: { map: 'route5', off: 0 }, w: { map: 'starfall', off: -14 } },
       warps: [{ x: 29, y: 12, to: 'glaciapass', tx: 1, ty: 14, dir: 'right', kind: 'cave' }, { x: 28, y: 12, to: 'glaciapass', tx: 1, ty: 14, dir: 'right', kind: 'cave' }],
       objs: [
-        G.haven(3, 3), G.bld('mart', 18, 12, 5, 4, { roof: 'snow', door: 2, to: 'mart', tx: 6, ty: 6 }),
-        G.bld('gym', 18, 3, 8, 5, { roof: 'blue', accent: '#8ad8f8', door: 4, to: 'frost_gym', tx: 7, ty: 15 }),
-        G.house(3, 13, 'frost_house1', 'snow'), G.house(3, 19, 'frost_house2', 'brown'),
+        G.haven(3, 2), G.bld('mart', 18, 12, 5, 4, { roof: 'snow', door: 2, to: 'mart', tx: 6, ty: 6 }),
+        G.bld('gym', 18, 2, 8, 5, { roof: 'blue', accent: '#8ad8f8', door: 4, to: 'frost_gym', tx: 7, ty: 15 }),
+        G.house(3, 12, 'frost_house1', 'snow'), G.house(3, 19, 'frost_house2', 'brown'),
         { type: 'sign', x: 16, y: 11, text: '{c}FROSTPEAK VILLAGE{w}\\n"Warm hearts, cold toes."' },
-        { type: 'sign', x: 26, y: 8, text: '{c}FROSTPEAK GYM{w} — Warden: Sigrid' },
+        { type: 'sign', x: 17, y: 7, text: '{c}FROSTPEAK GYM{w} — Warden: Sigrid' },
         { type: 'sign', x: 25, y: 13, text: '→ Mt. Glacia Pass · Skyreach City beyond' },
-        { type: 'sign', x: 3, y: 9, text: '← Starfall Peak. {r}DANGER{w}: Champions only.' },
-        { type: 'npc', id: 'fp_sguard', x: 2, y: 9, look: 'ranger', dir: 'down', script: 'starfall_guard', cond: '!champion' },
+        { type: 'sign', x: 2, y: 13, text: '← Starfall Peak. {r}DANGER{w}: Champions only.' },
+        { type: 'npc', id: 'fp_sguard', x: 2, y: 12, look: 'ranger', dir: 'down', script: 'starfall_guard', cond: '!champion' },
         { type: 'trigger', x: 1, y: 10, w: 1, h: 2, script: 'starfall_guard', cond: '!champion' },
         { type: 'npc', id: 'fp_boots', x: 16, y: 20, look: 'veteran', dir: 'up', script: 'grip_boots' },
-        { type: 'npc', id: 'fp_kid', x: 20, y: 18, look: 'skier', dir: 'left', move: 'wander', radius: 2, text: 'The pond froze solid! Watch me slide! Wheeee!' },
+        { type: 'npc', id: 'fp_kid', x: 20, y: 20, look: 'skier', dir: 'left', move: 'wander', radius: 2, text: 'The pond froze solid! Watch me slide! Wheeee!' },
         { type: 'npc', id: 'fp_w', x: 9, y: 11, look: 'woman', dir: 'down', move: 'look', text: 'Crane Dynamics trucks drove through the pass last week. Heading for Skyreach, loaded with glowing crystals.' },
-        { type: 'trainer', id: 'fp_s1', x: 22, y: 21, look: 'skier', dir: 'left', sight: 3, trainer: 'fp_skier1' },
-        { type: 'trainer', id: 'fp_s2', x: 8, y: 17, look: 'skier', dir: 'right', sight: 3, trainer: 'fp_skier2' },
+        { type: 'trainer', id: 'fp_s1', x: 17, y: 21, look: 'skier', dir: 'right', sight: 3, trainer: 'fp_skier1' },
+        { type: 'trainer', id: 'fp_s2', x: 8, y: 14, look: 'skier', dir: 'right', sight: 3, trainer: 'fp_skier2' },
         { type: 'item', id: 'fp_h1', x: 27, y: 22, item: 'nevermeltice', hidden: true },
       ], spawn: [13, 11] });
   })();
@@ -239,31 +245,35 @@
   })();
   // --------------------------------------------------------------- SKYREACH
   (function () {
+    // the gleaming plateau: Crane HQ, the Gym and the Haven on the upper plaza by the sky-dock, a
+    // grand staircase down to the civic terrace (Mart, Battle Spire, homes) and the sky gardens
     const m = new G.MB(34, 28, '=', 151);
     m.rect(0, 0, 34, 4, '~'); m.rect(14, 0, 4, 4, 'I');
     m.forest(1, 'T', { skip: (x, y) => y < 4 || (x >= 32 && y >= 13 && y <= 15) });
     m.rect(0, 4, 34, 1, '='); m.put(0, 4, 'T'); m.put(33, 4, 'T');
     m.rect(32, 12, 2, 5, '#'); m.put(33, 14, 'c'); m.put(32, 14, '=');
+    m.rect(1, 15, 31, 2, '#'); m.rect(15, 15, 4, 2, '=');
     m.rect(10, 22, 14, 4, '.'); m.rect(11, 23, 3, 2, 'f'); m.rect(20, 23, 3, 2, 'f'); m.put(17, 23, 'S');
-    for (const [x, y] of [[9, 12], [24, 12], [9, 20], [24, 20]]) m.put(x, y, 'l');
+    for (const [x, y] of [[9, 12], [24, 12], [14, 14], [19, 14], [9, 21], [24, 21], [14, 17], [19, 17]]) m.put(x, y, 'l');
+    m.put(2, 13, 'y'); m.put(31, 11, 'y'); m.put(8, 26, 'u'); m.put(25, 26, 'u');
     D({ id: 'skyreach', name: 'Skyreach City', subtitle: 'The city above the clouds', town: 'skyreach', area: 'skyreach', music: 'skyreach', env: 'city', grid: m.done(),
       conn: { n: { map: 'route6', off: 2 } },
       warps: [{ x: 33, y: 14, to: 'glaciapass', tx: 38, ty: 17, dir: 'left', kind: 'cave' }],
       objs: [
         G.bld('tower', 12, 5, 9, 6, { door: 4, to: 'hq1', tx: 7, ty: 12 }),
         G.bld('gym', 23, 5, 8, 5, { roof: 'purple', accent: '#6f35fc', door: 4, to: 'sky_gym', tx: 7, ty: 17 }),
-        G.haven(3, 6), G.bld('mart', 3, 14, 5, 4, { roof: 'blue', door: 2, to: 'skymart', tx: 6, ty: 6 }),
-        G.bld('lab', 25, 14, 6, 4, { roof: 'purple', door: 3, to: 'spire', tx: 6, ty: 8 }),
-        G.house(11, 14, 'sky_house1', 'gray'), G.house(18, 14, 'sky_house2', 'teal'),
+        G.haven(3, 6), G.bld('mart', 3, 17, 5, 4, { roof: 'blue', door: 2, to: 'skymart', tx: 6, ty: 6 }),
+        G.bld('lab', 25, 17, 6, 4, { roof: 'purple', door: 3, to: 'spire', tx: 6, ty: 8 }),
+        G.house(9, 17, 'sky_house1', 'gray'), G.house(20, 17, 'sky_house2', 'teal'),
         { type: 'sign', x: 22, y: 12, text: '{p}SKYREACH CITY{w}\\n"Reach higher."' },
         { type: 'sign', x: 30, y: 11, text: '{p}SKYREACH GYM{w} — Warden: Kaelen\\n"The storm bows to no one."' },
         { type: 'sign', x: 11, y: 11, text: '{c}CRANE DYNAMICS HEADQUARTERS{w}' },
-        { type: 'sign', x: 31, y: 18, text: 'BATTLE SPIRE — Opens to Champions.' },
+        { type: 'sign', x: 31, y: 20, text: 'BATTLE SPIRE — Opens to Champions.' },
         { type: 'npc', id: 'sk_gguard', x: 27, y: 10, look: 'dragontamer', dir: 'down', script: 'sky_gym_guard', cond: '!hq_done' },
         { type: 'npc', id: 'sk_wren', x: 16, y: 12, look: 'wren', dir: 'down', script: 'hq_wren', cond: ['badge5', '!hq_started'] },
         { type: 'trigger', x: 13, y: 13, w: 7, h: 1, script: 'hq_wren', cond: ['badge5', '!hq_started'] },
         { type: 'npc', id: 'sk_sailor', x: 15, y: 4, look: 'sailor', dir: 'up', script: 'sky_sailor' },
-        { type: 'npc', id: 'sk_w1', x: 20, y: 19, look: 'gentleman', dir: 'left', move: 'wander', radius: 2, text: 'Skyreach is the richest city in Solmere. Crane Dynamics pays for everything. Everything has a price, of course.' },
+        { type: 'npc', id: 'sk_w1', x: 17, y: 21, look: 'gentleman', dir: 'left', move: 'wander', radius: 2, text: 'Skyreach is the richest city in Solmere. Crane Dynamics pays for everything. Everything has a price, of course.' },
         { type: 'npc', id: 'sk_w2', x: 7, y: 21, look: 'lady', dir: 'right', move: 'look', text: 'Warden Kaelen used to be Champion, you know. Before Sable. They say he still flies his Tempestral over the Mere at dawn.' },
         { type: 'npc', id: 'sk_kid', x: 26, y: 21, look: 'kid', dir: 'down', move: 'wander', radius: 2, text: 'A Link Cord makes Bouldrok evolve! The Skyreach shop sells them. I saved up for a whole year!' },
         { type: 'item', id: 'sk_h1', x: 1, y: 25, item: 'dragonfang', hidden: true },
