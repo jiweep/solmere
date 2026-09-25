@@ -3,11 +3,17 @@
 //  Main loop, scene stack, toasts, global hotkeys, crash guard
 // ============================================================================
 G.scenes = [];
-G.push = function (s) { G.scenes.push(s); if (s.enter) s.enter(); return s; };
+// UI motion: menus snap in with a skewed slide and sweep out when closed; full-screen screens open
+// with a diagonal wipe. Decided per scene: worlds, battles, cut-ins and dialogue boxes are left alone.
+G.uiAnim = s => s && !s.isWorld && !s.noAnim && !(G.BattleScene && s instanceof G.BattleScene) && !(G.DialogScene && s instanceof G.DialogScene) && !(G.TitleScene && s instanceof G.TitleScene) && !(G.IntroBackdrop && s instanceof G.IntroBackdrop) && (s.drawUI || s.draw);
+G.ghosts = [];
+G.push = function (s) { G.scenes.push(s); if (G.uiAnim(s)) s._born = G.realTime; if (s.enter) s.enter(); return s; };
 G.pop = function (s) {
   const i = s ? G.scenes.lastIndexOf(s) : G.scenes.length - 1;
   if (i < 0) return null;
-  const [r] = G.scenes.splice(i, 1); if (r && r.exit) r.exit(); return r;
+  const [r] = G.scenes.splice(i, 1); if (r && r.exit) r.exit();
+  if (r && r._born !== undefined && !r.opaque && r.drawUI && G.realTime - r._born > .05) G.ghosts.push({ s: r, t0: G.realTime });
+  return r;
 };
 G.top = () => G.scenes[G.scenes.length - 1];
 G.findScene = cls => G.scenes.find(s => s instanceof cls);
@@ -65,7 +71,30 @@ G.render = function () {
       else gx.present();
     }
     G.ui._scene = s;
-    if (s.drawUI && !(G.photoMode && s.isWorld)) { c.save(); s.drawUI(c); c.restore(); }
+    const age = s._born !== undefined ? G.realTime - s._born : 9;
+    if (s.opaque && age < .26 && i > 0) {
+      // diagonal wipe revealing the new screen over the old one
+      const k = G.ease.outCubic(age / .26), X0 = gx.ox, Y0 = gx.oy, Wd = G.W * S, Hd = G.H * S, sk = Hd * .45, e = (Wd + sk) * k;
+      c.save(); c.beginPath(); c.moveTo(X0 - sk, Y0 + Hd); c.lineTo(X0 - sk + e, Y0 + Hd); c.lineTo(X0 + e, Y0); c.lineTo(X0, Y0); c.closePath(); c.clip();
+      if (s.draw && s.lowres !== false) { gx.bx.setTransform(1, 0, 0, 1, 0, 0); gx.bx.clearRect(0, 0, G.W, G.H); s.draw(gx.bx); gx.present(); }
+      if (s.drawUI) s.drawUI(c);
+      c.restore();
+      c.save(); c.fillStyle = '#ff3b4e'; c.beginPath(); c.moveTo(X0 - sk + e, Y0 + Hd); c.lineTo(X0 - sk + e + 6 * S, Y0 + Hd); c.lineTo(X0 + e + 6 * S, Y0); c.lineTo(X0 + e, Y0); c.closePath(); c.fill(); c.restore();
+      continue;
+    }
+    if (s.drawUI && !(G.photoMode && s.isWorld)) {
+      c.save();
+      if (age < .16 && !s.opaque) { const k = G.ease.outBack(Math.min(1, age / .16)); c.globalAlpha = Math.min(1, age / .08); c.translate((1 - k) * 40 * S, 0); c.transform(1, 0, (1 - k) * -.25, 1, 0, 0); }
+      s.drawUI(c); c.restore();
+    }
+  }
+  // closing menus sweep off to the right
+  for (let i = G.ghosts.length - 1; i >= 0; i--) {
+    const g = G.ghosts[i], age = G.realTime - g.t0;
+    if (age > .12) { G.ghosts.splice(i, 1); continue; }
+    const k = G.ease.inQuad(age / .12);
+    c.save(); c.globalAlpha = 1 - k; c.translate(k * 60 * S, 0); c.transform(1, 0, k * .3, 1, 0, 0); G.ui._scene = null;
+    try { g.s.drawUI(c); } catch (e) { } c.restore();
   }
   G.ui._hot = G.ui._hotNext; G.ui._hotNext = []; G.ui._scene = null;
   // clip letterbox

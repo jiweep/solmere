@@ -156,7 +156,7 @@ G.battleTransition = async function (kind, cfg = {}) {
   const shards = []; for (let i = 0; i < 26; i++) shards.push({ x: G.rand() * G.W, y: G.rand() * G.H, vx: (G.rand() - .5) * 9, vy: (G.rand() - .5) * 7, r: G.rand() * 6, vr: (G.rand() - .5) * .4, s: 10 + G.rand() * 26 });
   const total = vs ? 118 : 56;
   const sc = {
-    t: 0, lowres: false, update() { this.t++; }, drawUI() {
+    t: 0, lowres: false, noAnim: true, update() { this.t++; }, drawUI() {
       const U = G.ui, c = U.c, S = G.gfx.S, t = this.t, X = U.X.bind(U), Y = U.Y.bind(U);
       const quad = (x0, y0, x1, y1, x2, y2, x3, y3, col) => { c.fillStyle = col; c.beginPath(); c.moveTo(X(x0), Y(y0)); c.lineTo(X(x1), Y(y1)); c.lineTo(X(x2), Y(y2)); c.lineTo(X(x3), Y(y3)); c.closePath(); c.fill(); };
       if (t < 10) { c.fillStyle = `rgba(255,255,255,${(t % 5) < 3 ? .8 : 0})`; c.fillRect(G.gfx.ox, G.gfx.oy, G.W * S, G.H * S); return; }
