@@ -438,7 +438,7 @@ G.WorldScene = class {
   drawUI3d(c) {
     const U = G.ui;
     for (const e of [...this.ents, this.player, this.follower].filter(Boolean)) if (e.emote) {
-      const q = G.W3.project(e.px + 8, e.py + 16, 2.7); if (!q) continue;
+      const q = G.W3.project(e.px + 8, e.py + 16, 3.6); if (!q) continue;   // just above a 32-px head on the pixel grid
       const k = Math.min(1, e.emoteT / 6); U.img(G.EMOTES(e.emote), q.x - 6.5, q.y - 12 - k * 4);
     }
     if (G.flag('race_active')) {
@@ -761,12 +761,12 @@ G.WorldScene = class {
         }
         // fountains play
         if (this.frame % 3 === 0) {
-          if (!m._fountains) { m._fountains = []; for (const c of m.cells) if (c.o === 'fountain') m._fountains.push(c); }
-          for (const c of m._fountains) {
+          if (!m._fountains) { const seen = new Set(); m._fountains = []; for (const c of m.cells) if (c.o === 'fountain') { const F = G.fountainOf(m, c.x, c.y); if (!seen.has(F)) { seen.add(F); m._fountains.push({ x: F.x0 + F.w / 2, y: F.y0 + F.h / 2, k: F.w === 1 && F.h === 1 ? 1 : (Math.min(F.w, F.h) / 2 + .1) / 1.32 }); } } }
+          for (const c of m._fountains) {   // one jet per fountain, from its top bowl
             if (Math.abs(c.x - p0.x) > 12 || Math.abs(c.y - p0.y) > 9) continue;
-            const a = G.rand() * Math.PI * 2, sp = .35 + G.rand() * .35;
-            this.fx.add({ x: c.x * 16 + 8, y: c.y * 16 + 8 - 30, z0: c.y * 16 + 8, vx: Math.cos(a) * sp * .8, vy: -.7 - G.rand() * .4, ay: .05, life: 34, size: 1, color: 'rgba(220,240,255,1)', alpha: .8, type: 'circle' });
-            if (this.frame % 30 === 0) this.fx.add({ x: c.x * 16 + 8, y: c.y * 16 + 11, life: 40, type: 'ring', size: 3, grow: 1.6, color: 'rgba(255,255,255,.5)', lw: .8 });
+            const a = G.rand() * Math.PI * 2, sp = (.35 + G.rand() * .35) * c.k;
+            this.fx.add({ x: c.x * 16, y: c.y * 16 - 30 * c.k, z0: c.y * 16, vx: Math.cos(a) * sp * .8, vy: -.7 - G.rand() * .4, ay: .05, life: 34, size: 1, color: 'rgba(220,240,255,1)', alpha: .85, type: 'square' });
+            if (this.frame % 30 === 0) this.fx.add({ x: c.x * 16, y: c.y * 16 + 3, life: 40, type: 'ring', size: 3 * c.k, grow: 1.6, color: 'rgba(255,255,255,.5)', lw: .8 });
           }
         }
         if (this.frame % 240 === 120 && G.rand() < .6) {
@@ -827,7 +827,8 @@ G.WorldScene = class {
         if (c.solidIf && !G.checkCond(c.solidIf)) skip = true;
         if (!skip) {
           const oi = G.objImg(mm, c, fW);
-          if (oi.flat) b.drawImage(oi.img, dx, dy);
+          if (!oi || !oi.img) { /* part of a bigger prop drawn from another cell */ }
+          else if (oi.flat) b.drawImage(oi.img, dx, dy);
           else {
             // props that can disappear (cut, smashed, pushed) are not baked: give them a live contact shadow
             const live = c.cut || c.smash || c.push || c.solidIf;

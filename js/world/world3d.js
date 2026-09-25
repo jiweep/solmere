@@ -11,7 +11,16 @@
 G.W3 = (function () {
   const T = window.THREE;
   const LEVEL_H = 1.1;          // height of one cliff level, in tiles
-  let bufW = 0, bufH = 0;       // drawing buffer follows the display (native resolution, MSAA)
+  let bufW = 0, bufH = 0;       // the render buffer (the pixel grid below, plus a one-pixel margin)
+  // The pixel grid (how Black/White's 2.5D reads as one picture): the world is drawn at a low internal
+  // resolution where one texture / sprite pixel is one render pixel at the camera's focus, then scaled up
+  // by a whole number to the screen, like the DS drawing everything into 256x192. Ground, walls, shadows,
+  // geometry edges and characters then share one pixel grid instead of chunky sprites on a smooth HD world.
+  // The camera snaps to that grid (no texel crawl when scrolling) and the leftover sub-pixel is applied
+  // by shifting the canvas by whole screen pixels, so movement stays smooth.
+  const PIX = { k: 1, w: 2, h: 2, RW: 4, RH: 4, dist: 23.5, offX: 0, offY: 0 };
+  const VIEW_UNITS = 19.3;     // world units across the view (sets the zoom; the grid picks the nearest whole scale)
+  const UPIX = T ? { uRes: { value: new T.Vector2(4, 4) } } : null;
   let camY = null, night = 0;
   const SUN_OFF = [-10, 22, 6];
   const _d = T ? new T.Vector3() : null, _r = T ? new T.Vector3() : null, _u = T ? new T.Vector3() : null, _p = T ? new T.Vector3() : null;
@@ -24,7 +33,7 @@ G.W3 = (function () {
       cv = document.createElement('canvas'); cv.id = 'w3';
       Object.assign(cv.style, { position: 'fixed', left: '0', top: '0', zIndex: '0', display: 'none' });
       document.body.insertBefore(cv, document.body.firstChild);
-      R = new T.WebGLRenderer({ canvas: cv, antialias: true, alpha: false, powerPreference: 'high-performance' });
+      R = new T.WebGLRenderer({ canvas: cv, antialias: false, alpha: false, powerPreference: 'high-performance' });
       R.setPixelRatio(1);
       R.shadowMap.enabled = true; R.shadowMap.type = T.PCFShadowMap;
       R.outputColorSpace = T.SRGBColorSpace;
@@ -41,7 +50,9 @@ G.W3 = (function () {
   }
   const U3 = T ? { uTime: { value: 0 }, uWind: { value: 0 }, uRustle: { value: [new T.Vector4(), new T.Vector4(), new T.Vector4(), new T.Vector4()] } } : null;   // shared by every swaying / animated material
   const texPx = (canvas) => { const t = new T.CanvasTexture(canvas); t.magFilter = T.NearestFilter; t.minFilter = T.NearestFilter; t.generateMipmaps = false; t.colorSpace = T.SRGBColorSpace; return t; };
-  const tex = (canvas) => { const t = new T.CanvasTexture(canvas); t.magFilter = T.NearestFilter; t.minFilter = T.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = R ? Math.min(8, R.capabilities.getMaxAnisotropy()) : 1; t.colorSpace = T.SRGBColorSpace; return t; };
+  // world textures are sampled nearest both ways, like the DS: on the pixel grid a texel is about a pixel,
+  // and mipmaps would only blur it
+  const tex = (canvas) => { const t = new T.CanvasTexture(canvas); t.magFilter = T.NearestFilter; t.minFilter = T.NearestFilter; t.generateMipmaps = false; t.colorSpace = T.SRGBColorSpace; return t; };
 
   // ------------------------------------------------------------- heights
   // Levels come from the cliffs: cliff cells separate regions, the region north of a cliff is one
@@ -430,12 +441,11 @@ G.W3 = (function () {
   }
 
   // ------------------------------------------------------------- characters
-  // Characters are drawn the DS way: the sprite faces the screen with square pixels, one sprite pixel
-  // one ground texel wide, exactly as drawn wherever it stands on screen (an upright card would be
-  // foreshortened more near the bottom of the view than the top, so people changed shape as they
-  // walked). Only the depth comes from an upright card at the feet (1/cos(pitch) tall per screen unit),
-  // so a head never sinks into the wall behind. Lighting is subtle: half the colour is lit like the
-  // ground (sun, shade under trees, lamps at night), half is the sprite's own colour dimmed by daylight.
+  // Characters: 2D billboards on the world's pixel grid (see PIX). Each sprite is drawn exactly 1:1, one
+  // sprite pixel per render pixel, from a foot anchor snapped to the grid, facing the screen; its depth
+  // comes from an upright card at the feet (1/cos(pitch) tall per pixel) so a head never sinks into the
+  // wall behind. Fully lit like the world: sun and shade, lamps at night, a silhouette bevel (the edge
+  // toward the sun a touch brighter, the feet a touch darker) and a cast shadow on sunny ground.
   const UP = 1 / Math.cos(PITCH);
   const ENT_MATS = new Set();
   let FOG = null;
@@ -455,27 +465,38 @@ G.W3 = (function () {
     const m = new T.Mesh(blobGeo, blobMat); m.renderOrder = 2; return m;
   }
   function entGeo(img) {
-    const w = img.width / 16, h = img.height / 16, g = new T.PlaneGeometry(w, h); g.translate(0, h / 2, 0);   // screen units: square pixels
-    const n = g.attributes.normal; for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0);   // lit like the ground they stand on
+    const w = img.width / 16, h = img.height / 16, g = new T.PlaneGeometry(w, h); g.translate(0, h / 2, 0);   // 1/16 unit per sprite pixel
+    const n = g.attributes.normal; for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, .82, .57);   // lit like the ground, a little toward the camera
     return g;
   }
   function entSprite(img) {
     const t = entTex(img);
-    const u = { uTexel: { value: new T.Vector2(1 / img.width, 1 / img.height) } };
-    const mat = new T.MeshLambertMaterial({ map: t, alphaTest: .5, side: T.DoubleSide, color: 0x9a9a9a, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: .45 });
+    const u = { uTexel: { value: new T.Vector2(1 / img.width, 1 / img.height) }, uOdd: { value: img.width & 1 ? .5 : 0 } };
+    const mat = new T.MeshLambertMaterial({ map: t, alphaTest: .5, side: T.DoubleSide });
     mat.onBeforeCompile = sh => {
-      sh.vertexShader = sh.vertexShader
+      Object.assign(sh.uniforms, u, UPIX);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform vec2 uRes; uniform float uOdd;')
         .replace('#include <begin_vertex>', '#include <begin_vertex>\n  transformed.y *= ' + UP.toFixed(5) + ';')
         .replace('#include <project_vertex>', `vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );
-          vec4 cU = projectionMatrix * mvPosition;                        // the upright card: depth only
-          vec4 mvF = modelViewMatrix * vec4( 0.0, 0.0, 0.0, 1.0 );         // the feet
-          vec4 cF = projectionMatrix * vec4( mvF.xy + position.xy, mvF.z, 1.0 );   // the screen-facing sprite
-          gl_Position = vec4( cF.xy, cU.z / cU.w * cF.w, cF.w );`);
+          vec4 cU = projectionMatrix * mvPosition;                                  // the upright card: depth, light, shadows
+          vec4 cA = projectionMatrix * (modelViewMatrix * vec4( 0.0, 0.0, 0.0, 1.0 ));   // the feet
+          vec2 pA = floor((cA.xy / cA.w * .5 + .5) * uRes + .5) + vec2(uOdd, 0.0);  // snapped to the pixel grid
+          vec2 pV = pA + position.xy * 16.0;                                         // one sprite pixel = one render pixel
+          gl_Position = vec4((pV / uRes * 2.0 - 1.0) * cA.w, cU.z / cU.w * cA.w, cA.w);`);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec2 uTexel;')
+        .replace('#include <alphatest_fragment>', `#include <alphatest_fragment>
+          { vec2 d = uTexel * 1.6;
+            float aL = texture2D(map, vMapUv - vec2(d.x, 0.0)).a, aR = texture2D(map, vMapUv + vec2(d.x, 0.0)).a;
+            float aU = texture2D(map, vMapUv + vec2(0.0, d.y)).a, aD = texture2D(map, vMapUv - vec2(0.0, d.y)).a;
+            vec3 n = normalize(vec3(aL - aR, aD - aU, 1.1));
+            float lit = dot(n, normalize(vec3(-.62, .5, .6)));
+            float foot = mix(.84, 1.0, smoothstep(0.0, .3, vMapUv.y));
+            diffuseColor.rgb *= (.96 + .18 * lit) * foot; }`);
     };
-    mat.customProgramCacheKey = () => 'entbb';
+    mat.customProgramCacheKey = () => 'entpix';
     ENT_MATS.add(mat);
     const m = new T.Mesh(entGeo(img), mat);
-    m.castShadow = false; m.receiveShadow = true;   // a round contact shadow instead of a card's long one
+    m.castShadow = true; m.receiveShadow = true;
     m.customDepthMaterial = new T.MeshDepthMaterial({ depthPacking: T.RGBADepthPacking, map: t, alphaTest: .5 });
     const b = blob(); m.add(b); m.userData.blob = b;
     m.userData.u = u; m.userData.tex = t; m.userData.img = img; m.userData.w = img.width; m.userData.h = img.height; m.userData.ent = true;
@@ -485,7 +506,7 @@ G.W3 = (function () {
   function setBillboardImage(m, img) {
     if (m.userData.img === img) return;
     const ent = m.userData.ent, t = ent ? entTex(img) : tex(img);
-    if (ent) { m.userData.u.uTexel.value.set(1 / img.width, 1 / img.height); m.material.emissiveMap = t; }
+    if (ent) { m.userData.u.uTexel.value.set(1 / img.width, 1 / img.height); m.userData.u.uOdd.value = img.width & 1 ? .5 : 0; }
     // swapping one map for another is a uniform change; only a map appearing or vanishing needs a recompile
     const had = !!m.material.map;
     m.material.map = t; if (!had) m.material.needsUpdate = true;
@@ -519,7 +540,14 @@ G.W3 = (function () {
       // trees and lamps are real 3D models
       const tk = treeKind(rr ? rr.map : map, c, x, y);
       if (tk) { const gy = hv.at(G.clamp(x + .5, 0, W - .01), G.clamp(y + .55, 0, H - .01)); (trees[tk] || (trees[tk] = [])).push([x + .5 + (G.h2(x, y, 5) - .5) * .25, gy, y + .6 + (G.h2(x, y, 6) - .5) * .2, G.h2(x, y, 7), c]); continue; }
-      if (c.o === 'fountain' && inside) { group.add(fountainModel(x + .5, hv.at(G.clamp(x + .5, 0, W - .01), G.clamp(y + .5, 0, H - .01)), y + .5)); continue; }
+      if (c.o === 'fountain' && inside) {
+        const F = G.fountainOf(map, x, y);
+        if (x === F.x0 && y === F.y0) {   // one model for the whole block, centred on it and sized to fill it
+          const fx = F.x0 + F.w / 2, fz = F.y0 + F.h / 2, sc = F.w === 1 && F.h === 1 ? 1.2 : (Math.min(F.w, F.h) / 2 + .1) / 1.1;
+          group.add(fountainModel(fx, hv.at(G.clamp(fx, 0, W - .01), G.clamp(fz, 0, H - .01)), fz, sc));
+        }
+        continue;
+      }
       if (c.o === 'lamp' || c.o === 'lanternpost') { group.add(lampModel(c.o, x + .5, hv.at(G.clamp(x + .5, 0, W - .01), G.clamp(y + .5, 0, H - .01)), y + .55)); continue; }
       let oi; try { oi = G.objImg(rr ? rr.map : map, c, 0); } catch (e) { oi = null; }
       if (!oi || !oi.img || oi.flat) continue;
@@ -680,7 +708,7 @@ G.W3 = (function () {
     if (c.o === 'tree') { if (snow) return 'pinesnow'; const hh = G.h2(c.x | 0, c.y | 0, 77); if ((!th || th === 'grass') && hh < .3) return 'pine'; return hh > .93 ? 'fruit' : 'broad'; }
     return null;
   }
-  const TU = T ? { uPlayer: { value: new T.Vector3() }, uCamP: { value: new T.Vector3() } } : null;
+  const TU = T ? { uPlayer: { value: new T.Vector3() }, uCamP: { value: new T.Vector3() }, uOccOn: { value: 1 } } : null;
   function treeMaterial(map, crown, h, cards) {
     const m = cards ? new T.MeshLambertMaterial({ map: leafTexture(), vertexColors: true, alphaTest: .5, alphaToCoverage: true, side: T.DoubleSide })
       : new T.MeshLambertMaterial({ map: crown ? null : barkTexture(), vertexColors: true, flatShading: !!crown, side: crown ? T.DoubleSide : T.FrontSide });
@@ -763,7 +791,7 @@ G.W3 = (function () {
           float n = .5 + .5 * sin(a * 23.0 + uTime * 5.0) * sin(a * 7.0 - uTime * 3.0);
           gl_FragColor = vec4(vec3(1.0), ring * (.35 + .5 * n)); }` });
   }
-  function fountainModel(x, y, z) {
+  function fountainModel(x, y, z, sc = 1.2) {
     if (!fountainKit) {
       const t = fountainTex();
       fountainKit = { st: new T.MeshLambertMaterial({ map: t }), stD: new T.MeshLambertMaterial({ map: t, color: 0xb0a898 }), bed: new T.MeshLambertMaterial({ color: 0x3a6e9e }), curtain: curtainMaterial(), foam: foamMaterial() };
@@ -793,7 +821,7 @@ G.W3 = (function () {
     curtain(.62, .7, 1.3, .34); curtain(.3, .36, 1.8, 1.3);
     const ring = (r, yy) => { const m = new T.Mesh(new T.PlaneGeometry(r * 2.4, r * 2.4), K.foam); m.rotation.x = -Math.PI / 2; m.position.y = yy; m.renderOrder = 3; g.add(m); };
     ring(.72, .345); ring(.4, 1.315);
-    g.position.set(x, y, z); g.scale.setScalar(1.2);
+    g.position.set(x, y, z); g.scale.setScalar(sc);
     return g;
   }
 
@@ -840,12 +868,17 @@ G.W3 = (function () {
       Object.assign(sh.uniforms, TU);
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWPo;')
         .replace('#include <project_vertex>', '#include <project_vertex>\n vWPo = (modelMatrix * vec4(transformed, 1.0)).xyz;');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uPlayer; uniform vec3 uCamP; varying vec3 vWPo;')
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uPlayer; uniform vec3 uCamP; uniform float uOccOn; varying vec3 vWPo;')
         .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
-          { vec3 toC = normalize(uCamP - uPlayer), toP = vWPo - (uPlayer + vec3(0.0, .7, 0.0)); float al = dot(toP, toC);
-            float d = length(toP - toC * al), occ = step(.9, al) * (1.0 - smoothstep(.9, 1.7, d));
+          { // see-through only where the building actually covers the player's sprite on screen: measure
+            // this fragment against the sprite's rectangle (camera right/up axes around its centre) and
+            // require it to be in front of the player; a light screen-door, off while stepping through a door
+            vec3 toC = normalize(uCamP - uPlayer), Rr = normalize(cross(vec3(0.0, 1.0, 0.0), toC)), Uu = cross(toC, Rr);
+            vec3 toP = vWPo - (uPlayer + Uu); float al = dot(toP, toC);
+            float px = abs(dot(toP, Rr)), py = abs(dot(toP, Uu));
+            float occ = uOccOn * smoothstep(.25, .7, al) * (1.0 - smoothstep(.4, .72, px)) * (1.0 - smoothstep(.9, 1.25, py));
             float ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715))));
-            if (ign < occ * .72) discard; }`);
+            if (ign < occ * .5) discard; }`);
     };
     mat.customProgramCacheKey = () => 'occ' + (mat.map ? 1 : 0) + (mat.vertexColors ? 1 : 0) + (mat.alphaTest ? 1 : 0) + (mat.emissiveMap ? 1 : 0);
     return mat;
@@ -1358,7 +1391,6 @@ G.W3 = (function () {
     if (!scene.background || !scene.background.isColor) scene.background = new T.Color();
     scene.background.set(sky);
     for (const m of SIDES) m.emissiveIntensity = .34 * day + .04;
-    for (const m of ENT_MATS) m.emissiveIntensity = indoor ? .5 : .42 * day + .1;
     for (const m of LAMP_GLASS) m.emissiveIntensity = .15 + 1.6 * night;
     WU.uSky.value.set(dusk ? 0xffc8a0 : day > .3 ? 0xcfe8ff : 0x28386a); WU.uSun.value.copy(sun.color).multiplyScalar(day > .1 ? 1 : .35);
     WU.uNight.value = night; WU.uDeep.value.set(day > .3 ? 0x1c5a8a : 0x0c1a38);
@@ -1396,9 +1428,25 @@ G.W3 = (function () {
     const wt = cur.group.userData.water; if (wt) { const tt = G.realTime; wt[0].offset.set((tt * .05) % 1, (Math.sin(tt * .4) * .03)); }
     U3.uTime.value = G.realTime; U3.uWind.value = G.wind ? G.wind(w.frame) : 0;
     camY = camY === null || Math.abs(camY - fy) > 4 ? fy : camY + (fy - camY) * .12;
-    const dist = 23.5, cy = Math.sin(PITCH) * dist, cz = Math.cos(PITCH) * dist;
-    camera.position.set(fx, camY + cy, fz + cz); camera.lookAt(fx, camY + .6, fz);
+    { const S = G.gfx.S, VW = G.W * S, VH = G.H * S;
+      const k = Math.max(1, Math.round(VW / (VIEW_UNITS * 16))), w = Math.ceil(VW / k), h = Math.ceil(VH / k);
+      if (k !== PIX.k || w !== PIX.w || h !== PIX.h) {
+        Object.assign(PIX, { k, w, h, RW: w + 2, RH: h + 2, dist: (h / 16) / 2 / Math.tan(13 * Math.PI / 180) });
+        camera.fov = 2 * Math.atan((PIX.RH / 16 / 2) / PIX.dist) * 180 / Math.PI; camera.aspect = PIX.RW / PIX.RH; camera.updateProjectionMatrix();
+        UPIX.uRes.value.set(PIX.RW, PIX.RH);
+      } }
+    const dist = PIX.dist, cy = Math.sin(PITCH) * dist, cz = Math.cos(PITCH) * dist;
+    camera.position.set(fx, camY + cy, fz + cz); camera.lookAt(fx, camY + .6, fz); camera.updateMatrixWorld();
+    { // snap to the pixel grid along the camera's right and up axes; keep the remainder for the canvas shift
+      const e = camera.matrixWorld.elements, Rx = e[0], Ry = e[1], Rz = e[2], Ux = e[4], Uy = e[5], Uz = e[6], C = camera.position;
+      const cr = C.x * Rx + C.y * Ry + C.z * Rz, cu = C.x * Ux + C.y * Uy + C.z * Uz;
+      const dr = Math.round(cr * 16) / 16 - cr, du = Math.round(cu * 16) / 16 - cu;
+      C.x += Rx * dr + Ux * du; C.y += Ry * dr + Uy * du; C.z += Rz * dr + Uz * du; camera.updateMatrixWorld();
+      PIX.offX = -PIX.k + Math.round(dr * 16 * PIX.k); PIX.offY = -PIX.k - Math.round(du * 16 * PIX.k); }
     WU.uCam.value.copy(camera.position); TU.uCamP.value.copy(camera.position); TU.uPlayer.value.set(fx, fy, fz + .1);
+    { // buildings stay solid while you stand in (or step through) a doorway
+      const onDoor = (map.warps || []).some(wp => (wp.x === p.x && wp.y === p.y) || (p.moving && wp.x === p.nx && wp.y === p.ny));
+      TU.uOccOn.value += ((onDoor ? 0 : 1) - TU.uOccOn.value) * .4; }
     syncParticles(w, cur.hv);
     updateRays(w, fx, fy, fz);
     // shadow camera snapped to its own texel grid, so shadows don't crawl as the player moves
@@ -1409,10 +1457,10 @@ G.W3 = (function () {
       P.copy(rt).multiplyScalar(a).addScaledVector(up, b).addScaledVector(dir, c);
       sun.position.set(P.x + off[0], P.y + off[1], P.z + off[2]); sun.target.position.copy(P); }
     // canvas placed exactly over the game viewport, drawn at the display's native resolution
-    const S = G.gfx.S, dpr = window.devicePixelRatio || 1;
-    const bw = Math.round(G.W * S), bh = Math.round(G.H * S);
-    if (bw !== bufW || bh !== bufH) { bufW = bw; bufH = bh; R.setSize(bw, bh, false); }
-    Object.assign(cv.style, { display: 'block', left: (G.gfx.ox / dpr) + 'px', top: (G.gfx.oy / dpr) + 'px', width: (G.W * S / dpr) + 'px', height: (G.H * S / dpr) + 'px' });
+    const dpr = window.devicePixelRatio || 1;
+    if (PIX.RW !== bufW || PIX.RH !== bufH) { bufW = PIX.RW; bufH = PIX.RH; R.setSize(bufW, bufH, false); }
+    // whole-number upscale; the one-pixel margin and the sub-pixel shift hide under the letterbox / screen edge
+    Object.assign(cv.style, { display: 'block', left: ((G.gfx.ox + PIX.offX) / dpr) + 'px', top: ((G.gfx.oy + PIX.offY) / dpr) + 'px', width: (bufW * PIX.k / dpr) + 'px', height: (bufH * PIX.k / dpr) + 'px' });
     renderReflection();
     R.render(scene, camera);
     return true;
@@ -1424,7 +1472,7 @@ G.W3 = (function () {
     REFL.uReflOn.value = 0;
     if (wy === undefined || G.settings.fancy === false || G.settings.reflections === false) return;
     if (!reflRT) { reflRT = new T.WebGLRenderTarget(2, 2, { type: T.HalfFloatType }); mirrorCam = camera.clone(); }
-    const w = Math.max(2, bufW >> 1), h = Math.max(2, bufH >> 1);
+    const w = Math.max(2, bufW), h = Math.max(2, bufH);
     if (reflRT.width !== w || reflRT.height !== h) reflRT.setSize(w, h);
     camera.updateMatrixWorld();
     mirrorCam.projectionMatrix.copy(camera.projectionMatrix); mirrorCam.projectionMatrixInverse.copy(camera.projectionMatrixInverse);
@@ -1441,18 +1489,20 @@ G.W3 = (function () {
   }
   function hide() { if (cv) cv.style.display = 'none'; }
   // world pixel position -> screen position in game units (for UI overlays such as emotes)
+  // render-buffer NDC -> game units (the buffer is the pixel grid plus a margin, shifted by the sub-pixel remainder)
+  function ndcToGame(v) { const S = G.gfx.S; return { x: ((v.x + 1) / 2 * bufW * PIX.k + PIX.offX) / S, y: ((1 - v.y) / 2 * bufH * PIX.k + PIX.offY) / S }; }
   function project(px, py, lift = 0) {
     if (!cur) return null;
     const fx = px / 16, fz = py / 16, v = new T.Vector3(fx, cur.hv.at(G.clamp(fx, 0, cur.map.w - .01), G.clamp(fz, 0, cur.map.h - .01)) + lift, fz).project(camera);
-    return { x: (v.x + 1) / 2 * G.W, y: (1 - v.y) / 2 * G.H };
+    return ndcToGame(v);
   }
   // world pixel -> screen on a flat plane at the camera focus height (weather, drifting particles)
   const _v = T ? new T.Vector3() : null;
   function projectFlat(px, py) {
     if (!cur || camY === null) return null;
     _v.set(px / 16, camY, py / 16).project(camera);
-    return { x: (_v.x + 1) / 2 * G.W, y: (1 - _v.y) / 2 * G.H };
+    return ndcToGame(_v);
   }
   const active = (s) => ok && s && s.isWorld && G.settings.render3d && s.map && s.map.type === 'outdoor';
-  return { _rays: () => rays, _cur: () => cur, _bases: () => bases, chimneys: () => (cur && cur.group.userData.chimneys) || [], levels, active, render, hide, project, projectFlat, invalidate: id => { const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
+  return { _tu: () => TU, _rays: () => rays, _cur: () => cur, _bases: () => bases, chimneys: () => (cur && cur.group.userData.chimneys) || [], levels, active, render, hide, project, projectFlat, invalidate: id => { const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
 })();

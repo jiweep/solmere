@@ -568,6 +568,26 @@ G.tiles = (function () {
     const img = get(key, w, h, p => paintProp(p, kind, frame, w, h));
     return { img, ox: 0, oy: 16 - h };
   }
+  // a plaza fountain spanning w x h cells: octagonal-ish basin, two tiers and a spray (2D view)
+  function fountainBig(cw, ch, frame) {
+    const W = cw * 16, H = ch * 16 + 14;
+    return get(`fountainBig|${cw}|${ch}|${frame}`, W, H, p => {
+      const S = STONE, Wt = RMP().water, cx = W / 2 - .5, by = H - 3;
+      const rx = W / 2 - 1, ry = Math.min(ch * 8 - 2, rx * .62);
+      const cy = by - ry;
+      p.ell(cx, cy + 1.5, rx, ry, S[2]); p.ell(cx, cy, rx, ry, S[5]); p.ell(cx, cy - .5, rx - 1.5, ry - 1.5, S[6]);
+      p.ell(cx, cy, rx - 3, ry - 2.6, S[3]); p.ell(cx, cy + .5, rx - 3.6, ry - 3.2, Wt[frame ? 5 : 4]);
+      for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2 + frame * .4; p.set(Math.round(cx + Math.cos(a) * (rx - 6)), Math.round(cy + .5 + Math.sin(a) * (ry - 5)), Wt[8]); }
+      // pedestal, lower bowl, upper bowl, jet
+      const ph = Math.round(ry * 1.6 + 6), px0 = Math.round(cx) - 1;
+      p.rect(px0, cy - ph + 4, 3, ph - 2, S[6]); p.rect(px0 + 2, cy - ph + 4, 1, ph - 2, S[4]);
+      const b1 = Math.max(4, rx * .42); p.ell(cx, cy - ph * .55, b1, b1 * .38, S[4]); p.ell(cx, cy - ph * .55 - .6, b1 - .8, b1 * .3, Wt[frame ? 4 : 5]);
+      const b2 = Math.max(2.5, rx * .22); p.ell(cx, cy - ph + 4, b2, b2 * .4, S[5]);
+      for (let k = 0; k < 4; k++) p.set(Math.round(cx) + (k % 2 ? 1 : 0) - (frame && k > 1 ? 1 : 0), cy - ph + 3 - k, Wt[8 - (k > 2 ? 1 : 0)]);
+      // falling sheets from the lower bowl into the basin
+      for (let y = Math.round(cy - ph * .55 + 1); y < cy; y++) for (const sx of [-1, 1]) { const x = Math.round(cx + sx * (b1 - .5)); if ((y + frame) % 3) p.set(x, y, Wt[7]); }
+    });
+  }
   function paintProp(p, kind, frame, w, h) {
     const WD = R(['#2a1a10', '#46301c', '#664628', '#865e36', '#a67a48', '#c4985e', '#dcb47a']);
     const b = h - 16;   // extra height above the tile
@@ -1138,7 +1158,7 @@ G.tiles = (function () {
     get, cache, LEAF, CLIFF, STONE, rockAt,
     cliffTile, ledgeTile, bridgeTile, woodFloor, tileFloor, gymFloor, carpet, wallTile,
     tallgrass, flowerSprite, hedgeSprite,
-    broadTree, pineTree, palmTree, deadTree, smallTree, rockSprite, fenceSprite, lampSprite, lanternPost, crystalSprite, prop, furniture, tableJoin,
+    broadTree, pineTree, palmTree, deadTree, smallTree, rockSprite, fenceSprite, lampSprite, lanternPost, crystalSprite, prop, fountainBig, furniture, tableJoin,
     building, itemIcon, simple, atlas, loadWorld,
   };
 })();

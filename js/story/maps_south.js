@@ -44,7 +44,7 @@
     m.forest(2, 'T', { skip: (x, y) => (x >= 17 && x <= 20 && y <= 1) || y >= 24 });
     // Seacliff Heights
     m.rect(2, 2, 34, 11, '.'); m.rect(17, 0, 4, 13, ':'); m.rect(3, 9, 32, 2, ':');
-    m.rect(15, 10, 8, 3, '='); m.put(18, 11, 'o'); m.put(15, 12, 'u'); m.put(22, 12, 'u'); m.put(14, 11, 'l'); m.put(23, 11, 'l');
+    m.rect(15, 10, 8, 3, '='); m.rect(18, 10, 2, 3, 'o'); m.put(15, 12, 'u'); m.put(22, 12, 'u'); m.put(14, 11, 'l'); m.put(23, 11, 'l');
     m.rect(3, 3, 4, 3, 'f'); m.rect(31, 3, 4, 3, 'f'); m.put(14, 3, 'T'); m.put(30, 7, 'T'); m.put(7, 8, 'y'); m.put(29, 8, 'y'); m.put(33, 11, 'u');
     // wall + grand staircase
     m.rect(2, 13, 34, 2, '#'); m.rect(17, 13, 4, 2, '=');
@@ -150,9 +150,9 @@
     // wall with the grand staircase (and a ramp in the west)
     m.rect(2, 12, 40, 2, '#'); m.rect(20, 12, 4, 2, '='); m.rect(3, 12, 2, 2, ':');
     // Blossom Square
-    m.rect(2, 14, 40, 12, '.'); m.rect(14, 14, 16, 4, '='); m.put(21, 15, 'o');
+    m.rect(2, 14, 40, 12, '.'); m.rect(14, 14, 16, 4, '='); m.rect(21, 15, 2, 2, 'o');
     m.put(15, 15, 'u'); m.put(28, 15, 'u'); m.put(14, 14, 'l'); m.put(29, 14, 'l'); m.put(14, 17, 'y'); m.put(29, 17, 'y');
-    m.rect(2, 18, 42, 2, ':'); m.rect(20, 14, 4, 24, ':'); m.rect(20, 14, 4, 4, '='); m.put(21, 15, 'o');
+    m.rect(2, 18, 42, 2, ':'); m.rect(20, 14, 4, 24, ':'); m.rect(20, 14, 4, 4, '='); m.rect(21, 15, 2, 2, 'o');
     m.put(16, 21, 'p'); m.put(18, 21, 'p'); m.put(25, 21, 'p'); m.put(27, 21, 'p'); m.rect(16, 22, 3, 1, 'f'); m.rect(25, 22, 3, 1, 'f');
     m.rect(30, 20, 3, 3, 'f'); m.put(2, 20, 'T'); m.put(41, 21, 'T'); m.put(15, 20, 'y'); m.put(28, 20, 'y');
     m.rect(3, 24, 38, 2, ':');

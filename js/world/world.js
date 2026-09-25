@@ -211,6 +211,18 @@ G.liveTile = function (map, c, frame) {
 const TREE_DEEP = [.62, .74, .8], TREE_MID = [.8, .88, .9];
 // generated sprites stand on their tile: centred, feet 2px into the tile
 const atlasObj = (key, extra = {}, tint) => { const im = G.tiles.atlas(key, 0, tint); return im ? { img: im, ox: Math.round(8 - im.width / 2), oy: 18 - im.height, base: 3, aoW: 7, ...extra } : null; };
+// A fountain can span several cells (a plaza's centrepiece): the connected block of fountain cells is one
+// fountain, drawn once from its bottom-left cell (2D) or centred on the block (3D). Cached per map.
+G.fountainOf = function (map, x, y) {
+  const F = map._fnt || (map._fnt = {}), k = x + ',' + y;
+  if (F[k]) return F[k];
+  const seen = new Set([k]), q = [[x, y]]; let x0 = x, x1 = x, y0 = y, y1 = y;
+  while (q.length) { const [cx, cy] = q.pop(); x0 = Math.min(x0, cx); x1 = Math.max(x1, cx); y0 = Math.min(y0, cy); y1 = Math.max(y1, cy);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nk = (cx + dx) + ',' + (cy + dy), n = map.cell(cx + dx, cy + dy); if (!seen.has(nk) && n && n.o === 'fountain') { seen.add(nk); q.push([cx + dx, cy + dy]); } } }
+  const comp = { x0, y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+  for (const kk of seen) F[kk] = comp;
+  return comp;
+};
 G.objImg = function (map, c, frame) {
   const T = G.tiles, th = map.theme;
   const A = G.tiles.atlas && G.WORLD_ATLAS;
@@ -272,7 +284,14 @@ G.objImg = function (map, c, frame) {
     case 'counter': case 'pc': case 'shelf': case 'tv': case 'plant': case 'healer': case 'machine': case 'desk': case 'statue':
     case 'dresser': case 'sidetable': case 'armchair': case 'fridge': case 'stove': case 'sink': case 'boxes': case 'floorlamp': case 'vending': case 'display': case 'whiteboard': case 'plant2':
       return { ...T.furniture(c.o, ['pc', 'tv', 'healer', 'machine', 'vending'].includes(c.o) ? frame % 2 : 0), ao: !['counter', 'shelf', 'fridge', 'stove', 'sink', 'dresser'].includes(c.o) };
-    default: return { ...T.prop(c.o, ['fountain', 'cauldron'].includes(c.o) ? frame % 2 : 0), aoW: 6 };
+    case 'fountain': {
+      const F = G.fountainOf(map, c.x | 0, c.y | 0);
+      if (F.w === 1 && F.h === 1) return { ...T.prop('fountain', frame % 2), aoW: 6 };
+      if ((c.x | 0) !== F.x0 || (c.y | 0) !== F.y0 + F.h - 1) return null;   // drawn once, from the bottom-left cell
+      const img = T.fountainBig(F.w, F.h, frame % 2);
+      return { img, ox: 0, oy: 16 - img.height, aoW: F.w * 8 };
+    }
+    default: return { ...T.prop(c.o, ['cauldron'].includes(c.o) ? frame % 2 : 0), aoW: 6 };
   }
 };
 // share of each footprint cell covered by the building's generated sprite (null for code-drawn art)

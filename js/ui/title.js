@@ -82,7 +82,16 @@ G.pickSlot = async function (title, mustExist) {
 };
 G.importSave = async function () {
   const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json,application/json';
-  const file = await new Promise(res => { inp.onchange = () => res(inp.files[0]); inp.click(); setTimeout(() => res(null), 60000); });
+  // Cancelling the file dialog fires no change event: listen for 'cancel' (modern browsers) and, as a
+  // fallback, the window regaining focus with nothing picked, so the menu comes straight back
+  const file = await new Promise(res => {
+    let done = false; const fin = f => { if (done) return; done = true; window.removeEventListener('focus', onFocus); res(f); };
+    const onFocus = () => setTimeout(() => { if (!inp.files || !inp.files.length) fin(null); }, 400);
+    inp.onchange = () => fin(inp.files[0] || null);
+    inp.addEventListener('cancel', () => fin(null));
+    inp.click();
+    setTimeout(() => window.addEventListener('focus', onFocus), 50);
+  });
   if (!file) return;
   try {
     const data = JSON.parse(await file.text());

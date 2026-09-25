@@ -17,13 +17,13 @@
     m.put(0, 4, 'T'); m.put(45, 4, 'T');
     // harbour quarter
     for (const x of [4, 12, 28, 34, 42]) m.put(x, 5, 'l');
-    m.put(22, 9, 'o'); m.put(19, 8, 'y'); m.put(25, 8, 'y'); m.put(18, 11, 'u'); m.put(26, 11, 'u');
+    m.rect(21, 9, 3, 2, 'o'); m.put(19, 8, 'y'); m.put(25, 8, 'y'); m.put(18, 11, 'u'); m.put(26, 11, 'u');
     m.rect(9, 12, 4, 1, 'f'); m.rect(27, 12, 3, 1, 'f'); m.text(40, 6, ['QO', 'O ']); m.put(29, 9, 'T'); m.put(39, 10, 'T');
     for (const x of [8, 16, 28, 36, 42]) m.put(x, 15, 'l');
     // the seawall: grand staircase in the middle, a service ramp in the east
     m.rect(1, 16, 44, 2, '#'); m.rect(20, 16, 4, 2, '='); m.rect(40, 16, 2, 2, '=');
     // market town: the round garden plaza
-    m.blob(22, 23, 3.2, 2.2, 'f'); m.put(22, 23, 'o'); m.put(18, 21, 'T'); m.put(26, 21, 'T'); m.put(18, 25, 'T'); m.put(26, 25, 'T');
+    m.blob(22, 23, 3.2, 2.2, 'f'); m.rect(21, 22, 3, 3, 'o'); m.put(18, 21, 'T'); m.put(26, 21, 'T'); m.put(18, 25, 'T'); m.put(26, 25, 'T');
     m.put(16, 23, 'u'); m.put(28, 23, 'u'); m.put(15, 20, 'l'); m.put(29, 20, 'l'); m.put(15, 26, 'l'); m.put(29, 26, 'l');
     m.put(2, 24, 'Q'); m.put(2, 25, 'O'); m.put(9, 25, 'y'); m.put(35, 25, 'y');
     // the canal and its bridges
