@@ -884,13 +884,19 @@ def chord_at_beat(song, T):
 def finalize(song):
     """Clean-up and expression pass run on every song:
     1. accompaniment notes that ring into a chord they do not belong to are cut at the change;
-    2. accompaniment notes a semitone under a sounding melody note are dropped;
+    2. accompaniment notes a semitone from a sounding melody note are dropped, unless the melody resolves
+       onto that very note next (an appoggiatura or suspension: the rub is kept, it is the expression);
     3. phrase dynamics: melodies shaped by contour and metre, 4-bar swells on sustained parts,
        and a lift into each new section."""
     anticipate(song)
     mel = []
     for p in _melody_parts(song): mel += [(t, t + d, pp) for (t, d, pp, v, a) in p.notes]
     mel.sort()
+    # the comping also keeps clear of the countermelodies (harmony voices, ostinatos, answers)
+    lines = list(mel)
+    for n_, p in song.parts.items():
+        if not p.kit and p.role == 'counter': lines += [(t, t + d, pp) for (t, d, pp, v, a) in p.notes]
+    lines.sort()
     changes = sorted({sec.at + t for sec in song.sec.values() for (t, d, c) in sec.chords})
     def allowed(T):
         c, _ = chord_at_beat(song, T)
@@ -911,11 +917,17 @@ def finalize(song):
             if d < .06: continue
             # 2. minor 2nd / minor 9th against any melody note that sounds while this note rings:
             #    drop it if the rub is there at the onset, otherwise cut it where the melody arrives
-            j = bisect.bisect_right(mel, (t + d, 1e9, 1e9))
+            j = bisect.bisect_right(lines, (t + d, 1e9, 1e9))
             rub = False; cut = None
-            for (m0, m1, mp) in mel[max(0, j - 40):j]:
+            for (m0, m1, mp) in lines[max(0, j - 60):j]:
                 if m1 <= t + 1e-6 or m0 >= t + d - 1e-6: continue
                 if abs(mp - p) not in (1, 13, 25): continue
+                # an appoggiatura or suspension: a melody note outside the chord leans a semitone off this
+                # very chord tone and resolves onto it next; the rub is the point, keep the chord tone
+                al = allowed(m0 + 1e-4)
+                if al is not None and mp % 12 not in al:
+                    k = bisect.bisect_left(mel, (m1 - 1e-6, -1, -1))
+                    if k < len(mel) and mel[k][0] <= m1 + .6 and mel[k][2] % 12 == p % 12: continue
                 if m0 <= t + 1e-6: rub = True; break
                 cut = m0 if cut is None else min(cut, m0)
             if rub: continue

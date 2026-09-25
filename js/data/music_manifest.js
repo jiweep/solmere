@@ -179,6 +179,42 @@ G.MUSIC_FILES = {
 "worked": 1790347722,
 "hidden": true
 },
+"aud22": {
+"file": "music/aud22.mp3",
+"loop": true,
+"loopStart": 12.60936,
+"loopEnd": 66.40247,
+"duration": 67.90247,
+"bpm": 115.99999,
+"title": "Audition 22 - Harbor Morning",
+"intro": 4.13793,
+"worked": 1790356777,
+"hidden": true
+},
+"aud23": {
+"file": "music/aud23.mp3",
+"loop": true,
+"loopStart": 12.70998,
+"loopEnd": 88.30998,
+"duration": 89.80998,
+"bpm": 100.0,
+"title": "Audition 23 - Letter Home, arranged",
+"intro": 3.6,
+"worked": 1790356782,
+"hidden": true
+},
+"aud24": {
+"file": "music/aud24.mp3",
+"loop": true,
+"loopStart": 7.69229,
+"loopEnd": 59.69229,
+"duration": 61.19229,
+"bpm": 120.0,
+"title": "Audition 24 - Clocktower Lane",
+"intro": 4.0,
+"worked": 1790356775,
+"hidden": true
+},
 "aud3": {
 "file": "music/aud3.mp3",
 "loop": true,
