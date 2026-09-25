@@ -127,30 +127,45 @@
 
   // ------------------------------------------------------------ FERNWICK -
   (function () {
+    // three tiers: the Gym terrace up top (reached by a stone ramp), the market square in the middle,
+    // and a sunken garden (stairs down) in the south-west; a flower meadow opens to the south-east
     const m = new G.MB(30, 26, '.', 31);
-    m.forest(2, 'T', { skip: (x, y) => (x >= 13 && x <= 16 && y >= 23) || (x >= 26 && y >= 11 && y <= 14) });
-    m.path([[13, 25], [13, 16]], ':', 4); m.path([[4, 16], [26, 16]], ':', 2); m.path([[26, 17], [26, 12], [29, 12]], ':', 2);
-    m.path([[14, 16], [14, 9]], ':', 2); m.path([[6, 9], [24, 9]], ':', 2);
-    // flower gardens
-    m.rect(3, 19, 6, 3, 'f'); m.rect(20, 19, 5, 3, 'f'); m.rect(16, 11, 3, 3, 'f'); m.rect(9, 12, 3, 2, 'f');
-    m.put(12, 18, 'l'); m.put(18, 18, 'l'); m.put(10, 8, 'l'); m.put(21, 8, 'l'); m.rect(11, 2, 8, 5, '.');
-    m.put(15, 13, 'o');
+    m.forest(2, 'T', { skip: (x, y) => (x >= 13 && x <= 16 && y >= 23) || (x >= 26 && y >= 11 && y <= 14) || (x >= 2 && x <= 11 && y === 24) });
+    // terrace (upper)
+    m.rect(2, 2, 26, 6, '.'); m.rect(23, 16, 5, 5, '.'); m.rect(11, 7, 8, 1, '='); m.rect(3, 3, 6, 3, 'f'); m.rect(21, 3, 6, 3, 'f');
+    m.put(2, 2, 'P'); m.put(27, 2, 'P'); m.put(9, 6, 'u'); m.put(21, 6, 'u'); m.put(10, 7, 'l'); m.put(20, 7, 'l'); m.put(3, 7, 'y'); m.put(26, 7, 'y');
+    // the bluff and its ramp
+    m.rect(2, 8, 26, 2, '#'); m.rect(14, 8, 2, 2, ':');
+    // market square (middle)
+    m.rect(14, 10, 2, 16, ':'); m.rect(13, 20, 4, 6, ':');
+    m.rect(13, 10, 4, 4, '='); m.put(14, 12, 'o');
+    m.rect(3, 14, 20, 2, ':'); m.rect(22, 12, 2, 4, ':'); m.rect(23, 12, 7, 2, ':');
+    m.rect(9, 10, 4, 3, 'f'); m.put(13, 16, 'l'); m.put(17, 16, 'l'); m.put(19, 16, 'u'); m.put(2, 11, 'y'); m.put(2, 13, 'y');
+    // sunken garden (lower): stairs down, a pond and a cottage behind a hedge
+    m.rect(2, 16, 10, 2, '#'); m.rect(3, 16, 2, 2, ':'); m.rect(12, 16, 1, 9, 'h');
+    m.rect(2, 18, 5, 7, '.'); m.rect(7, 22, 5, 3, '.'); m.rect(3, 18, 2, 2, ':');
+    m.blob(3.6, 22, 1.7, 1.5, '~'); m.rect(5, 18, 2, 1, 'f'); m.rect(7, 23, 4, 1, 'f'); m.put(11, 24, 'T'); m.put(6, 21, 'u');
+    // flower meadow
+    m.rect(17, 21, 5, 3, 'f'); m.rect(24, 22, 4, 2, 'f'); m.blob(20, 18.6, 2, 1.2, '~'); m.put(18, 23, 'T'); m.put(27, 21, 'P'); m.put(17, 17, 'y');
     D({ id: 'fernwick', name: 'Fernwick Town', subtitle: 'Petals on every breeze', town: 'fernwick', area: 'fernwick', music: 'fernwick', weather: 'petals', grid: m.done(),
       conn: { s: { map: 'route1', off: 4 }, e: { map: 'route2', off: 8 } },
       objs: [
         { type: 'trigger', x: 13, y: 24, w: 4, h: 1, script: 'race_finish', cond: ['route1_tut', '!race_done'] },
-        G.haven(4, 4), G.mart(21, 4), G.bld('gym', 11, 2, 8, 5, { roof: 'green', accent: '#6ccc52', door: 4, to: 'fernwick_gym', tx: 7, ty: 13 }),
-        G.house(3, 11, 'fern_house1', 'orange', { door: 2 }), G.house(20, 11, 'fern_house2', 'purple'),
+        G.haven(3, 10), G.mart(17, 10), G.bld('gym', 11, 2, 8, 5, { roof: 'green', accent: '#6ccc52', door: 4, to: 'fernwick_gym', tx: 7, ty: 13 }),
+        G.house(7, 18, 'fern_house1', 'orange', { door: 2 }), G.house(23, 17, 'fern_house2', 'purple'),
         { type: 'sign', x: 17, y: 7, text: '{g}FERNWICK GYM{w}\\nWarden: Juniper\\n"Gentle roots, unbreakable bloom."' },
-        { type: 'sign', x: 12, y: 21, text: '{b}FERNWICK TOWN{w}\\nThe town where flowers never close.' },
-        { type: 'sign', x: 26, y: 15, text: '→ Route 2 · Whisperwood beyond' },
+        { type: 'sign', x: 17, y: 22, text: '{b}FERNWICK TOWN{w}\\nThe town where flowers never close.' },
+        { type: 'sign', x: 25, y: 14, text: '→ Route 2 · Whisperwood beyond' },
+        { type: 'sign', x: 2, y: 15, text: '{g}SUNKEN GARDEN{w}\\nMind the steps. Mind the koi. Mind Granny Ivy\'s tulips.' },
         { type: 'npc', id: 'fw_guard', x: 28, y: 11, look: 'ranger', dir: 'left', script: 'fern_guard_talk', cond: '!badge1' },
         { type: 'trigger', x: 27, y: 12, w: 1, h: 2, script: 'fern_guard', cond: '!badge1' },
-        { type: 'npc', id: 'fw_bea', x: 21, y: 22, look: 'lady', dir: 'up', script: 'florist_bea' },
-        { type: 'npc', id: 'fw_kid', x: 8, y: 17, look: 'kid', dir: 'right', move: 'wander', radius: 3, text: 'The Warden\'s gym is a big hedge maze! I always get lost and have to be rescued.' },
-        { type: 'npc', id: 'fw_man', x: 18, y: 17, look: 'man', dir: 'left', move: 'look', text: 'Crane Dynamics put up posters everywhere. "The Resonance Project: Bonds Built to Last." What does that even mean?' },
-        { type: 'npc', id: 'fw_dowse', x: 9, y: 22, look: 'hiker', dir: 'right', script: 'dowsing_man' },
-        { type: 'item', id: 'fw_hid1', x: 25, y: 21, item: 'superpotion', hidden: true },
+        { type: 'npc', id: 'fw_bea', x: 21, y: 20, look: 'lady', dir: 'down', script: 'florist_bea' },
+        { type: 'npc', id: 'fw_kid', x: 11, y: 14, look: 'kid', dir: 'right', move: 'wander', radius: 2, text: 'The Warden\'s gym is a big hedge maze! I always get lost and have to be rescued.' },
+        { type: 'npc', id: 'fw_man', x: 18, y: 15, look: 'man', dir: 'left', move: 'look', text: 'Crane Dynamics put up posters everywhere. "The Resonance Project: Bonds Built to Last." What does that even mean?' },
+        { type: 'npc', id: 'fw_dowse', x: 8, y: 22, look: 'hiker', dir: 'left', script: 'dowsing_man' },
+        { type: 'npc', id: 'fw_view', x: 22, y: 7, look: 'girl', dir: 'down', move: 'look', text: 'From up here you can see the whole square. When the petals blow just right, the fountain looks like it\'s snowing pink.' },
+        { type: 'item', id: 'fw_hid1', x: 27, y: 23, item: 'superpotion', hidden: true },
+        { type: 'item', id: 'fw_garden', x: 2, y: 19, item: 'oranberry', qty: 2 },
       ], spawn: [14, 18] });
   })();
   G.defHouse('fern_house1', 'Fernwick House', 0, [

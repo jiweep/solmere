@@ -45,7 +45,7 @@ G.W3 = (function () {
     const W = map.w, H = map.h, N = W * H;
     const cliff = c => c && (c.g === 'cliff' || c.g === 'cavewall' || c.g === 'crystalwall');
     const isRamp = (x, y) => { const c = map.cell(x, y); if (!c || cliff(c) || c.solid && !c.ledge) return false; return cliff(map.cell(x - 1, y)) || cliff(map.cell(x + 1, y)) || (cliff(map.cell(x - 2, y)) && !cliff(map.cell(x - 1, y)) && isRampLine(x - 1, y)) || (cliff(map.cell(x + 2, y)) && isRampLine(x + 1, y)); };
-    const isRampLine = (x, y) => { const c = map.cell(x, y); return c && !cliff(c) && (cliff(map.cell(x - 1, y)) || cliff(map.cell(x + 1, y))); };
+    const isRampLine = (x, y) => { const c = map.cell(x, y); return c && !cliff(c) && !(c.solid && !c.ledge) && (cliff(map.cell(x - 1, y)) || cliff(map.cell(x + 1, y))); };
     const kind = new Uint8Array(N);   // 0 ground, 1 cliff, 2 ramp
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const c = map.cell(x, y); kind[y * W + x] = cliff(c) ? 1 : isRamp(x, y) ? 2 : 0; }
     // ramps spanning a whole cliff gap: every walkable cell in a row between cliff cells
@@ -55,12 +55,20 @@ G.W3 = (function () {
         if (kind[y * W + x] === 1) { let e = x + 1; while (e < W && kind[y * W + e] !== 1 && map.cell(e, y) && !map.cell(e, y).solid) e++; if (e < W && kind[y * W + e] === 1 && e - x - 1 <= 8) for (let k = x + 1; k < e; k++) kind[y * W + k] = 2; x = e; } else x++;
       }
     }
+    // regions flood through walkable ground only, so a tree or rock border running past the end
+    // of a cliff doesn't join the levels; solid cells then take the level of the nearest walkable cell
+    const walk = new Uint8Array(N);
+    for (let i = 0; i < N; i++) { const c = map.cells[i]; walk[i] = kind[i] === 0 && c && (!c.solid || c.water) ? 1 : 0; }
     const reg = new Int32Array(N).fill(-1); let nr = 0;
-    for (let i = 0; i < N; i++) if (kind[i] === 0 && reg[i] < 0) {
+    const D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (let i = 0; i < N; i++) if (walk[i] && reg[i] < 0) {
       const q = [i]; reg[i] = nr;
-      while (q.length) { const p = q.pop(), x = p % W, y = (p / W) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue; const n = ny * W + nx; if (kind[n] === 0 && reg[n] < 0) { reg[n] = nr; q.push(n); } } }
+      while (q.length) { const p = q.pop(), x = p % W, y = (p / W) | 0; for (const [dx, dy] of D4) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue; const n = ny * W + nx; if (walk[n] && reg[n] < 0) { reg[n] = nr; q.push(n); } } }
       nr++;
     }
+    { let q = []; for (let i = 0; i < N; i++) if (reg[i] >= 0) q.push(i);
+      while (q.length) { const nq = []; for (const p of q) { const x = p % W, y = (p / W) | 0; for (const [dx, dy] of D4) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue; const n = ny * W + nx; if (kind[n] === 0 && reg[n] < 0) { reg[n] = reg[p]; nq.push(n); } } } q = nq; }
+      for (let i = 0; i < N; i++) if (kind[i] === 0 && reg[i] < 0) reg[i] = nr++; }
     // constraints from cliff and ramp cells: region above (north) = region below (south) + 1
     const edges = [];
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -76,7 +84,14 @@ G.W3 = (function () {
       lv[r0] = 0; const q = [r0];
       while (q.length) { const r = q.shift(); for (const [u, d] of edges) { if (u === r && lv[d] === null) { lv[d] = lv[r] - 1; q.push(d); } if (d === r && lv[u] === null) { lv[u] = lv[r] + 1; q.push(u); } } }
     }
-    const minL = Math.min(0, ...lv.filter(v => v !== null));
+    // anchor: the ground at the map's connection edges sits at height 0, so neighbouring maps meet flush
+    let minL = Math.min(0, ...lv.filter(v => v !== null));
+    { const cnt = new Map(), conn = (map.def && map.def.conn) || {};
+      const edge = (x, y) => { const i = y * W + x; if (walk[i] && lv[reg[i]] !== null) cnt.set(lv[reg[i]], (cnt.get(lv[reg[i]]) || 0) + 1); };
+      if (conn.n) for (let x = 0; x < W; x++) edge(x, 0); if (conn.s) for (let x = 0; x < W; x++) edge(x, H - 1);
+      if (conn.w) for (let y = 0; y < H; y++) edge(0, y); if (conn.e) for (let y = 0; y < H; y++) edge(W - 1, y);
+      let best = null, bc = 0; for (const [l, c] of cnt) if (c > bc) { bc = c; best = l; }
+      if (best !== null) minL = best; }
     // per-cell corner heights (NW, NE, SW, SE)
     const flat = new Float32Array(N);
     for (let i = 0; i < N; i++) if (kind[i] === 0) flat[i] = (lv[reg[i]] - minL) * LEVEL_H;
@@ -218,6 +233,7 @@ G.W3 = (function () {
       const bx = x + ((oi.ox || 0) + oi.img.width / 2) / 16, bz = y + ((oi.oy || 0) + oi.img.height) / 16;
       m.position.set(bx, hv.at(G.clamp(bx, 0, W - .01), G.clamp(bz - .2, 0, H - .01)), bz - .12);
       group.add(m);
+      if (oi.img.height > 24) { m.userData.hw = oi.img.width / 32; m.userData.ht = oi.img.height / 16; m.userData.fade = 1; (group.userData.tall || (group.userData.tall = [])).push(m); }
     }
   }
 
@@ -332,6 +348,15 @@ G.W3 = (function () {
     lighting(w);
     // camera: behind and above the player, a fixed DS-like pitch
     const p = w.player, fx = p.px / 16 + .5, fz = p.py / 16 + .5, fy = cur.hv.at(G.clamp(fx, 0, map.w - .01), G.clamp(fz, 0, map.h - .01));
+    // tall props standing between the camera and the player fade out, so a lower tier stays readable
+    for (const m of cur.group.userData.tall || []) {
+      const dz = m.position.z - fz, dx = Math.abs(m.position.x - fx);
+      const occ = dz > .35 && dz < m.userData.ht * 1.3 + .4 && dx < m.userData.hw + .55 && (m.position.y + m.userData.ht * .5 > fy);
+      const f = m.userData.fade = m.userData.fade + ((occ ? .38 : 1) - m.userData.fade) * .18;
+      const tr = f < .98;
+      if (m.material.transparent !== tr) { m.material.transparent = tr; m.material.depthWrite = !tr; m.material.alphaTest = tr ? .12 : .5; m.material.needsUpdate = true; }
+      m.material.opacity = tr ? f : 1;
+    }
     const dist = 30, cy = Math.sin(PITCH) * dist, cz = Math.cos(PITCH) * dist;
     camera.position.set(fx, fy + cy, fz + cz); camera.lookAt(fx, fy + .6, fz);
     sun.position.set(fx - 10, fy + 22, fz + 6); sun.target.position.set(fx, fy, fz);
@@ -349,5 +374,5 @@ G.W3 = (function () {
     return { x: (v.x + 1) / 2 * G.W, y: (1 - v.y) / 2 * G.H };
   }
   const active = (s) => ok && s && s.isWorld && G.settings.render3d && s.map && s.map.type === 'outdoor';
-  return { active, render, hide, project, invalidate: id => { const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
+  return { _cur: () => cur, levels, active, render, hide, project, invalidate: id => { const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
 })();
