@@ -17,9 +17,11 @@ G.BattleScene = class {
   // -------------------------------------------------------------- layout
   pos(s, i, n) {
     const mine = s === this.persp;
-    if (n === 1) return mine ? { x: 122, y: 190, sc: .82, back: true } : { x: 270, y: 132, sc: 1, back: false };
-    if (mine) return i === 0 ? { x: 96, y: 190, sc: .7, back: true } : { x: 172, y: 196, sc: .7, back: true };
-    return i === 0 ? { x: 244, y: 132, sc: .88, back: false } : { x: 308, y: 126, sc: .88, back: false };
+    // the foe stands well into the meadow (a third of the way down from the horizon), not on the horizon
+    // line, so the ground between the two sides reads as depth
+    if (n === 1) return mine ? { x: 122, y: 192, sc: .84, back: true } : { x: 268, y: 153, sc: .92, back: false };
+    if (mine) return i === 0 ? { x: 96, y: 192, sc: .72, back: true } : { x: 172, y: 198, sc: .72, back: true };
+    return i === 0 ? { x: 236, y: 154, sc: .84, back: false } : { x: 306, y: 147, sc: .8, back: false };
   }
   key(r) { return r.s + ':' + r.i; }
   slot(r) { return this.slots[this.key(r)]; }
@@ -112,7 +114,7 @@ G.BattleScene = class {
     const foeTr = e.sides[1 - this.persp].trainers.filter(t => t.name);
     const myTr = e.sides[this.persp].trainers;
     this.trainers = [];
-    foeTr.forEach((t, k) => this.trainers.push({ side: 1 - this.persp, look: t.sprite, x: foeTr.length > 1 ? 318 + k * 36 : 338, y: 130, alpha: 1, off: 0, name: t.name, cls: t.cls }));
+    foeTr.forEach((t, k) => this.trainers.push({ side: 1 - this.persp, look: t.sprite, x: foeTr.length > 1 ? 322 + k * 34 : 340, y: 149, alpha: 1, off: 0, name: t.name, cls: t.cls }));
     myTr.forEach((t, k) => this.trainers.push({ side: this.persp, look: t.sprite, x: myTr.length > 1 ? 40 + k * 60 : 58, y: 232, alpha: 1, off: 0, back: true, name: t.name }));
     this.balls = e.wild ? null : e.sides.map(s => s.trainers.reduce((a, t) => ({ count: a.count + t.count, alive: a.alive + t.alive }), { count: 0, alive: 0 }));
     // slide in
@@ -455,7 +457,7 @@ G.BattleScene = class {
     const U = G.ui, mine = s.side === this.persp, i = s.slot;
     const slide = this.hudShow[s.side] ? 0 : 1;
     const w = 100, h = mine ? 25 : 18;
-    let x = mine ? G.W - w - 8 : 8, y = mine ? (n === 1 ? 128 : (i === 0 ? 100 : 128)) : (n === 1 ? 8 : (i === 0 ? 6 : 28));
+    let x = mine ? G.W - w - 8 : 8, y = mine ? (n === 1 ? 8 : (i === 0 ? 6 : 34)) : (n === 1 ? 8 : (i === 0 ? 6 : 28));
     x += (mine ? 1 : -1) * slide * 150;
     const acc = mine ? '#3b82e0' : '#ff3b4e';
     U.c.globalAlpha = .55; U.para(x - 1, y + 2, w + 2, h, 5, '#000000'); U.c.globalAlpha = .86; U.para(x, y, w, h, 5, '#0e1019'); U.c.globalAlpha = 1;
