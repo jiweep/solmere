@@ -695,6 +695,43 @@ G.WorldScene = class {
       if (green && G.rand() < .022) P.add({ x: spawnX(), y: cy - 6, vx: -.2, vy: .32 + G.rand() * .2, life: 700, type: 'leaf', size: 1.6 + G.rand() * .5, rot: G.rand() * 6, vr: .05, color: G.pick(['#5a9a3a', '#7ab84a', '#c8b04a', '#d88a3a']), upd: p => { p.vx = -.15 - G.wind(this.frame) * .9 + Math.sin(p.t / 24) * .25; p.vr = .03 + G.wind(this.frame) * .08; } });
       if (m.theme === 'dusk' && G.rand() < .03) P.add({ x: spawnX(), y: cy - 6, vx: -.3, vy: .3 + G.rand() * .2, life: 700, type: 'leaf', size: 1.5, rot: G.rand() * 6, vr: .06, color: G.pick(['#ffc0d8', '#ffd8e8', '#ff9ac0']), upd: p => { p.vx = -.2 - G.wind(this.frame) + Math.sin(p.t / 20) * .3; } });
       if (m.theme === 'snow' && G.rand() < .12) P.add({ x: spawnX(), y: cy - 6, vx: -.2, vy: .35 + G.rand() * .25, life: 600, size: G.rand() < .25 ? 2 : 1, color: '#ffffff', upd: p => { p.vx = -.1 - G.wind(this.frame) * .8 + Math.sin((p.t + p.y) / 30) * .2; } });
+      // 3D view: leaves let go of the trees near the player and spiral down; flocks of birds cross
+      // high overhead; chimneys smoke; now and then a fish jumps in nearby water
+      if (G.in3d) {
+        const p0 = this.player;
+        if (green && this.frame % 18 === 0) {
+          const tx = p0.x + G.randInt(-10, 10), ty = p0.y + G.randInt(-7, 6), tc = this.cellAt(tx, ty);
+          if (tc && (tc.o === 'tree' || tc.o === 'smalltree')) P.add({ x: tx * 16 + 8 + (G.rand() - .5) * 10, y: ty * 16 + 4, h3: 2 + G.rand() * 1.2, vx: 0, vy: .02, life: 420, type: 'leaf', size: 1.7, rot: G.rand() * 6, vr: .08, fadeIn: 20, color: G.pick(['#6aa83a', '#8ac04a', '#d8b84a', '#e0903a']),
+            upd: p => { p.h3 -= .007; p.vx = -.12 - G.wind(this.frame) * .5 + Math.sin(p.t / 18) * .3; if (p.h3 < .05) p.t = Math.max(p.t, p.life - 30), p.h3 = .05; } });
+        }
+        if (day && this.frame % 900 === 450 && G.rand() < .8) {
+          const y0 = p0.py - 60 - G.rand() * 80, dir = G.rand() < .5 ? 1 : -1, x0 = p0.px - dir * 260;
+          for (let i = 0; i < 5 + G.randInt(0, 4); i++) P.add({ x: x0 - dir * (i % 3) * 14 - dir * i * 6, y: y0 + (i % 2 ? 10 : -6) + i * 4, h3: 5.5 + (i % 3) * .4, vx: dir * 1.3, vy: -.05, life: 480, type: 'bfly', size: 2.4, color: '#2c2a36', rot: i });
+        }
+        if (this.frame % 34 === 0) for (const bo of m.buildings) {
+          if (!['house', 'haven', 'mart'].includes(bo.kind) || Math.abs(bo.x - p0.x) > 16 || Math.abs(bo.y - p0.y) > 12) continue;
+          P.add({ x: (bo.x + bo.w * .72) * 16, y: (bo.y + bo.h * .5) * 16, h3: 3.1 + bo.h * .12, vx: 0, vy: 0, life: 170, size: 2.4, grow: 2.2, color: 'rgba(214,214,224,1)', alpha: .32, fadeIn: 25, type: 'circle',
+            upd: p => { p.h3 += .012; p.vx = -.1 - G.wind(this.frame) * .35; } });
+        }
+        // fountains play
+        if (this.frame % 3 === 0) {
+          if (!m._fountains) { m._fountains = []; for (const c of m.cells) if (c.o === 'fountain') m._fountains.push(c); }
+          for (const c of m._fountains) {
+            if (Math.abs(c.x - p0.x) > 12 || Math.abs(c.y - p0.y) > 9) continue;
+            const a = G.rand() * Math.PI * 2, sp = .35 + G.rand() * .35;
+            this.fx.add({ x: c.x * 16 + 8, y: c.y * 16 + 6, vx: Math.cos(a) * sp, vy: -1.6 - G.rand() * .5, ay: .085, life: 34, size: 1.1, color: 'rgba(210,236,255,1)', alpha: .85, type: 'circle' });
+            if (this.frame % 30 === 0) this.fx.add({ x: c.x * 16 + 8, y: c.y * 16 + 11, life: 40, type: 'ring', size: 3, grow: 1.6, color: 'rgba(255,255,255,.5)', lw: .8 });
+          }
+        }
+        if (this.frame % 240 === 120 && G.rand() < .6) {
+          const wx = p0.x + G.randInt(-9, 9), wy = p0.y + G.randInt(-6, 7), wc = this.cellAt(wx, wy);
+          if (wc && wc.water && wc.g === 'water') {
+            const fx = wx * 16 + 8, fy = wy * 16 + 10;
+            for (let i = 0; i < 10; i++) this.fx.add({ x: fx + (G.rand() - .5) * 6, y: fy, vx: (G.rand() - .5) * .9, vy: -1.3 - G.rand() * 1.2, ay: .09, life: 30, size: 1.2, color: 'rgba(235,248,255,1)', type: 'circle' });
+            for (let i = 0; i < 2; i++) this.fx.add({ x: fx, y: fy + 2, life: 40 + i * 14, type: 'ring', size: 3 + i * 2, grow: 3, color: 'rgba(255,255,255,.55)', lw: .8 });
+          }
+        }
+      }
       // butterflies flutter over grassy places by day
       if (day && green && G.rand() < .006 && this.parts.list.filter(q => q.bfly).length < 4) {
         const col = G.pick(['#fff4a0', '#ffffff', '#ffb0d0', '#a8d8ff']), bx = cx + G.rand() * G.W, by = cy + G.rand() * G.H;

@@ -112,14 +112,14 @@ def halloffame(v):
 @song('credits')
 def credits(v):
     from s_towns import BRINE_A, BRINE_CH_A
-    from s_field import R1_A
+    from s_field import R1_A, R1_CH_A
     s = Song('credits', bpm=96, title='Solmere — Ending Theme', room=2.4, reverb=1.1, loudness=-16.5)
     s.section('tide', 4, 'Dmaj7#11 | Dmaj7#11 | Bbmaj7#11 | A13sus4 A13')
     s.section('main', 8, MAIN_CHORDS)
     s.section('p1', 1, 'A7sus4 A7')
     s.section('brine', 16, BRINE_CH_A)
     s.section('p2', 1, 'D7sus4 D7')
-    s.section('route', 8, 'Gmaj9 | Em11 | Cmaj9 | D13sus4 D13 | Bm11 | Bbmaj7#11 | Am11 | D13sus4 D7b9')
+    s.section('route', 8, R1_CH_A)
     s.section('p3', 1, 'C7sus4 C7')
     s.section('wren', 8, 'F | Dm7 | Bbmaj7 | C7 | Fmaj7 | Am7 D7 | Gm6 C13 | Fmaj7 A7')
     s.section('finale', 8, 'Dmaj9 | Bm11 | Gmaj13 | A13sus4 A13 | Bbmaj9 | Cmaj9 | Dmaj9 | Dmaj9')

@@ -363,7 +363,8 @@ G.W3 = (function () {
         .replace('#include <begin_vertex>', `#include <begin_vertex>
           { vec4 o = modelMatrix * vec4(0.0, 0.0, 0.0, 1.0); float ph = o.x * .71 + o.z * .43;
             float k = clamp(position.y / uH, 0.0, 1.0); k *= k;
-            float s = sin(uTime * 1.6 + ph) * .55 + sin(uTime * 3.7 + ph * 2.3) * .2 + uWind * (.8 + .4 * sin(uTime * .9 + ph));
+            float gust = 1.0 + 1.1 * max(0.0, sin(uTime * .8 - (o.x * .9 + o.z * .5) * .22));   // gusts rolling across the field
+            float s = (sin(uTime * 1.6 + ph) * .55 + sin(uTime * 3.7 + ph * 2.3) * .2) * gust + uWind * (.8 + .4 * sin(uTime * .9 + ph));
             transformed.x += s * uSway * k; transformed.z += cos(uTime * 1.3 + ph) * uSway * .25 * k; }`);
     };
     mat.customProgramCacheKey = () => 'sway';
@@ -657,7 +658,7 @@ G.W3 = (function () {
       const a = alphaOf(p); if (a <= .01) continue;
       const X = p.x / 16, Z = p.y / 16 + 1.5;
       const kind = p.glow || p.blend === 'lighter' ? 3 : p.type in KIND ? KIND[p.type] : 5, add = kind === 3;
-      pushP(PB[add ? 1 : 0], X, (camY === null ? 0 : camY) + p.h3 + Math.sin(p.t / 40 + p.x) * .15, Z, p.color, a, (p.size || 1) * (kind === 3 ? 6 : kind === 4 ? 5 : 2.6), kind, p.rot + (kind === 4 ? p.x : 0));
+      pushP(PB[add ? 1 : 0], X, (camY === null ? 0 : camY) + p.h3 + Math.sin(p.t / 40 + p.x) * .15, Z, p.color, a, (p.grow ? (p.size || 1) * (1 + p.grow * p.t / p.life) : (p.size || 1)) * (kind === 3 ? 6 : kind === 4 ? 5 : 2.6), kind, p.rot + (kind === 4 ? p.x : 0));
     }
     for (const b of PB) { b.g.setDrawRange(0, b.n); for (const k of ['position', 'pcol', 'pdat']) b.g.attributes[k].needsUpdate = true; }
   }
@@ -809,7 +810,9 @@ G.W3 = (function () {
     const day = indoor ? 1 : h >= 7 && h <= 17 ? 1 : h > 17 && h < 19.5 ? 1 - (h - 17) / 2.5 : h > 5 && h < 7 ? (h - 5) / 2 : 0;
     const dusk = !indoor && ((h > 16.5 && h < 20) || (h > 5 && h < 7.5));
     night = indoor ? 0 : 1 - day;
-    sun.intensity = .35 + 1.45 * day; sun.color.set(dusk ? 0xffb070 : day > .5 ? 0xfff0d8 : 0x9ab0ff);
+    // clouds passing over: the sun dims and returns slowly
+    const cl = indoor ? 1 : .86 + .14 * Math.max(-1, Math.min(1, Math.sin(G.realTime * .13) * 1.6 + Math.sin(G.realTime * .047 + 1.3)));
+    sun.intensity = (.35 + 1.45 * day) * cl; sun.color.set(dusk ? 0xffb070 : day > .5 ? 0xfff0d8 : 0x9ab0ff);
     hemi.intensity = .45 + .55 * day; hemi.color.set(day > .3 ? 0xdfeeff : 0x5a6aa8); hemi.groundColor.set(day > .3 ? 0x4a5a3a : 0x1a1e30);
     const sky = indoor ? 0x08080e : dusk ? 0xe8a88a : day > .3 ? 0x9cc8f0 : 0x0a1030;
     scene.background = new T.Color(sky);

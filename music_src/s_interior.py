@@ -43,27 +43,37 @@ def lab(v):
 
 @song('haven')
 def haven(v):
-    # the Pokémon Center rule (Masuda): simple and instantly identifiable. C, 104, straight; one
-    # 2-bar cell (q q h | h. r) stated four times over maj9 / m11 / 13sus4 colour, the second
-    # half turning through the borrowed Fm6 before closing.
-    s = Song('haven', bpm=104, swing=.5, title='Tamer Haven', room=1.6, loudness=-18.0, key='C')
+    # Fourth pass (the Pokemon Center rule, Masuda: simple and instantly identifiable). C, 112, a
+    # miniature 32-bar song form of 4-bar phrases, A A' B A', played twice (vibes, then flute and glock
+    # with strings). The A cell runs up an arpeggio in 8ths and steps down (e e e e q q), is sequenced
+    # up a step, and lands on a held 5 (half cadence); A' answers home to 1. B turns to IV with a
+    # falling stepwise line through a secondary dominant (A7) and returns on G13sus4.
+    s = Song('haven', bpm=112, swing=.5, title='Tamer Haven', room=1.6, loudness=-18.0, key='C')
     s.no_push = True
-    s.section('A', 8, 'Cmaj9 | Am11 | Dm11 | G13sus4 G13 | Em11 | A13 | Dm11 | G13sus4 G13')
-    s.section('A2', 8, 'Cmaj9 | Am11 | Fmaj9 | Fm6 | Em11 | A13 | Dm11 G13 | Cmaj9')
-    A = 'e5:4 g5:4 d6:2 | c6:2. r:4 | f5:4 a5:4 e6:2 | d6:2. r:4 | g5:4 b5:4 f#6:2 | e6:2. r:4 | f6:4 e6:4 d6:4 c6:4 | d6:2. r:4'
-    A2 = 'e5:4 g5:4 d6:2 | c6:2. r:4 | a5:4 c6:4 e6:2 | ab5:2. r:4 | g5:4 b5:4 d6:2 | c#6:2. r:4 | f6:2 e6:4 d6:4 | c6:2. r:4'
-    ld = s.part('lead', VIBES, rev=.3, layer=[FLUTE]); ld.layer_gain = .55
-    ld.write('A', A, vel=86); ld.write('A2', A2, vel=88)
+    A = 'e5:8 g5:8 c6:8 b5:8 a5:4 g5:4 | a5:8 g5:8 e5:4 c5:2 | f5:8 a5:8 d6:8 c6:8 b5:4 a5:4 | g5:2. r:4'
+    A2 = 'e5:8 g5:8 c6:8 b5:8 a5:4 g5:4 | a5:8 g5:8 e5:4 c5:2 | f5:8 a5:8 d6:8 c6:8 b5:4 d6:4 | c6:2. r:4'
+    B = 'a5:4. g5:8 f5:4 e5:4 | g5:4. f5:8 e5:4 c#5:4 | f5:4. e5:8 d5:4 f5:4 | a5:2 g5:2'
+    CA, CA2, CB = 'Cmaj7 | Am7 | Dm7 | G7sus4 G7', 'Cmaj7 | Am7 | Dm7 G7 | C6', 'Fmaj7 | Em7 A7 | Dm7 | G13sus4 G7'
+    for k, ch in (('A', CA), ('A2', CA2), ('B', CB), ('A3', CA2), ('a', CA), ('a2', CA2), ('b', CB), ('a3', CA2)): s.section(k, 4, ch)
+    s.shape = {'A': -4, 'A2': -3, 'B': -1, 'A3': -2, 'a': 1, 'a2': 2, 'b': 4, 'a3': 3}
+    ld = s.part('lead', VIBES, rev=.3, layer=[FLUTE]); ld.layer_gain = .45
+    fl = s.part('flute', FLUTE, rev=.34, role='lead', pan=-.1); fl.autovib = True
+    for k, m in (('A', A), ('A2', A2), ('B', B), ('A3', A2)): ld.write(k, m, vel=86)
+    for k, m in (('a', A), ('a2', A2), ('b', B), ('a3', A2)): fl.write(k, m, vel=88)
     gl = s.part('bell', GLOCK, rev=.4, role='sparkle', pan=.25)
-    gl.write('A2', A2, transpose=12, vel=44)
+    for k, m in (('a', A), ('a2', A2), ('a3', A2)): gl.write(k, m, transpose=12, vel=42)
+    # the second B: a cello answers in contrary motion, one note per half bar
+    ce = s.part('cello', CELLO, rev=.4, role='counter', pan=-.25); ce.autovib = True
+    ce.write('b', 'c4:2 a3:2 | e4:2 e4:2 | f4:2 d4:2 | c4:2 b3:2', vel=66)
     pn = s.part('piano', BRIGHT, rev=.2, role='comp', pan=-.2)
-    pn.gen('A A2', comp, style='offbeat', lo=55, hi=71, n=3, vel=54)
+    pn.gen('A A2 B A3 a a2 b a3', comp, style='offbeat', lo=55, hi=71, n=3, vel=54)
     st = s.part('strings', STRINGS, rev=.4, role='pad', width=1.2)
-    st.gen('A2', pads, lo=52, hi=70, n=3, vel=48)
+    st.gen('a a2 b a3', pads, lo=52, hi=70, n=3, vel=46)
     bs = s.part('bass', ACBASS, rev=.06)
-    bs.gen('A A2', bass_line, style='two', vel=86, approach=False)
+    bs.gen('A A2 B A3 a a2 b a3', bass_line, style='two', vel=86, approach=False)
     dr = s.drums(kit=KIT_STD, rev=.14, vol=-4)
-    dr.gen('A A2', groove, name='soft', fills=8, fill='snare', vel=62, crash=False)
+    dr.gen('A A2 B A3', groove, name='soft', fills=4, fill='snare', vel=58, crash=False)
+    dr.gen('a a2 b a3', groove, name='pop', fills=4, fill='snare', vel=64, crash=False)
     return s
 
 

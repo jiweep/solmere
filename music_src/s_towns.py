@@ -4,20 +4,23 @@ from motifs import TIDE, CRANE
 
 
 # ============================================================================ BRINEHOLLOW (hometown)
-# STYLE_DP.md, third pass. D major, 78, straight. A sparse tune (about two beats per note) built on
-# one 2-bar cell, "up a third, down to the 9th, then hold": q q h | w. Every long note sits on a
-# chord tone or a written extension; the colour is in the chords (maj9, m11, 13sus4, the borrowed
-# minor iv, a Lake-style run of planing 9th chords in B) and the piano arpeggios under it.
-BRINE_A1 = ('f#5:4 a5:4 e5:2 | f#5:1 | b5:4 d6:4 a5:2 | b5:2. a5:4 |'
-            'c#6:4 e6:4 b5:2 | d#6:1 | g6:2 f#6:4 d6:4 | e6:2. r:4')
-BRINE_A2 = ('f#5:4 a5:4 e5:2 | f#5:1 | b5:4 d6:4 a5:2 | bb5:1 |'
-            'a5:4 c#6:4 b5:2 | a5:1 | g5:2 f#5:4 e5:4 | d5:2. r:4')
-BRINE_A3 = BRINE_A2
-BRINE_B = ('a5:2. b5:4 | c6:1 | e6:2. d6:4 | c6:1 |'
-           'b5:4 d6:4 e6:2 | e6:2. d6:4 | g6:2 f#6:4 d6:4 | e6:2 c#6:2')
-BRINE_CH1 = 'Dmaj9 | Bm11 | Gmaj9 | A13sus4 A13 | F#m11 | B7 | Em9 | A13sus4 A13'
-BRINE_CH2 = 'Dmaj9 | Bm11 | Gmaj9 | Gm6 | F#m11 | Bm9 | Em9 A13 | Dmaj9'
-BRINE_CHB = 'G9 | Bb9 | Fmaj13 | Dm11 | G13 | Bbmaj7#11 | Em11 | A13sus4 A7b9'
+# Fourth pass, from the melody study (STYLE_DP.md "Melody craft, measured"): D major, 88, straight.
+# One 1-bar cell - dotted quarter, a step down, back, then two steps up (q. e q e e) - is sequenced up
+# by fourths (F#, B, E) so the tune climbs to its peak in bar 3 and slides home by step to a half
+# cadence on 2; the answer climbs the same way and resolves C#-D. Passing tones and a resolving
+# appoggiatura carry the line (about 70% chord tones, 90% steps). B broadens the rhythm (q q h) and
+# climbs to the song's high F# over Gmaj9 before the borrowed Gm6. Form: intro tease of the cell on
+# glockenspiel, A (flute), A (with a clarinet guide-tone counterline), B (strings take the tune over
+# block chords), A (flute and glock), and a two-bar tag that sighs B-Bb-A back to the top.
+BRINE_A1 = ('f#5:4. e5:8 f#5:4 g5:8 a5:8 | b5:4. a5:8 b5:4 c#6:8 d6:8 | e6:4. d6:8 c#6:4 b5:8 a5:8 | g5:4. f#5:8 e5:2 |'
+            'f#5:4. e5:8 f#5:4 g5:8 a5:8 | b5:4. a5:8 b5:4 c#6:8 d6:8 | e6:4. d6:8 c#6:4 b5:8 c#6:8 | d6:2. r:4')
+BRINE_A2 = BRINE_A1
+BRINE_A3 = BRINE_A1
+BRINE_B = ('b5:4 a5:4 d6:2 | c#6:4 b5:4 a5:2 | g5:4 f#5:4 b5:2 | a5:4 g5:4 e5:2 |'
+           'b5:4 d6:4 f#6:4 e6:4 | d6:4. e6:8 d6:4 bb5:4 | a5:4 c#6:4 c6:4 b5:4 | g5:4 b5:4 a5:4 g5:4')
+BRINE_CH1 = 'Dmaj9 | Bm7 E9 | Gmaj7#11 | A13sus4 A13 | Dmaj9 | Bm7 E9 | Em9 A13 | Dmaj9'
+BRINE_CH2 = BRINE_CH1
+BRINE_CHB = 'Gmaj9 | F#m7 | Em9 | A13 | Gmaj9 | Gm6 | F#m7 B7b9 | Em9 A7'
 # 16-bar statement reused by the credits medley
 BRINE_A = BRINE_A1 + ' | ' + BRINE_A2
 BRINE_CH_A = BRINE_CH1 + ' | ' + BRINE_CH2
@@ -26,72 +29,82 @@ BRINE_CH_A = BRINE_CH1 + ' | ' + BRINE_CH2
 @song('brinehollow', variants=('day', 'night'))
 def brinehollow(v):
     night = v == 'night'
-    s = Song('brinehollow', bpm=78, swing=.5, title='Brinehollow', room=1.9, key='D')
+    s = Song('brinehollow', bpm=88, swing=.5, title='Brinehollow', room=1.9, key='D')
     s.no_push = True
     s.section('I', 2, 'Gmaj9 | A13sus4 A13', intro=True)
     s.section('A1', 8, BRINE_CH1); s.section('A2', 8, BRINE_CH2); s.section('B', 8, BRINE_CHB); s.section('A3', 8, BRINE_CH2)
-    s.shape = {'A1': -8, 'A2': 0, 'B': 5, 'A3': 2}
+    s.section('T', 2, 'Gmaj9 Gm6 | Dmaj9')
+    s.shape = {'A1': -8, 'A2': -2, 'B': 4, 'A3': 3, 'T': -6}
+    gl = s.part('glock', GLOCK if not night else CELESTA, rev=.5, role='sparkle', pan=.25)
+    gl.write('I', 'b5:4. a5:8 b5:4 c#6:8 d6:8 | e6:4. d6:8 c#6:4 b5:8 a5:8', vel=62)
+    gl.write('A3', BRINE_A3, transpose=12, vel=40)
+    gl.write('T', 'd6:4 b5:4 bb5:4 g5:4 | f#5:1', vel=58)
     ld = s.part('lead', FLUTE if not night else OCARINA, rev=.38, delay=.1); ld.autovib = True
-    ld.write('A1', BRINE_A1, vel=84); ld.write('A2', BRINE_A2, vel=86); ld.write('B', BRINE_B, vel=88); ld.write('A3', BRINE_A3, vel=86)
-    mb = s.part('sparkle', MUSICBOX if not night else CELESTA, rev=.5, role='sparkle', pan=.25)
-    mb.write('A2', BRINE_A2, transpose=12, vel=46)
-    vn = s.part('violin', VIOLIN if not night else VIOLA, rev=.45, role='counter', pan=-.2); vn.autovib = True
-    vn.write('B', BRINE_B, transpose=-12, vel=64)
-    # last A: a slow guide-tone line answering under the tune
+    ld.write('A1', BRINE_A1, vel=84); ld.write('A2', BRINE_A2, vel=88); ld.write('A3', BRINE_A3, vel=90)
+    vn = s.part('violin', VIOLIN if not night else VIOLA, rev=.45, role='lead', pan=-.1, layer=[STRINGS]); vn.autovib = True; vn.layer_gain = .45
+    vn.write('B', BRINE_B, vel=88 if not night else 80)
+    # second A: a clarinet answers under the tune on guide tones (3rds and 7ths), half notes
     ct = s.part('counter', CLARINET if not night else HORN, rev=.4, role='counter', pan=-.25); ct.autovib = True
-    ct.write('A3', 'a4:1 | a4:1 | f#4:1 | g4:1 | e4:1 | f#4:1 | g4:2 g4:2 | f#4:2. r:4', vel=62)
+    ct.write('A2', 'a4:2 c#5:2 | d5:2 d5:2 | b4:2 b4:2 | d5:2 c#5:2 | a4:2 c#5:2 | d5:2 d5:2 | b4:2 c#5:2 | d5:1', vel=62)
     pn = s.part('piano', PIANO if not night else HARP, rev=.32, role='arp', pan=-.1)
-    pn.gen('I A1 A2 B A3', comp, style='arp', arp='updown8', lo=50, hi=70, vel=50)
+    pn.gen('I A1 A2 A3 T', comp, style='arp', arp='updown8', lo=50, hi=70, vel=50)
+    pn.gen('B', comp, style='block', lo=52, hi=70, vel=48)
+    pz = s.part('pizz', PIZZ, rev=.25, role='comp', pan=.3)
+    pz.gen('A2 A3', comp, style='pulse4', lo=55, hi=67, n=2, vel=44)
     bs = s.part('bass', ACBASS, rev=.08)
-    bs.gen('I A1 A2 B A3', bass_line, style='two', vel=82, approach=False)
+    bs.gen('A1 A2 B A3 T', bass_line, style='two', vel=82, approach=False)
     st = s.part('strings', STRINGS if not night else WARMPAD, rev=.45, role='pad', width=1.25)
-    st.gen('A2 B A3', pads, lo=52, hi=72, n=3, vel=50, spread=False)
+    st.gen('A2 A3 T', pads, lo=52, hi=72, n=3, vel=48, spread=False)
+    hn = s.part('hornpad', HORN, rev=.4, role='pad', pan=.2)
+    hn.gen('B', pads, lo=50, hi=64, n=2, vel=46)
     dr = s.drums(kit=KIT_BRUSH, rev=.2, vol=-3)
-    dr.gen('B A3', groove, name='soft', fills=8, fill='brush', vel=58 if not night else 44, crash=False)
+    dr.gen('A2 B A3', groove, name='soft', fills=8, fill='brush', vel=56 if not night else 44, crash=False)
     return s
 
 
 # ============================================================================ FERNWICK
-# STYLE_DP.md third pass: F major, 108, straight and light. A lilting 2-bar cell (q. e h | h h),
-# about two beats per note, over maj9 / m11 chords with a borrowed Bbm6, a bVII13 (Eb13) and a
-# Lydian Dbmaj7#11; B sits a minor third up (Ab) and comes home Db9-C7b9.
-FW_A1 = ('a5:4. g5:8 c6:2 | a5:2 f5:2 | d6:4. c6:8 f6:2 | f6:2 db6:2 |'
-         'c6:4. b5:8 e6:2 | e6:2 c6:2 | bb5:4. a5:8 d6:2 | d6:2. r:4')
-FW_A2 = ('a5:4. g5:8 c6:2 | c6:2 g5:2 | d6:4. c6:8 f6:2 | g6:2 f6:2 |'
-         'e6:4. d6:8 c6:2 | a5:2 c6:2 | bb5:2 a5:4 g5:4 | f5:2. r:4')
-FW_B = ('f5:4 ab5:4 c6:2 | bb5:1 | g5:4 bb5:4 d6:2 | c6:1 |'
-        'db6:4 f6:4 eb6:2 | db6:2 c6:2 | bb5:4 c6:4 eb6:2 | eb6:2 e6:2')
-FW_CH1 = 'Fmaj9 | Dm11 | Bbmaj9 | Bbm6 | Am11 | D9 | Gm11 | C13sus4 C13'
-FW_CH2 = 'Fmaj9 | Eb13 | Bbmaj9 | Dbmaj7#11 | Am11 | D9 | Gm11 C13 | Fmaj9'
+# Fourth pass: a lilting 6/8 (written as 3/4 in eighths, dotted-quarter pulse ~84) in F, the forest
+# town's own metre. The A cell (q e q e: a four-note scale fall, 5-4-3-2) is answered by a neighbour
+# figure and sequenced up a third; the second half darkens through D7b9. B jumps a minor third up to
+# Ab the way Solaceon lifts D to F, broadens to q. q. and peaks on F6 in its fifth bar, then slides
+# Db7-C7 home. A four-bar interlude (the cell alone on oboe over harp) breathes before the last A.
+FW_A = ('c6:4 bb5:8 a5:4 g5:8 | a5:4 g5:8 a5:4. | d6:4 c6:8 bb5:4 a5:8 | bb5:4. g5:4. |'
+        'c6:4 bb5:8 a5:4 g5:8 | f#5:4 g5:8 a5:4. | bb5:4 a5:8 g5:4 e5:8 | f5:4. r:4.')
+FW_B = ('ab5:4. c6:4 bb5:8 | g5:4. eb5:4. | db6:4. c6:4 bb5:8 | c6:4. bb5:4. |'
+        'ab5:4. db6:4 f6:8 | eb6:4 d6:8 c6:4 a5:8 | bb5:4. g5:4 bb5:8 | ab5:4. g5:4.')
+FW_CH = 'Fmaj9 | Am7 | Bbmaj7 | C9sus4 C7 | Fmaj9 | D7b9 | Gm9 C13 | Fmaj7'
+FW_CHB = 'Dbmaj7 | Cm7 | Bbm9 | Eb13 | Dbmaj7 | Cm7 F7b9 | Bbm9 Eb13 | Db7 C7'
 
 
 @song('fernwick', variants=('day', 'night'))
 def fernwick(v):
     night = v == 'night'
-    s = Song('fernwick', bpm=112, swing=.5, title='Fernwick Town', room=1.8, key='F')
+    s = Song('fernwick', bpm=168, bar=3, swing=.5, title='Fernwick Town', room=1.9, key='F')
     s.no_push = True
-    s.section('A1', 8, FW_CH1); s.section('A2', 8, FW_CH2)
-    s.section('B', 8, 'Dbmaj9 | Eb13sus4 Eb13 | Cm11 | Fm11 | Bbm11 | Eb13 | Abmaj9 | Db9 C7b9')
-    s.section('A3', 8, FW_CH2)
-    s.shape = {'A1': -6, 'A2': 0, 'B': 5, 'A3': 2}
-    ld = s.part('lead', RECORDER if not night else VIBES, rev=.34, delay=.1, layer=[GLOCK] if not night else []); ld.autovib = True; ld.layer_gain = .35
-    ld.write('A1', FW_A1, vel=86); ld.write('A2', FW_A2, vel=90); ld.write('A3', FW_A2, vel=90)
-    vn = s.part('violin', VIOLIN if not night else FLUTE, rev=.42, role='lead', pan=-.15); vn.autovib = True
+    s.section('I', 2, 'Bbmaj7 | C9sus4 C7', intro=True)
+    s.section('A1', 8, FW_CH); s.section('A2', 8, FW_CH); s.section('B', 8, FW_CHB)
+    s.section('X', 4, 'Bbmaj7 | Am7 | Gm9 | C9sus4 C7'); s.section('A3', 8, FW_CH)
+    s.sec['B'].key = 'Ab'
+    s.shape = {'A1': -6, 'A2': -1, 'B': 5, 'X': -8, 'A3': 3}
+    ld = s.part('lead', RECORDER if not night else FLUTE, rev=.34, delay=.1, layer=[GLOCK] if not night else []); ld.autovib = True; ld.layer_gain = .3
+    ld.write('A1', FW_A, vel=84); ld.write('A2', FW_A, vel=88); ld.write('A3', FW_A, vel=90)
+    vn = s.part('violin', VIOLIN if not night else VIOLA, rev=.42, role='lead', pan=-.15, layer=[STRINGS]); vn.autovib = True; vn.layer_gain = .4
     vn.write('B', FW_B, vel=88)
-    # the last A: clarinet answers under the tune on guide tones
+    ob = s.part('oboe', OBOE if not night else CLARINET, rev=.45, role='lead', pan=.2); ob.autovib = True
+    ob.write('X', 'c6:4 bb5:8 a5:4 g5:8 | a5:4. r:4. | bb5:4 a5:8 g5:4 f5:8 | g5:4. r:4.', vel=72)
+    # second A: a clarinet line under the tune, one note per bar on the guide tones
     cl = s.part('counter', CLARINET if not night else HORN, rev=.38, role='counter', pan=-.25); cl.autovib = True
-    cl.write('A3', 'e5:1 | db5:1 | d5:1 | c5:1 | c5:1 | c5:1 | bb4:2 bb4:2 | a4:2. r:4', vel=60)
-    mb = s.part('marimba', MARIMBA if not night else HARP, rev=.3, role='arp', pan=.3)
-    mb.gen('A1 A2 B A3', comp, style='arp', arp='updown8', lo=55, hi=74, vel=54)
+    cl.write('A2', 'a4:4. a4:4. | g4:4. g4:4. | f4:4. a4:4. | bb4:4. bb4:4. | a4:4. a4:4. | f#4:4. a4:4. | bb4:4. g4:4. | a4:4. r:4.', vel=58)
+    hp = s.part('harp', HARP if not night else CELESTA, rev=.36, role='arp', pan=.3)
+    hp.gen('I A1 A2 B X A3', comp, style='arp', arp='updown8', lo=53, hi=76, vel=52)
     pz = s.part('pizz', PIZZ, rev=.28, role='comp', pan=-.3)
-    pz.gen('A2 B A3', comp, style='pulse4', lo=53, hi=67, n=2, vel=48)
+    pz.gen('A2 B A3', comp, style='waltz', lo=53, hi=67, n=2, vel=46)
     st = s.part('strings', STRINGS if not night else WARMPAD, rev=.42, role='pad', width=1.2)
-    st.gen('B A3', pads, lo=55, hi=76, n=3, vel=54)
+    st.gen('B X A3', pads, lo=55, hi=76, n=3, vel=50)
     bs = s.part('bass', ACBASS if not night else FRETLESS, rev=.06)
-    bs.gen('A1 A2 B A3', bass_line, style='two', vel=84, approach=False)
-    dr = s.drums(kit=KIT_STD if not night else KIT_BRUSH, rev=.16, vol=-3)
-    dr.gen('A2 B A3', groove, name='soft', fills=8, fill='snare' if not night else 'brush', vel=70 if not night else 54, crash=False,
-           tamb=None if night else '--x---x---x---x-')
+    bs.gen('A1 A2 B X A3', bass_line, style='waltz', vel=82)
+    dr = s.drums(kit=KIT_BRUSH, rev=.2, vol=-3)
+    dr.gen('A2 B A3', groove, name='waltz', fills=8, fill='brush', vel=62 if not night else 50, crash=False, hat_vel=.4)
     return s
 
 

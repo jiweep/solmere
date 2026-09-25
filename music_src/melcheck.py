@@ -4,7 +4,9 @@
   python3 melcheck.py brinehollow route1:night ...
 
 Per melody note (lead/solo/counter parts, after finalize):
-  STRONG  non-chord tone on a strong beat (1 or 3; 1 in 3/4) or held >= 1 beat
+  STRONG  non-chord tone on a strong beat (1 or 3; 1 in 3/4) or held >= 1 beat that does NOT resolve
+          by step to a chord tone (a resolving appoggiatura / suspension is fine: it is the sigh that
+          makes a line sing; Sinnoh tunes are only ~60% chord tones)
   RUB     a semitone (m2 / M7 / m9) against an accompaniment or bass note sounding with it
   LOOSE   weak-beat non-chord tone neither approached nor left by step
   LEAP    leap larger than a fifth not followed by a step back the other way
@@ -45,7 +47,11 @@ def check(sid, variant='day', verbose=True):
             nct = p % 12 not in allowed
             prv = ns[i - 1][2] if i > 0 and abs(ns[i - 1][0] + ns[i - 1][1] - t) < .6 else None
             nxt = ns[i + 1][2] if i + 1 < len(ns) and ns[i + 1][0] - (t + d) < .6 else None
-            if nct and (strong or d >= 1 - 1e-6):
+            def resolves():
+                if nxt is None or not (1 <= abs(nxt - p) <= 2): return False
+                c2, _ = mfw.chord_at_beat(s, ns[i + 1][0] + 1e-4)
+                return c2 is not None and nxt % 12 in set(c2.pcs()) | set(c2.template()) | {c2.bass}
+            if nct and (strong or d >= 1 - 1e-6) and not (resolves() and d <= 1.5 + 1e-6):
                 report.append((name, 'STRONG', where, f'{nm(p)} over {c.sym} ({d:g} beats)'))
             elif nct:
                 step = lambda q: q is not None and 1 <= abs(q - p) <= 2
@@ -57,6 +63,7 @@ def check(sid, variant='day', verbose=True):
                 if ov < .25: continue
                 iv = p - ap   # a melody a major 7th over a chord tone is normal; m2 / m9 against it is not
                 if iv in (1, 13, 25, 37) or -iv in (1, 11, 13, 23):
+                    if nct and d <= 1 + 1e-6 and nxt is not None and 1 <= abs(nxt - p) <= 2 and abs(iv) >= 11: continue   # passing / resolving tension, an octave clear
                     report.append((name, 'RUB', where, f'{nm(p)} vs {an} {nm(ap)} over {c.sym}')); break
             if nxt is not None and prv is not None and abs(p - prv) > 7:
                 back = (nxt - p) * (p - prv) < 0 and abs(nxt - p) <= 2
