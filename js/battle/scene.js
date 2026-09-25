@@ -73,6 +73,7 @@ G.BattleScene = class {
       case 'move': {
         // the commanding trainer strikes their action pose as the move goes off
         const r = e.user || e.ref || e.src; if (r) for (const t of this.trainers) if (t.side === r.s && !t.back) t.act = 40;
+        if (r) this.camFocus(this.slot(r), 1.07, 34);
         if (anims) await G.battleAnim(this, e); else await this.wait(6); return;
       }
       case 'hit': return this.playHit(e);
@@ -114,7 +115,7 @@ G.BattleScene = class {
     const foeTr = e.sides[1 - this.persp].trainers.filter(t => t.name);
     const myTr = e.sides[this.persp].trainers;
     this.trainers = [];
-    foeTr.forEach((t, k) => this.trainers.push({ side: 1 - this.persp, look: t.sprite, x: foeTr.length > 1 ? 322 + k * 34 : 340, y: 149, alpha: 1, off: 0, name: t.name, cls: t.cls }));
+    foeTr.forEach((t, k) => this.trainers.push({ side: 1 - this.persp, look: t.sprite, x: foeTr.length > 1 ? 262 + k * 52 : 292, y: 149, alpha: 1, off: 0, name: t.name, cls: t.cls }));
     myTr.forEach((t, k) => this.trainers.push({ side: this.persp, look: t.sprite, x: myTr.length > 1 ? 40 + k * 60 : 58, y: 232, alpha: 1, off: 0, back: true, name: t.name }));
     this.balls = e.wild ? null : e.sides.map(s => s.trainers.reduce((a, t) => ({ count: a.count + t.count, alive: a.alive + t.alive }), { count: 0, alive: 0 }));
     // slide in
@@ -135,7 +136,7 @@ G.BattleScene = class {
     // the player's back sprite leaves the frame; the opponent steps back behind their mon and stays in view
     for (const t of this.trainers) if (t.side === e.ref.s && t.alpha > 0) {
       if (mine) G.tween(t, { off: -120, alpha: 0 }, 22, G.ease.inQuad);
-      else if (!t.backed) { t.backed = true; t.act = 24; G.tween(t, { off: -24, y: t.y + 8 }, 26, G.ease.outCubic); }
+      else if (!t.backed) { t.backed = true; t.act = 24; const two = this.trainers.filter(q => !q.back).length > 1; G.tween(t, { off: two ? 40 : 54, y: t.y - 6 }, 30, G.ease.outCubic); }
     }
     this.hudShow[e.ref.s] = 1;
     if (e.wild && e.initial) {
@@ -181,6 +182,7 @@ G.BattleScene = class {
     const s = this.slot(e.ref); if (!s) return;
     G.audio && G.audio.sfx(e.eff > 1 ? 'hit_super' : e.eff < 1 ? 'hit_weak' : 'hit');
     if (e.eff > 1 || e.crit) { this.shake = 10; this.punch = { x: s.x, y: s.y - 30, t: 18 }; }
+    this.camFocus(s, e.eff > 1 || e.crit ? 1.1 : 1.07, 30);
     for (let k = 0; k < 4; k++) { s.blink = k % 2 === 0; await this.wait(4); }
     s.blink = false;
   }
@@ -248,8 +250,30 @@ G.BattleScene = class {
     await G.tween(this, { dim: 0 }, 16);
   }
   // ------------------------------------------------------- update/draw
+  // battle camera: pans, dollies in and eases back like the DS's roaming camera; the backdrop moves at
+  // half the rate (parallax), so the field reads as a deep space rather than a flat card
+  camFocus(s, z, frames) { if (!s) return; this.camF = { x: s.x, y: s.y - 30 * (s.sc || 1), z, until: this.t + frames }; }
+  updateCam() {
+    const C = this.cam || (this.cam = { x: 0, y: 0, z: 1, cx: G.W / 2, cy: G.H * .55 });
+    let tx, ty, tz, tcx, tcy;
+    const F = this.camF && this.t < this.camF.until ? this.camF : null;
+    if (F) { tcx = F.x; tcy = F.y; tz = F.z; tx = (G.W / 2 - F.x) * .18; ty = (G.H * .5 - F.y) * .12; }
+    else {
+      const t = this.t, calm = this.menu ? .5 : 1;
+      tcx = G.W / 2; tcy = G.H * .55; tz = 1.025 + Math.sin(t / 330) * .015 * calm;
+      tx = Math.sin(t / 260) * 7 * calm; ty = Math.sin(t / 410) * 2 * calm;
+    }
+    const k = F ? .09 : .035;
+    C.x += (tx - C.x) * k; C.y += (ty - C.y) * k; C.z += (tz - C.z) * k; C.cx += (tcx - C.cx) * k; C.cy += (tcy - C.cy) * k;
+  }
+  applyCam(c, depth) {
+    const C = this.cam; if (!C) return;
+    const z = 1 + (C.z - 1) * depth;
+    c.translate(C.cx, C.cy); c.scale(z, z); c.translate(-C.cx + C.x * depth, -C.cy + C.y * depth);
+  }
   update(top) {
     this.t++; this.bgT++;
+    this.updateCam();
     this.parts.update(); this.fxp.update();
     for (const k in this.slots) { const s = this.slots[k]; if (this.t % 14 === 0) s.frame = (s.frame + 1) % 4; if (s.shield > 0) s.shield--; }
     for (const o of this.overlays) o.t++;
@@ -271,6 +295,7 @@ G.BattleScene = class {
     if (zi > .002) { const z = 1 + .18 * zi, cx = G.W / 2 + 70 * zi, cy = G.H * .45; b.translate(cx, cy); b.scale(z, z); b.translate(-cx, -cy); }
     // impact punch: a quick push toward the target on big hits
     if (this.punch && this.punch.t > 0) { const k = Math.sin(this.punch.t / 18 * Math.PI) * .05, px = this.punch.x, py = this.punch.y; b.translate(px, py); b.scale(1 + k, 1 + k); b.translate(-px, -py); this.punch.t--; }
+    this.applyCam(b, 1);
     if (!this._hd) b.drawImage(G.battleBG(this.env, this.o.phase || 'day'), 0, 0);
     this.drawAmbience(b);
     // platforms
@@ -282,7 +307,7 @@ G.BattleScene = class {
       const img = G.battlePlatform(this.env, w, mine);
       b.drawImage(img, Math.round(x - img.width / 2 + (mine ? ioff : -ioff)), Math.round(y - img.height / 2 + 2));
     };
-    plat(282, 106, 150, false); plat(100, 160, 196, true);
+    { const F = this.pos(1 - this.persp, 0, 1), M = this.pos(this.persp, 0, 1); plat(F.x, F.y - 2, 150, false); plat(M.x, M.y - 2, 196, true); }
     // hazards (rocks float near foe platform)
     for (const side of [0, 1]) {
       const h = this.hazards[side]; const mine = side === this.persp; const bx = mine ? 96 : 282, by = mine ? 166 : 106;
@@ -367,10 +392,15 @@ G.BattleScene = class {
     const zi = G.ease.inOutQuad ? G.ease.inOutQuad(Math.min(1, this.intro)) : this.intro;
     if (zi > .002) { const z = 1 + .18 * zi, cx = G.W / 2 + 70 * zi, cy = G.H * .45; c.translate(cx, cy); c.scale(z, z); c.translate(-cx, -cy); }
     if (this.punch && this.punch.t > 0) { const k = Math.sin(this.punch.t / 18 * Math.PI) * .05, px = this.punch.x, py = this.punch.y; c.translate(px, py); c.scale(1 + k, 1 + k); c.translate(-px, -py); }
-    // a slow drift keeps the scene alive
-    const dx = Math.sin(this.t / 700) * 6, dy = Math.sin(this.t / 900) * 2, sc = 1.05;
+    // the backdrop sits deeper than the battlefield: it follows the camera at half the rate (parallax),
+    // and softens a touch when the camera closes in on a mon (a shallow depth of field)
+    this.applyCam(c, .5);
+    const dx = Math.sin(this.t / 700) * 6, dy = Math.sin(this.t / 900) * 2, sc = 1.08;
     c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+    const blur = this.cam ? Math.max(0, (this.cam.z - 1.04) * 30) : 0;
+    if (blur > .15) c.filter = `blur(${(blur * S / 3).toFixed(2)}px)`;
     c.drawImage(hd, -G.W * (sc - 1) / 2 + dx, -G.H * (sc - 1) / 2 + dy, G.W * sc, G.H * sc);
+    c.filter = 'none';
     c.restore(); c.imageSmoothingEnabled = false;
   }
   drawAmbience(b) {
@@ -442,14 +472,14 @@ G.BattleScene = class {
     if (this.balls && this.intro < .5 && Object.keys(this.slots).length < 2 * n) {
       for (const side of [0, 1]) {
         const mine = side === this.persp, B = this.balls[side]; if (!B) continue;
-        const x0 = mine ? 250 : 12, y0 = mine ? 150 : 44;
+        const x0 = mine ? 12 : G.W - 70, y0 = mine ? 38 : 32;
         for (let i = 0; i < Math.min(6, B.count); i++) U.img(G.tiles.itemIcon('orb', i < B.alive ? '#e8484a' : '#606070'), x0 + i * 10, y0, { scale: .6 });
       }
     }
     // screens/field indicators
     for (const side of [0, 1]) {
       const sc = this.screens[side], mine = side === this.persp; let i = 0;
-      for (const kk of ['reflect', 'lightscreen', 'veil', 'tailwind']) if (sc[kk]) { U.panel(mine ? 196 + i * 16 : 132 + i * 16, mine ? 150 : 10, 14, 8, 'glass', { r: 2, noShadow: true }); U.text({ reflect: 'RF', lightscreen: 'LS', veil: 'AV', tailwind: 'TW' }[kk], (mine ? 196 : 132) + i * 16 + 7, (mine ? 150 : 10) + 1.4, { size: 4.6, align: 'center', color: '#bff', weight: 800 }); i++; }
+      for (const kk of ['reflect', 'lightscreen', 'veil', 'tailwind']) if (sc[kk]) { const sx = mine ? 112 + i * 16 : G.W - 126 - i * 16, sy = 10; U.panel(sx, sy, 14, 8, 'glass', { r: 2, noShadow: true }); U.text({ reflect: 'RF', lightscreen: 'LS', veil: 'AV', tailwind: 'TW' }[kk], sx + 7, sy + 1.4, { size: 4.6, align: 'center', color: '#bff', weight: 800 }); i++; }
     }
     // ability popups
     for (const p of this.popups) {
@@ -469,11 +499,11 @@ G.BattleScene = class {
     const U = G.ui, mine = s.side === this.persp, i = s.slot;
     const slide = this.hudShow[s.side] ? 0 : 1;
     const w = 100, h = mine ? 25 : 18;
-    let x = mine ? G.W - w - 8 : 8, y = mine ? (n === 1 ? 8 : (i === 0 ? 6 : 34)) : (n === 1 ? 8 : (i === 0 ? 6 : 28));
-    x += (mine ? 1 : -1) * slide * 150;
+    let x = mine ? 8 : G.W - w - 8, y = mine ? (n === 1 ? 8 : (i === 0 ? 6 : 34)) : (n === 1 ? 8 : (i === 0 ? 6 : 28));
+    x += (mine ? -1 : 1) * slide * 150;
     const acc = mine ? '#3b82e0' : '#ff3b4e';
     U.c.globalAlpha = .55; U.para(x - 1, y + 2, w + 2, h, 5, '#000000'); U.c.globalAlpha = .86; U.para(x, y, w, h, 5, '#0e1019'); U.c.globalAlpha = 1;
-    U.para(mine ? x + w - 2.5 : x, y, 2.5, h, 5, acc);
+    U.para(mine ? x : x + w - 2.5, y, 2.5, h, 5, acc);
     const name = s.name;
     U.text(name, x + 8, y + 2, { size: 6.3, weight: 800, color: '#ffffff', shadow: false });
     const nw = U.measure(name, 6.3, 800);
@@ -495,7 +525,7 @@ G.BattleScene = class {
   findMon(uid) { return G.save ? G.party.allMons().find(m => m.uid === uid) : null; }
   drawLevelPanel() {
     const U = G.ui, L = this.levelPanel;
-    const x = G.W - 110, y = 18, w = 104, h = 86;
+    const x = 6, y = 38, w = 104, h = 86;
     U.panel(x, y, w, h, 'light');
     const rows = [['hp', 'Max HP'], ['atk', 'Attack'], ['def', 'Defense'], ['spa', 'Sp. Atk'], ['spd', 'Sp. Def'], ['spe', 'Speed']];
     rows.forEach(([k, lbl], i) => {

@@ -53,7 +53,7 @@ G.input = (function () {
     });
     window.addEventListener('keyup', e => { const b = keymap[e.code]; if (b) { kbState[b] = false; e.preventDefault(); } });
     window.addEventListener('blur', () => { for (const k in kbState) kbState[k] = false; });
-    window.addEventListener('mousedown', () => G.audio && G.audio.unlock());
+    for (const ev of ['mousedown', 'pointerdown', 'touchstart']) window.addEventListener(ev, () => G.audio && G.audio.unlock(), { passive: true });
     // ---- mouse: position in game units; clicks drive UI hotspots, or confirm/back as a fallback
     const toGame = e => {
       const cv = G.gfx && G.gfx.canvas; if (!cv) return null;
@@ -74,6 +74,10 @@ G.input = (function () {
   I.tap = function (b) { tapQ[b] = true; };
   // hotspots registered while drawing (G.ui.hot); only the top scene's respond
   function dispatchMouse() {
+    if (M.click && G.errors && G.errors.length && G.ERR_BOX) {   // a click on the error box closes it
+      const R = G.ERR_BOX;
+      if (M.x >= R.x && M.x < R.x + R.w && M.y >= R.y && M.y < R.y + R.h) { G.dismissErrors(); M.click = false; }
+    }
     const hs = (G.ui && G.ui._hot) || [], top = G.top && G.top();
     const mine = hs.filter(h => h.scene === top);
     let hit = null;

@@ -708,10 +708,11 @@ G.WorldScene = class {
           const y0 = p0.py - 60 - G.rand() * 80, dir = G.rand() < .5 ? 1 : -1, x0 = p0.px - dir * 260;
           for (let i = 0; i < 5 + G.randInt(0, 4); i++) P.add({ x: x0 - dir * (i % 3) * 14 - dir * i * 6, y: y0 + (i % 2 ? 10 : -6) + i * 4, h3: 5.5 + (i % 3) * .4, vx: dir * 1.3, vy: -.05, life: 480, type: 'bfly', size: 2.4, color: '#2c2a36', rot: i });
         }
-        if (this.frame % 34 === 0) for (const bo of m.buildings) {
-          if (!['house', 'haven', 'mart'].includes(bo.kind) || Math.abs(bo.x - p0.x) > 16 || Math.abs(bo.y - p0.y) > 12) continue;
-          P.add({ x: (bo.x + bo.w * .72) * 16, y: (bo.y + bo.h * .5) * 16, h3: 3.1 + bo.h * .12, vx: 0, vy: 0, life: 170, size: 2.4, grow: 2.2, color: 'rgba(214,214,224,1)', alpha: .32, fadeIn: 25, type: 'circle',
-            upd: p => { p.h3 += .012; p.vx = -.1 - G.wind(this.frame) * .35; } });
+        // smoke curls up out of each real 3D chimney
+        if (this.frame % 30 === 0 && G.W3 && G.W3.chimneys) for (const ch of G.W3.chimneys()) {
+          if (Math.abs(ch.x - p0.x) > 16 || Math.abs(ch.z - p0.y) > 12) continue;
+          P.add({ x: ch.x * 16, y: ch.z * 16, abs: { y: ch.y, z: ch.z }, h3: 0, vx: 0, vy: 0, life: 170, size: 1.6, grow: 2.6, color: 'rgba(220,220,228,1)', alpha: .36, fadeIn: 18, type: 'circle',
+            upd: p => { p.h3 += .014; p.vx = -.08 - G.wind(this.frame) * .35; p.vy = 0; } });
         }
         // hot springs steam
         if (m.def.hotspring && this.frame % 4 === 0) {
@@ -726,7 +727,7 @@ G.WorldScene = class {
           for (const c of m._fountains) {
             if (Math.abs(c.x - p0.x) > 12 || Math.abs(c.y - p0.y) > 9) continue;
             const a = G.rand() * Math.PI * 2, sp = .35 + G.rand() * .35;
-            this.fx.add({ x: c.x * 16 + 8, y: c.y * 16 + 8 - 27, z0: c.y * 16 + 8, vx: Math.cos(a) * sp * 1.4, vy: -.9 - G.rand() * .5, ay: .06, life: 40, size: 1.1, color: 'rgba(210,236,255,1)', alpha: .85, type: 'circle' });
+            this.fx.add({ x: c.x * 16 + 8, y: c.y * 16 + 8 - 30, z0: c.y * 16 + 8, vx: Math.cos(a) * sp * .8, vy: -.7 - G.rand() * .4, ay: .05, life: 34, size: 1, color: 'rgba(220,240,255,1)', alpha: .8, type: 'circle' });
             if (this.frame % 30 === 0) this.fx.add({ x: c.x * 16 + 8, y: c.y * 16 + 11, life: 40, type: 'ring', size: 3, grow: 1.6, color: 'rgba(255,255,255,.5)', lw: .8 });
           }
         }

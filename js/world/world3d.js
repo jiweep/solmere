@@ -699,22 +699,72 @@ G.W3 = (function () {
   }
 
   // ------------------------------------------------------------- fountain
-  // a stone basin two tiles across with a moulded rim, live water, a fluted column and an upper bowl
-  // (the spray itself is particles from the overworld)
+  // an octagonal limestone basin with a moulded rim, a fluted pedestal carrying two bowls, and water that
+  // actually falls: each bowl overflows in a thin animated curtain that lands in a ring of foam
+  let fountainKit = null;
+  function fountainTex() {
+    const c = G.makeCanvas(32, 32), x = c.getContext('2d'), rng = new G.RNG(71);
+    x.fillStyle = '#cfc6b2'; x.fillRect(0, 0, 32, 32);
+    for (let r = 0; r < 4; r++) { const off = r % 2 ? 8 : 0; for (let k = -1; k < 3; k++) { const bx = k * 16 + off; const v = 196 + rng.int(-14, 14); x.fillStyle = `rgb(${v + 10},${v},${v - 18})`; x.fillRect(bx + 1, r * 8 + 1, 14, 6); } x.fillStyle = '#9a917e'; x.fillRect(0, r * 8, 32, 1); }
+    for (let i = 0; i < 40; i++) { x.fillStyle = `rgba(80,70,50,${.08 + rng.next() * .1})`; x.fillRect(rng.int(0, 31), rng.int(0, 31), 1, 1); }
+    const t = texPx(c); t.wrapS = t.wrapT = T.RepeatWrapping; return t;
+  }
+  function curtainMaterial() {
+    return new T.ShaderMaterial({
+      uniforms: { uTime: U3.uTime }, transparent: true, depthWrite: false, side: T.DoubleSide,
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: `uniform float uTime; varying vec2 vUv;
+        float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+        void main(){
+          float x = floor(vUv.x * 64.0), band = h(vec2(x, 3.0));
+          float flow = fract(vUv.y * 3.0 + uTime * (1.4 + band * .8) + band);
+          float streak = smoothstep(.0, .25, flow) * (1.0 - smoothstep(.55, 1.0, flow));
+          float a = (.35 + .45 * streak) * smoothstep(0.0, .15, vUv.y) * (0.6 + 0.4 * band);
+          vec3 col = mix(vec3(.62, .82, .96), vec3(1.0), streak * .7);
+          gl_FragColor = vec4(col, a * .8);
+        }` });
+  }
+  function foamMaterial() {
+    return new T.ShaderMaterial({
+      uniforms: { uTime: U3.uTime }, transparent: true, depthWrite: false,
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: `uniform float uTime; varying vec2 vUv;
+        void main(){ vec2 p = vUv - .5; float r = length(p) * 2.0, a = atan(p.y, p.x);
+          float ring = smoothstep(.62, .78, r) * (1.0 - smoothstep(.86, 1.0, r));
+          float n = .5 + .5 * sin(a * 23.0 + uTime * 5.0) * sin(a * 7.0 - uTime * 3.0);
+          gl_FragColor = vec4(vec3(1.0), ring * (.35 + .5 * n)); }` });
+  }
   function fountainModel(x, y, z) {
-    const g = new T.Group(), st = new T.MeshLambertMaterial({ color: 0xc8c2b4 }), stD = new T.MeshLambertMaterial({ color: 0x9a9486 });
-    const add = (geo, mat, py) => { const m = new T.Mesh(geo, mat); m.position.y = py; m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
-    add(new T.CylinderGeometry(.8, .86, .34, 20), stD, .17);
-    add(new T.TorusGeometry(.76, .07, 6, 24), st, .36).rotation.x = Math.PI / 2;
-    const bed = new T.Mesh(new T.CircleGeometry(.72, 24), new T.MeshLambertMaterial({ color: 0x2e6aa8 })); bed.rotation.x = -Math.PI / 2; bed.position.y = .27; g.add(bed);
-    const w = new T.Mesh(new T.CircleGeometry(.72, 24), waterMaterial()); w.rotation.x = -Math.PI / 2; w.position.y = .3; w.renderOrder = 1; g.add(w);
-    add(new T.CylinderGeometry(.14, .2, 1.0, 10), st, .75);
-    add(new T.CylinderGeometry(.42, .16, .18, 14), st, 1.28);
-    const bed2 = new T.Mesh(new T.CircleGeometry(.36, 16), new T.MeshLambertMaterial({ color: 0x3a78b8 })); bed2.rotation.x = -Math.PI / 2; bed2.position.y = 1.34; g.add(bed2);
-    const w2 = new T.Mesh(new T.CircleGeometry(.36, 16), waterMaterial()); w2.rotation.x = -Math.PI / 2; w2.position.y = 1.36; w2.renderOrder = 1; g.add(w2);
-    add(new T.CylinderGeometry(.05, .08, .35, 8), st, 1.5);
-    add(new T.SphereGeometry(.09, 8, 6), st, 1.7);
-    g.position.set(x, y, z);
+    if (!fountainKit) {
+      const t = fountainTex();
+      fountainKit = { st: new T.MeshLambertMaterial({ map: t }), stD: new T.MeshLambertMaterial({ map: t, color: 0xb0a898 }), bed: new T.MeshLambertMaterial({ color: 0x3a6e9e }), curtain: curtainMaterial(), foam: foamMaterial() };
+    }
+    const K = fountainKit, g = new T.Group();
+    const add = (geo, mat, py, cast = true) => { const m = new T.Mesh(geo, mat); m.position.y = py; m.castShadow = cast; m.receiveShadow = true; g.add(m); return m; };
+    // basin: an octagonal wall, a wider rim and the water inside
+    const oct = (r0, r1, h) => new T.CylinderGeometry(r1, r0, h, 8, 1, false, Math.PI / 8);
+    add(oct(1.02, 1.0, .36), K.stD, .18);
+    add(oct(1.1, 1.1, .1), K.st, .41);
+    const inner = new T.Mesh(oct(.92, .92, .5), K.stD); inner.position.y = .2; inner.scale.set(-1, 1, 1); g.add(inner);
+    const bed = new T.Mesh(new T.CircleGeometry(.92, 8, Math.PI / 8), K.bed); bed.rotation.x = -Math.PI / 2; bed.position.y = .12; g.add(bed);
+    const w = new T.Mesh(new T.CircleGeometry(.92, 8, Math.PI / 8), waterMaterial()); w.rotation.x = -Math.PI / 2; w.position.y = .33; w.renderOrder = 1; g.add(w);
+    // pedestal and two bowls turned on a lathe
+    add(oct(.24, .2, .12), K.st, .38);
+    add(new T.CylinderGeometry(.12, .16, .72, 12), K.st, .78);
+    const bowl = (r, yb, h) => {
+      const pr = [new T.Vector2(.08, 0), new T.Vector2(r * .45, h * .15), new T.Vector2(r * .85, h * .55), new T.Vector2(r, h), new T.Vector2(r * .92, h * 1.05), new T.Vector2(r * .85, h * .7), new T.Vector2(.05, h * .55)];
+      const m = add(new T.LatheGeometry(pr, 16), K.st, yb); m.material = K.st;
+      const wa = new T.Mesh(new T.CircleGeometry(r * .86, 16), waterMaterial()); wa.rotation.x = -Math.PI / 2; wa.position.y = yb + h * .9; wa.renderOrder = 1; g.add(wa);
+      return m;
+    };
+    bowl(.62, 1.12, .2); add(new T.CylinderGeometry(.07, .09, .36, 10), K.st, 1.48); bowl(.3, 1.64, .14);
+    add(new T.SphereGeometry(.07, 8, 6), K.st, 1.86);
+    // falling curtains (open cylinders) and foam rings where they land
+    const curtain = (rTop, rBot, yTop, yBot) => { const m = new T.Mesh(new T.CylinderGeometry(rTop, rBot, yTop - yBot, 24, 1, true), K.curtain); m.position.y = (yTop + yBot) / 2; m.renderOrder = 2; g.add(m); };
+    curtain(.62, .7, 1.3, .34); curtain(.3, .36, 1.8, 1.3);
+    const ring = (r, yy) => { const m = new T.Mesh(new T.PlaneGeometry(r * 2.4, r * 2.4), K.foam); m.rotation.x = -Math.PI / 2; m.position.y = yy; m.renderOrder = 3; g.add(m); };
+    ring(.72, .345); ring(.4, 1.315);
+    g.position.set(x, y, z); g.scale.setScalar(1.2);
     return g;
   }
 
@@ -752,8 +802,8 @@ G.W3 = (function () {
   // ------------------------------------------------------------- buildings
   // a box body plus a pitched roof, textured by cutting the building's art into facade and roof
   const SIDES = new Set();   // building side walls: lifted out of the black by an emissive fill that follows daylight
-  const WALL = { house: .44, haven: .48, mart: .48, lab: .46, gym: .5 };
-  const FLAT_ROOF = new Set(['lab']);
+  const WALL = { house: .44, haven: .48, mart: .48, lab: .46, gym: .5, tower: .78 };
+  const FLAT_ROOF = new Set(['lab', 'tower']);
   function buildBuildings(map, hv, group) {
     const list = map.buildings.map(b => b);
     for (const cn of map.conns) { const nm = cn.map; if (nm) for (const b of nm.buildings) list.push({ ...b, x: b.x + cn.ox, y: b.y + cn.oy }); }
@@ -761,14 +811,17 @@ G.W3 = (function () {
       const bi = G.tiles.building(b.kind, b.w, b.h, { roof: b.roof, door: b.door, accent: b.accent, label: b.label });
       const img = bi.img, ax = bi.atlas ? G.bldAlign(b) : 0;
       const baseY = hv.at(b.x + b.w / 2, Math.min(map.h - .01, b.y + b.h - .5));
-      const x0 = b.x + ax / 16, x1 = x0 + b.w, zF = b.y + b.h, zB = b.y + .12;
+      const x0 = b.x + ax / 16, x1 = x0 + b.w, zF = b.y + b.h;
       const g = new T.Group(); group.add(g);
-      if (b.kind === 'tower' || b.kind === 'lighthouse') {
-        // tall landmarks: stand the art up as a thick cut-out with side walls
-        const m = billboard(img, { lean: 0 }); m.position.set(x0 + b.w / 2, baseY, zF - .05); g.add(m);
-        continue;
-      }
+      if (b.kind === 'lighthouse') { g.add(latheLandmark(img, x0 + b.w / 2, baseY, zF - img.width / 32)); continue; }
+      if (b.kind === 'tower') { g.add(stackLandmark(img, x0, baseY, zF, Math.min(b.h - .2, 1.5))); continue; }
       const f = WALL[b.kind] || .45, wallPx = Math.round(img.height * f), roofPx = img.height - wallPx;
+      // Sized to its sprite: seen from the camera the building covers exactly the screen area its art
+      // would. The front wall stands wallPx tall in art pixels (foreshortened walls: x tan(pitch)); the
+      // roof's depth equals the roof art's height in tiles and its pitch just hides the back slope, so the
+      // ridge is the top of the silhouette and nothing rises above the sprite.
+      const TANP = Math.tan(PITCH_CAM);
+      const zB = zF - Math.max(1, Math.min(b.h - .12, roofPx / 16));
       const facade = G.makeCanvas(img.width, wallPx); facade.getContext('2d').drawImage(img, 0, roofPx, img.width, wallPx, 0, 0, img.width, wallPx);
       const roof = G.makeCanvas(img.width, roofPx); roof.getContext('2d').drawImage(img, 0, 0, img.width, roofPx, 0, 0, img.width, roofPx);
       // side walls: the facade's typical wall colour (the most common light tone, not the average of
@@ -805,44 +858,169 @@ G.W3 = (function () {
       const rt = tex(rside); rt.wrapS = rt.wrapT = T.RepeatWrapping; const mRoofEnd = new T.MeshLambertMaterial({ map: rt, emissive: 0xffffff }); mRoofEnd.emissiveMap = mRoofEnd.map; SIDES.add(mRoofEnd);
       // walls stand taller than the art draws them (a house is two to three people tall), the facade
       // stretched to fit; the art's transparent margins are filled with its own colours so no face is holey
-      const KW = 1.05, wallH = Math.min(2.7, wallPx / 16 * KW), depth = zF - zB;
+      const wallH = wallPx / 16 * TANP, depth = zF - zB;
       const solid = (cv, col) => { const o = G.makeCanvas(cv.width, cv.height), c2 = o.getContext('2d'); c2.fillStyle = col; c2.fillRect(0, 0, o.width, o.height); c2.drawImage(cv, 0, 0); return o; };
       const roofAvg = (() => { let r = 0, gg = 0, bb = 0, n = 0; const d = roof.getContext('2d').getImageData(0, 0, roof.width, roof.height).data; for (let i = 0; i < d.length; i += 16) if (d[i + 3] > 200) { r += d[i]; gg += d[i + 1]; bb += d[i + 2]; n++; } return n ? [r / n, gg / n, bb / n] : [150, 70, 60]; })();
+      const DOOR = { house: [14, 20, 'swing'], haven: [22, 18, 'slide'], mart: [22, 18, 'slide'], gym: [20, 22, 'swing2'], lab: [18, 16, 'slide'], tower: [16, 18, 'slide'] }[b.kind];
+      let doorLeaf = null;
+      if (DOOR && b.door !== undefined) {
+        const [dw, dh] = DOOR, fx = Math.round(facade.width / 2 - dw / 2), fy = Math.max(0, facade.height - dh - 2);
+        doorLeaf = G.makeCanvas(dw, dh); doorLeaf.getContext('2d').drawImage(facade, fx, fy, dw, dh, 0, 0, dw, dh);
+        const fc = facade.getContext('2d'), gr = fc.createLinearGradient(0, fy, 0, fy + dh);
+        gr.addColorStop(0, '#120c0a'); gr.addColorStop(.7, '#2a1c14'); gr.addColorStop(1, '#5a3e26');
+        fc.fillStyle = gr; fc.fillRect(fx, fy, dw, dh);
+        doorLeaf.fx = fx; doorLeaf.fy = fy;
+      }
       const mFac = new T.MeshLambertMaterial({ map: tex(solid(facade, rgbS(wallCol, .9))) });
       const mSide = new T.MeshLambertMaterial({ map: tex(side), emissive: 0xffffff, emissiveIntensity: .0 }); mSide.emissiveMap = mSide.map; SIDES.add(mSide);
-      const mRoof = new T.MeshLambertMaterial({ map: tex(solid(roof, rgbS(roofAvg, .9))), side: T.DoubleSide });
+      // the roof is cut along the art's own outline (no filled corners above the roofline)
+      const roofT = tex(roof), mRoof = new T.MeshLambertMaterial({ map: roofT, side: T.DoubleSide, alphaTest: .5 });
+      mRoof.userData = { depth: new T.MeshDepthMaterial({ depthPacking: T.RGBADepthPacking, map: roofT, alphaTest: .5 }) };
       const wt2 = tex(wside); wt2.wrapS = T.RepeatWrapping; wt2.repeat.set(Math.max(1, Math.round(depth)), 1);
       const mWall = new T.MeshLambertMaterial({ map: wt2, emissive: 0xffffff }); mWall.emissiveMap = wt2; SIDES.add(mWall);
       const body = new T.Mesh(new T.BoxGeometry(b.w - .1, wallH, depth), [mWall, mWall, mSide, mSide, mFac, mSide]);
       body.position.set(x0 + b.w / 2, baseY + wallH / 2, zB + depth / 2); body.castShadow = body.receiveShadow = true; g.add(body);
       if (FLAT_ROOF.has(b.kind)) {
         // modern flat roof: a shallow slab carrying the roof art on top, with a lit parapet edge
-        const slab = new T.Mesh(new T.BoxGeometry(b.w + .1, .32, depth + .12), [mSide, mSide, mRoof, mSide, mSide, mSide]);
-        slab.position.set(x0 + b.w / 2, baseY + wallH + .16, zB + depth / 2); slab.castShadow = slab.receiveShadow = true; g.add(slab);
+        const slab = new T.Mesh(new T.BoxGeometry(b.w + .06, .14, depth + .06), [mSide, mSide, mRoof, mSide, mSide, mSide]);
+        slab.position.set(x0 + b.w / 2, baseY + wallH + .07, zB + depth / 2); slab.castShadow = slab.receiveShadow = true; g.add(slab);
+        if (doorLeaf) addDoor(g, b, doorLeaf, DOOR[2], x0, baseY, zF, wallH, wallPx, facade.width, trimCol, rgbS);
         continue;
       }
       // a proper gable roof: two slopes meeting at a ridge along the middle of the footprint, closed at
       // both ends by triangular gable walls, so nothing stands proud of the house from any side. The roof
       // art is laid across both slopes in proportion to how tall each looks from the camera (the back
       // slope is mostly hidden, so the art's top sliver lands there and the ridge falls where it's drawn).
-      const sp = Math.sin(PITCH_CAM), cp = Math.cos(PITCH_CAM), half = depth / 2, R = Math.min(half * .95, 2.2);
+      const sp = Math.sin(PITCH_CAM), cp = Math.cos(PITCH_CAM), half = depth / 2, R = Math.max(.3, half * TANP * 1.04);
       const ov = .16, X0 = x0 + .05 - ov, X1 = x1 - .05 + ov, Y0 = baseY + wallH, YR = Y0 + R, zM = zB + half, ZF = zF + ov, ZB = zB - ov;
       const hF = half * sp + R * cp, hB = Math.max(0, half * sp - R * cp), vr = hF / (hF + hB);
       const quad = (P, U, mat, shadow = true) => {
         const g2 = new T.BufferGeometry(); g2.setAttribute('position', new T.Float32BufferAttribute(P, 3)); g2.setAttribute('uv', new T.Float32BufferAttribute(U, 2));
         g2.setIndex(P.length === 12 ? [0, 2, 1, 1, 2, 3] : [0, 1, 2]); g2.computeVertexNormals();
-        const m = new T.Mesh(g2, mat); m.castShadow = shadow; m.receiveShadow = true; g.add(m); return m;
+        const m = new T.Mesh(g2, mat); m.castShadow = shadow; m.receiveShadow = true; if (mat.userData && mat.userData.depth) m.customDepthMaterial = mat.userData.depth; g.add(m); return m;
       };
       const dropF = ov * R / half, dropB = ov * R / half;   // eaves continue the slope past the walls
       quad([X0, Y0 - dropF, ZF, X1, Y0 - dropF, ZF, X0, YR, zM, X1, YR, zM], [0, 0, 1, 0, 0, vr, 1, vr], mRoof);   // front slope
       quad([X0, YR, zM, X1, YR, zM, X0, Y0 - dropB, ZB, X1, Y0 - dropB, ZB], [0, vr, 1, vr, 0, 1, 1, 1], mRoof);   // back slope
-      // ridge cap
-      const cap = new T.Mesh(new T.BoxGeometry(X1 - X0, .1, .16), new T.MeshLambertMaterial({ color: new T.Color(`rgb(${roofAvg[0] * .55 | 0},${roofAvg[1] * .55 | 0},${roofAvg[2] * .55 | 0})`) }));
-      cap.position.set((X0 + X1) / 2, YR + .02, zM); cap.castShadow = true; g.add(cap);
       // gable ends: wall-coloured triangles closing the roof at both sides
       const gx0 = x0 + .05, gx1 = x1 - .05, rv = R;
       quad([gx0, Y0, zF, gx0, YR, zM, gx0, Y0, zB], [0, 0, .5, rv / wallH, 1, 0], mWall);
       quad([gx1, Y0, zF, gx1, Y0, zB, gx1, YR, zM], [0, 0, 1, 0, .5, rv / wallH], mWall);
+      if (doorLeaf) addDoor(g, b, doorLeaf, DOOR[2], x0, baseY, zF, wallH, wallPx, facade.width, trimCol, rgbS);
+      // a real chimney where the art draws one (a stone-grey block at the top of the roof art); smoke rises from it
+      if (b.kind === 'house') {
+        const d = roof.getContext('2d').getImageData(0, 0, roof.width, Math.max(1, Math.round(roof.height * .5))).data;
+        let sx = 0, n = 0;
+        for (let i = 0; i < d.length; i += 4) {
+          if (d[i + 3] < 200) continue;
+          const r = d[i], gg = d[i + 1], bb = d[i + 2], sat = Math.max(r, gg, bb) - Math.min(r, gg, bb);
+          if (sat < 40 && Math.abs(r - roofAvg[0]) + Math.abs(gg - roofAvg[1]) + Math.abs(bb - roofAvg[2]) > 90) { sx += (i / 4) % roof.width; n++; }
+        }
+        if (n > 8) {
+          const cxw = x0 + .05 + (sx / n) / roof.width * (b.w - .1), cz = zM + .35, top = YR + .45;
+          const ch = new T.Mesh(new T.BoxGeometry(.42, top - Y0, .42), new T.MeshLambertMaterial({ color: 0x8a847c }));
+          ch.position.set(cxw, (top + Y0) / 2, cz); ch.castShadow = ch.receiveShadow = true; g.add(ch);
+          const capm = new T.Mesh(new T.BoxGeometry(.52, .1, .52), new T.MeshLambertMaterial({ color: 0x5e5850 })); capm.position.set(cxw, top + .05, cz); g.add(capm);
+          (group.userData.chimneys = group.userData.chimneys || []).push({ x: cxw, y: top + .12, z: cz });
+        }
+      }
+    }
+  }
+  // a door leaf in a trimmed frame with a stone step: it swings (houses, double doors for gyms) or slides
+  // apart (glass doors) as someone walks up to it; the doorway behind it is dark
+  function addDoor(g, b, leaf, type, x0, baseY, zF, wallH, wallPx, fw, trimCol, rgbS) {
+    const pxW = (b.w - .1) / fw, dw = leaf.width * pxW, dh = leaf.height / wallPx * wallH;
+    const cx = x0 + .05 + (leaf.fx + leaf.width / 2) * pxW, y0 = baseY + wallH * (1 - (leaf.fy + leaf.height) / wallPx), zf = zF + .004;
+    const t = texPx(leaf), halves = type === 'slide' || type === 'swing2' ? 2 : 1, parts = [];
+    for (let h = 0; h < halves; h++) {
+      const w = dw / halves, geo = new T.PlaneGeometry(w, dh);
+      const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, (h + uv.getX(i)) / halves);
+      // hinge at the outer edge: the geometry hangs off its pivot
+      geo.translate(h === 0 ? w / 2 : -w / 2, dh / 2, 0);
+      const m = new T.Mesh(geo, new T.MeshLambertMaterial({ map: t, side: T.DoubleSide }));
+      const px = halves === 1 ? cx - dw / 2 : h === 0 ? cx - dw / 2 : cx + dw / 2;
+      m.position.set(px, y0, zf); m.castShadow = false; m.receiveShadow = true; g.add(m); parts.push({ m, h, px, w });
+    }
+    // frame: jambs and a lintel standing proud of the wall, and a step
+    const trim = new T.MeshLambertMaterial({ color: new T.Color(rgbS(trimCol, .95)) }), stone = new T.MeshLambertMaterial({ color: 0x9a948a });
+    const add = (geo, mat, x, y, z) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; g.add(m); };
+    add(new T.BoxGeometry(.07, dh + .04, .09), trim, cx - dw / 2 - .035, y0 + dh / 2, zF + .03);
+    add(new T.BoxGeometry(.07, dh + .04, .09), trim, cx + dw / 2 + .035, y0 + dh / 2, zF + .03);
+    add(new T.BoxGeometry(dw + .2, .08, .12), trim, cx, y0 + dh + .04, zF + .045);
+    add(new T.BoxGeometry(dw + .3, .06, .34), stone, cx, baseY + .03, zF + .17);
+    const doors = g.parent.userData.doors || (g.parent.userData.doors = []);
+    doors.push({ parts, type, open: 0, x: b.x + b.door, y: b.y + b.h - 1, dw });
+  }
+  // an irregular landmark (the Crane Tower) as a stack of slices that follow its outline row by row: each
+  // slice is as wide as the art's opaque run on that row and a set depth deep, so stepped wings, spires and
+  // setbacks get real sides and ledges; the front faces carry the art, the rest the art's edge colours
+  function stackLandmark(img, x0, baseY, zF, D) {
+    const c = img.getContext ? img : (() => { const k = G.makeCanvas(img.width, img.height); k.getContext('2d').drawImage(img, 0, 0); return k; })();
+    const W = c.width, H = c.height, d = c.getContext('2d').getImageData(0, 0, W, H).data, TANP = Math.tan(PITCH_CAM), RS = 2;
+    const P = [], U = [], C = [], gF = [], gS = [];
+    const px = (x, y) => { const i = (y * W + x) * 4; return [d[i] / 255, d[i + 1] / 255, d[i + 2] / 255, d[i + 3]]; };
+    const quad = (A, B, Cc, Dd, uv, col, front) => {   // A B top edge (left, right), Cc Dd bottom edge
+      const base = P.length / 3;
+      P.push(...A, ...B, ...Cc, ...Cc, ...B, ...Dd);
+      if (uv) U.push(uv[0], uv[1], uv[2], uv[1], uv[0], uv[3], uv[0], uv[3], uv[2], uv[1], uv[2], uv[3]); else U.push(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+      for (let k = 0; k < 6; k++) C.push(...(col || [1, 1, 1]));
+      (front ? gF : gS).push(base);
+    };
+    let prev = null;
+    for (let y = 0; y < H; y += RS) {
+      let lo = W, hi = -1;
+      for (let x = 0; x < W; x++) if (px(x, Math.min(H - 1, y + 1))[3] > 128) { lo = Math.min(lo, x); hi = Math.max(hi, x); }
+      if (hi < 0) { prev = null; continue; }
+      const X0 = x0 + lo / 16, X1 = x0 + (hi + 1) / 16, Yt = baseY + (H - y) / 16 * TANP, Yb = baseY + (H - y - RS) / 16 * TANP, zf = zF, zb = zF - D;
+      const edgeL = px(lo, Math.min(H - 1, y + 1)), edgeR = px(hi, Math.min(H - 1, y + 1));
+      quad([X0, Yt, zf], [X1, Yt, zf], [X0, Yb, zf], [X1, Yb, zf], [lo / W, 1 - y / H, (hi + 1) / W, 1 - (y + RS) / H], null, true);
+      quad([X0, Yt, zb], [X0, Yt, zf], [X0, Yb, zb], [X0, Yb, zf], null, edgeL.slice(0, 3).map(v => v * .62), false);
+      quad([X1, Yt, zf], [X1, Yt, zb], [X1, Yb, zf], [X1, Yb, zb], null, edgeR.slice(0, 3).map(v => v * .5), false);
+      // a ledge where this slice is wider than the one above it (or the top of the stack)
+      const top = px(Math.round((lo + hi) / 2), y).slice(0, 3).map(v => v * .8);
+      quad([X0, Yt, zb], [X1, Yt, zb], [X0, Yt, zf], [X1, Yt, zf], null, top, false);
+      prev = [lo, hi];
+    }
+    const geo = new T.BufferGeometry();
+    geo.setAttribute('position', new T.Float32BufferAttribute(P, 3)); geo.setAttribute('uv', new T.Float32BufferAttribute(U, 2)); geo.setAttribute('color', new T.Float32BufferAttribute(C, 3));
+    geo.computeVertexNormals();
+    const idx = []; for (const b0 of gF) for (let k = 0; k < 6; k++) idx.push(b0 + k); const nF = idx.length; for (const b0 of gS) for (let k = 0; k < 6; k++) idx.push(b0 + k);
+    geo.setIndex(idx); geo.addGroup(0, nF, 0); geo.addGroup(nF, idx.length - nF, 1);
+    const t = texPx(c);
+    const m = new T.Mesh(geo, [new T.MeshLambertMaterial({ map: t, alphaTest: .5, side: T.DoubleSide }), new T.MeshLambertMaterial({ vertexColors: true, side: T.DoubleSide })]);
+    m.castShadow = m.receiveShadow = true;
+    return m;
+  }
+  // a round landmark turned on a lathe from its own silhouette: each art row's half-width becomes the
+  // radius at that height, and the art is projected onto it from the front (lighthouses)
+  function latheLandmark(img, cx, baseY, cz) {
+    const c = img.getContext ? img : (() => { const k = G.makeCanvas(img.width, img.height); k.getContext('2d').drawImage(img, 0, 0); return k; })();
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, W = c.width, H = c.height, TANP = Math.tan(PITCH_CAM);
+    const prof = [];
+    for (let y = H - 1; y >= 0; y -= 2) {
+      let lo = W, hi = -1;
+      for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] > 128) { lo = Math.min(lo, x); hi = Math.max(hi, x); }
+      const r = hi < 0 ? 0 : Math.max(Math.abs(hi + 1 - W / 2), Math.abs(W / 2 - lo));
+      prof.push(new T.Vector2(Math.max(.02, r / 16 * .96), (H - 1 - y) / 16 * TANP));
+    }
+    const geo = new T.LatheGeometry(prof, 16);
+    const pos = geo.attributes.position, uv = geo.attributes.uv;
+    for (let i = 0; i < pos.count; i++) uv.setXY(i, .5 + pos.getX(i) * 16 / W, pos.getY(i) / (H / 16 * TANP));
+    const t = texPx(c), m = new T.Mesh(geo, new T.MeshLambertMaterial({ map: t, alphaTest: .5, side: T.DoubleSide }));
+    m.position.set(cx, baseY, cz); m.castShadow = m.receiveShadow = true;
+    return m;
+  }
+  // doors open for whoever walks up to them (the player, or a partner in co-op)
+  function updateDoors(w, grp) {
+    const D = grp.userData.doors; if (!D || !w.player) return;
+    const p = w.player, px = p.px / 16, py = p.py / 16;
+    for (const d of D) {
+      const near = Math.abs(px - d.x) < .9 && py > d.y - .2 && py < d.y + 1.6;
+      d.open += ((near ? 1 : 0) - d.open) * .14;
+      for (const q of d.parts) {
+        if (d.type === 'slide') q.m.position.x = q.px + (q.h === 0 ? -1 : 1) * d.open * q.w * .92;
+        else q.m.rotation.y = (q.h === 0 ? -1 : 1) * d.open * 1.75;
+      }
     }
   }
 
@@ -955,6 +1133,10 @@ G.W3 = (function () {
       if (p.type === 'line') continue;
       if (p.h3 === undefined) p.h3 = p.glow ? .3 + Math.random() * 1.6 : p.type === 'bfly' ? .5 + Math.random() * 1.2 : 1 + Math.random() * 3;
       const a = alphaOf(p); if (a <= .01) continue;
+      if (p.abs) {   // placed in the world by absolute position (chimney smoke): x drifts, h3 rises
+        pushP(PB[0], p.x / 16, p.abs.y + p.h3, p.abs.z, p.color, alphaOf(p), (p.grow ? (p.size || 1) * (1 + p.grow * p.t / p.life) : (p.size || 1)) * 2.6, 5, p.rot);
+        continue;
+      }
       const X = p.x / 16, Z = p.y / 16 + 1.5;
       const kind = p.glow || p.blend === 'lighter' ? 3 : p.type in KIND ? KIND[p.type] : 5, add = kind === 3;
       pushP(PB[add ? 1 : 0], X, (camY === null ? 0 : camY) + p.h3 + Math.sin(p.t / 40 + p.x) * .15, Z, p.color, a, (p.grow ? (p.size || 1) * (1 + p.grow * p.t / p.life) : (p.size || 1)) * (kind === 3 ? 6 : kind === 4 ? 5 : 2.6), kind, p.rot + (kind === 4 ? p.x : 0));
@@ -1136,6 +1318,7 @@ G.W3 = (function () {
       m.material.opacity = tr ? f : 1;
     }
     updateLights(cur, fx, fz);
+    updateDoors(w, cur.group);
     const wt = cur.group.userData.water; if (wt) { const tt = G.realTime; wt[0].offset.set((tt * .05) % 1, (Math.sin(tt * .4) * .03)); }
     U3.uTime.value = G.realTime; U3.uWind.value = G.wind ? G.wind(w.frame) : 0;
     camY = camY === null || Math.abs(camY - fy) > 4 ? fy : camY + (fy - camY) * .12;
@@ -1174,5 +1357,5 @@ G.W3 = (function () {
     return { x: (_v.x + 1) / 2 * G.W, y: (1 - _v.y) / 2 * G.H };
   }
   const active = (s) => ok && s && s.isWorld && G.settings.render3d && s.map && s.map.type === 'outdoor';
-  return { _rays: () => rays, _cur: () => cur, _bases: () => bases, levels, active, render, hide, project, projectFlat, invalidate: id => { const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
+  return { _rays: () => rays, _cur: () => cur, _bases: () => bases, chimneys: () => (cur && cur.group.userData.chimneys) || [], levels, active, render, hide, project, projectFlat, invalidate: id => { const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
 })();

@@ -322,31 +322,39 @@ G.audio = (function () {
     const gn = duckNode.gain; gn.cancelScheduledValues(ctx.currentTime); gn.setValueAtTime(gn.value, ctx.currentTime); gn.linearRampToValueAtTime(0, ctx.currentTime + .05);
     gn.setValueAtTime(0, jingleUntil); gn.linearRampToValueAtTime(1, jingleUntil + .3);
   }
+  function setup() {
+    if (ctx) return;
+    try {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      comp = ctx.createDynamicsCompressor(); comp.threshold.value = -10; comp.ratio.value = 2.5;
+      master = ctx.createGain(); master.gain.value = A.silent ? 0 : 1; master.connect(comp); comp.connect(ctx.destination);
+      musicBus = ctx.createGain(); sfxBus = ctx.createGain(); sfxBus.connect(master);
+      duckNode = ctx.createGain(); musicBus.connect(duckNode); duckNode.connect(master);
+      jingleBus = ctx.createGain(); jingleBus.connect(master);
+      initWaves();
+      revSend = ctx.createGain(); revSend.gain.value = .22; synthBus = ctx.createGain(); synthBus.connect(musicBus); synthBus.connect(revSend); revSend.connect(reverb); reverb.connect(musicBus);
+      A.setVolumes();
+      // jingles are tiny; decode them up front so they fire exactly on cue
+      for (const k of Object.keys(MF())) if (k.startsWith('j_')) load(k).catch(() => { });
+      if (curId) { const id = curId; curId = null; A.music(id); }
+      setTimeout(() => { for (const k of PREWARM) if (MF()[k]) load(k).catch(() => { }); }, 4000);
+    } catch (e) { ctx = null; console.warn('audio unavailable', e); }
+  }
   const cache = {};
   const A = {
     muted: typeof location !== 'undefined' && /[?&]mute\b/.test(location.search),
     silent: typeof location !== 'undefined' && /[?&]silent\b/.test(location.search),   // full engine, zero output
     forceVariant: null,   // 'day' | 'night' pins the arrangement (Music Room)
-    init() { },
+    // The audio graph is built at boot, suspended (browsers only let sound start after a click or key
+    // press). The title music is fetched and decoded meanwhile and scheduled at time zero, so the very
+    // first input resumes the context and the music is simply there, from its first note.
+    init() { if (!A.muted) setup(); },
     unlock() {
       if (A.muted) return;   // index.html?mute : silent test runs
-      if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
-      try {
-        ctx = new (window.AudioContext || window.webkitAudioContext)();
-        comp = ctx.createDynamicsCompressor(); comp.threshold.value = -10; comp.ratio.value = 2.5;
-        master = ctx.createGain(); master.gain.value = A.silent ? 0 : 1; master.connect(comp); comp.connect(ctx.destination);
-        musicBus = ctx.createGain(); sfxBus = ctx.createGain(); sfxBus.connect(master);
-        duckNode = ctx.createGain(); musicBus.connect(duckNode); duckNode.connect(master);
-        jingleBus = ctx.createGain(); jingleBus.connect(master);
-        initWaves();
-        revSend = ctx.createGain(); revSend.gain.value = .22; synthBus = ctx.createGain(); synthBus.connect(musicBus); synthBus.connect(revSend); revSend.connect(reverb); reverb.connect(musicBus);
-        A.setVolumes();
-        // jingles are tiny; decode them up front so they fire exactly on cue
-        for (const k of Object.keys(MF())) if (k.startsWith('j_')) load(k).catch(() => { });
-        if (curId) { const id = curId; curId = null; A.music(id); }
-        setTimeout(() => { for (const k of PREWARM) if (MF()[k]) load(k).catch(() => { }); }, 4000);
-      } catch (e) { console.warn('audio unavailable', e); }
+      if (!ctx) setup();
+      if (ctx && ctx.state === 'suspended') { const p = ctx.resume(); if (p && p.catch) p.catch(() => { }); }
     },
+    suspended: () => !A.muted && (!ctx || ctx.state !== 'running'),
     setVolumes() {
       if (!ctx) return;
       musicBus.gain.setTargetAtTime(G.settings.music * .9, ctx.currentTime, .05);

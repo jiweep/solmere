@@ -33,6 +33,10 @@ G.errors = [];
 
 G.update = function () {
   G.input.poll();
+  if (G.errors.length) {
+    if (G.input.pressed('b')) { G.dismissErrors(); G.input.consume('b'); }
+    else if (++G.errT > 60 * 12) G.dismissErrors();
+  }
   G.frame++; G.time += 1 / 60;
   // emulator-style fast-forward: Tab toggles it (or runs it while held, per Options); the on-screen button toggles
   const blocked = G.top() && G.top().noTurbo;
@@ -139,15 +143,26 @@ G.drawOverlays = function () {
     U.text(on ? '● Link: ' + on.name : '● Link: waiting…', G.W - 6, 5, { size: 5.5, align: 'right', color: on ? '#7cf29a' : '#ffd166', weight: 800, outline: 'rgba(0,0,0,.6)' });
   }
   if (G.errors.length) {
-    const e = G.errors[G.errors.length - 1];
-    U.panel(10, 10, G.W - 20, 30, 'red', { alpha: .95 });
-    U.text('Something went wrong (the game kept running): ' + String(e).slice(0, 110), 16, 15, { size: 5.5, color: '#fff' });
-    U.text('Press X to dismiss. If stuck, open the menu and Save, then reload.', 16, 27, { size: 5.5, color: '#fff' });
-    if (G.input.pressed('b')) G.errors.length = 0;
+    const e = G.errors[G.errors.length - 1], R = G.ERR_BOX;
+    U.panel(R.x, R.y, R.w, R.h, 'red', { alpha: .95 });
+    U.text('Something went wrong (the game kept running): ' + String(e).slice(0, 104), R.x + 6, R.y + 5, { size: 5.5, color: '#fff' });
+    U.text('X, Esc or click to dismiss. If stuck, open the menu and Save, then reload.', R.x + 6, R.y + 17, { size: 5.5, color: '#fff' });
+    U.text('✕', R.x + R.w - 8, R.y + 4, { size: 7, color: '#fff', weight: 800, align: 'center' });
   }
 };
+// the error box is dismissed in update (before any scene can swallow the key) or by a click on it; it
+// also fades on its own, and a message that was already shown once is only logged after that
+G.ERR_BOX = { x: 10, y: 10, w: 364, h: 28 };
+G.errSeen = new Set(); G.errT = 0;
+G.dismissErrors = function () { G.errors.length = 0; };
 G.reportError = function (e) {
-  console.error(e); G.errors.push(e && e.message ? e.message : String(e));
+  let msg = e && e.message ? e.message : String(e);
+  // where it came from (file:line of the first frame), so a screenshot of the box is enough to fix it
+  const at = e && e.stack && (String(e.stack).split('\n').find(l => /\.js:\d+/.test(l)) || '').match(/([\w.-]+\.js):(\d+)/);
+  if (at) msg += '  [' + at[1] + ':' + at[2] + ']';
+  console.error(e);
+  if (G.errSeen.has(msg)) return;
+  G.errSeen.add(msg); G.errors.push(msg); G.errT = 0;
   if (G.errors.length > 5) G.errors.shift();
 };
 G.boot = function () {

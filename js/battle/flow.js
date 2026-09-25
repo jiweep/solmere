@@ -375,8 +375,24 @@ G.trainerSpotted = async function (e, dist) {
     if (G.audio) G.audio.music(T && T.encounterMusic || (T && T.boss ? 'encounter_boss' : 'encounter'));
     await G.wait(36);
     const d0 = e.dir, hx = e.x, hy = e.y;
+    // the trainer walks up to YOU: a follower standing in the way (or beside you on the trainer's side)
+    // steps round behind you first, so the trainer never stops in front of it
+    const f = w.follower, [ddx, ddy] = G.DIRS[e.dir];
+    if (f && !f.hidden) {
+      const onPath = k => f.x === e.x + ddx * k && f.y === e.y + ddy * k;
+      let inWay = false; for (let k = 1; k <= dist; k++) if (onPath(k)) inWay = true;
+      if (inWay) {
+        const spots = [[p.x + ddx, p.y + ddy], [p.x + ddy, p.y + ddx], [p.x - ddy, p.y - ddx]];
+        const s = spots.find(([x, y]) => !w.blocked(x, y, null)) || [p.x, p.y];
+        f.x = s[0]; f.y = s[1]; f.px = f.x * 16; f.py = f.y * 16; f.moving = false; f.hidden = s[0] === p.x && s[1] === p.y;
+      }
+    }
     for (let i = 1; i < dist; i++) { e.startMove(e.dir, 1); while (e.moving) await G.wait(1); }
+    // face each other exactly (the trainer looks at the player's tile, not along its old heading)
+    const fx = G.sign(p.x - e.x), fy = G.sign(p.y - e.y);
+    e.dir = Math.abs(p.x - e.x) >= Math.abs(p.y - e.y) ? (fx > 0 ? 'right' : 'left') : (fy > 0 ? 'down' : 'up');
     p.dir = G.OPP[e.dir];
+    if (f && !f.hidden && !f.moving) f.dir = p.dir;
     await G.trainerBattleFromEnt(e);
     // walk back to their post so they never block a corridor
     if ((e.x !== hx || e.y !== hy) && G.world.scene.ents.includes(e)) {

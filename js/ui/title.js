@@ -66,7 +66,9 @@ G.TitleScene = class {
     c.fillStyle = g; c.fillText('SOLMERE', U.X(G.W / 2), U.Y(y));
     c.restore();
     U.text('— TIDELIGHT —', G.W / 2, y + 44, { size: 9, weight: 800, align: 'center', color: '#8af0e0', alpha: k, outline: 'rgba(0,0,0,.5)' });
-    if (this.stage === 'press' && t > 40 && Math.floor(t / 30) % 2 === 0) U.text('Press Enter', G.W / 2, 150, { size: 8, weight: 800, align: 'center', color: '#fff', outline: 'rgba(0,0,0,.6)' });
+    if (this.stage === 'press' && t > 40 && Math.floor(t / 30) % 2 === 0) U.text('Press any key or click', G.W / 2, 150, { size: 8, weight: 800, align: 'center', color: '#fff', outline: 'rgba(0,0,0,.6)' });
+    // browsers hold sound until the first click or key press; say so rather than seeming silent
+    if (G.audio && G.audio.suspended && G.audio.suspended()) U.text('♪ Sound starts with your first click or key press', G.W / 2, 162, { size: 5.5, weight: 700, align: 'center', color: 'rgba(255,255,255,.75)', outline: 'rgba(0,0,0,.5)' });
     U.text('v' + G.VERSION + '  ·  an original monster-taming adventure', G.W - 6, G.H - 9, { size: 4.8, align: 'right', color: 'rgba(255,255,255,.5)' });
   }
 };

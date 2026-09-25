@@ -259,6 +259,190 @@
     for (let a = 0; a < 7; a++) { const ang = -Math.PI * .9 + a * .3; for (let r = 0; r < 44; r++) { const yy = ty + Math.sin(ang) * r * .5 + r * r * .012, xx = tx + Math.cos(ang) * r; for (let k = -2; k <= 2; k++) p.set(xx, yy + k * (1 - r / 44), leaf); } }
   }
 
+  // ----------------------------------------------------------- indoor / special stages
+  // caves, crystal caverns, gym arenas, the league hall, the villain HQ, ancient ruins, the lighthouse
+  // gallery and the sky summit: the same layered, dithered painting as the landscapes, built around the
+  // same stage (an open floor across the lower half, clear top corners, dark framing in the bottom corners)
+  function facets(p, x0, x1, y0, y1, R, cw, ch, seed, haze, hk) {
+    for (let y = Math.max(0, y0); y < Math.min(AH, y1); y++) for (let x = Math.max(0, x0); x < Math.min(AW, x1); x++) {
+      const gx0 = Math.floor(x / cw), gy0 = Math.floor(y / ch);
+      let f1 = 1e9, f2 = 1e9, lx = 0, ly = 0, id = 0;
+      for (let j = -1; j <= 1; j++) for (let i2 = -1; i2 <= 1; i2++) {
+        const X = gx0 + i2, Y = gy0 + j, px = (X + .2 + G.h2(X, Y, seed) * .6) * cw, py = (Y + .2 + G.h2(X, Y, seed + 6) * .6) * ch;
+        const dx = (x - px) / cw, dy = (y - py) / ch, d = dx * dx + dy * dy;
+        if (d < f1) { f2 = f1; f1 = d; lx = dx; ly = dy; id = G.h2(X, Y, seed + 10); } else if (d < f2) f2 = d;
+      }
+      const edge = Math.sqrt(f2) - Math.sqrt(f1), I = .2 - lx * .9 - ly * 1.1 + (id - .5) * .5;
+      let c = edge < .05 ? shade(R[0], -.4) : R[I > .35 ? 2 : I > -.15 ? 1 : 0];
+      if (edge < .1 && edge >= .05) c = shade(c, -.12);
+      if (haze) c = mix(c, haze, hk);
+      p.q(x, y, c, 30);
+    }
+  }
+  function glow(p, cx, cy, r, col, a) {
+    for (let y = Math.floor(cy - r); y <= cy + r; y++) for (let x = Math.floor(cx - r); x <= cx + r; x++) {
+      const d = Math.hypot(x - cx, y - cy) / r; if (d >= 1) continue;
+      const k = Math.floor((1 - d) * 4) / 4;            // stepped rings: light reads as pixel art
+      if (k > 0) p.set(x, y, col, a * k);
+    }
+  }
+  function beam(p, x0, y0, x1a, x1b, y1, col, a) {   // a light wedge from (x0,y0) widening to [x1a,x1b] at y1
+    for (let y = y0; y < y1; y++) { const t = (y - y0) / (y1 - y0), xa = x0 + (x1a - x0) * t, xb = x0 + (x1b - x0) * t; for (let x = Math.floor(xa); x < xb; x++) { const u = Math.abs((x - (xa + xb) / 2) / Math.max(1, (xb - xa) / 2)); p.set(x, y, col, a * (1 - u * u) * (1 - t * .5)); } }
+  }
+  function floorPersp(p, y0, fn) {            // a floor seen from a low camera: fn(u, v, x, y) with u across (tiles) and v depth
+    for (let y = y0; y < AH; y++) {
+      const t = (y - y0) / (AH - y0), z = 1 / (t * .9 + .1);
+      for (let x = 0; x < AW; x++) { const u = (x - AW / 2) / AW * 8 / (t * .9 + .1) * .12; p.q(x, y, fn(u, z, x, y, t), 30); }
+    }
+  }
+  function stageEllipse(x, y, y0) { const cy = y0 + (AH - y0) * .55, ex = (x - AW * .52) / (AW * .5), ey = (y - cy) / ((AH - y0) * .42); return ex * ex + ey * ey; }
+  function rockFrame(p, C, rng) {             // dark boulders framing the bottom corners
+    for (const [cx, cy, rx, ry] of [[40, AH, 150, 90], [AW - 30, AH, 170, 110], [AW - 190, AH + 6, 90, 50]]) {
+      for (let y = Math.floor(cy - ry); y < AH; y++) for (let x = Math.floor(cx - rx); x < cx + rx; x++) {
+        const dx = (x - cx) / rx, dy = (y - cy) / ry, d = dx * dx + dy * dy + (G.fbm(x / 20, y / 20, 9, 2) - .5) * .3; if (d > 1) continue;
+        const lit = -dx * .5 - dy * .8 + (G.h2(x >> 2, y >> 2, 3) - .5) * .4;
+        p.set(x, y, C[lit > .45 ? 2 : lit > 0 ? 1 : 0]);
+      }
+    }
+  }
+  function stalactites(p, C, rng, n, maxH) {
+    for (let i = 0; i < n; i++) {
+      const x = rng.int(-10, AW + 10), w = rng.int(8, 26), h = rng.int(20, maxH);
+      for (let y = 0; y < h; y++) { const hw = w / 2 * (1 - y / h); for (let xx = Math.floor(x - hw); xx <= x + hw; xx++) p.set(xx, y, xx < x - hw * .3 ? C[2] : xx < x + hw * .4 ? C[1] : C[0]); }
+    }
+  }
+  function crystal(p, cx, base, h, w, C, lean) {   // a hexagonal prism seen side-on: lit face, dark face, bright rim
+    for (let y = 0; y < h; y++) {
+      const t = y / h, top = t < .22 ? t / .22 : 1, hw = w / 2 * top, x0 = cx + lean * y;
+      for (let x = Math.floor(x0 - hw); x <= x0 + hw; x++) {
+        const u = (x - x0) / Math.max(1, hw);
+        const c = u < -.55 ? C[2] : u < .15 ? C[1] : C[0];
+        p.set(x, base - y, Math.abs(u) > .85 ? shade(c, .25) : c);
+      }
+    }
+  }
+  function paintSpecial(env, phase) {
+    const P = PH[phase] || PH.day, rng = new G.RNG('sp|' + env + '|' + phase), p = new Canvas2();
+    const fill = (c) => { for (let y = 0; y < AH; y++) for (let x = 0; x < AW; x++) p.q(x, y, c, 30); };
+    if (env === 'cave' || env === 'crystal') {
+      const cr = env === 'crystal';
+      const R = cr ? [hex('#1c1838'), hex('#2c2654'), hex('#433a72')] : [hex('#2a2320'), hex('#3d332c'), hex('#56483c')];
+      const haze = cr ? hex('#241c4a') : hex('#15110f');
+      // back wall: faceted rock fading into darkness above, a crack of light in the roof
+      facets(p, 0, AW, 0, 250, R, 34, 20, 51, haze, 0);
+      for (let y = 0; y < 250; y++) for (let x = 0; x < AW; x++) p.set(x, y, haze, Math.max(0, .75 - y / 250 * .9));
+      stalactites(p, R.map(c => shade(c, -.25)), rng, 34, 90);
+      if (!cr) { beam(p, 300, 0, 170, 440, 330, [255, 240, 200], .22); glow(p, 300, 4, 40, [255, 246, 214], .5); }
+      // floor: rubble and packed earth with a worn clearing
+      floorPersp(p, 236, (u, z, x, y, t) => {
+        let c = mix(cr ? hex('#2a2446') : hex('#3a3029'), cr ? hex('#40386a') : hex('#5a4a3c'), Math.min(1, t * 1.3));
+        const hsh = G.h2(Math.floor(u * 6), Math.floor(z * 3), 17); if (hsh > .86) c = shade(c, .1); else if (hsh < .12) c = shade(c, -.15);
+        const e = stageEllipse(x, y, 236); if (e < 1) c = mix(c, cr ? hex('#4c4478') : hex('#6c5a46'), Math.min(1, (1 - e) * 2.5) * .8);
+        return c;
+      });
+      if (!cr) { beam(p, 300, 236, 250, 420, 330, [255, 236, 190], .1); glow(p, 330, 300, 90, [255, 230, 180], .12); }
+      for (let i = 0; i < 18; i++) { const x = rng.int(0, AW), y = rng.int(250, 300); glow(p, x, y, 5, [0, 0, 0], .35); }
+      if (cr) {
+        const CC = [[hex('#5fd8ff'), hex('#2a8ad0'), hex('#1a4a8a')], [hex('#ff8ae8'), hex('#c04ab8'), hex('#6a2a78')], [hex('#b09aff'), hex('#6a54d0'), hex('#3a2a88')]];
+        for (let i = 0; i < 16; i++) {
+          const x = rng.int(0, AW), base = rng.int(200, 262), C = CC[i % 3], h = rng.int(40, 120);
+          if (x > 220 && x < 560 && base > 240) continue;
+          glow(p, x, base - h * .5, h * .9, C[0], .18);
+          crystal(p, x, base, h, rng.int(14, 26), C, rng.range(-.25, .25));
+          crystal(p, x + rng.int(10, 24), base + 4, h * .6, 12, C, .35);
+        }
+        for (let i = 0; i < 90; i++) { const x = rng.int(0, AW), y = rng.int(0, 300); p.set(x, y, [220, 240, 255], .8); }
+      }
+      rockFrame(p, cr ? [hex('#100c22'), hex('#1a1434'), hex('#262048')] : [hex('#141010'), hex('#1e1816'), hex('#2a221e')], rng);
+      return p.canvas();
+    }
+    if (env === 'gym' || env === 'league' || env === 'hq') {
+      const L = env === 'league', H = env === 'hq';
+      const wall = L ? [hex('#2a1e3a'), hex('#3a2a50'), hex('#4c3a66')] : H ? [hex('#1a2228'), hex('#243038'), hex('#34444e')] : [hex('#6a5a4c'), hex('#84705c'), hex('#a08a70')];
+      // back wall with panels
+      for (let y = 0; y < 232; y++) for (let x = 0; x < AW; x++) {
+        const px = x % 96, band = y < 28 ? 0 : y > 210 ? 2 : 1;
+        let c = wall[band === 1 ? (px < 3 ? 0 : px > 92 ? 2 : 1) : band === 0 ? 0 : 2];
+        if (H && (y % 40) < 2) c = shade(c, -.3);
+        p.q(x, y, mix(c, [0, 0, 0], Math.max(0, .45 - y / 232 * .5)), 30);
+      }
+      if (L) {   // tall arched windows with light, columns and banners
+        for (let i = 0; i < 5; i++) {
+          const cx = 76 + i * 154;
+          for (let y = 30; y < 196; y++) for (let x = cx - 26; x < cx + 26; x++) { const ay = y - 56, arch = ay < 0 && Math.hypot(x - cx, ay) > 26; if (arch) continue; p.q(x, y, mix(hex('#b8c8ff'), hex('#fff0d0'), (y - 30) / 166), 30); if ((x - cx + 26) % 17 < 2 || (y - 30) % 34 < 2) p.set(x, y, hex('#2a1e3a')); }
+          beam(p, cx, 196, cx - 40, cx + 90, 360, [255, 236, 200], .08);
+          const bx = cx + 77; if (bx < AW - 20) { for (let y = 20; y < 232; y++) for (let x = bx - 12; x < bx + 12; x++) p.set(x, y, x < bx - 6 ? hex('#8a7a9a') : x < bx + 5 ? hex('#b4a4c4') : hex('#6a5a7a')); }
+        }
+        for (const bx of [230, 538]) for (let y = 34; y < 170; y++) for (let x = bx - 20; x < bx + 20; x++) { const tip = y > 150 && Math.abs(x - bx) > (170 - y); if (tip) continue; p.set(x, y, Math.abs(x - bx) > 17 ? hex('#e8c46a') : hex('#a8283a')); if (Math.hypot(x - bx, y - 90) < 10) p.set(x, y, hex('#f4d68a')); }
+      } else if (H) {   // monitors, pipes, teal strip lights
+        for (let i = 0; i < 8; i++) { const x = 30 + i * 94, y = 70 + (i % 2) * 22; for (let yy = y; yy < y + 44; yy++) for (let xx = x; xx < x + 62; xx++) { const edge = yy < y + 3 || yy > y + 40 || xx < x + 3 || xx > x + 58; p.set(xx, yy, edge ? hex('#0c1014') : (G.h2(xx >> 1, yy >> 1, i) > .8 ? hex('#8af0e8') : hex('#1c5a60'))); } glow(p, x + 31, y + 22, 50, [90, 230, 220], .08); }
+        for (const y of [18, 26, 200]) for (let x = 0; x < AW; x++) { p.set(x, y, hex('#46545e')); p.set(x, y + 1, hex('#5c6c78')); p.set(x, y + 2, hex('#2a343c')); }
+        for (let x = 0; x < AW; x++) { p.set(x, 214, [90, 240, 230], .9); p.set(x, 215, [60, 180, 180], .6); }
+      } else {          // gym: windows high up, stands with a crowd, the league emblem
+        for (let i = 0; i < 6; i++) { const cx = 64 + i * 128; for (let y = 22; y < 80; y++) for (let x = cx - 40; x < cx + 40; x++) { p.q(x, y, mix(hex('#cfe6ff'), hex('#fff6dc'), (y - 22) / 58), 30); if ((x - cx + 40) % 20 < 2 || y % 29 < 2) p.set(x, y, hex('#5a4a3c')); } beam(p, cx, 80, cx - 30, cx + 80, 330, [255, 246, 220], .07); }
+        for (let r = 0; r < 5; r++) { const y = 110 + r * 22; for (let x = 0; x < AW; x++) { p.set(x, y, hex('#3a2e26')); for (let yy = 1; yy < 22; yy++) p.q(x, y + yy, shade(hex('#5a4a3c'), -.05 * r), 30); } for (let x = rng.int(0, 8); x < AW; x += rng.int(7, 13)) { const col = [[220, 90, 80], [80, 140, 220], [240, 200, 90], [120, 190, 110], [230, 230, 230]][rng.int(0, 4)]; for (let yy = 0; yy < 9; yy++) for (let xx = 0; xx < 5; xx++) p.set(x + xx, y + 4 + yy, yy < 4 ? [236, 196, 160] : col, .85); } }
+      }
+      // floor
+      const fy = 232;
+      floorPersp(p, fy, (u, z, x, y, t) => {
+        let c;
+        if (L) { const ck = (Math.floor(u) + Math.floor(z * 2)) & 1; c = ck ? hex('#d8d0e4') : hex('#4a3e5e'); }
+        else if (H) { c = (Math.floor(u * 4) + Math.floor(z * 8)) % 2 ? hex('#2a3640') : hex('#34444e'); if ((u * 4) % 1 < .06 || (z * 8) % 1 < .08) c = hex('#1a2228'); }
+        else { c = mix(hex('#b88a56'), hex('#d8aa70'), G.h2(Math.floor(u * 5), 0, 3) * .4); if ((u * 5) % 1 < .04) c = shade(c, -.15); }
+        c = mix(c, [0, 0, 0], Math.max(0, .3 - t * .4));
+        // the painted battlefield: a white border and a centre line with a circle
+        if (!H) { const cu = Math.abs(u), line = (Math.abs(cu - 3.1) < .05 && z > .9 && z < 7) || (Math.abs(z - 1.05) < .05 && cu < 3.1) || (Math.abs(z - 3.4) < .04 && cu < 3.1) || Math.abs(Math.hypot(u, (z - 3.4) * 1.1) - .9) < .05; if (line) c = L ? hex('#e8c46a') : [244, 244, 236]; }
+        return c;
+      });
+      // reflections of the windows / lights on a polished floor
+      for (let y = fy; y < fy + 120; y++) for (let x = 0; x < AW; x++) { const src = 2 * fy - y; if (src < 0) continue; const q = p.get(x, src), k = (1 - (y - fy) / 120) * (L ? .22 : H ? .12 : .16); p.set(x, y, q, k); }
+      rockFrame(p, H ? [hex('#0c1014'), hex('#161e24'), hex('#222c34')] : L ? [hex('#1a1226'), hex('#261a36'), hex('#34264a')] : [hex('#3a2e24'), hex('#4c3c2e'), hex('#5e4a38')], rng);
+      return p.canvas();
+    }
+    if (env === 'ruins' || env === 'lighthouse' || env === 'sky') {
+      const Pn = env === 'lighthouse' ? PH.night : env === 'sky' ? PH.day : P, hz = env === 'sky' ? 250 : 214;
+      skyLayer(p, Pn, hz, rng);
+      cloudLayer(p, Pn, hz, rng);
+      if (env === 'sky') {
+        // a sea of cloud below, a floating stone disc for a stage
+        for (let y = 230; y < AH; y++) for (let x = 0; x < AW; x++) { const n = G.fbm(x / 60, y / 22, 8, 3); p.q(x, y, mix(hex('#ffffff'), hex('#c4d4ee'), Math.min(1, (1 - n) * 1.2 + (y - 230) / 400)), 30); }
+        const cx = AW * .52, cy = 318;
+        for (let y = cy - 70; y < cy + 110; y++) for (let x = 0; x < AW; x++) {
+          const ex = (x - cx) / 330, ey = (y - cy) / 78; const top = ex * ex + ey * ey < 1;
+          const sideY = cy + Math.sqrt(Math.max(0, 1 - ex * ex)) * 78; const side = !top && Math.abs(ex) < 1 && y >= cy && y < sideY + 34 - Math.abs(ex) * 20;
+          if (top) { let c = mix(hex('#c8c0b0'), hex('#e6decc'), (y - cy + 70) / 150); const ring = Math.abs(Math.hypot(ex, ey) - .6) < .02 || Math.abs(Math.hypot(ex, ey) - .93) < .015; if (ring) c = hex('#8aa6d8'); if (G.h2(x >> 3, y >> 2, 7) > .9) c = shade(c, -.08); p.q(x, y, c, 30); }
+          else if (side) p.q(x, y, mix(hex('#8a8272'), hex('#5a5448'), (y - cy) / 110), 30);
+        }
+        return p.canvas();
+      }
+      ridge(p, hz - 20, 80, 170, 3, hex('#5e7fa6'), hex('#7aa0c0'), hex(Pn.haze), .5);
+      if (env === 'lighthouse') {
+        waterBand(p, Pn, { sea: true }, hz, 300, rng);
+        // the gallery: iron deck plates and a railing across the back, the lamp's beam sweeping out to sea
+        beam(p, AW + 40, 120, -200, 160, 170, [255, 244, 200], .0);
+        for (let y = 120; y < 250; y++) { const t = (y - 120) / 130; for (let x = Math.floor(AW - (AW + 260) * (1 - t * .1)); x < AW; x++) { const v = Math.abs(y - (150 + (AW - x) * .06)) / (18 + (AW - x) * .09); if (v < 1) p.set(x, y, [255, 244, 210], .42 * (1 - v)); } }
+        glow(p, AW - 6, 150, 44, [255, 244, 210], .6);
+        floorPersp(p, 300, (u, z, x, y, t) => { let c = mix(hex('#23283a'), hex('#3a4258'), t); if ((u * 2) % 1 < .04 || (z * 3) % 1 < .06) c = shade(c, -.3); if (G.h2(Math.floor(u * 8), Math.floor(z * 12), 5) > .93) c = shade(c, .15); return c; });
+        for (let x = 0; x < AW; x++) { for (const ry of [262, 276]) { p.set(x, ry, hex('#50586e')); p.set(x, ry + 1, hex('#2a2e3e')); } if (x % 40 < 4) for (let y = 256; y < 302; y++) p.set(x, y, x % 40 < 2 ? hex('#5a6278') : hex('#2a2e3e')); }
+        glow(p, 390, 330, 200, [255, 220, 150], .08);
+        return p.canvas();
+      }
+      // ruins: broken columns and an arch on a grassy stone court
+      forestBand(p, { forest: true }, Pn, hz + 14, rng, false);
+      const stone = Pn.light > .9 ? [hex('#3a3a4a'), hex('#4c4c5e'), hex('#62627a')] : [hex('#8a8474'), hex('#a8a08c'), hex('#c8c0aa')];
+      const column = (cx, base, h, w) => { for (let y = base - h; y < base; y++) for (let x = cx - w; x < cx + w; x++) { const u = (x - cx) / w; let c = stone[u < -.4 ? 2 : u < .5 ? 1 : 0]; if (((x - cx + w) % 7) === 0) c = shade(c, -.15); p.set(x, y, c); } for (let x = cx - w - 5; x < cx + w + 5; x++) for (let y = base - h - 6; y < base - h; y++) p.set(x, y, stone[2]); };
+      column(90, 250, 150, 16); column(170, 244, 88, 14); column(600, 248, 170, 18); column(690, 252, 60, 15);
+      for (let a = 0; a <= 180; a += .5) { const x = 384 + Math.cos(a / 57.3) * 150, y = 200 - Math.sin(a / 57.3) * 110; if (a > 40 && a < 70) continue; for (let r = 0; r < 16; r++) p.set(x + Math.cos(a / 57.3) * r, y - Math.sin(a / 57.3) * r, stone[r < 4 ? 2 : 1]); }
+      column(234, 214, 90, 14); column(534, 214, 90, 14);
+      for (let i = 0; i < 40; i++) { const x = rng.int(0, AW), y = rng.int(60, 250); for (let k = 0; k < rng.int(8, 30); k++) p.set(x + Math.sin(k * .5) * 2, y + k, Pn.light > .9 ? [30, 60, 40] : [60, 120, 60]); }
+      floorPersp(p, 236, (u, z, x, y, t) => { let c = mix(stone[0], stone[1], .5 + (G.h2(Math.floor(u), Math.floor(z * 2), 3) - .5) * .5); if ((u % 1 + 1) % 1 < .05 || (z * 2) % 1 < .07) c = Pn.light > .9 ? hex('#1a2a20') : hex('#4c7a3c'); return c; });
+      foreground(p, { }, Pn, rng);
+      return p.canvas();
+    }
+    return null;
+  }
+  const SPECIAL = ['cave', 'crystal', 'gym', 'league', 'hq', 'ruins', 'lighthouse', 'sky'];
+
   // ----------------------------------------------------------- compose
   function paint(env, phase) {
     const E = ENV[env], P = PH[phase] || PH.day, rng = new G.RNG(env + '|' + phase), p = new Canvas2();
@@ -291,12 +475,18 @@
   const cache = {}, imgs = {};
   // optional hand-made art: img/battle/<env>_<phase>.png (loaded once, silently skipped if missing)
   G.loadBattleArt = function () {
-    for (const env of G.BATTLE_HD_ENVS) for (const ph of ['day', 'dusk', 'night']) {
+    for (const env of G.BATTLE_HD_ENVS.concat(SPECIAL)) for (const ph of (SPECIAL.includes(env) && env !== 'ruins' ? ['day'] : ['day', 'dusk', 'night'])) {
       const im = new Image(); im.onload = () => { imgs[env + '|' + ph] = im; }; im.onerror = () => { }; im.src = `img/battle/${env}_${ph}.png`;
     }
   };
   G.battleHD = function (env, phase) {
-    const ph = phase === 'dawn' ? 'dusk' : phase === 'night' ? 'night' : phase === 'dusk' ? 'dusk' : 'day';
+    let ph = phase === 'dawn' ? 'dusk' : phase === 'night' ? 'night' : phase === 'dusk' ? 'dusk' : 'day';
+    if (SPECIAL.includes(env)) {
+      if (env !== 'ruins') ph = 'day';           // indoors (and the lighthouse, always at night) keep one look
+      const key = env + '|' + ph;
+      if (imgs[key]) return imgs[key];
+      return cache[key] || (cache[key] = paintSpecial(env, ph));
+    }
     const e = ENV[env] ? env : null; if (!e) return null;
     const key = e + '|' + ph;
     if (imgs[key]) return imgs[key];
