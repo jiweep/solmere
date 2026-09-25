@@ -837,10 +837,9 @@ G.WorldScene = class {
       if (q) { b.fillStyle = '#ffffff'; b.globalAlpha = .6 + .4 * Math.sin(sp.t / 5); const sx = Math.round(q.x), sy = Math.round(q.y - 6);
         b.fillRect(sx - 3 - k * 2, sy, 2, 1); b.fillRect(sx + 2 + k * 2, sy, 2, 1); b.fillRect(sx, sy - 3 - k * 2, 1, 2); b.fillRect(sx, sy + 2 + k * 2, 1, 2); b.fillRect(sx - 1, sy - 1, 3, 3); b.globalAlpha = 1; }
     }
-    // step dust and leaves sit on the terrain; weather drifts on a plane through the camera focus
-    this.fx.draw(b, 0, 0, ground);
-    this.parts.draw(b, 0, 0, flat);
-    this.drawRays(b, this.cam.x, this.cam.y);
+    // dust, leaves, motes and light shafts live in the 3D scene (depth-tested); only rain streaks stay here
+    const all = this.parts.list, rain = all.filter(p => p.type === 'line');
+    if (rain.length) { this.parts.list = rain; this.parts.draw(b, 0, 0, flat); this.parts.list = all; }
   }
   // how strongly cast shadows show: full in daylight, fading through dusk, faint at night
   shadowStrength() {

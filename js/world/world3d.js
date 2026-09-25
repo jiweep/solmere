@@ -39,6 +39,8 @@ G.W3 = (function () {
       return true;
     } catch (e) { console.warn('3D unavailable', e); ok = false; R = null; return false; }
   }
+  const U3 = T ? { uTime: { value: 0 }, uWind: { value: 0 } } : null;   // shared by every swaying / animated material
+  const texPx = (canvas) => { const t = new T.CanvasTexture(canvas); t.magFilter = T.NearestFilter; t.minFilter = T.NearestFilter; t.generateMipmaps = false; t.colorSpace = T.SRGBColorSpace; return t; };
   const tex = (canvas) => { const t = new T.CanvasTexture(canvas); t.magFilter = T.NearestFilter; t.minFilter = T.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = R ? Math.min(8, R.capabilities.getMaxAnisotropy()) : 1; t.colorSpace = T.SRGBColorSpace; return t; };
 
   // ------------------------------------------------------------- heights
@@ -215,7 +217,8 @@ G.W3 = (function () {
       mesh.receiveShadow = true; group.add(mesh);
     }
     // water shimmer: a scrolling layer of pixel glints and wave dashes over every water cell
-    { const wp = [], wu = [], wi = [];
+    { const wp = [], wu = [], wi = [], ws = [];
+      const shoreV = (vx, vy) => (isWater(vx - 1, vy - 1) && isWater(vx, vy - 1) && isWater(vx - 1, vy) && isWater(vx, vy)) ? 0 : 1;
       for (let y = -PADT; y < H + PADT; y++) for (let x = -PADT; x < W + PADT; x++) {
         const inside = x >= 0 && y >= 0 && x < W && y < H, rr = inside ? null : map.resolve(x, y);
         const c = inside ? map.cell(x, y) : rr ? rr.map.cells[rr.y * rr.map.w + rr.x] : G.borderCell(map, x, y);
@@ -223,12 +226,16 @@ G.W3 = (function () {
         const hh = (vx, vy) => hv.at(G.clamp(vx, .01, W - .01), G.clamp(vy, .01, H - .01)) + vdrop(vx, vy) + .012, b = wp.length / 3;
         wp.push(x, hh(x, y), y, x + 1, hh(x + 1, y), y, x, hh(x, y + 1), y + 1, x + 1, hh(x + 1, y + 1), y + 1);
         wu.push(x / 4, -y / 4, (x + 1) / 4, -y / 4, x / 4, -(y + 1) / 4, (x + 1) / 4, -(y + 1) / 4);
+        ws.push(shoreV(x, y), shoreV(x + 1, y), shoreV(x, y + 1), shoreV(x + 1, y + 1));
         wi.push(b, b + 2, b + 1, b + 1, b + 2, b + 3);
       }
       if (wp.length) {
-        const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(wp, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(wu, 2)); g.setIndex(wi);
-        const mk = (seed, op) => { const t = glintTexture(seed); const m = new T.Mesh(g, new T.MeshBasicMaterial({ map: t, transparent: true, opacity: op, blending: T.AdditiveBlending, depthWrite: false })); m.renderOrder = 1; group.add(m); return t; };
-        group.userData.water = [mk(1, .55), mk(2, .35)];
+        const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(wp, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(wu, 2));
+        g.setAttribute('shore', new T.Float32BufferAttribute(ws, 1)); g.setIndex(wi);
+        const m = new T.Mesh(g, waterMaterial()); m.renderOrder = 1; group.add(m);
+        // a faint layer of pixel glints keeps some of the DS sparkle on top
+        const gt = glintTexture(1), gm = new T.Mesh(g, new T.MeshBasicMaterial({ map: gt, transparent: true, opacity: .3, blending: T.AdditiveBlending, depthWrite: false })); gm.renderOrder = 2; group.add(gm);
+        group.userData.water = [gt];
       }
     }
     // cliff walls: vertical rock faces where a cell is higher than its east/west/south neighbour
@@ -252,6 +259,51 @@ G.W3 = (function () {
       g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
       const m = new T.Mesh(g, new T.MeshLambertMaterial({ map: rock, side: T.DoubleSide })); m.receiveShadow = true; m.castShadow = true; group.add(m);
     }
+  }
+  // Water surface: layered travelling waves give a normal; the sky reflects by Fresnel, the sun leaves a
+  // bright glitter path, caustic bands drift through the shallows and foam laps along every shore.
+  // It is translucent over the painted water below, so each map's water colour still shows.
+  const WU = T ? { uSky: { value: new T.Color(0x9cc8f0) }, uSun: { value: new T.Color(0xfff0d8) }, uSunDir: { value: new T.Vector3(-.35, .55, -.76).normalize() }, uCam: { value: new T.Vector3() }, uNight: { value: 0 }, uDeep: { value: new T.Color(0x1c5a8a) } } : null;
+  let waterMat = null;
+  function waterMaterial() {
+    if (waterMat) return waterMat;
+    waterMat = new T.ShaderMaterial({
+      uniforms: Object.assign({}, WU, { uTime: U3.uTime }), transparent: true, depthWrite: false,
+      vertexShader: `attribute float shore; varying float vShore; varying vec3 vW;
+        void main() { vShore = shore; vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+      fragmentShader: `uniform float uTime; uniform vec3 uSky; uniform vec3 uSun; uniform vec3 uSunDir; uniform vec3 uCam; uniform float uNight; uniform vec3 uDeep;
+        varying float vShore; varying vec3 vW;
+        vec2 wave(vec2 p, vec2 d, float f, float sp, float a) { float ph = dot(p, d) * f + uTime * sp; return d * cos(ph) * a * f; }
+        float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        void main() {
+          vec2 p = vW.xz, g = vec2(0.0);
+          g += wave(p, normalize(vec2(.8, .6)), 1.7, 1.1, .05);
+          g += wave(p, normalize(vec2(-.45, .9)), 2.9, 1.6, .03);
+          g += wave(p, normalize(vec2(.95, -.3)), 5.3, 2.3, .016);
+          g += wave(p, normalize(vec2(-.7, -.7)), 8.9, 3.1, .008);
+          vec3 n = normalize(vec3(-g.x, 1.0, -g.y));
+          vec3 V = normalize(uCam - vW);
+          float fr = pow(1.0 - max(dot(n, V), 0.0), 4.0);
+          vec3 R = reflect(-V, n);
+          float sp = pow(max(dot(R, normalize(uSunDir)), 0.0), 700.0);
+          // glitter: tiny sparks where the surface catches the sun
+          vec2 cell = floor(p * 11.0); float tw = h2(cell + floor(uTime * 2.0 + h2(cell) * 7.0));
+          float glit = step(.975, tw) * pow(max(dot(R, normalize(uSunDir)), 0.0), 6.0);
+          float ca = sin(p.x * 3.1 + uTime * .9 + sin(p.y * 1.7 + uTime * .5)) + sin(p.y * 2.6 - uTime * .7 + sin(p.x * 1.3));
+          float caust = pow(clamp(1.0 - abs(ca) * .45, 0.0, 1.0), 3.0);
+          float fn = sin(p.x * 4.3 + uTime * 1.7) * sin(p.y * 3.7 - uTime * 1.3) * .5 + .5;
+          float foam = smoothstep(.72, 1.0, vShore + (fn - .5) * .22) * (.6 + .4 * sin(uTime * 2.0 + p.x * 2.0 + p.y));
+          vec3 col = mix(uDeep, uSky, .35 + fr * .65);
+          col *= 1.0 + .07 * sin(dot(p, vec2(.35, .9)) * .9 - uTime * .6);   // long swells rolling in
+          col += caust * .07 * (1.0 - uNight);
+          col += uSun * (sp * 1.6 + glit * 2.6) * (1.0 - uNight * .7);
+          col = mix(col, vec3(.95, .98, 1.0), foam * .85);
+          float a = clamp(.22 + fr * .45 + caust * .04 + foam * .55 + sp, 0.0, .92);
+          gl_FragColor = vec4(col, a);
+          #include <colorspace_fragment>
+        }`,
+    });
+    return waterMat;
   }
   // 64x64 tile of sparse glints and short wave dashes, pixel-exact, for the scrolling water layers
   function glintTexture(seed) {
@@ -299,12 +351,74 @@ G.W3 = (function () {
     m.castShadow = opts.shadow !== false;
     m.customDepthMaterial = new T.MeshDepthMaterial({ depthPacking: T.RGBADepthPacking, map: t, alphaTest: .5 });
     m.userData.tex = t; m.userData.img = img;
+    if (opts.sway) sway(mat, opts.sway, img.height / 16);
+    return m;
+  }
+  // wind: the top of a plant bends with a slow gust plus a faster flutter, its base stays planted
+  function sway(mat, amt, h) {
+    const u = { uSway: { value: amt }, uH: { value: Math.max(.3, h) } };
+    mat.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, U3, u);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uTime; uniform float uWind; uniform float uSway; uniform float uH;')
+        .replace('#include <begin_vertex>', `#include <begin_vertex>
+          { vec4 o = modelMatrix * vec4(0.0, 0.0, 0.0, 1.0); float ph = o.x * .71 + o.z * .43;
+            float k = clamp(position.y / uH, 0.0, 1.0); k *= k;
+            float s = sin(uTime * 1.6 + ph) * .55 + sin(uTime * 3.7 + ph * 2.3) * .2 + uWind * (.8 + .4 * sin(uTime * .9 + ph));
+            transformed.x += s * uSway * k; transformed.z += cos(uTime * 1.3 + ph) * uSway * .25 * k; }`);
+    };
+    mat.customProgramCacheKey = () => 'sway';
+  }
+
+  // ------------------------------------------------------------- characters
+  // Characters stand upright (so they never sink into a wall behind them) and are stretched by the
+  // camera's foreshortening, so on screen they read pixel-for-pixel as drawn. Nearest sampling keeps
+  // them crisp. Shading comes from the silhouette: a normal is estimated from the alpha edges and lit
+  // by the sun, with a warm rim on the lit side and a little occlusion at the feet, so they read as
+  // rounded figures instead of cut-outs. Their tint follows the time of day and the lamps nearby.
+  const STRETCH = 1 / Math.cos(.8);
+  let blobMat = null, blobGeo = null;
+  function blob() {
+    if (!blobMat) {
+      const c = G.makeCanvas(32, 32), x = c.getContext('2d'), g = x.createRadialGradient(16, 16, 0, 16, 16, 16);
+      g.addColorStop(0, 'rgba(0,0,0,.55)'); g.addColorStop(.55, 'rgba(0,0,0,.3)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      x.fillStyle = g; x.fillRect(0, 0, 32, 32);
+      const t = new T.CanvasTexture(c);
+      blobMat = new T.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, color: 0x101828 });
+      blobGeo = new T.PlaneGeometry(1, 1); blobGeo.rotateX(-Math.PI / 2);
+    }
+    const m = new T.Mesh(blobGeo, blobMat); m.renderOrder = 2; return m;
+  }
+  function entGeo(img) { const w = img.width / 16, h = img.height / 16 * STRETCH, g = new T.PlaneGeometry(w, h); g.translate(0, h / 2, 0); return g; }
+  function entSprite(img) {
+    const t = texPx(img);
+    const u = { uTint: { value: new T.Color(1, 1, 1) }, uRim: { value: new T.Color(0, 0, 0) }, uTexel: { value: new T.Vector2(1 / img.width, 1 / img.height) } };
+    const mat = new T.MeshBasicMaterial({ map: t, alphaTest: .5, side: T.DoubleSide });
+    mat.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, u);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uTint; uniform vec3 uRim; uniform vec2 uTexel;')
+        .replace('#include <alphatest_fragment>', `#include <alphatest_fragment>
+          { vec2 d = uTexel * 1.6;
+            float aL = texture2D(map, vMapUv - vec2(d.x, 0.0)).a, aR = texture2D(map, vMapUv + vec2(d.x, 0.0)).a;
+            float aU = texture2D(map, vMapUv + vec2(0.0, d.y)).a, aD = texture2D(map, vMapUv - vec2(0.0, d.y)).a;
+            vec3 n = normalize(vec3(aL - aR, aD - aU, 1.1));
+            float lit = dot(n, normalize(vec3(-.62, .5, .6)));
+            float edge = 1.0 - texture2D(map, vMapUv + vec2(-uTexel.x, uTexel.y)).a;
+            float foot = mix(.8, 1.0, smoothstep(0.0, .3, vMapUv.y));
+            diffuseColor.rgb = diffuseColor.rgb * uTint * (.94 + .24 * lit) * foot * (vec3(1.0) + edge * uRim); }`);
+    };
+    mat.customProgramCacheKey = () => 'entspr';
+    const m = new T.Mesh(entGeo(img), mat);
+    m.castShadow = true;
+    m.customDepthMaterial = new T.MeshDepthMaterial({ depthPacking: T.RGBADepthPacking, map: t, alphaTest: .5 });
+    const b = blob(); m.add(b); m.userData.blob = b;
+    m.userData.u = u; m.userData.tex = t; m.userData.img = img; m.userData.w = img.width; m.userData.h = img.height; m.userData.ent = true;
     return m;
   }
   function setBillboardImage(m, img) {
     if (m.userData.img === img) return;
-    const t = tex(img); m.material.map = t; m.material.needsUpdate = true; m.customDepthMaterial.map = t; m.customDepthMaterial.needsUpdate = true;
-    if (m.userData.w !== img.width || m.userData.h !== img.height) { m.geometry.dispose(); m.geometry = new T.PlaneGeometry(img.width / 16, img.height / 16); m.geometry.translate(0, img.height / 32, 0); m.userData.w = img.width; m.userData.h = img.height; }
+    const ent = m.userData.ent, t = ent ? texPx(img) : tex(img);
+    if (ent) m.userData.u.uTexel.value.set(1 / img.width, 1 / img.height); m.material.map = t; m.material.needsUpdate = true; m.customDepthMaterial.map = t; m.customDepthMaterial.needsUpdate = true;
+    if (m.userData.w !== img.width || m.userData.h !== img.height) { m.geometry.dispose(); if (ent) m.geometry = entGeo(img); else { m.geometry = new T.PlaneGeometry(img.width / 16, img.height / 16); m.geometry.translate(0, img.height / 32, 0); } m.userData.w = img.width; m.userData.h = img.height; }
     if (m.userData.tex) m.userData.tex.dispose(); m.userData.tex = t; m.userData.img = img;
   }
 
@@ -320,7 +434,7 @@ G.W3 = (function () {
         // live ground (tall grass, flower beds, hedges) stands up out of the terrain
         let lt = null; const cm = rr ? rr.map : map; try { lt = c.g === 'hedge' ? G.tiles.hedgeSprite(cm, c) : G.liveTile(cm, c, 0); } catch (e) { }
         if (lt && lt.img) {
-          const m = billboard(lt.img, { lean: c.g === 'hedge' ? .6 : .85, shadow: c.g !== 'flowers' });
+          const m = billboard(lt.img, { lean: c.g === 'hedge' ? .6 : .85, shadow: c.g !== 'flowers', sway: c.g === 'tall' ? .09 : c.g === 'hedge' ? .025 : 0 });
           const bz = y + (16 + (lt.oy || 0) + lt.img.height - 16) / 16;
           m.position.set(x + .5, hv.at(G.clamp(x + .5, 0, W - .01), G.clamp(y + .5, 0, H - .01)) + .01, Math.min(bz, y + 1) - .02);
           if (c.g === 'flowers') { m.rotation.x = -Math.PI / 2; m.position.z = y + .5 + lt.img.height / 32; m.position.y += .02; }
@@ -332,7 +446,8 @@ G.W3 = (function () {
       if (c.cut || c.smash || c.push || c.solidIf) continue;   // stateful props stay dynamic (drawn as ents below)
       let oi; try { oi = G.objImg(rr ? rr.map : map, c, 0); } catch (e) { oi = null; }
       if (!oi || !oi.img || oi.flat) continue;
-      const m = billboard(oi.img);
+      const leafy = /tree|palm|pine|bush|shrub|reed|fern|plant|willow|sapling|blossom|flower/.test(c.o);
+      const m = billboard(oi.img, { sway: leafy ? (oi.img.height > 24 ? .05 : .07) : 0 });
       const bx = x + ((oi.ox || 0) + oi.img.width / 2) / 16, bz = y + ((oi.oy || 0) + oi.img.height) / 16;
       m.position.set(bx, hv.at(G.clamp(bx, 0, W - .01), G.clamp(bz - .2, 0, H - .01)), bz - .12);
       group.add(m);
@@ -342,6 +457,7 @@ G.W3 = (function () {
 
   // ------------------------------------------------------------- buildings
   // a box body plus a pitched roof, textured by cutting the building's art into facade and roof
+  const SIDES = new Set();   // building side walls: lifted out of the black by an emissive fill that follows daylight
   const WALL = { house: .44, haven: .48, mart: .48, lab: .46, gym: .5 };
   const FLAT_ROOF = new Set(['lab']);
   function buildBuildings(map, hv, group) {
@@ -361,20 +477,46 @@ G.W3 = (function () {
       const f = WALL[b.kind] || .45, wallPx = Math.round(img.height * f), roofPx = img.height - wallPx;
       const facade = G.makeCanvas(img.width, wallPx); facade.getContext('2d').drawImage(img, 0, roofPx, img.width, wallPx, 0, 0, img.width, wallPx);
       const roof = G.makeCanvas(img.width, roofPx); roof.getContext('2d').drawImage(img, 0, 0, img.width, roofPx, 0, 0, img.width, roofPx);
-      // side walls: the facade's average wall colour, a shade darker, with a plinth
-      const side = G.makeCanvas(8, 16); {
-        let r = 0, gg = 0, bb = 0, n = 0; const d = facade.getContext('2d').getImageData(0, 0, facade.width, facade.height).data;
-        for (let i = 0; i < d.length; i += 16) if (d[i + 3] > 200) { r += d[i]; gg += d[i + 1]; bb += d[i + 2]; n++; }
-        const sc = side.getContext('2d'), col = n ? [r / n, gg / n, bb / n] : [200, 190, 170];
-        sc.fillStyle = `rgb(${col[0] * .82 | 0},${col[1] * .82 | 0},${col[2] * .82 | 0})`; sc.fillRect(0, 0, 8, 16);
-        sc.fillStyle = `rgb(${col[0] * .6 | 0},${col[1] * .6 | 0},${col[2] * .6 | 0})`; sc.fillRect(0, 13, 8, 3);
+      // side walls: the facade's typical wall colour (the most common light tone, not the average of
+      // doors and trim), dressed per tile with siding, a corner post, a small window and a stone plinth
+      let wallCol = [200, 190, 170], trimCol = [110, 80, 60]; {
+        const d = facade.getContext('2d').getImageData(0, 0, facade.width, facade.height).data, bins = new Map();
+        for (let i = 0; i < d.length; i += 8) if (d[i + 3] > 200) { const k = (d[i] >> 4) << 8 | (d[i + 1] >> 4) << 4 | (d[i + 2] >> 4); bins.set(k, (bins.get(k) || 0) + 1); }
+        const ranked = [...bins.entries()].sort((a, b) => b[1] - a[1]), unb = k => [((k >> 8) & 15) * 16 + 8, ((k >> 4) & 15) * 16 + 8, (k & 15) * 16 + 8];
+        const lum = c => c[0] * .3 + c[1] * .59 + c[2] * .11;
+        const light = ranked.map(r => unb(r[0])).filter(c => lum(c) > 90); if (light.length) wallCol = light[0];
+        const dark = ranked.map(r => unb(r[0])).filter(c => lum(c) < 90 && lum(c) > 25); if (dark.length) trimCol = dark[0];
       }
+      const rgbS = (c, k) => `rgb(${Math.min(255, c[0] * k) | 0},${Math.min(255, c[1] * k) | 0},${Math.min(255, c[2] * k) | 0})`;
+      const side = G.makeCanvas(8, 16); { const sc = side.getContext('2d'); sc.fillStyle = rgbS(wallCol, .8); sc.fillRect(0, 0, 8, 16); sc.fillStyle = rgbS(trimCol, .8); sc.fillRect(0, 13, 8, 3); }
+      const wside = G.makeCanvas(16, 32); {
+        const sc = wside.getContext('2d');
+        sc.fillStyle = rgbS(wallCol, .9); sc.fillRect(0, 0, 16, 32);
+        sc.fillStyle = rgbS(wallCol, .8); for (let y = 2; y < 26; y += 3) sc.fillRect(0, y, 16, 1);            // siding courses
+        sc.fillStyle = rgbS(trimCol, 1); sc.fillRect(0, 0, 2, 26); sc.fillRect(0, 0, 16, 1);                     // corner post, eave trim
+        sc.fillStyle = rgbS(trimCol, .9); sc.fillRect(6, 7, 7, 9); sc.fillStyle = '#9ec8e0'; sc.fillRect(7, 8, 5, 7);   // window
+        sc.fillStyle = '#d8ecf8'; sc.fillRect(7, 8, 2, 3); sc.fillStyle = rgbS(trimCol, .9); sc.fillRect(9, 8, 1, 7); sc.fillRect(7, 11, 5, 1);
+        sc.fillStyle = rgbS(trimCol, 1.15); sc.fillRect(5, 16, 9, 1);                                              // sill
+        sc.fillStyle = '#7a7468'; sc.fillRect(0, 26, 16, 6); sc.fillStyle = '#5e594f'; for (let x = 0; x < 16; x += 5) sc.fillRect(x, 26, 1, 6); sc.fillRect(0, 29, 16, 1);   // plinth
+      }
+      // roof ends: the roof's own average colour, darker, with shingle courses, so the sloped ends read as roof
+      const rside = G.makeCanvas(16, 16); {
+        let r = 0, gg = 0, bb = 0, n = 0; const d = roof.getContext('2d').getImageData(0, 0, roof.width, roof.height).data;
+        for (let i = 0; i < d.length; i += 16) if (d[i + 3] > 200) { r += d[i]; gg += d[i + 1]; bb += d[i + 2]; n++; }
+        const sc = rside.getContext('2d'), col = n ? [r / n, gg / n, bb / n] : [150, 60, 50];
+        sc.fillStyle = `rgb(${col[0] * .78 | 0},${col[1] * .78 | 0},${col[2] * .78 | 0})`; sc.fillRect(0, 0, 16, 16);
+        sc.fillStyle = `rgb(${col[0] * .58 | 0},${col[1] * .58 | 0},${col[2] * .58 | 0})`; for (let y = 3; y < 16; y += 4) sc.fillRect(0, y, 16, 1);
+        sc.fillStyle = `rgb(${Math.min(255, col[0] * 1.02) | 0},${Math.min(255, col[1] * 1.02) | 0},${Math.min(255, col[2] * 1.02) | 0})`; for (let y = 0; y < 16; y += 4) sc.fillRect(0, y, 16, 1);
+      }
+      const rt = tex(rside); rt.wrapS = rt.wrapT = T.RepeatWrapping; const mRoofEnd = new T.MeshLambertMaterial({ map: rt, emissive: 0xffffff }); mRoofEnd.emissiveMap = mRoofEnd.map; SIDES.add(mRoofEnd);
       const wallH = Math.min(1.9, wallPx / 16), depth = zF - zB;
       const mFac = new T.MeshLambertMaterial({ map: tex(facade), alphaTest: .4, alphaToCoverage: true, side: T.DoubleSide });
-      const mSide = new T.MeshLambertMaterial({ map: tex(side) });
+      const mSide = new T.MeshLambertMaterial({ map: tex(side), emissive: 0xffffff, emissiveIntensity: .0 }); mSide.emissiveMap = mSide.map; SIDES.add(mSide);
       const mRoof = new T.MeshLambertMaterial({ map: tex(roof), alphaTest: .4, alphaToCoverage: true, side: T.DoubleSide });
       // body
-      const body = new T.Mesh(new T.BoxGeometry(b.w - .1, wallH, depth - .05), [mSide, mSide, mSide, mSide, mFac, mSide]);
+      const wt2 = tex(wside); wt2.wrapS = T.RepeatWrapping; wt2.repeat.set(Math.max(1, Math.round(depth)), 1);
+      const mWall = new T.MeshLambertMaterial({ map: wt2, emissive: 0xffffff }); mWall.emissiveMap = wt2; SIDES.add(mWall);
+      const body = new T.Mesh(new T.BoxGeometry(b.w - .1, wallH, depth - .05), [mWall, mWall, mSide, mSide, mFac, mSide]);
       body.position.set(x0 + b.w / 2, baseY + wallH / 2, zB + depth / 2); body.castShadow = body.receiveShadow = true; g.add(body);
       if (FLAT_ROOF.has(b.kind)) {
         // modern flat roof: a shallow slab carrying the roof art on top, with a lit parapet edge
@@ -397,8 +539,9 @@ G.W3 = (function () {
       quad([X0, Y0 - ov * .45, ZF, X1, Y0 - ov * .45, ZF, X0, Y1, ZB - .02, X1, Y1, ZB - .02], [0, 0, 1, 0, 0, 1, 1, 1], mRoof);
       // gables: triangles under the roof plane on both sides, and the back wall up to the ridge
       const gx0 = x0 + .05, gx1 = x1 - .05, gzF = zF - .025, gzB = zB + .025;
-      quad([gx0, Y0, gzF, gx0, Y0, gzB, gx0, Y1 - .01, gzB], [0, 0, 1, 0, 1, 1], mSide);
-      quad([gx1, Y0, gzF, gx1, Y1 - .01, gzB, gx1, Y0, gzB], [0, 0, 1, 1, 1, 0], mSide);
+      const rv = rise * 1.5;
+      quad([gx0, Y0, gzF, gx0, Y1 - .01, gzB, gx0, Y0, gzB], [0, 0, depth, rv, depth, 0], mRoofEnd);   // wound to face outward (west)
+      quad([gx1, Y0, gzF, gx1, Y0, gzB, gx1, Y1 - .01, gzB], [0, 0, depth, 0, depth, rv], mRoofEnd);   // (east)
       quad([gx0, Y0, gzB, gx1, Y0, gzB, gx0, Y1 - .01, gzB, gx1, Y1 - .01, gzB], [0, 0, 1, 0, 0, 1, 1, 1], mSide);
     }
   }
@@ -449,6 +592,124 @@ G.W3 = (function () {
     const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
     const m = new T.Mesh(g, new T.MeshLambertMaterial({ color: 0x2c303c })); m.castShadow = true; m.receiveShadow = true; group.add(m);
   }
+
+  // ------------------------------------------------------------- particles
+  // Step dust, leaves, pollen, butterflies and fireflies live in the 3D scene as depth-tested points,
+  // so a puff behind the player stays behind them. Two batches: normal and additive (glows).
+  const PMAX = 1600;
+  let PB = null;
+  function particleBatch(additive) {
+    const g = new T.BufferGeometry();
+    g.setAttribute('position', new T.BufferAttribute(new Float32Array(PMAX * 3), 3).setUsage(T.DynamicDrawUsage));
+    g.setAttribute('pcol', new T.BufferAttribute(new Float32Array(PMAX * 4), 4).setUsage(T.DynamicDrawUsage));
+    g.setAttribute('pdat', new T.BufferAttribute(new Float32Array(PMAX * 3), 3).setUsage(T.DynamicDrawUsage));   // size (px), kind, rotation
+    const mat = new T.ShaderMaterial({
+      uniforms: { uScale: { value: 1 }, uTime: U3.uTime }, transparent: true, depthWrite: false, blending: additive ? T.AdditiveBlending : T.NormalBlending,
+      vertexShader: `attribute vec4 pcol; attribute vec3 pdat; varying vec4 vC; varying float vK; varying float vR; uniform float uScale;
+        void main() { vC = pcol; vK = pdat.y; vR = pdat.z; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv; gl_PointSize = max(1.5, pdat.x * uScale / -mv.z); }`,
+      fragmentShader: `varying vec4 vC; varying float vK; varying float vR; uniform float uTime;
+        void main() {
+          vec2 q = gl_PointCoord * 2.0 - 1.0; float a = 0.0;
+          if (vK < .5) a = smoothstep(1.0, .55, length(q));                                   // puff
+          else if (vK < 1.5) { vec2 e = vec2(q.x, q.y * 2.6); float r = length(e); a = smoothstep(.16, 0.0, abs(r - .8)); }   // ground ring
+          else if (vK < 2.5) { float c = cos(vR), s = sin(vR); vec2 r = vec2(c * q.x - s * q.y, s * q.x + c * q.y); a = step(length(vec2(r.x, r.y * 2.2)), .95); }   // leaf
+          else if (vK < 3.5) { float r = length(q); a = exp(-r * r * 5.0) + smoothstep(.25, 0.0, r) * .6; }                   // glow mote
+          else if (vK < 4.5) { float f = abs(sin(uTime * 14.0 + vR)); vec2 w = vec2(abs(q.x) - .45 * f, q.y); a = step(length(w * vec2(2.2 / max(f, .25), 1.8)), .9); if (abs(q.x) < .08 && abs(q.y) < .5) a = 1.0; }   // butterfly
+          else a = step(max(abs(q.x), abs(q.y)), .8);                                           // square
+          if (a * vC.a < .01) discard;
+          gl_FragColor = vec4(vC.rgb, vC.a * a);
+          #include <colorspace_fragment>
+        }`,
+    });
+    const pts = new T.Points(g, mat); pts.frustumCulled = false; pts.renderOrder = 3;
+    return { pts, g, mat, n: 0 };
+  }
+  const _col = T ? new T.Color() : null;
+  function pushP(B, x, y, z, col, alpha, size, kind, rot) {
+    if (B.n >= PMAX) return; const i = B.n++;
+    B.g.attributes.position.array.set([x, y, z], i * 3);
+    let c = _col;
+    try { if (typeof col === 'string' && col.startsWith('rgba')) { const m = col.match(/rgba\(([^,]+),([^,]+),([^,]+),([^)]+)\)/); c.setRGB(m[1] / 255, m[2] / 255, m[3] / 255, T.SRGBColorSpace); alpha *= +m[4]; } else c.set(col || '#ffffff'); } catch (e) { c.set('#ffffff'); }
+    B.g.attributes.pcol.array.set([c.r, c.g, c.b, alpha], i * 4);
+    B.g.attributes.pdat.array.set([size, kind, rot || 0], i * 3);
+  }
+  const KIND = { circle: 0, ring: 1, leaf: 2, bfly: 4, star: 3 };
+  function syncParticles(w, H) {
+    if (!PB) { PB = [particleBatch(false), particleBatch(true)]; for (const b of PB) scene.add(b.pts); }
+    for (const b of PB) b.n = 0;
+    const scale = bufH / (2 * Math.tan(camera.fov * Math.PI / 360)) / 16;
+    for (const b of PB) b.mat.uniforms.uScale.value = scale;
+    const alphaOf = p => { const k = p.t / p.life; return p.alpha * (p.fade === false ? 1 : (p.fadeIn ? Math.min(1, p.t / p.fadeIn) : 1) * (1 - Math.max(0, (k - (p.fadeStart || .6)) / (1 - (p.fadeStart || .6))))); };
+    const hAt = (X, Z) => H.at(G.clamp(X, 0, H.W - .01), G.clamp(Z, 0, H.H - .01));
+    // effects on the ground: height comes from how far the particle rose above where it started
+    for (const p of w.fx.list) {
+      if (p.z0 === undefined) p.z0 = p.y;
+      const a = alphaOf(p); if (a <= .01) continue;
+      const lift = Math.max(0, p.z0 - p.y) / 16, Z = (p.z0 + Math.max(0, p.y - p.z0) * .5) / 16, X = p.x / 16;
+      const s = p.grow ? p.size * (1 + p.grow * p.t / p.life) : p.size;
+      const kind = p.type in KIND ? KIND[p.type] : 5, add = p.blend === 'lighter' || p.glow;
+      pushP(PB[add ? 1 : 0], X, hAt(X, Z) + lift + (kind === 1 ? .03 : .12), Z, p.color, a, s * 2 * (kind === 1 ? 2 : 1.2), kind, p.rot);
+    }
+    // drifting life (leaves, petals, pollen, butterflies, fireflies, snow): each floats at its own height
+    for (const p of w.parts.list) {
+      if (p.type === 'line') continue;
+      if (p.h3 === undefined) p.h3 = p.glow ? .3 + Math.random() * 1.6 : p.type === 'bfly' ? .5 + Math.random() * 1.2 : 1 + Math.random() * 3;
+      const a = alphaOf(p); if (a <= .01) continue;
+      const X = p.x / 16, Z = p.y / 16 + 1.5;
+      const kind = p.glow || p.blend === 'lighter' ? 3 : p.type in KIND ? KIND[p.type] : 5, add = kind === 3;
+      pushP(PB[add ? 1 : 0], X, (camY === null ? 0 : camY) + p.h3 + Math.sin(p.t / 40 + p.x) * .15, Z, p.color, a, (p.size || 1) * (kind === 3 ? 6 : kind === 4 ? 5 : 2.6), kind, p.rot + (kind === 4 ? p.x : 0));
+    }
+    for (const b of PB) { b.g.setDrawRange(0, b.n); for (const k of ['position', 'pcol', 'pdat']) b.g.attributes[k].needsUpdate = true; }
+  }
+
+  // ------------------------------------------------------------- light shafts
+  // long additive planes slanting down from the sun around the player; each fades in and out on its
+  // own slow cycle. Warm and stronger in forests and at golden hour.
+  let rays = null;
+  function rayTexture() {
+    const c = G.makeCanvas(32, 128), x = c.getContext('2d');
+    for (let yy = 0; yy < 128; yy++) for (let xx = 0; xx < 32; xx++) {
+      const v = yy / 127, u = Math.abs(xx / 31 - .5) * 2;
+      const ss = (e0, e1, q) => { const k = Math.min(1, Math.max(0, (q - e0) / (e1 - e0))); return k * k * (3 - 2 * k); };
+      const a = Math.pow(1 - u, 1.8) * ss(0, .3, v) * (1 - ss(.55, 1, v));
+      x.fillStyle = `rgba(255,255,255,${a.toFixed(3)})`; x.fillRect(xx, 127 - yy, 1, 1);
+    }
+    const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; return t;
+  }
+  function updateRays(w, fx, fy, fz) {
+    const m = w.map, h = G.clock.hourF();
+    const day = h >= 7 && h <= 17 ? 1 : h > 17 && h < 19 ? (19 - h) / 2 : h > 6 && h < 7 ? h - 6 : 0;
+    const on = G.settings.fancy !== false && m.type === 'outdoor' && !(w.weather && w.weather !== 'petals' && w.weather !== 'leaves') && day > 0;
+    if (!rays) {
+      rays = new T.Group(); scene.add(rays);
+      const t = rayTexture();
+      for (let i = 0; i < 9; i++) {
+        const len = 9, wd = 1 + (i % 3) * .8, g = new T.PlaneGeometry(wd, len); g.translate(0, len / 2, 0);
+        const mt = new T.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, blending: T.AdditiveBlending, opacity: 0, fog: false, side: T.DoubleSide });
+        const r = new T.Mesh(g, mt); r.userData.i = i; r.renderOrder = 4; rays.add(r);
+      }
+    }
+    rays.visible = on; if (!on) return;
+    const forest = /wood|forest|grove/.test(m.id), warm = h > 16 || h < 8;
+    const base = (forest ? .3 : .16) * day * (warm ? 1.35 : 1);
+    const dir = new T.Vector3(-.5, 1, -.3).normalize();   // slanting down-right across the view, like light through a canopy
+    const t = G.realTime;
+    for (const r of rays.children) {
+      const i = r.userData.i, phase = t / (38 + i * 7) + i * 1.9, life = Math.max(0, Math.sin(phase));
+      r.material.opacity = base * life * (.6 + (i % 2) * .4);
+      r.material.color.setHex(warm ? 0xffc27a : 0xfff2c8);
+      // anchored in the world (drift slowly), spread around the view
+      const wrap = (v, n) => ((v % n) + n) % n;
+      const ax = fx + wrap(i * 5.3 + t * .05 - fx, 26) - 13, az = fz - 6 + wrap(i * 3.7 - fz * .0, 13);
+      r.position.set(ax, H0(ax, az) - .2, az);
+      // plane's long axis points up toward the sun; face the camera around that axis
+      r.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), dir);
+      const cam = new T.Vector3().subVectors(camera.position, r.position); cam.addScaledVector(dir, -cam.dot(dir));
+      const nrm = new T.Vector3(0, 0, 1).applyQuaternion(r.quaternion); const ang = Math.atan2(new T.Vector3().crossVectors(nrm, cam).dot(dir), nrm.dot(cam));
+      r.rotateY(ang);
+    }
+  }
+  const H0 = (x, z) => cur ? cur.hv.at(G.clamp(x, 0, cur.map.w - .01), G.clamp(z, 0, cur.map.h - .01)) : 0;
 
   // ------------------------------------------------------------- lights
   // every lamp, lantern, crystal and lava cell gets an additive glow sprite (faded in by night, lava
@@ -503,7 +764,7 @@ G.W3 = (function () {
     if (cache.size > 4) { const k = cache.keys().next().value; if (k !== map.id) { dispose(cache.get(k).group); cache.delete(k); } }
     return entry;
   }
-  function dispose(obj) { obj.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m.map) m.map.dispose(); m.dispose(); }); }); }
+  function dispose(obj) { obj.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { SIDES.delete(m); if (m.map) m.map.dispose(); m.dispose(); }); }); }
 
   // ------------------------------------------------------------- per-frame
   function entImage(w, e) {
@@ -521,21 +782,27 @@ G.W3 = (function () {
       seen.add(key);
       let m = E.sprites.get(key);
       if (!img) { if (m) m.visible = false; return; }
-      if (!m) { m = billboard(img, { lean: .5 }); E.sprites.set(key, m); E.dyn.add(m); }
+      if (!m) { m = entSprite(img); E.sprites.set(key, m); E.dyn.add(m); }
       setBillboardImage(m, img); m.visible = true;
-      const fx = px / 16 + .5, fz = py / 16 + 1;
-      m.position.set(fx, H.at(G.clamp(fx, 0, H.W - .01), G.clamp(fz - .5, 0, H.H - .01)) + lift / 16, fz - .3);
+      const fx = px / 16 + .5, fz = py / 16 + 1, gy = H.at(G.clamp(fx, 0, H.W - .01), G.clamp(fz - .5, 0, H.H - .01));
+      m.position.set(fx, gy + lift / 16, fz - .3);
+      // contact shadow stays on the ground (hops lift the figure, not the shadow)
+      const bl = m.userData.blob; bl.position.set(0, gy - m.position.y + .03, .05); const bw = img.width / 16 * .8; bl.scale.set(bw, 1, bw * .5); bl.visible = lift > -2;
+      // tint: time of day plus nearby lamps
+      const u = m.userData.u; u.uTint.value.copy(entTint); u.uRim.value.copy(entRim);
+      for (const pl of POOL) if (pl.intensity > 0) { const d2 = (pl.position.x - fx) ** 2 + (pl.position.z - fz) ** 2; if (d2 < 36) { const k = (1 - Math.sqrt(d2) / 6) ** 2 * pl.intensity * .22; u.uTint.value.r += pl.color.r * k; u.uTint.value.g += pl.color.g * k; u.uTint.value.b += pl.color.b * k; } }
     };
     for (const e of w.ents) if (e.visible && !e.hidden) {
       // swimmers sink to the chest: the opaque water surface hides the rest
       const c = w.map.cell(e.x, e.y), swim = c && c.water && c.g !== 'bridge' && c.g !== 'bridgev';
       const img = entImage(w, e);
-      place('e:' + e.id + ':' + e.x0id, img, e.px, e.py, swim && img ? -img.height * .5 + Math.sin(w.frame / 14 + e.x) : (e.hop || 0));
+      place('e:' + e.id + ':' + e.x0id, img, e.px, e.py, swim && img ? -img.height * .5 * STRETCH + Math.sin(w.frame / 14 + e.x) : (e.hop || 0));
     }
     if (w.player) place('player', entImage(w, w.player), w.player.px, w.player.py, w.player.hop || 0);
     const f = w.follower; if (f && !f.hidden) place('follower', G.monArt.overworld(f.mon.sp, f.mon.shiny, f.dir, Math.floor(w.frame / 10) % 2), f.px, f.py, f.hop || 0);
     for (const [k, m] of E.sprites) if (!seen.has(k)) m.visible = false;
   }
+  const entTint = T ? new T.Color(1, 1, 1) : null, entRim = T ? new T.Color() : null;
   function lighting(w) {
     const h = G.clock.hourF(), m = w.map;
     const indoor = m.type !== 'outdoor';
@@ -546,6 +813,12 @@ G.W3 = (function () {
     hemi.intensity = .45 + .55 * day; hemi.color.set(day > .3 ? 0xdfeeff : 0x5a6aa8); hemi.groundColor.set(day > .3 ? 0x4a5a3a : 0x1a1e30);
     const sky = indoor ? 0x08080e : dusk ? 0xe8a88a : day > .3 ? 0x9cc8f0 : 0x0a1030;
     scene.background = new T.Color(sky);
+    // characters: full brightness by day, warm at golden hour, cool and dim at night
+    if (dusk) entTint.setRGB(1.05, .9, .8); else entTint.setRGB(.42 + .63 * day, .46 + .58 * day, .68 + .36 * day);
+    entRim.copy(sun.color).multiplyScalar(.28 * day);
+    for (const m of SIDES) m.emissiveIntensity = .34 * day + .04;
+    WU.uSky.value.set(dusk ? 0xffc8a0 : day > .3 ? 0xcfe8ff : 0x28386a); WU.uSun.value.copy(sun.color).multiplyScalar(day > .1 ? 1 : .35);
+    WU.uNight.value = night; WU.uDeep.value.set(day > .3 ? 0x1c5a8a : 0x0c1a38);
     scene.fog = indoor ? null : new T.Fog(sky, 26, 60);
   }
   function render(w) {
@@ -566,10 +839,14 @@ G.W3 = (function () {
       m.material.opacity = tr ? f : 1;
     }
     updateLights(cur, fx, fz);
-    const wt = cur.group.userData.water; if (wt) { const tt = G.realTime; wt[0].offset.set((tt * .05) % 1, (Math.sin(tt * .4) * .03)); wt[1].offset.set((-tt * .035) % 1, (tt * .02) % 1); }
+    const wt = cur.group.userData.water; if (wt) { const tt = G.realTime; wt[0].offset.set((tt * .05) % 1, (Math.sin(tt * .4) * .03)); }
+    U3.uTime.value = G.realTime; U3.uWind.value = G.wind ? G.wind(w.frame) : 0;
     camY = camY === null || Math.abs(camY - fy) > 4 ? fy : camY + (fy - camY) * .12;
-    const dist = 30, cy = Math.sin(PITCH) * dist, cz = Math.cos(PITCH) * dist;
+    const dist = 23.5, cy = Math.sin(PITCH) * dist, cz = Math.cos(PITCH) * dist;
     camera.position.set(fx, camY + cy, fz + cz); camera.lookAt(fx, camY + .6, fz);
+    WU.uCam.value.copy(camera.position);
+    syncParticles(w, cur.hv);
+    updateRays(w, fx, fy, fz);
     // shadow camera snapped to its own texel grid, so shadows don't crawl as the player moves
     { const off = SUN_OFF, dir = _d.set(off[0], off[1], off[2]).normalize();
       const rt = _r.set(0, 1, 0).cross(dir).normalize(), up = _u.copy(dir).cross(rt).normalize();
@@ -600,5 +877,5 @@ G.W3 = (function () {
     return { x: (_v.x + 1) / 2 * G.W, y: (1 - _v.y) / 2 * G.H };
   }
   const active = (s) => ok && s && s.isWorld && G.settings.render3d && s.map && s.map.type === 'outdoor';
-  return { _cur: () => cur, _bases: () => bases, levels, active, render, hide, project, projectFlat, invalidate: id => { const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
+  return { _rays: () => rays, _cur: () => cur, _bases: () => bases, levels, active, render, hide, project, projectFlat, invalidate: id => { const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
 })();

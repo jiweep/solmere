@@ -13,7 +13,8 @@ import numpy as np
 import mido
 import scipy.io.wavfile as wavfile
 
-SF_CANDIDATES = [os.environ.get('SOLMERE_SF2', ''), '/usr/share/sounds/sf2/MuseScore_General_Full.sf2',
+SF_CANDIDATES = [os.environ.get('SOLMERE_SF2', ''), os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sf2', 'GeneralUser-GS.sf2'),
+                 '/home/user/mrbumpy409/generaluser-gs/GeneralUser-GS.sf2', '/usr/share/sounds/sf2/MuseScore_General_Full.sf2',
                  '/usr/share/sounds/sf2/FluidR3_GM.sf2']
 SF2 = next(p for p in SF_CANDIDATES if p and os.path.exists(p))
 TPB, TEMPO = 9600, 500000          # 9600 ticks per 0.5 s beat: ~52 us resolution

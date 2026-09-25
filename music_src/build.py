@@ -405,6 +405,7 @@ def _build_one(key):
     jp = os.path.join(wdir, 'job.json'); json.dump(job, open(jp, 'w'))
     subprocess.run([RENDER, jp], check=True, capture_output=True)
     out = mix_song(song, stems, length_sec, wdir)
+    if os.environ.get('SOLMERE_DSFX', '1') != '0': out = ds_master(out)
     spb = 60 / song.bpm
     I, L = song.intro_len * spb, song.loop_len * spb
     if song.loop:
@@ -441,7 +442,6 @@ def _build_one(key):
         endi = min(len(out), (idx[-1] if len(idx) else len(out)) + int(.05 * SR))
         out = out[:endi]; f = min(len(out), int(.06 * SR)); out[-f:] *= np.linspace(1, 0, f)[:, None]
         ls = le = None
-    if os.environ.get('SOLMERE_DSFX'): out = ds_master(out)
     wav = os.path.join(wdir, 'mix.wav')
     wavfile.write(wav, SR, (np.clip(out, -1, 1) * 32767).astype(np.int16))
     if not song.loop: bestv = None
