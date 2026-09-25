@@ -3,14 +3,14 @@
 //  Input: keyboard + gamepad, with edge detection and menu key-repeat
 // ============================================================================
 G.input = (function () {
-  const BTN = ['up', 'down', 'left', 'right', 'a', 'b', 'start', 'run', 'bike', 'l', 'r', 'turbo', 'photo', 'debug', 'help'];
+  const BTN = ['up', 'down', 'left', 'right', 'a', 'b', 'start', 'run', 'bike', 'l', 'r', 'turbo', 'photo', 'debug', 'help', 'noclip'];
   const keymap = {
     ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
     KeyZ: 'a', Space: 'a', Enter: 'a', KeyC: 'a', NumpadEnter: 'a',
     KeyX: 'b', Escape: 'b', Backspace: 'b',
     KeyM: 'start',
     ShiftLeft: 'run', ShiftRight: 'run',
-    KeyF: 'bike', KeyQ: 'l', KeyE: 'r', KeyR: 'r', Tab: 'turbo', KeyP: 'photo', Backquote: 'debug', F2: 'debug', KeyH: 'help',
+    KeyF: 'bike', KeyQ: 'l', KeyE: 'r', KeyR: 'r', Tab: 'turbo', KeyP: 'photo', KeyN: 'noclip', Backquote: 'debug', F2: 'debug', KeyH: 'help',
   };
   const down = {}, prev = {}, held = {}, pressedQ = {}, repT = {}, repN = {};
   let textListener = null;   // for naming screens: receives raw characters

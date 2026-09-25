@@ -198,6 +198,8 @@ G.WorldScene = class {
   }
   control() {
     const I = G.input, p = this.player;
+    if (G.showcase && (I.pressed('start') || I.pressed('b'))) { I.consume('b'); I.consume('start'); this.lockRun(() => G.openShowcase()); return; }
+    if (G.showcase && I.pressed('noclip')) { I.consume('noclip'); G.save.god.noclip = !G.save.god.noclip; G.toast('Noclip ' + (G.save.god.noclip ? 'on' : 'off')); }
     if (I.pressed('start') || I.pressed('b')) { I.consume('b'); I.consume('start'); G.run(() => G.openPauseMenu()); return; }
     if (I.pressed('a')) { I.consume('a'); G.run(() => this.interact()); return; }
     if (I.pressed('bike')) { I.consume('bike'); G.run(() => this.toggleBike()); return; }

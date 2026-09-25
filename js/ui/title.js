@@ -27,7 +27,7 @@ G.TitleScene = class {
       const has = slots.some(Boolean);
       const items = [];
       if (has) items.push({ id: 'cont', label: 'Continue' });
-      items.push({ id: 'new', label: 'New Game' }, { id: 'opts', label: 'Options' }, { id: 'music', label: 'Music Room' }, { id: 'import', label: 'Import Save File' }, { id: 'help', label: 'How to Play' }, { id: 'credits', label: 'Credits' });
+      items.push({ id: 'new', label: 'New Game' }, { id: 'showcase', label: 'Showcase' }, { id: 'opts', label: 'Options' }, { id: 'music', label: 'Music Room' }, { id: 'import', label: 'Import Save File' }, { id: 'help', label: 'How to Play' }, { id: 'credits', label: 'Credits' });
       const k = await G.choose(items, { x: G.W / 2 - 50, y: 124, w: 100, cancel: -1 });
       if (k < 0) { this.stage = 'press'; return; }
       const id = items[k].id;
@@ -37,6 +37,7 @@ G.TitleScene = class {
       if (id === 'import') await G.importSave();
       if (id === 'help') await G.howToPlay();
       if (id === 'credits') await G.rollCredits(false);
+      if (id === 'showcase') { await G.openShowcase(); if (!G.findScene(G.TitleScene)) return; }
       if (id === 'music') { await G.musicRoom(); G.audio && G.audio.music('title'); }
     }
   }
