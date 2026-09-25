@@ -29,8 +29,9 @@ G.PartyScene = class {
     if (this.sub) { const r = this.sub.update(true); if (r) { const s = this.sub; this.sub = null; G.run(() => this.onSub(s.items[r.pick] && !r.cancel ? s.items[r.pick].id : null)); } return; }
     const I = G.input, n = this.party.length + (this.o.forced ? 0 : 1);
     const mv = d => { this.i = (this.i + d + n) % n; G.audio && G.audio.sfx('cursor'); };
-    if (I.repeat('up')) mv(-2); if (I.repeat('down')) mv(2);
-    if (I.repeat('left')) mv(-1); if (I.repeat('right')) mv(1);
+    const i0 = this.i;
+    if (I.repeat('up') || I.repeat('left')) mv(-1); if (I.repeat('down') || I.repeat('right')) mv(1);
+    if (this.i !== i0) this._selT = this.t;
     if (I.pressed('b')) {
       I.consume('b');
       if (this.swapFrom >= 0) { this.swapFrom = -1; this.msg = 'Choose a mon.'; G.audio && G.audio.sfx('back'); return; }
@@ -62,7 +63,7 @@ G.PartyScene = class {
       if (G.save.follower) items.push({ id: 'lead', label: 'Walk Together' });
       items.push({ id: 'cancel', label: 'Cancel' });
     }
-    this.sub = new G.ListMenu(items, { x: G.W - 96, y: G.H - 18 - items.length * 12.5 - 12, w: 88, cancel: items.length - 1 });
+    this.sub = new G.ListMenu(items, { x: 96, y: Math.max(4, G.H - 34 - items.length * 12.5 - 12), w: 88, cancel: items.length - 1 });
     this.sub.items = items;
   }
   async onSub(id) {
@@ -92,37 +93,84 @@ G.PartyScene = class {
       }
     }
   }
-  draw(b) { G.menuBG(b, '#3a6aa8', '#1a2e4f', this.t / 60); }
+  draw(b) {
+    const m = this.party[Math.min(this.i, this.party.length - 1)], sp = G.SPECIES[m.sp];
+    G.menuBG(b, G.col.dark(G.TYPE_COLORS[sp.types[0]], .35), '#0b0c16', this.t / 60);
+  }
   drawUI() {
-    const U = G.ui;
-    this.party.forEach((m, k) => {
-      const x = 8 + (k % 2) * 186, y = 8 + Math.floor(k / 2) * 55, sel = this.i === k;
+    // Persona-style: the highlighted mon posed large on the left over a type-coloured sweep,
+    // the team as a diagonal cascade of skewed cards on the right that snap in one after another
+    const U = G.ui, t = this.t, ease = G.ease;
+    const cur = this.party[Math.min(this.i, this.party.length - 1)], csp = G.SPECIES[cur.sp];
+    const tc = G.TYPE_COLORS[csp.types[0]], tc2 = G.TYPE_COLORS[csp.types[1] || csp.types[0]];
+    const e0 = ease.outCubic(Math.min(1, t / 10));
+    // big diagonal sweeps
+    U.c.globalAlpha = .9; U.para(-60, 0, 250 * e0, G.H, 60, G.col.dark(tc, .15)); U.c.globalAlpha = 1;
+    U.para(-60 + 250 * e0 - 8, 0, 8, G.H, 60, tc2);
+    U.c.globalAlpha = .55; U.para(176, 0, 260, G.H, -30, '#07060c'); U.c.globalAlpha = 1;
+    // header
+    const hx = -20 + 24 * e0;
+    U.para(hx - 4, 16, 96, 20, 6, '#07060c'); U.para(hx, 14, 92, 18, 6, '#ff3b4e');
+    U.text(this.o.mode === 'battle' ? 'SWITCH' : this.o.mode === 'select' ? 'CHOOSE' : 'PARTY', hx + 12, 16.5, { size: 12, weight: 800, color: '#fff', shadow: '#07060c' });
+    U.text(`${this.party.filter(q => q.hp > 0 && !q.dead).length}/${this.party.length} ready`, hx + 14, 35, { size: 5.8, weight: 800, color: 'rgba(255,255,255,.8)' });
+    // portrait: glow, sprite, name plate
+    if (this.i < this.party.length) {
+      const cx = 78, cy = 100, pulse = 1 + Math.sin(t / 20) * .04;
+      const g = U.c.createRadialGradient(U.X(cx), U.Y(cy), 0, U.X(cx), U.Y(cy), 58 * G.gfx.S * pulse);
+      g.addColorStop(0, G.col.light(tc, .35) + ''); g.addColorStop(1, 'rgba(0,0,0,0)');
+      U.c.globalAlpha = .55; U.c.fillStyle = g; U.c.fillRect(U.X(cx - 70), U.Y(cy - 70), 140 * G.gfx.S, 140 * G.gfx.S); U.c.globalAlpha = 1;
+      const pe = ease.outBack(Math.min(1, (t - (this._selT || 0)) / 12));
+      const img = G.monArt.front(cur.sp, cur.shiny, Math.floor(t / 12) % 4);
+      U.img(img, cx - 48 - (1 - pe) * 30, cy - 58 + Math.sin(t / 18) * 1.5, { alpha: (cur.dead ? .45 : 1) * Math.min(1, pe + .2) });
+      const nx = 10 + (1 - pe) * -40;
+      U.para(nx - 12, 142, 150, 17, 7, '#07060c');
+      U.text(G.mon.name(cur), nx, 144, { size: 10, weight: 800, color: '#fff' });
+      U.text('Lv' + cur.lvl, nx + 128, 147, { size: 6.5, weight: 800, color: '#ffd23a', align: 'right' });
+      U.typeBadge(csp.types[0], nx + 2, 162, 30, 8); if (csp.types[1]) U.typeBadge(csp.types[1], nx + 35, 162, 30, 8);
+    }
+    // cards
+    const n = this.party.length;
+    for (let k = 0; k < 6; k++) {
+      const e = ease.outBack(G.clamp((t - 2 - k * 1.6) / 10, 0, 1)), sel = this.i === k;
+      const x = 188 + k * 3 + (1 - e) * 220 - (sel ? 12 : 0), y = 8 + k * 28, w = 186, h = 24;
+      if (k >= n) { U.c.globalAlpha = .35; U.para(x, y, w, h, 7, '#12131c'); U.c.globalAlpha = 1; continue; }
+      const m = this.party[k], sp = G.SPECIES[m.sp], col = G.TYPE_COLORS[sp.types[0]];
       const dead = m.dead, fnt = m.hp <= 0;
-      const style = dead ? 'dark' : fnt ? 'red' : k === 0 ? 'teal' : 'blue';
-      U.panel(x, y + (sel ? -1.5 : 0), 180, 50, sel ? 'select' : style, { r: 7 });
-      if (this.swapFrom === k) { U.rrect(x - 1, y - 1, 182, 52, 8); U.c.lineWidth = G.gfx.S; U.c.strokeStyle = '#ff5a5a'; U.c.stroke(); }
-      const txt = sel ? '#3a2800' : '#ffffff';
-      const icon = G.monArt.icon(m.sp, m.shiny, sel ? Math.floor(this.t / 10) % 2 : 0);
-      U.img(icon, x + 4, y + 7 + (sel ? Math.sin(this.t / 6) * 1.5 : 0) - (sel ? 1.5 : 0), { alpha: dead ? .45 : 1 });
-      U.text(G.mon.name(m), x + 44, y + 5, { size: 8, weight: 800, color: txt });
-      if (m.gender) U.text(m.gender === 'm' ? '♂' : '♀', x + 46 + U.measure(G.mon.name(m), 8, 800), y + 5, { size: 7.5, weight: 800, color: m.gender === 'm' ? '#6ab8ff' : '#ff8ab8' });
-      U.text('Lv ' + m.lvl, x + 172, y + 5.5, { size: 6.8, weight: 800, color: txt, align: 'right' });
+      if (this.swapFrom === k) U.para(x - 3, y - 2, w + 6, h + 4, 7, '#ff3b4e');
+      if (sel) U.para(x + 3, y + 3, w, h, 7, '#07060c');
+      U.para(x, y, w, h, 7, sel ? '#f4f1ea' : dead ? '#1b1b22' : fnt ? '#3a1418' : '#12131c');
+      U.para(x, y, 5, h, 7, sel ? '#ff3b4e' : col);
+      if (!sel) U.para(x, y + h - 1.5, w, 1.5, .5, col);
+      const txt = sel ? '#07060c' : '#fff', sub = sel ? '#5a5560' : 'rgba(255,255,255,.65)';
+      const bob = sel ? Math.sin(t / 6) * 1.2 - 1 : 0;
+      U.img(G.monArt.icon(m.sp, m.shiny, sel ? Math.floor(t / 10) % 2 : 0), x + 6, y - 9 + bob, { alpha: dead ? .45 : 1 });
+      U.text(G.mon.name(m), x + 44, y + 3, { size: 8, weight: 800, color: txt, shadow: sel ? false : undefined });
+      if (m.gender) U.text(m.gender === 'm' ? '♂' : '♀', x + 46 + U.measure(G.mon.name(m), 8, 800), y + 3, { size: 7, weight: 800, color: m.gender === 'm' ? '#3a8ae8' : '#e8508a', shadow: false });
+      U.text('Lv ' + m.lvl, x + w - 6, y + 3.5, { size: 6.4, weight: 800, color: sub, align: 'right', shadow: false });
       const max = G.mon.maxHP(m), f = m.hp / max;
-      U.bar(x + 44, y + 19, 128, 5.2, f, U.hpColor(f));
-      U.text(`${m.hp}/${max}`, x + 172, y + 27, { size: 6.4, weight: 800, color: txt, align: 'right' });
-      G.statusBadge(dead ? 'dead' : fnt ? 'fnt' : m.status, x + 44, y + 27.5);
-      if (m.item) { U.img(G.tiles.itemIcon(G.ITEMS[m.item].icon || 'gem', G.ITEMS[m.item].ic || '#999'), x + 30, y + 32, { scale: .6 }); }
-      if (m.shiny) U.text('★', x + 6, y + 38, { size: 6, color: '#ffe066', weight: 800 });
-      if (this.o.mode === 'select' && this.o.label) { const l = this.o.label(m); if (l) U.text(l, x + 66, y + 36.5, { size: 6, weight: 800, color: sel ? '#6a4a00' : '#ffe08a' }); }
-      else if (this.o.mode === 'battle' && (this.o.activeUids || []).includes(m.uid)) U.text('IN BATTLE', x + 66, y + 36.5, { size: 5.6, weight: 800, color: sel ? '#6a4a00' : '#ffe08a' });
-    });
-    for (let k = this.party.length; k < 6; k++) { const x = 8 + (k % 2) * 186, y = 8 + Math.floor(k / 2) * 55; U.panel(x, y, 180, 50, 'glass', { r: 7, alpha: .5 }); }
-    U.panel(8, G.H - 36, this.o.forced ? G.W - 16 : 290, 30, 'light', { r: 6 });
-    U.text(this.msg, 18, G.H - 27, { size: 7.6, weight: 700 });
+      U.bar(x + 44, y + 14, 88, 4, f, U.hpColor(f));
+      U.text(`${m.hp}/${max}`, x + w - 6, y + 13, { size: 5.8, weight: 800, color: sub, align: 'right', shadow: false });
+      G.statusBadge(dead ? 'dead' : fnt ? 'fnt' : m.status, x + 136, y + 13.2);
+      if (m.item) U.img(G.tiles.itemIcon(G.ITEMS[m.item].icon || 'gem', G.ITEMS[m.item].ic || '#999'), x + 30, y + 12, { scale: .5 });
+      if (m.shiny) U.text('★', x + 8, y + 14, { size: 6, color: '#ffd23a', weight: 800 });
+      let tag = null;
+      if (this.o.mode === 'select' && this.o.label) tag = this.o.label(m);
+      else if (this.o.mode === 'battle' && (this.o.activeUids || []).includes(m.uid)) tag = 'IN BATTLE';
+      if (tag) { const tw = U.measure(tag, 5.4, 800) + 8; U.para(x + w - tw - 34, y - 4, tw, 7, 2, '#ffd23a'); U.text(tag, x + w - tw / 2 - 33, y - 3.4, { size: 5.4, weight: 800, color: '#07060c', align: 'center', shadow: false }); }
+      if (!this.sub) U.hot(x, y, w, h, () => { if (this.i !== k) { this.i = k; this._selT = t; G.audio && G.audio.sfx('cursor'); } }, () => { this.i = k; G.input.tap('a'); });
+    }
+    // message slab + cancel
+    const my = G.H - 28;
+    U.para(-12, my, 196, 24, 8, '#07060c'); U.para(-12, my, 196, 2, 8, '#ff3b4e');
+    const lines = U.wrap ? U.wrap(this.msg, 164, 7) : [this.msg];
+    lines.slice(0, 2).forEach((l, j) => U.text(l, 10, my + 5 + j * 9 - (lines.length > 1 ? 0 : -4), { size: 7, weight: 700, color: '#fff' }));
     if (!this.o.forced) {
-      const sel = this.i >= this.party.length;
-      U.panel(304, G.H - 36, 72, 30, sel ? 'select' : 'red', { r: 6 });
-      U.text('Cancel', 340, G.H - 27, { size: 8, weight: 800, color: sel ? '#3a2800' : '#fff', align: 'center' });
+      const sel = this.i >= n, e = ease.outBack(G.clamp((t - 12) / 10, 0, 1));
+      const x = 300 + (1 - e) * 120 - (sel ? 8 : 0), y = G.H - 30;
+      if (sel) U.para(x + 3, y + 3, 76, 22, 7, '#07060c');
+      U.para(x, y, 76, 22, 7, sel ? '#ff3b4e' : '#12131c'); if (!sel) U.para(x, y + 20.5, 76, 1.5, .5, '#ff3b4e');
+      U.text(this.swapFrom >= 0 ? 'STOP' : 'BACK', x + 42, y + 6.5, { size: 8.5, weight: 800, color: '#fff', align: 'center' });
+      if (!this.sub) U.hot(x, y, 80, 22, () => { if (this.i !== n) { this.i = n; G.audio && G.audio.sfx('cursor'); } }, () => { this.i = n; G.input.tap('a'); });
     }
     if (this.sub) this.sub.draw();
   }
@@ -150,38 +198,57 @@ G.SummaryScene = class {
   }
   draw(b) {
     const sp = G.SPECIES[this.m.sp];
-    G.menuBG(b, G.col.dark(G.TYPE_COLORS[sp.types[0]], .2), G.col.dark(G.TYPE_COLORS[sp.types[1] || sp.types[0]], .6), this.t / 60);
-    // left: sprite on a disc
-    b.fillStyle = 'rgba(255,255,255,.12)'; b.beginPath(); b.ellipse(66, 130, 50, 14, 0, 0, Math.PI * 2); b.fill();
-    const img = G.monArt.front(this.m.sp, this.m.shiny, Math.floor(this.t / 14) % 4);
-    b.drawImage(img, 18, 44 + Math.sin(this.t / 20) * 1.5);
+    G.menuBG(b, G.col.dark(G.TYPE_COLORS[sp.types[0]], .35), '#0b0c16', this.t / 60);
   }
   drawUI() {
-    const U = G.ui, m = this.m, sp = G.SPECIES[m.sp];
-    // header
-    U.panel(6, 6, 124, 30, 'light', { r: 6 });
-    U.text(G.mon.name(m), 12, 9, { size: 8.6, weight: 800 });
-    if (m.gender) U.text(m.gender === 'm' ? '♂' : '♀', 14 + U.measure(G.mon.name(m), 8.6, 800), 9, { size: 8, color: m.gender === 'm' ? '#3b82e0' : '#e8487a', weight: 800 });
-    U.text('Lv ' + m.lvl, 124, 10, { size: 7, weight: 800, align: 'right' });
-    U.typeBadge(sp.types[0], 12, 22, 34, 9); if (sp.types[1]) U.typeBadge(sp.types[1], 48, 22, 34, 9);
-    if (m.shiny) U.text('★ Shiny', 124, 23, { size: 6, color: '#d99a14', weight: 800, align: 'right' });
-    U.img(G.tiles.itemIcon('orb', (G.ITEMS[m.ball] || G.ITEMS.orb).ic), 110, 20, { scale: .7 });
-    if (m.dead) { U.panel(12, 150, 110, 16, 'dark'); U.text('Fallen — rests in memory', 67, 154, { size: 6, color: '#ccd', align: 'center' }); }
-    // tabs
-    const tabs = ['INFO', 'STATS', 'MOVES'];
-    tabs.forEach((t, k) => { const x = 140 + k * 80; U.panel(x, 6, 76, 14, this.page === k ? 'select' : 'dark', { r: 4 }); U.text(t, x + 38, 8.6, { size: 7, weight: 800, align: 'center', color: this.page === k ? '#3a2800' : '#dde' }); });
-    U.text('◀ ▶ pages   ▲ ▼ mons', 130, 206, { size: 5.2, color: 'rgba(255,255,255,.6)', align: 'center' });
+    const U = G.ui, m = this.m, sp = G.SPECIES[m.sp], t = this.t, ease = G.ease;
+    const tc = G.TYPE_COLORS[sp.types[0]], tc2 = G.TYPE_COLORS[sp.types[1] || sp.types[0]];
+    if (this._mon !== m) { this._mon = m; this._selT = t; }
+    const e0 = ease.outCubic(Math.min(1, t / 10)), pe = ease.outBack(Math.min(1, (t - (this._selT || 0)) / 12));
+    // type sweep + portrait
+    U.c.globalAlpha = .9; U.para(-60, 0, 210 * e0, G.H, 50, G.col.dark(tc, .15)); U.c.globalAlpha = 1;
+    U.para(-60 + 210 * e0 - 7, 0, 7, G.H, 50, tc2);
+    const cx = 68, cy = 96, g = U.c.createRadialGradient(U.X(cx), U.Y(cy), 0, U.X(cx), U.Y(cy), 56 * G.gfx.S);
+    g.addColorStop(0, G.col.light(tc, .35)); g.addColorStop(1, 'rgba(0,0,0,0)');
+    U.c.globalAlpha = .55; U.c.fillStyle = g; U.c.fillRect(U.X(cx - 70), U.Y(cy - 70), 140 * G.gfx.S, 140 * G.gfx.S); U.c.globalAlpha = 1;
+    U.img(G.monArt.front(m.sp, m.shiny, Math.floor(t / 14) % 4), cx - 48 - (1 - pe) * 30, cy - 56 + Math.sin(t / 20) * 1.5, { alpha: (m.dead ? .45 : 1) * Math.min(1, pe + .2) });
+    // name plate
+    const nx = 8 - (1 - pe) * 40;
+    U.para(nx - 14, 14, 138, 30, 8, '#07060c'); U.para(nx - 14, 42, 138, 2, 0, '#ff3b4e');
+    U.text(G.mon.name(m), nx, 16, { size: 9.5, weight: 800, color: '#fff' });
+    if (m.gender) U.text(m.gender === 'm' ? '♂' : '♀', nx + 2 + U.measure(G.mon.name(m), 9.5, 800), 16, { size: 8, color: m.gender === 'm' ? '#6ab8ff' : '#ff8ab8', weight: 800 });
+    U.text('Lv' + m.lvl, nx + 118, 17.5, { size: 7, weight: 800, align: 'right', color: '#ffd23a' });
+    U.typeBadge(sp.types[0], nx + 1, 30, 32, 8.5); if (sp.types[1]) U.typeBadge(sp.types[1], nx + 36, 30, 32, 8.5);
+    if (m.shiny) U.text('★', nx + 96, 30, { size: 7, color: '#ffd23a', weight: 800 });
+    U.img(G.tiles.itemIcon('orb', (G.ITEMS[m.ball] || G.ITEMS.orb).ic), nx + 110, 27, { scale: .7 });
+    if (m.dead) { U.para(4, 150, 124, 14, 5, '#07060c'); U.text('Fallen — rests in memory', 66, 153.5, { size: 6, color: '#ccd', align: 'center' }); }
+    // tabs: skewed slabs, the open page juts up in red
+    ['INFO', 'STATS', 'MOVES'].forEach((lb, k) => {
+      const sel = this.page === k, e = ease.outBack(G.clamp((t - k * 1.5) / 9, 0, 1));
+      const x = 146 + k * 78, y = 4 + (1 - e) * -20 - (sel ? 2 : 0);
+      if (sel) U.para(x + 2, y + 2, 72, 15, 5, '#07060c');
+      U.para(x, y, 72, 15, 5, sel ? '#ff3b4e' : '#12131c'); if (!sel) U.para(x, y + 13.5, 72, 1.5, .5, '#ff3b4e');
+      U.text(lb, x + 39, y + 3.6, { size: 7.4, weight: 800, align: 'center', color: sel ? '#fff' : '#b8bccb' });
+      U.hot(x, y, 76, 15, null, () => { if (this.page !== k) { this.page = k; this.moveMode = false; this.swapMove = undefined; G.audio && G.audio.sfx('page'); } });
+    });
     const px = 140, py = 24, pw = 238, ph = 186;
-    U.panel(px, py, pw, ph, 'light', { r: 6 });
+    // page card: the paper sheet on a black slab that leans, sliding in on each page flip
+    if (this._pg !== this.page) { this._pg = this.page; this._pgT = t; }
+    const ce = ease.outCubic(Math.min(1, (t - this._pgT) / 8));
+    U.c.save(); U.c.globalAlpha = ce; U.c.translate((1 - ce) * 18 * G.gfx.S, 0);
+    U.para(px - 6, py - 2 + 4, pw + 8, ph + 2, 6, '#07060c');
+    U.panel(px, py, pw, ph, 'light', { r: 6, noShadow: true });
     if (this.page === 0) this.drawInfo(px, py, m, sp);
     if (this.page === 1) this.drawStats(px, py, m, sp);
     if (this.page === 2) this.drawMoves(px, py, m, sp);
-    // held item and exp under sprite
-    U.panel(6, 170, 124, 30, 'light', { r: 6 });
-    U.text('Item: ' + (m.item ? G.ITEMS[m.item].name : 'None'), 12, 174, { size: 6.4, weight: 700 });
+    U.c.restore();
+    // held item and exp: black slab
+    U.para(-10, 168, 142, 34, 7, '#07060c'); U.para(-10, 168, 142, 1.5, 7, tc2);
+    U.text('Item  ' + (m.item ? G.ITEMS[m.item].name : 'None'), 8, 172, { size: 6.4, weight: 800, color: '#fff' });
     const nxt = G.mon.expToNext(m);
-    U.text(m.lvl >= 100 ? 'Max level' : `To next Lv: ${nxt.toLocaleString()}`, 12, 184, { size: 5.8, weight: 600, color: '#5a6070' });
-    U.bar(12, 193, 112, 3, G.mon.expProgress(m), '#4ab0f4', '#c8ccd8', { border: false });
+    U.text(m.lvl >= 100 ? 'Max level' : `To next Lv  ${nxt.toLocaleString()}`, 8, 182, { size: 5.8, weight: 700, color: '#b8bccb' });
+    U.bar(8, 192, 112, 3, G.mon.expProgress(m), '#4ab0f4', '#2a2c3a', { border: false });
+    U.text('◀ ▶ pages   ▲ ▼ mons', 66, 208, { size: 5, color: 'rgba(255,255,255,.55)', align: 'center' });
   }
   drawInfo(px, py, m, sp) {
     const U = G.ui; let y = py + 8;

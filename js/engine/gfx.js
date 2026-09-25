@@ -182,6 +182,11 @@ G.ui = {
     }
     return out;
   },
+  // skewed parallelogram (Persona-style slab): top edge shifted right by sk
+  para(x, y, w, h, sk, fill) {
+    const c = this.c; c.fillStyle = fill; c.beginPath();
+    c.moveTo(this.X(x + sk), this.Y(y)); c.lineTo(this.X(x + w + sk), this.Y(y)); c.lineTo(this.X(x + w), this.Y(y + h)); c.lineTo(this.X(x), this.Y(y + h)); c.closePath(); c.fill();
+  },
   // pixel-art rounded rectangle: world-pixel aligned, corners cut in 1px steps (DS window style)
   rrect(x, y, w, h, r) {
     const c = this.c, S = G.gfx.S;

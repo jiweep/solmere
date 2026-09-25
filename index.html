@@ -13,9 +13,9 @@
   html, body { margin: 0; padding: 0; background: #000; overflow: hidden; height: 100%; }
   #game { position: relative; z-index: 1; }
   canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
-  #ff { position: fixed; top: 10px; left: 10px; z-index: 5; padding: 6px 11px; border-radius: 9px; border: 1px solid rgba(255,255,255,.25); background: rgba(16,20,32,.55); color: #fff; font: 700 13px "Avenir Next", sans-serif; letter-spacing: .04em; cursor: pointer; opacity: .55; transition: opacity .15s, background .15s; user-select: none; }
+  #ff { position: fixed; top: 6px; left: calc(50% - 64px); z-index: 5; padding: 6px 11px; border-radius: 9px; border: 1px solid rgba(255,255,255,.25); background: rgba(16,20,32,.55); color: #fff; font: 700 13px "Avenir Next", sans-serif; letter-spacing: .04em; cursor: pointer; opacity: .55; transition: opacity .15s, background .15s; user-select: none; }
   #ff:hover { opacity: 1; }
-  #sc { position: fixed; top: 10px; left: 64px; z-index: 5; padding: 6px 11px; border-radius: 9px; border: 1px solid rgba(255,255,255,.25); background: rgba(16,20,32,.55); color: #fff; font: 700 11px "Avenir Next", sans-serif; letter-spacing: .08em; cursor: pointer; opacity: .45; }
+  #sc { position: fixed; top: 6px; left: calc(50% - 10px); z-index: 5; padding: 6px 11px; border-radius: 9px; border: 1px solid rgba(255,255,255,.25); background: rgba(16,20,32,.55); color: #fff; font: 700 11px "Avenir Next", sans-serif; letter-spacing: .08em; cursor: pointer; opacity: .45; }
   #sc:hover { opacity: 1; }
   #ff.on { background: rgba(255,196,40,.9); color: #1a1405; opacity: .95; border-color: rgba(255,255,255,.6); }
   #boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: #8af0e0; font: 600 18px "Avenir Next", sans-serif; letter-spacing: .1em; }

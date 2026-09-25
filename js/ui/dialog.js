@@ -124,21 +124,37 @@ G.ListMenu = class {
     return null;
   }
   draw() {
+    // Persona-style: a black slab that unfolds from the right, rows cascade in, the pick is a red bar that juts out
     const U = G.ui;
-    U.panel(this.x, this.y, this.w, this.h, this.o.style || 'light', { r: 5 });
+    if (this._t0 === undefined) this._t0 = G.realTime;
+    const age = (G.realTime - this._t0) * 60, e0 = G.ease.outCubic(Math.min(1, age / 7));
+    const x = this.x + (1 - e0) * 30, y = this.y, w = this.w, h = this.h;
+    U.c.globalAlpha = e0;
+    U.para(x + 3, y + 3, w, h, 5, 'rgba(0,0,0,.45)');
+    U.para(x, y, w, h, 5, '#0c0d16'); U.para(x, y, w, 1.5, 5, '#ff3b4e');
     const rows = this.items.slice(this.scroll, this.scroll + this.maxRows);
     rows.forEach((it, k) => {
-      const i = k + this.scroll, y = this.y + 4 + k * this.rowH;
+      const i = k + this.scroll, ry = y + 4 + k * this.rowH, sel = i === this.i;
+      const re = G.ease.outBack(G.clamp((age - 2 - k * 1.2) / 8, 0, 1));
+      const sk = 5 * (1 - (ry - y + this.rowH / 2) / h);   // follow the slab's lean
+      const rx = x + sk + (1 - re) * 24;
       const label = typeof it === 'string' ? it : it.label;
-      U.hot(this.x + 2, y, this.w - 4, this.rowH, () => { if (this.i !== i) { this.i = i; G.audio && G.audio.sfx('cursor'); } }, () => { this.i = i; G.input.tap('a'); });
-      if (i === this.i) { U.rrect(this.x + 3, y, this.w - 6, this.rowH - 1, 3); U.c.fillStyle = 'rgba(59,130,224,.16)'; U.c.fill(); U.cursor(this.x + 5, y + this.rowH / 2 - .5); }
-      U.text(label, this.x + 13, y + 2.4, { size: 7.5, weight: 700, color: it.disabled ? '#9aa0aa' : (this.o.style === 'dark' ? '#eef' : '#283040') });
-      if (it.right) U.text(it.right, this.x + this.w - 7, y + 2.8, { size: 6.5, weight: 700, align: 'right', color: '#6a7080' });
+      U.hot(this.x + 2, ry, this.w - 4, this.rowH, () => { if (this.i !== i) { this.i = i; G.audio && G.audio.sfx('cursor'); } }, () => { this.i = i; G.input.tap('a'); });
+      if (sel) {
+        const j = Math.sin(G.realTime * 8) * .6;
+        U.para(rx - 2 + 2, ry + 1.5, w - 2, this.rowH - 1.5, 3, '#07060c');
+        U.para(rx - 5 + j, ry, w - 2, this.rowH - 1.5, 3, '#ff3b4e');
+      }
+      U.c.globalAlpha = e0 * re;
+      U.text(label, rx + 7 + (sel ? 1 : 0), ry + 2.3, { size: 7.5, weight: sel ? 800 : 700, color: it.disabled ? '#5c606c' : '#ffffff', shadow: sel ? '#7a0f1c' : false });
+      if (it.right) U.text(it.right, rx + w - 9, ry + 2.7, { size: 6.5, weight: 700, align: 'right', color: sel ? '#ffe0e4' : '#8a8fa0', shadow: false });
+      U.c.globalAlpha = e0;
     });
     if (this.items.length > this.maxRows) {
-      if (this.scroll > 0) U.text('▲', this.x + this.w / 2, this.y - 1, { size: 5, align: 'center', color: '#e8484a' });
-      if (this.scroll + this.maxRows < this.items.length) U.text('▼', this.x + this.w / 2, this.y + this.h - 5, { size: 5, align: 'center', color: '#e8484a' });
+      if (this.scroll > 0) U.text('▲', x + w / 2, y - 1, { size: 5, align: 'center', color: '#ff3b4e' });
+      if (this.scroll + this.maxRows < this.items.length) U.text('▼', x + w / 2, y + h - 5, { size: 5, align: 'center', color: '#ff3b4e' });
     }
+    U.c.globalAlpha = 1;
   }
 };
 
@@ -186,7 +202,11 @@ G.yesno = async function (text, o = {}) { return (await G.ask(text, ['Yes', 'No'
 G.MenuScene = class {
   constructor(items, o, res) { this.menu = new G.ListMenu(items, o); this.res = res; this.lowres = false; this.o = o; }
   update(top) { const r = this.menu.update(top); if (r) { G.pop(this); this.res(r.pick); } }
-  drawUI() { if (this.o.title) { G.ui.panel(this.menu.x, this.menu.y - 13, this.menu.w, 12, 'teal', { r: 4 }); G.ui.text(this.o.title, this.menu.x + this.menu.w / 2, this.menu.y - 10.5, { size: 6.5, weight: 800, color: '#fff', align: 'center' }); } this.menu.draw(); }
+  drawUI() {
+    const U = G.ui, o = this.o, m = this.menu;
+    if (o.title) { const tw = U.measure(o.title, 7, 800) + 16; U.para(m.x + 2, m.y - 11, tw, 10, 4, '#07060c'); U.para(m.x, m.y - 12, tw, 10, 4, '#ff3b4e'); U.text(o.title, m.x + 8, m.y - 10.3, { size: 7, weight: 800, color: '#fff', shadow: false }); }
+    m.draw();
+  }
 };
 G.choose = function (items, o = {}) { return new Promise(res => G.push(new G.MenuScene(items, o, res))); };
 

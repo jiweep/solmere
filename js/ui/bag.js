@@ -99,44 +99,68 @@ G.BagScene = class {
     }
     await G.say('That can\'t be used right now.');
   }
-  draw(b) { G.menuBG(b, '#b87a3a', '#5a3418', this.t / 60); }
+  draw(b) { G.menuBG(b, '#8a5a2a', '#140e0c', this.t / 60); }
   drawUI() {
-    const U = G.ui, P = this.pockets[this.p], L = this.list();
-    // pocket tabs
+    const U = G.ui, P = this.pockets[this.p], L = this.list(), t = this.t, ease = G.ease;
+    if (this._p !== this.p) { this._p = this.p; this._pT = t; }
+    const pe = t - (this._pT || 0);
+    U.c.globalAlpha = .6; U.para(212, 0, 260, G.H, -40, '#07060c'); U.c.globalAlpha = 1;
+    // pocket tabs: a skewed strip; the open pocket juts down in red
+    const tw = (G.W - 20) / this.pockets.length;
     this.pockets.forEach((p, k) => {
-      const w = (G.W - 16) / this.pockets.length, x = 8 + k * w, sel = k === this.p;
-      U.panel(x + 1, 6 + (sel ? 0 : 2), w - 2, 16, sel ? 'select' : 'dark', { r: 4 });
-      U.text(p.name, x + w / 2, 10 + (sel ? 0 : 2), { size: 5.8, weight: 800, align: 'center', color: sel ? '#3a2800' : '#dde' });
+      const x = 8 + k * tw, sel = k === this.p, e = ease.outBack(G.clamp((t - k) / 8, 0, 1)), y = 6 - (1 - e) * 24 + (sel ? 2 : 0);
+      if (sel) U.para(x + 2, y + 2, tw - 3, 14, 4, '#07060c');
+      U.para(x, y, tw - 3, 14, 4, sel ? '#ff3b4e' : '#12131c'); if (!sel) U.para(x, y + 12.5, tw - 3, 1.5, .5, '#ff3b4e');
+      U.text(p.name, x + tw / 2, y + 3.6, { size: 5.8, weight: 800, align: 'center', color: sel ? '#fff' : '#b8bccb', shadow: false });
+      if (!this.sub) U.hot(x, y, tw, 14, null, () => { if (this.p !== k) { this.p = k; this.i = 0; this.scroll = 0; G.audio && G.audio.sfx('page'); } });
     });
-    U.text('◀ Q / E ▶', G.W - 12, 26, { size: 5, align: 'right', color: 'rgba(255,255,255,.6)' });
-    // list
-    U.panel(8, 30, 220, 180, 'light', { r: 6 });
-    const rows = L.slice(this.scroll, this.scroll + 10);
+    U.text('◀ Q / E ▶', G.W - 12, 24, { size: 5, align: 'right', color: 'rgba(255,255,255,.55)' });
+    // list: a cascade of slanted bars
+    const rowsN = 10, rows = L.slice(this.scroll, this.scroll + rowsN);
+    const bar = (k, sel, draw) => {
+      const e = ease.outBack(G.clamp((pe - k * 1.1) / 8, 0, 1));
+      const x = 10 + k * 1.6 + (1 - e) * -120 + (sel ? 6 : 0), y = 32 + k * 17.2;
+      if (sel) { U.para(x + 3, y + 3, 196, 14, 4, '#07060c'); U.para(x + Math.sin(t / 5) * .5, y, 196, 14, 4, '#ff3b4e'); }
+      else U.para(x, y, 196, 14, 4, 'rgba(12,13,22,.88)');
+      draw(x, y);
+    };
     rows.forEach((id, k) => {
-      const i = k + this.scroll, y = 36 + k * 16.4, sel = this.i === i, it = G.ITEMS[id];
-      if (sel) { U.rrect(12, y - 1.5, 212, 15, 3); U.c.fillStyle = 'rgba(59,130,224,.16)'; U.c.fill(); U.cursor(14, y + 5.5); }
-      U.img(G.itemIconFor(id), 22, y - 1, { scale: .8 });
-      let label = it.name;
-      U.text(label, 38, y + 1.4, { size: 7, weight: 700 });
-      if (it.pocket === 'tm') { const mv = G.MOVES[it.tm]; U.typeBadge(mv.type, 168, y + 1, 26, 8, 4.6); }
-      if (it.pocket !== 'key' && it.pocket !== 'tm') U.text('×' + G.bag.count(id), 218, y + 1.6, { size: 6.6, weight: 800, align: 'right', color: '#5a6070' });
-      if (this.o.mode === 'sell') U.text('$' + it.sell, 190, y + 1.6, { size: 6, weight: 700, align: 'right', color: '#2aa86a' });
-      if (G.save.reg === id) U.text('F', 218, y + 1.6, { size: 6.6, weight: 900, align: 'right', color: '#e8484a' });
+      const i = k + this.scroll, sel = this.i === i, it = G.ITEMS[id];
+      bar(k, sel, (x, y) => {
+        U.img(G.itemIconFor(id), x + 6, y - 1.5, { scale: .8 });
+        U.text(it.name, x + 24, y + 3, { size: 7, weight: sel ? 800 : 700, color: '#fff', shadow: sel ? '#7a0f1c' : false });
+        if (it.pocket === 'tm') { const mv = G.MOVES[it.tm]; U.typeBadge(mv.type, x + 150, y + 3, 26, 8, 4.6); }
+        const sub = sel ? '#ffe0e4' : '#8a8fa0';
+        if (it.pocket !== 'key' && it.pocket !== 'tm') U.text('×' + G.bag.count(id), x + 190, y + 3.3, { size: 6.6, weight: 800, align: 'right', color: sub, shadow: false });
+        if (this.o.mode === 'sell') U.text('$' + it.sell, x + 164, y + 3.3, { size: 6, weight: 700, align: 'right', color: '#6ee0a0', shadow: false });
+        if (G.save.reg === id) U.text('F', x + 190, y + 3.3, { size: 6.6, weight: 900, align: 'right', color: '#ffd23a', shadow: false });
+      });
+      if (!this.sub) U.hot(10, 32 + k * 17.2, 200, 16, () => { if (this.i !== i) { this.i = i; G.audio && G.audio.sfx('cursor'); } }, () => { this.i = i; G.input.tap('a'); });
     });
-    const cy = 36 + (L.length - this.scroll) * 16.4;
-    if (L.length - this.scroll < 10) { const sel = this.i >= L.length; if (sel) U.cursor(14, cy + 5.5); U.text('Close Bag', 38, cy + 1.4, { size: 7, weight: 700, color: '#8a90a0' }); }
-    if (!L.length) U.text('Nothing here yet.', 118, 110, { size: 7, color: '#9aa0aa', align: 'center' });
-    // detail
-    U.panel(234, 30, 142, 180, 'paper', { r: 6 });
+    if (L.length - this.scroll < rowsN) {
+      const k = L.length - this.scroll, sel = this.i >= L.length;
+      bar(k, sel, (x, y) => U.text('Close Bag', x + 24, y + 3, { size: 7, weight: 700, color: sel ? '#fff' : '#8a8fa0', shadow: false }));
+      if (!this.sub) U.hot(10, 32 + k * 17.2, 200, 16, () => { if (this.i !== L.length) { this.i = L.length; G.audio && G.audio.sfx('cursor'); } }, () => { this.i = L.length; G.input.tap('a'); });
+    }
+    if (!L.length) U.text('Nothing here yet.', 110, 70, { size: 7, color: '#8a8fa0', align: 'center' });
+    // detail: big icon over a glow, name plate, paper slip
     const id = L[this.i];
+    const de = ease.outBack(Math.min(1, (t - (this._iT || 0)) / 10));
+    if (this._i !== this.i || this._p2 !== this.p) { this._i = this.i; this._p2 = this.p; this._iT = t; }
+    const cx = 304, cy = 60;
+    const g = U.c.createRadialGradient(U.X(cx), U.Y(cy), 0, U.X(cx), U.Y(cy), 40 * G.gfx.S);
+    g.addColorStop(0, 'rgba(255,200,120,.45)'); g.addColorStop(1, 'rgba(0,0,0,0)'); U.c.fillStyle = g; U.c.fillRect(U.X(cx - 45), U.Y(cy - 45), 90 * G.gfx.S, 90 * G.gfx.S);
     if (id) {
       const it = G.ITEMS[id];
-      U.img(G.itemIconFor(id), 280, 40, { scale: 3 });
-      U.text(it.name, 305, 92, { size: 7.6, weight: 800, align: 'center', color: '#4a3a20' });
-      G.ui.wrap(it.desc, 128, 6).slice(0, 8).forEach((l, k) => U.text(l, 242, 106 + k * 9, { size: 6, color: '#5a4a30' }));
-      if (it.pocket === 'tm') { const mv = G.MOVES[it.tm]; U.text(`${G.cap(mv.type)} · ${mv.cat === 'phys' ? 'Physical' : mv.cat === 'spec' ? 'Special' : 'Status'} · Pow ${mv.pow > 1 ? mv.pow : '—'} · Acc ${mv.acc === true ? '—' : mv.acc}`, 305, 190, { size: 5.2, align: 'center', color: '#6a5a40', weight: 700 }); }
-    } else U.text(this.o.mode === 'battle' ? 'Pick an item to use.' : 'Your trusty bag.', 305, 110, { size: 6.4, color: '#8a7550', align: 'center' });
-    U.text(`$${G.save.money.toLocaleString()}`, 370, 200, { size: 6.4, weight: 800, align: 'right', color: '#2aa86a' });
+      U.img(G.itemIconFor(id), cx - 24 + (1 - de) * 20, cy - 26 + Math.sin(t / 22) * 1.5, { scale: 3, alpha: Math.min(1, de + .2) });
+      U.para(236, 98, 146, 16, 6, '#07060c'); U.para(236, 112, 146, 2, 0, '#ff3b4e');
+      U.text(it.name, 310, 101, { size: 8, weight: 800, align: 'center', color: '#fff' });
+      U.panel(240, 120, 136, 76, 'paper', { r: 5 });
+      G.ui.wrap(it.desc, 124, 6).slice(0, 7).forEach((l, k) => U.text(l, 246, 125 + k * 9, { size: 6, color: '#5a4a30' }));
+      if (it.pocket === 'tm') { const mv = G.MOVES[it.tm]; U.text(`${G.cap(mv.type)} · ${mv.cat === 'phys' ? 'Physical' : mv.cat === 'spec' ? 'Special' : 'Status'} · Pow ${mv.pow > 1 ? mv.pow : '—'} · Acc ${mv.acc === true ? '—' : mv.acc}`, 308, 187, { size: 5.2, align: 'center', color: '#6a5a40', weight: 700 }); }
+    } else U.text(this.o.mode === 'battle' ? 'Pick an item to use.' : 'Your trusty bag.', 308, 104, { size: 6.4, color: '#b8bccb', align: 'center' });
+    U.para(300, 200, 90, 12, 4, '#07060c');
+    U.text(`$${G.save.money.toLocaleString()}`, 374, 202, { size: 6.4, weight: 800, align: 'right', color: '#6ee0a0', shadow: false });
     if (this.sub) this.sub.draw();
   }
 };
