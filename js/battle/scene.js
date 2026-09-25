@@ -402,7 +402,7 @@ G.BattleScene = class {
       const g = xb.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#000'); g.addColorStop(.36, '#000'); g.addColorStop(.55, 'rgba(0,0,0,0)'); xb.fillStyle = g; xb.fillRect(0, 0, W, H);
       this._bk = { src: hd, k, sharp, soft };
     }
-    c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+    c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'low';   // already pre-scaled near screen size: plain bilinear is enough and far cheaper
     const blur = this.cam ? Math.max(0, (this.cam.z - 1.02) * 26) : 0;
     const X = -G.W * (sc - 1) / 2 + dx, Y = -G.H * (sc - 1) / 2 + dy;
     c.drawImage(this._bk.sharp, X, Y, G.W * sc, G.H * sc);

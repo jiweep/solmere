@@ -54,7 +54,8 @@ G.update = function () {
 
 G.render = function () {
   const gx = G.gfx, c = gx.cx, S = gx.S;
-  c.fillStyle = '#000'; c.fillRect(0, 0, gx.canvas.width, gx.canvas.height);
+  if (gx.shell) c.clearRect(0, 0, gx.canvas.width, gx.canvas.height);   // the handheld body shows around the screen
+  else { c.fillStyle = '#000'; c.fillRect(0, 0, gx.canvas.width, gx.canvas.height); }
   // find lowest opaque scene
   let start = 0;
   for (let i = G.scenes.length - 1; i >= 0; i--) if (G.scenes[i].opaque) { start = i; break; }
@@ -115,9 +116,11 @@ G.renderScenes = function (start) {
   }
   G.ui._hot = G.ui._hotNext; G.ui._hotNext = []; G.ui._scene = null;
   // clip letterbox
+  if (gx.shell) { c.clearRect(0, 0, gx.canvas.width, gx.oy); c.clearRect(0, gx.oy + G.H * S, gx.canvas.width, gx.canvas.height); c.clearRect(0, 0, gx.ox, gx.canvas.height); c.clearRect(gx.ox + G.W * S, 0, gx.canvas.width, gx.canvas.height); } else {
   c.fillStyle = '#000';
   if (gx.ox > 0) { c.fillRect(0, 0, gx.ox, gx.canvas.height); c.fillRect(gx.ox + G.W * S, 0, gx.canvas.width, gx.canvas.height); }
   if (gx.oy > 0) { c.fillRect(0, 0, gx.canvas.width, gx.oy); c.fillRect(0, gx.oy + G.H * S, gx.canvas.width, gx.canvas.height); }
+  }
   // fade
   if (G.fade.a > 0) { c.globalAlpha = G.clamp(G.fade.a, 0, 1); c.fillStyle = G.fade.col; c.fillRect(gx.ox, gx.oy, G.W * S, G.H * S); c.globalAlpha = 1; }
   if (!G.photoMode) G.drawOverlays();

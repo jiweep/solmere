@@ -178,6 +178,8 @@ G.runTour = async function () {
     tour.busy = true;
     show(i + d).finally(() => { tour.busy = false; const q = tour.queued; tour.queued = 0; if (q) tour.go(q); });
   };
+  // the full menu of every town, battle and story scene, from any stop of the tour
+  tour.all = async () => { if (tour.busy) return; tour.busy = true; await G.fadeOut(8); for (const sc of G.scenes.slice()) G.pop(sc); G.save = null; G.showcase = true; G.push(new G.TitleScene()); G.fadeIn(8); tour.busy = false; await G.openShowcase(); };
   tour.pick = async () => {
     if (G.TOUR[i].k !== 'free') { tour.go(1); return; }
     G.pop(tour); G.save = null;
@@ -194,6 +196,7 @@ G.TourScene = class {
     if (I.pressed('right') || I.pressed('r')) { I.consume('right'); this.go(1); }
     else if (I.pressed('left') || I.pressed('l')) { I.consume('left'); this.go(-1); }
     else if (I.pressed('a')) { I.consume('a'); this.pick(); }
+    else if (I.pressed('down') || I.pressed('bike')) { I.consume('down'); I.consume('bike'); this.all(); }
     else if (I.pressed('b')) {
       I.consume('b'); G.showcase = false;
       G.run(async () => { await G.fadeOut(8); for (const s of G.scenes.slice()) G.pop(s); G.save = null; G.push(new G.TitleScene()); await G.fadeIn(8); });
@@ -211,6 +214,11 @@ G.TourScene = class {
       U.text(dir < 0 ? '◀' : '▶', ax, y + 4, { size: 8, weight: 900, align: 'center', color: '#fff', shadow: false });
     };
     arrow(x - 14, -1); arrow(x + w + 14, 1);
+    // All Scenes: the complete showcase menu (key: S)
+    const bw = 62, bx = G.W - bw - 10, by = 26;
+    U.hot(bx, by, bw + 6, 14, null, () => this.all());
+    U.para(bx + 2, by + 2, bw, 13, 5, '#07060c'); U.para(bx, by, bw, 13, 5, '#2bb3a3', { stroke: 'rgba(255,255,255,.8)', lw: .4 });
+    U.text('ALL SCENES  [S]', bx + bw / 2 + 2.5, by + 3, { size: 6, weight: 900, align: 'center', color: '#fff', shadow: 'rgba(0,0,0,.4)' });
     if (s.k === 'free') U.hot(x, y, w, 17, null, () => this.pick());
   }
 };

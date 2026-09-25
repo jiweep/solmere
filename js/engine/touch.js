@@ -9,7 +9,7 @@ G.touch = (function () {
   const q = location.search;
   const coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
   const on = !/[?&]desktop/.test(q) && (/[?&]mobile/.test(q) || coarse || (navigator.maxTouchPoints > 0 && 'ontouchstart' in window && innerWidth < 1100));
-  const T = { on };
+  const T = { on, shell: () => on && innerHeight > innerWidth };   // upright phone: the handheld look
   if (!on) return T;
   document.documentElement.classList.add('mobile');
   const css = `
@@ -40,6 +40,33 @@ G.touch = (function () {
   #tStart { right: calc(env(safe-area-inset-right, 0px) + 16px); bottom: calc(env(safe-area-inset-bottom, 0px) + min(42vmin, 186px)); }
   #tRun { right: calc(env(safe-area-inset-right, 0px) + min(22vmin, 100px)); bottom: calc(env(safe-area-inset-bottom, 0px) + min(24vmin, 104px)); }
   #tRun.on { background: rgba(42,168,106,.75); }
+  /* upright phone: a handheld console body around the game (original design) */
+  #shell { position: fixed; inset: 0; z-index: -1; display: none; overflow: hidden;
+    background: radial-gradient(130% 70% at 25% 8%, #6a5ce0 0%, #4436b0 40%, #2b2178 100%); }
+  html.shellon #shell { display: block; }
+  html.shellon, html.shellon body { background: transparent; }
+  #shell::before { content: ''; position: absolute; inset: 0; background: linear-gradient(115deg, rgba(255,255,255,.14) 0 18%, rgba(255,255,255,0) 32%); }
+  #shell .bezel { position: absolute; border-radius: 12px 12px 42px 12px; background: linear-gradient(#3a3c52, #232432);
+    box-shadow: 0 2px 0 rgba(255,255,255,.22), 0 -1px 0 rgba(0,0,0,.4), inset 0 3px 10px rgba(0,0,0,.55); }
+  #shell .led { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: #ff5a6a; box-shadow: 0 0 9px #ff5a6a; }
+  #shell .ledl { position: absolute; font: 700 8px/1 "SolPix7", sans-serif; color: rgba(255,255,255,.5); letter-spacing: .1em; }
+  #shell .brand { position: absolute; left: 0; right: 0; text-align: center; font: 800 17px/1 "SolPix11B", sans-serif; letter-spacing: .28em;
+    color: rgba(255,255,255,.88); text-shadow: 0 1px 0 rgba(0,0,0,.45); }
+  #shell .brand small { display: block; margin-top: 5px; font: 700 9px/1 "SolPix9", sans-serif; letter-spacing: .5em; color: #9fe8e0; }
+  #shell .grille { position: absolute; right: 7%; bottom: 3.5%; width: 26vmin; height: 12vmin;
+    background: repeating-linear-gradient(-60deg, rgba(0,0,0,.38) 0 5px, transparent 5px 13px); border-radius: 6px; opacity: .8; }
+  html.shellon #tpad { background: none; border: none; width: min(40vmin, 170px); height: min(40vmin, 170px); left: 8%; bottom: 24vh; }
+  html.shellon #tpad i { background: linear-gradient(#2c2c36, #17171e); border-radius: 8px; box-shadow: 0 4px 0 rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.15); }
+  html.shellon #tpad i.h { left: 4%; right: 4%; top: 35%; height: 30%; } html.shellon #tpad i.v { top: 4%; bottom: 4%; left: 35%; width: 30%; }
+  html.shellon #tpad b { opacity: .35; border-width: 7px; }
+  html.shellon #tA, html.shellon #tB { border: none; width: min(18vmin, 74px); height: min(18vmin, 74px); color: rgba(255,255,255,.85);
+    background: radial-gradient(circle at 36% 30%, #f07aa0, #b23a64 55%, #7e1f44); box-shadow: 0 5px 0 #1d1450, inset 0 -3px 6px rgba(0,0,0,.35); }
+  html.shellon #tA { right: 7%; bottom: 31vh; } html.shellon #tB { right: calc(7% + min(22vmin, 94px)); bottom: 25vh; }
+  html.shellon #tStart, html.shellon #tRun { background: linear-gradient(#3a3a48, #22222c); border: none; transform: rotate(-22deg);
+    box-shadow: 0 3px 0 rgba(0,0,0,.45); width: min(16vmin, 66px); height: min(5.5vmin, 22px); font-size: min(3vmin, 11px); }
+  html.shellon #tStart { right: auto; left: 52%; bottom: 11vh; } html.shellon #tRun { right: auto; left: 30%; bottom: 11vh; }
+  html.shellon #tRun.on { background: linear-gradient(#3ec08a, #1f8a5a); }
+  html.shellon #tStart.down, html.shellon #tRun.down { transform: rotate(-22deg) translateY(2px); }
   @media (orientation: landscape) { #touch > div { opacity: .55; } #touch > div.down, #tpad[class^=act] { opacity: .8; } }
   `;
   const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
@@ -50,6 +77,22 @@ G.touch = (function () {
       '<div id="tA" class="tb">A</div><div id="tB" class="tb">B</div>' +
       '<div id="tStart" class="tb pill">START</div><div id="tRun" class="tb pill">RUN</div>';
     document.body.appendChild(root);
+    // the handheld body (shown only when the phone is upright), laid around the game's screen
+    const sh = document.createElement('div'); sh.id = 'shell';
+    sh.innerHTML = '<div class="bezel"><div class="led"></div><div class="ledl">POWER</div></div><div class="brand">SOLMERE<small>TIDELIGHT</small></div><div class="grille"></div>';
+    document.body.insertBefore(sh, document.body.firstChild);
+    const place = () => {
+      const upright = T.shell(); document.documentElement.classList.toggle('shellon', upright);
+      if (!upright || !G.gfx || !G.gfx.S) return;
+      const d = window.devicePixelRatio || 1, x = G.gfx.ox / d, y = G.gfx.oy / d, w = G.W * G.gfx.S / d, h = G.H * G.gfx.S / d;
+      const bz = sh.querySelector('.bezel'), pad = 14, padB = 30;
+      Object.assign(bz.style, { left: (x - pad) + 'px', top: (y - pad) + 'px', width: (w + pad * 2) + 'px', height: (h + pad + padB) + 'px' });
+      Object.assign(sh.querySelector('.led').style, { left: '7px', top: (h + pad + 10) + 'px' });
+      Object.assign(sh.querySelector('.ledl').style, { left: '19px', top: (h + pad + 10) + 'px' });
+      sh.querySelector('.brand').style.top = (y + h + padB + 10) + 'px';
+    };
+    T.place = place;
+    window.addEventListener('resize', () => requestAnimationFrame(place)); setInterval(place, 1000); requestAnimationFrame(place);
     const I = G.input, S = I.touchState, buzz = () => { try { navigator.vibrate && navigator.vibrate(8); } catch (e) { } };
     const unlock = () => { if (G.audio) G.audio.unlock(); };
     // D-pad: the thumb's angle from the centre picks one of four directions; it can slide between them

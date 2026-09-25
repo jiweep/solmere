@@ -57,7 +57,7 @@
 </script>
 <canvas id="game"></canvas>
 <button id="ff" title="Fast-forward (Tab)">▶▶</button>
-<button id="sc" title="Showcase (F1): jump to any town, battle or scene">SHOWCASE</button>
+<button id="sc" title="Showcase (F1): the guided tour; its All Scenes button opens every town, battle and scene">SHOWCASE</button>
 <button id="dim" title="Switch the world between 3D and 2D (F3)">3D</button>
 <script src="js/engine/core.js"></script>
 <script src="js/engine/input.js"></script><script src="js/engine/touch.js"></script>
@@ -124,7 +124,7 @@
       G.gfx.fill = !!G.settings.fill;
       G.boot();
       // Showcase from anywhere (cutscenes, battles): reload straight into the Showcase menu
-      const toShowcase = () => { location.href = location.pathname + '?showcase' + (/[?&]mute\b/.test(location.search) ? '&mute' : ''); };
+      const toShowcase = () => { location.href = location.pathname + '?tour' + (/[?&]mute\b/.test(location.search) ? '&mute' : ''); };
       document.getElementById('sc').addEventListener('click', ev => { ev.preventDefault(); toShowcase(); });
       // 2D / 3D world switch: the top-bar button and F3
       const dimBtn = document.getElementById('dim');
@@ -139,7 +139,7 @@
       // the sprite atlas is an embedded image: decode it before the title shows
       const parts = [G.monArt.load(), G.chars.load(), G.tiles.loadWorld(), G.loadFonts()]; let doneN = 0;
       parts.forEach(p => Promise.resolve(p).then(() => window._bootProgress && window._bootProgress(++doneN / parts.length)));
-      Promise.all(parts).then(() => { G.loadBattleArt && G.loadBattleArt(); G.itemHD && G.itemHD("potion"); G.push(new G.TitleScene()); const bt = document.getElementById('boot'); clearInterval(window._bootTips); bt.classList.add('done'); setTimeout(() => bt.remove(), 500); if (/[?&]showcase\b/.test(location.search)) { history.replaceState(null, '', location.pathname); G.run(() => G.openShowcase()); } });
+      Promise.all(parts).then(() => { G.loadBattleArt && G.loadBattleArt(); G.itemHD && G.itemHD("potion"); G.push(new G.TitleScene()); const bt = document.getElementById('boot'); clearInterval(window._bootTips); bt.classList.add('done'); setTimeout(() => bt.remove(), 500); if (/[?&]showcase\b/.test(location.search)) { history.replaceState(null, '', location.pathname); G.run(() => G.openShowcase()); } else if (/[?&]tour\b/.test(location.search)) { history.replaceState(null, '', location.pathname); G.run(() => G.runTour()); } });
       window.addEventListener('beforeunload', () => { try { G.persist.saveSettings(); } catch (e) {} });
     } catch (e) {
       { clearInterval(window._bootTips); const tip = document.querySelector('#boot .tip'); if (tip) { tip.style.opacity = 1; tip.style.color = '#ff9aa6'; tip.textContent = 'Failed to start: ' + e.message; } else document.getElementById('boot').textContent = 'Failed to start: ' + e.message; }

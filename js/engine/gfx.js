@@ -52,8 +52,14 @@ G.gfx = {
     let S = Math.min(cw / G.W, ch / G.H);
     if (!this.fill && !mobile) S = Math.max(1, Math.floor(S));   // phones use every pixel of width
     this.S = S; this.ox = Math.floor((cw - G.W * S) / 2); this.oy = Math.floor((ch - G.H * S) / 2);
-    // phone held upright: the game sits near the top, the controls get the space below it
-    if (mobile && ch > cw) this.oy = Math.floor(Math.min(this.oy, 52 * dpr));
+    // phone held upright: the game is the screen of a handheld (touch.js draws the body), set in from the
+    // edges with room for the bezel, near the top; the controls get the space below it
+    if (mobile && ch > cw) {
+      S = (cw - 44 * dpr) / G.W; this.S = S;
+      this.ox = Math.floor((cw - G.W * S) / 2); this.oy = Math.floor(Math.max(62, 44 + (window.visualViewport ? 0 : 0)) * dpr);
+    }
+    this.shell = !!(mobile && ch > cw);
+    if (G.touch && G.touch.place) requestAnimationFrame(G.touch.place);
     this.cx.imageSmoothingEnabled = false;
     this._fontCache = {};
   },
