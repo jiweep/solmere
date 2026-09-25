@@ -809,6 +809,31 @@ G.WorldScene = class {
     this.drawLighting(b, ox, oy);
     this.ox = ox; this.oy = oy;
   }
+  // 3D mode: the scene itself is WebGL; this draws the 2D effects over it, projected into the view
+  draw3d(b) {
+    const W3 = G.W3, ground = (x, y) => W3.project(x, y, 0), flat = (x, y) => W3.projectFlat(x, y);
+    b.imageSmoothingEnabled = false;
+    // rustling grass: the tuft shakes where it stands, throwing blades and leaves
+    for (const r of this.rustles || []) {
+      if (r.map !== this.map.id) continue;
+      if (Math.sin(this.frame / 16 + r.x * 1.7) < .1) continue;
+      const q = ground(r.x * 16 + 8, r.y * 16 + 15); if (!q) continue;
+      const j = (this.frame >> 2) % 2 ? 1 : -1, c = this.map.cell(r.x, r.y), lt = c && G.liveTile(this.map, c, 0);
+      if (lt && lt.img) { b.drawImage(lt.img, Math.round(q.x - 8 + j), Math.round(q.y - 15 + lt.oy - 1)); b.drawImage(lt.img, Math.round(q.x - 8 - j), Math.round(q.y - 15 + lt.oy + 1)); }
+      b.fillStyle = 'rgba(255,255,220,.6)'; b.fillRect(Math.round(q.x - 4 + j), Math.round(q.y - 16), 1, 3); b.fillRect(Math.round(q.x + 2 - j), Math.round(q.y - 15), 1, 3);
+      if (this.frame % 20 === 0) { this.fx.add({ x: r.x * 16 + 8 + (G.rand() - .5) * 8, y: r.y * 16 + 4, vx: (G.rand() - .5), vy: -1.1, ay: .07, life: 22, type: 'leaf', size: 1.5, rot: G.rand() * 6, vr: .2, color: '#6ab84a' }); if (Math.abs(r.x - this.player.x) + Math.abs(r.y - this.player.y) < 7) G.audio && G.audio.sfx('rustle'); }
+    }
+    // hidden-item sparkle
+    if (this.sparkle && this.sparkle.map === this.map.id) {
+      const sp = this.sparkle, k = (sp.t % 40) / 40, q = ground(sp.x * 16 + 8, sp.y * 16 + 10);
+      if (q) { b.fillStyle = '#ffffff'; b.globalAlpha = .6 + .4 * Math.sin(sp.t / 5); const sx = Math.round(q.x), sy = Math.round(q.y - 6);
+        b.fillRect(sx - 3 - k * 2, sy, 2, 1); b.fillRect(sx + 2 + k * 2, sy, 2, 1); b.fillRect(sx, sy - 3 - k * 2, 1, 2); b.fillRect(sx, sy + 2 + k * 2, 1, 2); b.fillRect(sx - 1, sy - 1, 3, 3); b.globalAlpha = 1; }
+    }
+    // step dust and leaves sit on the terrain; weather drifts on a plane through the camera focus
+    this.fx.draw(b, 0, 0, ground);
+    this.parts.draw(b, 0, 0, flat);
+    this.drawRays(b, this.cam.x, this.cam.y);
+  }
   // how strongly cast shadows show: full in daylight, fading through dusk, faint at night
   shadowStrength() {
     const m = this.map;

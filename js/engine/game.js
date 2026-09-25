@@ -61,6 +61,12 @@ G.render = function () {
   G.in3d = !!w3;
   for (let i = start; i < G.scenes.length; i++) {
     const s = G.scenes[i];
+    if (w3 && i === start && s.draw3d) {
+      const b = gx.bx;
+      b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = 1; b.globalCompositeOperation = 'source-over';
+      b.clearRect(0, 0, G.W, G.H);
+      s.draw3d(b); gx.present();
+    }
     if (s.draw && s.lowres !== false && !(w3 && i === start)) {
       const b = gx.bx;
       b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = 1; b.globalCompositeOperation = 'source-over';

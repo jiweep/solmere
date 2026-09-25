@@ -159,7 +159,13 @@ G.W3 = (function () {
         const inside = x >= 0 && y >= 0 && x < W && y < H;
         let h = [0, 0, 0, 0];
         if (inside) { const k = (y * W + x) * 4; h = [hv.corner[k], hv.corner[k + 1], hv.corner[k + 2], hv.corner[k + 3]]; }
-        else h.fill(hv.at(G.clamp(x, 0, W - 1) + .5, G.clamp(y, 0, H - 1) + .5));
+        else {   // outside: follow the nearest edge column/row so level changes stay continuous (no gaps)
+          const X = G.clamp(x + .5, .01, W - .01), yn = G.clamp(y, .01, H - .01), ys = G.clamp(y + 1, .01, H - .01);
+          const xw = G.clamp(x, .01, W - .01), xe = G.clamp(x + 1, .01, W - .01), Y = G.clamp(y + .5, .01, H - .01);
+          if (y >= 0 && y < H) { const n = hv.at(X, yn), s2 = hv.at(X, ys); h = [n, n, s2, s2]; }
+          else if (x >= 0 && x < W) { const w = hv.at(xw, Y), e = hv.at(xe, Y); h = [w, e, w, e]; }
+          else h.fill(hv.at(X, Y));
+        }
         const c = inside ? map.cell(x, y) : G.borderCell(map, x, y);
         const wdrop = c && c.water ? -.14 : 0;
         const b = pos.length / 3;
@@ -171,6 +177,23 @@ G.W3 = (function () {
       g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
       const mesh = new T.Mesh(g, new T.MeshLambertMaterial({ map: t }));
       mesh.receiveShadow = true; group.add(mesh);
+    }
+    // water shimmer: a scrolling layer of pixel glints and wave dashes over every water cell
+    { const wp = [], wu = [], wi = [];
+      for (let y = -PADT; y < H + PADT; y++) for (let x = -PADT; x < W + PADT; x++) {
+        const inside = x >= 0 && y >= 0 && x < W && y < H, rr = inside ? null : map.resolve(x, y);
+        const c = inside ? map.cell(x, y) : rr ? rr.map.cells[rr.y * rr.map.w + rr.x] : G.borderCell(map, x, y);
+        if (!c || !c.water) continue;
+        const h = hv.at(G.clamp(x + .5, 0, W - .01), G.clamp(y + .5, 0, H - .01)) - .13, b = wp.length / 3;
+        wp.push(x, h, y, x + 1, h, y, x, h, y + 1, x + 1, h, y + 1);
+        wu.push(x / 4, -y / 4, (x + 1) / 4, -y / 4, x / 4, -(y + 1) / 4, (x + 1) / 4, -(y + 1) / 4);
+        wi.push(b, b + 2, b + 1, b + 1, b + 2, b + 3);
+      }
+      if (wp.length) {
+        const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(wp, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(wu, 2)); g.setIndex(wi);
+        const mk = (seed, op) => { const t = glintTexture(seed); const m = new T.Mesh(g, new T.MeshBasicMaterial({ map: t, transparent: true, opacity: op, blending: T.AdditiveBlending, depthWrite: false })); m.renderOrder = 1; group.add(m); return t; };
+        group.userData.water = [mk(1, .55), mk(2, .35)];
+      }
     }
     // cliff walls: vertical rock faces where a cell is higher than its east/west/south neighbour
     const rock = rockTexture(map.def.cliffStyle || (map.def.town ? 'stone' : 'rock'));
@@ -193,6 +216,14 @@ G.W3 = (function () {
       g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
       const m = new T.Mesh(g, new T.MeshLambertMaterial({ map: rock, side: T.DoubleSide })); m.receiveShadow = true; m.castShadow = true; group.add(m);
     }
+  }
+  // 64x64 tile of sparse glints and short wave dashes, pixel-exact, for the scrolling water layers
+  function glintTexture(seed) {
+    const cv = G.makeCanvas(64, 64), c = cv.getContext('2d'), rnd = new G.RNG(seed * 97 + 5);
+    for (let i = 0; i < 26; i++) { const x = Math.floor(rnd.next() * 64), y = Math.floor(rnd.next() * 64), l = 2 + Math.floor(rnd.next() * 4); c.fillStyle = `rgba(200,235,255,${.35 + rnd.next() * .4})`; c.fillRect(x, y, l, 1); }
+    for (let i = 0; i < 10; i++) { const x = Math.floor(rnd.next() * 64), y = Math.floor(rnd.next() * 64); c.fillStyle = 'rgba(255,255,255,.9)'; c.fillRect(x, y, 1, 1); }
+    const t = new T.CanvasTexture(cv); t.magFilter = T.NearestFilter; t.minFilter = T.NearestFilter; t.generateMipmaps = false; t.wrapS = t.wrapT = T.RepeatWrapping; t.colorSpace = T.SRGBColorSpace;
+    return t;
   }
   const rockTex = {};
   function rockTexture(style = 'rock') {
@@ -275,6 +306,7 @@ G.W3 = (function () {
   // ------------------------------------------------------------- buildings
   // a box body plus a pitched roof, textured by cutting the building's art into facade and roof
   const WALL = { house: .44, haven: .48, mart: .48, lab: .46, gym: .5 };
+  const FLAT_ROOF = new Set(['lab']);
   function buildBuildings(map, hv, group) {
     const list = map.buildings.map(b => b);
     for (const cn of map.conns) { const nm = cn.map; if (nm) for (const b of nm.buildings) list.push({ ...b, x: b.x + cn.ox, y: b.y + cn.oy }); }
@@ -307,6 +339,12 @@ G.W3 = (function () {
       // body
       const body = new T.Mesh(new T.BoxGeometry(b.w - .1, wallH, depth - .05), [mSide, mSide, mSide, mSide, mFac, mSide]);
       body.position.set(x0 + b.w / 2, baseY + wallH / 2, zB + depth / 2); body.castShadow = body.receiveShadow = true; g.add(body);
+      if (FLAT_ROOF.has(b.kind)) {
+        // modern flat roof: a shallow slab carrying the roof art on top, with a lit parapet edge
+        const slab = new T.Mesh(new T.BoxGeometry(b.w + .1, .32, depth + .12), [mSide, mSide, mRoof, mSide, mSide, mSide]);
+        slab.position.set(x0 + b.w / 2, baseY + wallH + .16, zB + depth / 2); slab.castShadow = slab.receiveShadow = true; g.add(slab);
+        continue;
+      }
       // roof: two slopes meeting at a ridge, overhanging the walls a little
       const ov = .25, geo = new T.BufferGeometry();
       const X0 = x0 - ov, X1 = x1 + ov, Y0 = baseY + wallH, Y1 = Y0 + roofH, ZF = zF + ov, ZB = zB - ov;
@@ -433,6 +471,7 @@ G.W3 = (function () {
       m.material.opacity = tr ? f : 1;
     }
     updateLights(cur, fx, fz);
+    const wt = cur.group.userData.water; if (wt) { const tt = G.realTime; wt[0].offset.set((tt * .05) % 1, (Math.sin(tt * .4) * .03)); wt[1].offset.set((-tt * .035) % 1, (tt * .02) % 1); }
     camY = camY === null || Math.abs(camY - fy) > 4 ? fy : camY + (fy - camY) * .12;
     const dist = 30, cy = Math.sin(PITCH) * dist, cz = Math.cos(PITCH) * dist;
     camera.position.set(fx, camY + cy, fz + cz); camera.lookAt(fx, camY + .6, fz);
@@ -450,6 +489,13 @@ G.W3 = (function () {
     const fx = px / 16, fz = py / 16, v = new T.Vector3(fx, cur.hv.at(G.clamp(fx, 0, cur.map.w - .01), G.clamp(fz, 0, cur.map.h - .01)) + lift, fz).project(camera);
     return { x: (v.x + 1) / 2 * G.W, y: (1 - v.y) / 2 * G.H };
   }
+  // world pixel -> screen on a flat plane at the camera focus height (weather, drifting particles)
+  const _v = T ? new T.Vector3() : null;
+  function projectFlat(px, py) {
+    if (!cur || camY === null) return null;
+    _v.set(px / 16, camY, py / 16).project(camera);
+    return { x: (_v.x + 1) / 2 * G.W, y: (1 - _v.y) / 2 * G.H };
+  }
   const active = (s) => ok && s && s.isWorld && G.settings.render3d && s.map && s.map.type === 'outdoor';
-  return { _cur: () => cur, _bases: () => bases, levels, active, render, hide, project, invalidate: id => { const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
+  return { _cur: () => cur, _bases: () => bases, levels, active, render, hide, project, projectFlat, invalidate: id => { const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
 })();

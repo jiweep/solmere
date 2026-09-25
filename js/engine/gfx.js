@@ -405,8 +405,11 @@ G.Particles = class {
       if (p.t >= p.life) L.splice(i, 1);
     }
   }
-  draw(c, ox = 0, oy = 0) {
+  // proj(x, y) -> {x, y}: optional mapping from world to screen (the 3D view), used instead of the offset
+  draw(c, ox0 = 0, oy0 = 0, proj = null) {
     for (const p of this.list) {
+      let ox = ox0, oy = oy0;
+      if (proj) { const q = proj(p.x, p.y); if (!q) continue; ox = q.x - p.x; oy = q.y - p.y; }
       const k = p.t / p.life;
       let a = p.alpha * (p.fade === false ? 1 : (p.fadeIn ? Math.min(1, p.t / p.fadeIn) : 1) * (1 - Math.max(0, (k - (p.fadeStart || .6)) / (1 - (p.fadeStart || .6)))));
       if (a <= 0) continue;
