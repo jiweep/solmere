@@ -1642,10 +1642,39 @@ G.W3 = (function () {
     FOG.color.set(sky);
     const fogWant = indoor ? null : FOG; if (scene.fog !== fogWant) scene.fog = fogWant;
   }
+  // Walking toward a connected map: bake its ground a few milliseconds per frame, then build its 3D scene and
+  // upload its textures a couple per frame, so crossing the border is a swap instead of a long frame.
+  let warm = null;
+  function prewarm(w) {
+    const m = w.map, p = w.player; if (!m || !p || m.type !== 'outdoor' || !m.conns || !m.conns.length) return;
+    let best = null, bd = 14;
+    for (const cn of m.conns) {
+      const nm = cn.map; if (!nm || !nm.cells) continue;
+      const dx = Math.max(0, cn.ox - p.x, p.x - (cn.ox + nm.w - 1)), dy = Math.max(0, cn.oy - p.y, p.y - (cn.oy + nm.h - 1)), d = Math.max(dx, dy);
+      if (d < bd && !(warm && warm.id === nm.id && warm.done)) { bd = d; best = nm; }
+    }
+    if (!best) return;
+    if (!warm || warm.id !== best.id) {
+      const CT = G.terrain.CT, PADT = 14, list = [];
+      for (let cy = Math.floor(-PADT / CT); cy <= Math.floor((best.h + PADT) / CT); cy++) for (let cx = Math.floor(-PADT / CT); cx <= Math.floor((best.w + PADT) / CT); cx++) list.push([cx, cy]);
+      warm = { id: best.id, map: best, list, i: 0, texs: null, done: cache.has(best.id) };
+      if (warm.done) return;
+    }
+    const t0 = performance.now(), budget = G.prewarmBudget || 5;
+    while (warm.i < warm.list.length && performance.now() - t0 < budget) { const [cx, cy] = warm.list[warm.i++]; G.terrain.chunk(warm.map, cx, cy); }
+    if (warm.i < warm.list.length || performance.now() - t0 > Math.max(2, budget - 3)) return;
+    if (!warm.texs) {
+      const e = build(warm.map), texs = new Set();
+      e.group.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; for (const mt of ms) for (const k of ['map', 'emissiveMap']) if (mt[k]) texs.add(mt[k]); });
+      warm.texs = [...texs]; return;
+    }
+    for (let k = 0; k < 6 && warm.texs.length; k++) { const t = warm.texs.pop(); try { R.initTexture(t); } catch (e) { } }
+    if (!warm.texs.length) warm.done = true;
+  }
   function render(w) {
     if (!init()) return false;
     const map = w.map;
-    if (!cur || cur.map !== map) { if (cur) scene.remove(cur.group); cur = build(map); scene.add(cur.group); }
+    if (!cur || cur.map.id !== map.id) { if (cur) scene.remove(cur.group); cur = build(map); cur.map = map; scene.add(cur.group); }
     syncEnts(w, cur);
     lighting(w);
     // compile every shader the new map needs now, while the screen is fading in, instead of the first
@@ -1715,6 +1744,7 @@ G.W3 = (function () {
     Object.assign(cv.style, { display: 'block', left: ((G.gfx.ox + PIX.offX) / dpr) + 'px', top: ((G.gfx.oy + PIX.offY) / dpr) + 'px', width: (bufW * PIX.k / dpr) + 'px', height: (bufH * PIX.k / dpr) + 'px' });
     renderReflection();
     R.render(scene, camera);
+    prewarm(w);
     return true;
   }
   const _plane = T ? new T.Plane(new T.Vector3(0, 1, 0), 0) : null, _tgt = T ? new T.Vector3() : null;
@@ -1756,5 +1786,5 @@ G.W3 = (function () {
     return ndcToGame(_v);
   }
   const active = (s) => ok && s && s.isWorld && G.settings.render3d && s.map && (s.map.type === 'outdoor' || s.map.type === 'indoor');
-  return { _tu: () => TU, _rays: () => rays, _cur: () => cur, _bases: () => bases, chimneys: () => (cur && cur.group.userData.chimneys) || [], levels, active, render, hide, project, projectFlat, invalidate: id => { const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
+  return { _warm: () => warm && { id: warm.id, i: warm.i, n: warm.list.length, texs: warm.texs && warm.texs.length, done: warm.done }, _tu: () => TU, _rays: () => rays, _cur: () => cur, _bases: () => bases, chimneys: () => (cur && cur.group.userData.chimneys) || [], levels, active, render, hide, project, projectFlat, invalidate: id => { const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
 })();

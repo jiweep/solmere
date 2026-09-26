@@ -816,6 +816,8 @@ G.WorldScene = class {
     // baked terrain (+ animated water glints and shore foam)
     const chunks = G.terrain.drawGround(b, m, ox, oy, this.frame);
     G.terrain.prefetch(m, ox, oy, 1);
+    // and the ground of a connected map you're walking toward, so crossing into it doesn't hitch
+    if (this.frame % 2 === 0) for (const cn of m.conns || []) { const nm = cn.map; if (!nm || !nm.cells) continue; const p = this.player, near = p.x >= cn.ox - 10 && p.x < cn.ox + nm.w + 10 && p.y >= cn.oy - 10 && p.y < cn.oy + nm.h + 10; if (near) G.terrain.prefetch(nm, ox - cn.ox * 16, oy - cn.oy * 16, 1); }
     const sprites = [];
     // live ground (tall grass, flowers, lava, switches) and props
     for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
