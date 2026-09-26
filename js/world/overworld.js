@@ -162,7 +162,7 @@ G.WorldScene = class {
     if (c.water && !(ent === this.player && this.surfing) && !(ent && ent.kind === 'partner')) return true;
     if (c.g === 'hole' && !(this.map.boulders && this.map.boulders[x + ',' + y] === 'filled')) return true;
     if (c.solidIf && G.checkCond(c.solidIf)) return true;
-    if (!ignoreEnts) { const e = this.entAt(x, y, ent); if (e && e.kind !== 'follower') return true; }
+    if (!ignoreEnts) { const e = this.entAt(x, y, ent); if (e && e.kind !== 'follower' && !(e.kind === 'wild' && ent === this.player && this.busy)) return true; }
     if (this.blockedTiles && this.blockedTiles.has(x + ',' + y)) return true;
     return false;
   }
@@ -191,6 +191,7 @@ G.WorldScene = class {
     this.parts.update(); this.fx.update();
     for (let i = this.footprints.length - 1; i >= 0; i--) if (++this.footprints[i].t > 240) this.footprints.splice(i, 1);
     for (const e of this.ents) { this.updateNPC(e, top); e.update(); }
+    G.wilds.tick(this, top);
     if (this.surfing && this.player) this.swimFx(this.player);
     if (this.follower) {
       const f = this.follower; f.update();
@@ -270,6 +271,7 @@ G.WorldScene = class {
     if (this.blocked(nx, ny, p)) {
       // walking into a door warp? (doors are non-solid cells so handled by afterStep)
       const e = this.entAt(nx, ny, p);
+      if (e && e.kind === 'wild') { G.wilds.engage(this, e, 'bump'); return false; }
       if (e && e.kind === 'partner' && G.net) { /* bump */ }
       this.bump(); return false;
     }
@@ -379,7 +381,7 @@ G.WorldScene = class {
   updateRustles() {
     const m = this.map;
     this.rustles = (this.rustles || []).filter(r => r.map === m.id && ++r.t < 1500);
-    if (m.type === 'indoor' || !m.def.enc || !m.def.enc.grass || this.frame % 90 !== 0 || this.rustles.length >= 2) return;
+    if (m.type === 'indoor' || !m.def.enc || !m.def.enc.grass || this.frame % 90 !== 0 || this.rustles.length >= 2 || G.wilds.on()) return;
     if (G.rand() > .5) return;
     const p = this.player, cand = [];
     for (let y = p.y - 5; y <= p.y + 5; y++) for (let x = p.x - 8; x <= p.x + 8; x++) { const c = m.cell(x, y); if (c && c.g === 'tall' && Math.abs(x - p.x) + Math.abs(y - p.y) > 2 && !this.rustles.some(r => r.x === x && r.y === y)) cand.push([x, y]); }
@@ -407,7 +409,7 @@ G.WorldScene = class {
     G.audio && G.audio.sfx('sparkle');
   }
   checkEncounter(c) {
-    if (!c || G.save.god.noEnc) return false;
+    if (!c || G.save.god.noEnc || G.wilds.on()) return false;
     const enc = this.map.def.enc; if (!enc) return false;
     let table = null;
     if (this.surfing && c.water && enc.surf) table = 'surf';
@@ -437,6 +439,7 @@ G.WorldScene = class {
   // UI layer over the 3D world: emotes above heads and the race clock
   drawUI3d(c) {
     const U = G.ui;
+    G.wilds.drawPops((x, y) => G.W3.project(x, y, 1.2));
     for (const e of [...this.ents, this.player, this.follower].filter(Boolean)) if (e.emote) {
       const q = G.W3.project(e.px + 8, e.py + 16, 3.6); if (!q) continue;   // just above a 32-px head on the pixel grid
       const k = Math.min(1, e.emoteT / 6); U.img(G.EMOTES(e.emote), q.x - 6.5, q.y - 12 - k * 4);
@@ -595,6 +598,7 @@ G.WorldScene = class {
   async talkTo(e) {
     const p = this.player;
     if (e.kind === 'item') { await this.pickItem(e); return; }
+    if (e.kind === 'wild') { e.dir = G.OPP[p.dir]; G.wilds.engage(this, e, 'talk'); return; }
     if (e.kind === 'sign') { if (e.script) await G.runScript(e.script, { ent: e }); else await G.say(e.text); return; }
     if (e.kind === 'npc' || e.kind === 'trainer') {
       if (!e.noTurn) e.dir = G.OPP[p.dir];
@@ -1006,6 +1010,8 @@ G.WorldScene = class {
       const im = G.monArt.overworld(e.monSprite, !!e.shiny, e.dir, Math.floor(this.frame / 16) % 2);
       b.fillStyle = 'rgba(0,0,0,.25)'; b.beginPath(); b.ellipse(e.px - ox + 8, e.py - oy + 14.5, 5, 1.8, 0, 0, Math.PI * 2); b.fill();
       b.drawImage(im, Math.round(e.px - ox + 8 - im.width / 2), Math.round(e.py - oy + 16 - im.height - (e.hop || 0)));
+      const gc = e.kind === 'wild' && this.cellAt(e.tx, e.ty);
+      if (gc && gc.g === 'tall') { const fr = Math.floor(this.frame / 22) % 4, front = G.tiles.get(`tgf|${fr}|${this.map.theme}`, 16, 20, p => G.tiles.tallgrass(p, fr, this.map.theme, 0, true)); b.drawImage(front, Math.round(e.tx * 16 - ox), Math.round(e.ty * 16 - oy) - 4); }
       return;
     }
     if (!e.look) return;
@@ -1139,6 +1145,7 @@ G.WorldScene = class {
   drawUI(c) {
     const S = G.gfx.S, U = G.ui;
     if (G.in3d) return this.drawUI3d(c);
+    G.wilds.drawPops((x, y) => ({ x: G.gfx.projX(x - this.ox, y - this.oy) / S, y: G.gfx.projY(y - this.oy) / S }));
     if (G.flag('race_active')) {
       const v = Math.max(0, G.save.vars.raceLeft || 0), sec = (v / 60).toFixed(1), low = v < 60 * 5;
       U.panel(G.W / 2 - 34, 4, 68, 16, low ? 'red' : 'dark', { r: 4 });

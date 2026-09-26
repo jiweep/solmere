@@ -299,7 +299,8 @@ G.startWild = async function (table, o = {}) {
   if (w.battling) return; w.battling = true;
   try {
     let enc;
-    if (o.species) enc = { sp: o.species, lvl: o.lvl || 5 };
+    if (o.mon) enc = { sp: o.mon.sp, lvl: o.mon.lvl };
+    else if (o.species) enc = { sp: o.species, lvl: o.lvl || 5 };
     else if (o.echo) {
       const T = G.encounterTable(w.map, 'grass'); if (!T) return;
       const rare = (w.map.def.enc.rare || T).list; const pick = G.pick(rare); enc = { sp: pick[0], lvl: T.lv[1] + 1 };
@@ -312,11 +313,11 @@ G.startWild = async function (table, o = {}) {
     }
     if (!enc) return;
     const lead = G.party.lead();
-    if (!o.species && !o.echo && G.save.repel > 0 && lead && enc.lvl < lead.lvl) return;
+    if (!o.mon && !o.species && !o.echo && G.save.repel > 0 && lead && enc.lvl < lead.lvl) return;
     let second = null;
     const coop = G.net && G.net.coopAvailable && G.net.coopAvailable();
     if (coop && !o.species) second = G.rollEncounter(w.map, table || 'grass');
-    const m = G.makeWild(enc.sp, enc.lvl, { echo: o.echo, shiny: o.shiny, noRandom: o.noRandom, legend: o.legend, moves: o.moves });
+    const m = o.mon || G.makeWild(enc.sp, enc.lvl, { echo: o.echo, shiny: o.shiny, noRandom: o.noRandom, legend: o.legend, moves: o.moves });
     if (o.hidden) m.abil = 2;
     const foes = [m]; if (second) foes.push(G.makeWild(second.sp, second.lvl));
     G.dexMark(m.sp, 'seen'); if (second) G.dexMark(foes[1].sp, 'seen');
