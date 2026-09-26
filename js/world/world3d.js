@@ -42,7 +42,8 @@ G.W3 = (function () {
       camera = new T.PerspectiveCamera(26, G.W / G.H, 8, 140);
       hemi = new T.HemisphereLight(0xdfeeff, 0x4a5a3a, .9); scene.add(hemi);
       sun = new T.DirectionalLight(0xfff0d8, 1.7);
-      sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+      const low = G.gfx.lowPower();   // phones: a smaller shadow map, three lamp lights (see renderShadows / POOL)
+      sun.castShadow = true; sun.shadow.mapSize.set(low ? 1024 : 2048, low ? 1024 : 2048);
       const sc = sun.shadow.camera; sc.left = -22; sc.right = 22; sc.top = 22; sc.bottom = -22; sc.near = 1; sc.far = 80;
       sun.shadow.bias = -.0015; sun.shadow.normalBias = .02;
       scene.add(sun); scene.add(sun.target);
@@ -1378,7 +1379,7 @@ G.W3 = (function () {
   }
   const POOL = [];
   function updateLights(E, fx, fz) {
-    if (!POOL.length) for (let i = 0; i < 6; i++) { const pl = new T.PointLight(0xffc47a, 0, 6, 1.6); scene.add(pl); POOL.push(pl); }
+    if (!POOL.length) for (let i = 0; i < (G.gfx.lowPower() ? 3 : 6); i++) { const pl = new T.PointLight(0xffc47a, 0, 6, 1.6); scene.add(pl); POOL.push(pl); }
     const glows = E.group.userData.glows || [];
     const lit = l => l.kind === 'lava' ? .75 : l.kind === 'room' ? roomGlow : night * .9;
     for (const g of glows) { const on = lit(g.userData.l) * (g.userData.l.kind === 'room' ? .55 : 1); g.material.opacity = on * (.85 + Math.sin(G.realTime * 3 + g.position.x * 1.7) * .15); }
@@ -1738,21 +1739,24 @@ G.W3 = (function () {
       P.copy(rt).multiplyScalar(a).addScaledVector(up, b).addScaledVector(dir, c);
       sun.position.set(P.x + off[0], P.y + off[1], P.z + off[2]); sun.target.position.copy(P); }
     // canvas placed exactly over the game viewport, drawn at the display's native resolution
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = G.gfx.pr();
     if (PIX.RW !== bufW || PIX.RH !== bufH) { bufW = PIX.RW; bufH = PIX.RH; R.setSize(bufW, bufH, false); }
     // whole-number upscale; the one-pixel margin and the sub-pixel shift hide under the letterbox / screen edge
     Object.assign(cv.style, { display: 'block', left: ((G.gfx.ox + PIX.offX) / dpr) + 'px', top: ((G.gfx.oy + PIX.offY) / dpr) + 'px', width: (bufW * PIX.k / dpr) + 'px', height: (bufH * PIX.k / dpr) + 'px' });
     renderReflection();
+    // the lighter profile redraws the sun's shadows every other frame (the scene is mostly still)
+    if (G.gfx.lowPower()) { R.shadowMap.autoUpdate = false; if ((shadowTick = (shadowTick + 1) % 2) === 0) R.shadowMap.needsUpdate = true; } else R.shadowMap.autoUpdate = true;
     R.render(scene, camera);
     prewarm(w);
     return true;
   }
   const _plane = T ? new T.Plane(new T.Vector3(0, 1, 0), 0) : null, _tgt = T ? new T.Vector3() : null;
   const BIAS = T ? new T.Matrix4().set(.5, 0, 0, .5, 0, .5, 0, .5, 0, 0, .5, .5, 0, 0, 0, 1) : null;
+  let shadowTick = 0;
   function renderReflection() {
     const ud = cur && cur.group.userData, wy = ud && ud.waterY;
     REFL.uReflOn.value = 0;
-    if (wy === undefined || G.settings.fancy === false || G.settings.reflections === false) return;
+    if (wy === undefined || G.settings.fancy === false || G.settings.reflections === false || G.gfx.lowPower()) return;
     if (!reflRT) { reflRT = new T.WebGLRenderTarget(2, 2, { type: T.HalfFloatType }); mirrorCam = camera.clone(); }
     const w = Math.max(2, bufW), h = Math.max(2, bufH);
     if (reflRT.width !== w || reflRT.height !== h) reflRT.setSize(w, h);

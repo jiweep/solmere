@@ -109,6 +109,7 @@ G.openOptions = function (oo = {}) {
   const opts = [
     { k: 'render3d', label: '3D World (F3)', vals: [false, true], names: ['Off', 'On'] },
     { k: 'tips', label: 'Tutorial Tips', vals: [true, false], names: ['On', 'Off'], save: true, get: () => !!(sv && sv.vars && sv.vars.tips), apply: v => { if (sv && sv.vars) sv.vars.tips = v; } },
+    { k: 'graphics', label: 'Graphics', vals: ['auto', 'high', 'low'], names: ['Auto', 'Best quality', 'Performance'], apply: v => { S.graphics = v; G.gfx.resize(); G.toast('Some graphics changes apply after reloading the page.'); } },
     { k: 'textSpeed', label: 'Text Speed', vals: [0, 1, 2, 3], names: ['Slow', 'Mid', 'Fast', 'Instant'] },
     { k: 'battleAnims', label: 'Battle Animations', vals: [true, false], names: ['On', 'Off'] },
     { k: 'encounters', label: 'Wild Echoes', vals: ['visible', 'classic'], names: ['Visible', 'Random'] },

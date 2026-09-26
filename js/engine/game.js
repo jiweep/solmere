@@ -265,7 +265,8 @@ G.boot = function () {
     while (acc >= step && n < 4) { count += reps(); acc -= step; n++; }
     if (n >= 4) acc = 0;
     G.alpha = G.turbo ? 1 : acc / step;   // how far between the last two ticks this frame is drawn
-    try { if (count) await runUpdates(count); G.render(); } catch (e) { G.reportError(e); }
+    // the lighter profile draws only when the game advanced (60 fps on 90/120 Hz screens, half the drawing)
+    try { if (count) await runUpdates(count); if (count || !G.gfx.lowPower()) G.render(); } catch (e) { G.reportError(e); }
     requestAnimationFrame(loop);
   };
   window.addEventListener('unhandledrejection', ev => G.reportError(ev.reason));

@@ -43,8 +43,12 @@ G.gfx = {
     window.addEventListener('resize', () => this.resize());
     this.resize();
   },
+  // Graphics: 'auto' picks the lighter profile on phones and tablets ('low'), full quality elsewhere
+  lowPower() { const q = G.settings && G.settings.graphics; return q === 'low' || (q !== 'high' && !!(G.touch && G.touch.on)); },
+  // the main canvas's pixel density: phones' 3x screens are drawn at 2x in the lighter profile
+  pr() { const d = window.devicePixelRatio || 1; return this.lowPower() ? Math.min(d, 2) : d; },
   resize() {
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = this.pr();
     const cw = Math.floor(window.innerWidth * dpr), ch = Math.floor(window.innerHeight * dpr);
     this.canvas.width = cw; this.canvas.height = ch;
     this.canvas.style.width = window.innerWidth + 'px'; this.canvas.style.height = window.innerHeight + 'px';
@@ -113,7 +117,7 @@ G.gfx = {
     g.addColorStop(0, tint + (o.hazeA === undefined ? .30 : o.hazeA) + ')'); g.addColorStop(1, tint + '0)');
     c.fillStyle = g; c.fillRect(x0, y0, w, h * .3);
     // bloom: tiny blurred copy of the bright parts, screened back on top
-    if (o.bloom !== false && this.bloomOK !== false) {
+    if (o.bloom !== false && this.bloomOK !== false && !this.lowPower()) {
       if (!this._bl) { this._bl = G.makeCanvas(96, 54); this._blx = this._bl.getContext('2d'); }
       const b = this._blx;
       try {

@@ -86,7 +86,7 @@ G.touch = (function () {
       if (!upright) { for (const id of ['ff', 'sc', 'dim']) { const e = document.getElementById(id); if (e) { e.style.top = ''; e.style.left = ''; } }
         for (const id of ['#tpad', '#tA', '#tB', '#tRun', '#tStart']) { const e = root.querySelector(id); if (e) e.removeAttribute('style'); } }
       if (!upright || !G.gfx || !G.gfx.S) return;
-      const d = window.devicePixelRatio || 1, x = G.gfx.ox / d, y = G.gfx.oy / d, w = G.W * G.gfx.S / d, h = G.H * G.gfx.S / d;
+      const d = G.gfx.pr(), x = G.gfx.ox / d, y = G.gfx.oy / d, w = G.W * G.gfx.S / d, h = G.H * G.gfx.S / d;
       // a slim bezel around the game screen and, when there is one, the lower (text) screen beneath it
       const L = G.gfx.lower, lb = L ? (L.y + L.h) / d : y + h, pad = 5, padB = 12;
       const bz = sh.querySelector('.bezel');
