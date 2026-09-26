@@ -14,7 +14,7 @@ function foe(id) {
   const party = T.party.map(p => { const m = G.mon.create(p.sp, Math.round(p.lvl * D.lvl), { ivs: Object.fromEntries(G.STATS.map(s => [s, D.iv + (T.boss ? 6 : 0)])), item: p.item || null }); if (p.moves) m.moves = p.moves.map(x => G.mon.newMove(x)); return m; });
   return { name: T.name, cls: T.cls, party, controller: G.AI.controller(Math.min(4, T.ai || 2), T), items: { ...(T.items || {}) }, resonance: !!T.resonate };
 }
-function rivalCfg(mine, lvl, party) { return { name: 'Wren', cls: 'Rival', party: party.map(([sp, l]) => G.mon.create(sp, l, { ivs: Object.fromEntries(G.STATS.map(s => [s, 22])) })), controller: G.AI.controller(2), items: {} }; }
+function rivalCfg(mine, lvl, party) { return { name: 'Wren', cls: 'Rival', party: party.map(([sp, l, mv]) => { const m = G.mon.create(sp, l, { ivs: Object.fromEntries(G.STATS.map(s => [s, 22])) }); if (mv) m.moves = mv.map(x => G.mon.newMove(x)); return m; }), controller: G.AI.controller(2), items: {} }; }
 async function fight(team, foeCfg, ai, o = {}) {
   let won = 0, hp = 0, turns = 0;
   for (let i = 0; i < N; i++) {
@@ -36,11 +36,12 @@ async function fight(team, foeCfg, ai, o = {}) {
     console.log(`\n== ${s} (rival: ${r})`);
     for (const ai of [3, 1]) {
       const who = ai === 3 ? 'competent' : 'novice  ';
-      console.log(`  ${who} rival1  L5 vs L5 :`, await fight(() => [[s, 5]], () => rivalCfg(s, 5, [[r, 5]]), ai));
-      console.log(`  ${who} Juniper L13+10+10:`, await fight(() => [[line(s, 13), 13], ['pipwing', 11], ['nibbit', 10]], () => foe('juniper'), ai, { items: { potion: 2 } }));
-      console.log(`  ${who} Juniper L11+9     :`, await fight(() => [[line(s, 11), 11], ['pipwing', 9]], () => foe('juniper'), ai, { items: { potion: 2 } }));
-      console.log(`  ${who} Ione    L19+16+15:`, await fight(() => [[line(s, 19), 19], ['pipwing', 16], ['digmole', 15]], () => foe('ione'), ai, { items: { superpotion: 2 }, resonance: true }));
-      console.log(`  ${who} rival2  L21+18+17:`, await fight(() => [[line(s, 21), 21], ['pipwing', 18], ['digmole', 17]], () => rivalCfg(s, 22, [['gustling', 20], ['voltpup', 20], [line(r, 22), 22]]), ai, { items: { superpotion: 2 }, resonance: true }));
+      console.log(`  ${who} rival1  L5 vs L4 :`, await fight(() => [[s, 5]], () => rivalCfg(s, 4, [[r, 4, [r === 'kindlet' ? 'scratch' : 'tackle', r === 'budling' ? 'growl' : 'tailwhip']]]), ai));
+      console.log(`  ${who} Juniper L14+14+11:`, await fight(() => [[line(s, 14), 14], ['gustling', 14], ['nibbit', 11]], () => foe('juniper'), ai, { items: { potion: 3 } }));
+      console.log(`  ${who} Juniper L12+11    :`, await fight(() => [[line(s, 12), 12], ['pipwing', 11]], () => foe('juniper'), ai, { items: { potion: 2 } }));
+      console.log(`  ${who} Ione    L20+18+18:`, await fight(() => [[line(s, 20), 20], ['gustling', 18], ['digmole', 18]], () => foe('ione'), ai, { items: { superpotion: 2 }, resonance: true }));
+      console.log(`  ${who} Ione    L18+16+15:`, await fight(() => [[line(s, 18), 18], ['gustling', 16], ['digmole', 15]], () => foe('ione'), ai, { items: { superpotion: 2 }, resonance: true }));
+      console.log(`  ${who} rival2  L25+23+22:`, await fight(() => [[line(s, 25), 25], ['gustling', 23], ['digmole', 22]], () => rivalCfg(s, 22, [['gustling', 20], ['voltpup', 20], [line(r, 22), 22]]), ai, { items: { superpotion: 2 }, resonance: true }));
     }
   }
 })();
