@@ -385,9 +385,11 @@ G.BattleScene = class {
     const zi = G.ease.inOutQuad ? G.ease.inOutQuad(Math.min(1, this.intro)) : this.intro;
     if (zi > .002) { const z = 1 + .18 * zi, cx = G.W / 2 + 70 * zi, cy = G.H * .45; c.translate(cx, cy); c.scale(z, z); c.translate(-cx, -cy); }
     if (this.punch && this.punch.t > 0) { const k = Math.sin(this.punch.t / 18 * Math.PI) * .05, px = this.punch.x, py = this.punch.y; c.translate(px, py); c.scale(1 + k, 1 + k); c.translate(-px, -py); }
-    // the backdrop sits deeper than the battlefield: it follows the camera at half the rate (parallax),
-    // and softens a touch when the camera closes in on a mon (a shallow depth of field)
-    this.applyCam(c, .5);
+    // depth by row: the backdrop is a view of a ground plane under a sky, so each row follows the camera at
+    // its own rate: the sky least, the horizon a little more, the floor faster toward the bottom until it
+    // moves with the battlefield itself (the mons stay planted on it as the camera pans and dollies). It
+    // softens a touch when the camera closes in on a mon (a shallow depth of field)
+    const depthAt = v => v < .36 ? .22 + v * .4 : v < .5 ? .36 + (v - .36) * 1.3 : Math.min(1.08, .54 + (v - .5) * 1.12);
     const dx = Math.sin(this.t / 700) * 6, dy = Math.sin(this.t / 900) * 2, sc = 1.08;
     // crisp: the backdrop is first scaled up by a whole number with nearest sampling, so the final smooth
     // stretch to the screen is small (sharp-bilinear); depth of field only softens the distance: a
@@ -405,8 +407,16 @@ G.BattleScene = class {
     c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'low';   // already pre-scaled near screen size: plain bilinear is enough and far cheaper
     const blur = this.cam ? Math.max(0, (this.cam.z - 1.02) * 26) : 0;
     const X = -G.W * (sc - 1) / 2 + dx, Y = -G.H * (sc - 1) / 2 + dy;
-    c.drawImage(this._bk.sharp, X, Y, G.W * sc, G.H * sc);
-    if (blur > .1) { c.globalAlpha = Math.min(1, blur / 1.6); c.drawImage(this._bk.soft, X, Y, G.W * sc, G.H * sc); c.globalAlpha = 1; }
+    // drawn in horizontal bands, each with its row's camera; bands overlap by a row so no seam opens
+    const bk = this._bk, N = 48, SH = bk.sharp.height, DH = G.H * sc;
+    for (let i = 0; i < N; i++) {
+      const s0 = Math.floor(i * SH / N), s1 = Math.min(SH, Math.ceil((i + 1) * SH / N) + bk.k);
+      c.save(); this.applyCam(c, depthAt((i + .5) / N));
+      const y0 = Y + s0 / SH * DH, h = (s1 - s0) / SH * DH;
+      c.drawImage(bk.sharp, 0, s0, bk.sharp.width, s1 - s0, X, y0, G.W * sc, h);
+      if (blur > .1 && s0 < SH * .56) { c.globalAlpha = Math.min(1, blur / 1.6); c.drawImage(bk.soft, 0, s0, bk.soft.width, s1 - s0, X, y0, G.W * sc, h); c.globalAlpha = 1; }
+      c.restore();
+    }
     c.restore(); c.imageSmoothingEnabled = false;
   }
   drawAmbience(b) {
