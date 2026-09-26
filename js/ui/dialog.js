@@ -61,8 +61,7 @@ G.TextBox = class {
       U.c.globalAlpha = .82; U.para(this.x - 2, this.y + 2, this.w + 2, this.h, 5, '#07060c'); U.c.globalAlpha = 1;
       U.c.globalAlpha = .9; U.para(this.x, this.y, this.w, this.h, 5, '#10121c'); U.c.globalAlpha = 1; U.para(this.x, this.y, this.w, 1.2, 5, '#ff3b4e');
     } else U.panel(this.x, this.y, this.w, this.h, this.style, { r: 5 });
-    // inner decorative line
-    if (this.style === 'light') { U.shape(this.x + 3, this.y + 3, this.w - 6, this.h - 6, 3, null, 'rgba(42,48,64,.18)', .45); }
+    if (this.style === 'light') this.drawTrim();
     const por = this.drawPortrait();
     if (this.speaker) {
       // slanted name tag that snaps in with a little overshoot
@@ -89,6 +88,34 @@ G.TextBox = class {
       const c = U.c, S = G.gfx.S;
       c.fillStyle = '#e8484a'; c.beginPath(); c.moveTo(U.X(ax - 3.5), U.Y(ay)); c.lineTo(U.X(ax + 3.5), U.Y(ay)); c.lineTo(U.X(ax), U.Y(ay + 4)); c.fill();
     }
+  }
+  // the light box's trim, drawn on the pixel grid: a faint diagonal weave in the paper, a double inner
+  // rule, a red and slate accent strip leaning along the bottom-left, and diamond studs where the frame
+  // meets the sides
+  drawTrim() {
+    const U = G.ui, x = this.x, y = this.y, w = this.w, h = this.h;
+    const weave = !!U.chromePx();
+    U.pixel(x - 6, y, w + 12, h, () => {
+      const c = U.c, S = G.gfx.S, X = v => Math.round(U.X(v)), Y = v => Math.round(U.Y(v));
+      c.save(); U.rrect(x + 2, y + 2, w - 4, h - 4, 3.5); c.clip();
+      if (weave) {
+      c.fillStyle = 'rgba(42,48,64,.035)';
+      for (let k = -h; k < w; k += 4) for (let j = 0; j < h; j += 1) { const px = X(x + k + j), py = Y(y + j); if (px >= X(x)) c.fillRect(px, py, Math.max(1, Math.round(S)), Math.max(1, Math.round(S))); }
+      }
+      c.restore();
+      U.rrOutline(x + 3, y + 3, w - 6, h - 6, 3, 'rgba(42,48,64,.2)', .5);
+      U.rrOutline(x + 4.2, y + 4.2, w - 8.4, h - 8.4, 2.4, 'rgba(255,255,255,.7)', .5);
+      U.para(x + 5, y + h - 5.2, w * .28, 1.6, 2.5, '#ff3b4e', { r: 0, shade: false });
+      U.para(x + 5 + w * .28 + 2, y + h - 5.2, w * .1, 1.6, 2.5, '#5a6278', { r: 0, shade: false });
+      const stud = (sx, sy) => {
+        for (const [r, col] of [[4.2, '#2a3040'], [2.8, '#ff3b4e'], [1.2, '#ffc0c8']]) {
+          const rows = []; rows.y0 = Y(sy - r);
+          for (let yy = rows.y0; yy < Y(sy + r); yy++) { const d = r * S - Math.abs(yy + .5 - U.Y(sy)); rows.push([Math.round(U.X(sx) - d), Math.round(U.X(sx) + d)]); }
+          U.stairPath(rows); c.fillStyle = col; c.fill();
+        }
+      };
+      stud(x + .5, y + h / 2); stud(x + w - .5, y + h / 2);
+    }, ['dtrim', x, y, w, h]);
   }
   // the speaker's bust on a slanted card beside the box: their animated battle sprite (idle loop, blinks)
   // when they have one, otherwise their drawn portrait; it slides in when a new speaker starts talking

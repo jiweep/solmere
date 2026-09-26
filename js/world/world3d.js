@@ -549,6 +549,7 @@ G.W3 = (function () {
         continue;
       }
       if (c.o === 'lamp' || c.o === 'lanternpost') { group.add(lampModel(c.o, x + .5, hv.at(G.clamp(x + .5, 0, W - .01), G.clamp(y + .5, 0, H - .01)), y + .55)); continue; }
+      if (c.o === 'bench') { group.add(benchModel(x + .5, hv.at(G.clamp(x + .5, 0, W - .01), G.clamp(y + .5, 0, H - .01)), y + .52)); continue; }
       let oi; try { oi = G.objImg(rr ? rr.map : map, c, 0); } catch (e) { oi = null; }
       if (!oi || !oi.img || oi.flat) continue;
       const leafy = /tree|palm|pine|bush|shrub|reed|fern|plant|willow|sapling|blossom|flower/.test(c.o);
@@ -853,6 +854,39 @@ G.W3 = (function () {
       add(new T.ConeGeometry(.36, .26, 4), L.stone, 0, 1.28, 0).rotation.y = Math.PI / 4;
     }
     g.position.set(x, y, z); g.scale.setScalar(LAMP_SC);
+    return g;
+  }
+
+  // a park bench: slatted seat and back in pixel-grain timber on two cast-iron end frames with armrests,
+  // facing the camera; it casts and takes shadows like the lamps
+  let benchParts = null;
+  function benchModel(x, y, z) {
+    if (!benchParts) {
+      const cv = G.makeCanvas(32, 8), c = cv.getContext('2d');
+      const wood = ['#6a3e22', '#8a5230', '#a8683c', '#c07e4a'];
+      for (let yy = 0; yy < 8; yy++) for (let xx = 0; xx < 32; xx++) {
+        const grain = Math.sin(xx * .7 + yy * 2.1 + Math.sin(xx * .23) * 3) > .55;
+        let k = yy === 0 ? 3 : yy === 7 ? 0 : grain ? 1 : 2;
+        if (G.h2(xx, yy, 71) > .92) k = Math.max(0, k - 1);
+        c.fillStyle = wood[k]; c.fillRect(xx, yy, 1, 1);
+      }
+      c.fillStyle = '#4a2a18'; for (const xx of [3, 28]) c.fillRect(xx, 3, 1, 1);          // bolt heads
+      const t = texPx(cv);
+      benchParts = { wood: new T.MeshLambertMaterial({ map: t }), iron: new T.MeshLambertMaterial({ color: 0x262a32 }) };
+    }
+    const g = new T.Group(), B = benchParts, add = (geo, mat, px, py, pz, rx = 0) => { const m = new T.Mesh(geo, mat); m.position.set(px, py, pz); m.rotation.x = rx; m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
+    // seat: three slats; back: two slats leaning back a little
+    for (const dz of [-.1, 0, .1]) add(new T.BoxGeometry(.9, .045, .085), B.wood, 0, .31, dz);
+    for (const [dy, dz] of [[.45, -.17], [.57, -.19]]) add(new T.BoxGeometry(.9, .075, .04), B.wood, 0, dy, dz, -.16);
+    // cast-iron ends: front leg, back leg running up into the back support, the seat rail and an armrest
+    for (const sx of [-.41, .41]) {
+      add(new T.BoxGeometry(.045, .3, .045), B.iron, sx, .15, .13);
+      add(new T.BoxGeometry(.045, .64, .045), B.iron, sx, .32, -.15, -.12);
+      add(new T.BoxGeometry(.04, .035, .34), B.iron, sx, .285, -.01);
+      add(new T.BoxGeometry(.05, .035, .3), B.iron, sx, .43, -.02);
+      add(new T.BoxGeometry(.045, .14, .04), B.iron, sx, .36, .1);
+    }
+    g.position.set(x, y, z); g.scale.setScalar(LAMP_SC * 1.3);
     return g;
   }
 
@@ -1175,21 +1209,37 @@ G.W3 = (function () {
     g.setAttribute('position', new T.BufferAttribute(new Float32Array(PMAX * 3), 3).setUsage(T.DynamicDrawUsage));
     g.setAttribute('pcol', new T.BufferAttribute(new Float32Array(PMAX * 4), 4).setUsage(T.DynamicDrawUsage));
     g.setAttribute('pdat', new T.BufferAttribute(new Float32Array(PMAX * 3), 3).setUsage(T.DynamicDrawUsage));   // size (px), kind, rotation
+    // pixel-art particles: whole-pixel sizes, every shape built per pixel with hard edges, leaves turning
+    // in 45-degree steps with a lit side and a midrib, butterflies in two wing frames, fireflies a core with
+    // a one-pixel halo; normal particles fade by ordered dither (a pixel is there or not), glows by alpha
     const mat = new T.ShaderMaterial({
       uniforms: { uScale: { value: 1 }, uTime: U3.uTime }, transparent: true, depthWrite: false, blending: additive ? T.AdditiveBlending : T.NormalBlending,
-      vertexShader: `attribute vec4 pcol; attribute vec3 pdat; varying vec4 vC; varying float vK; varying float vR; uniform float uScale;
-        void main() { vC = pcol; vK = pdat.y; vR = pdat.z; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv; gl_PointSize = max(1.5, pdat.x * uScale / -mv.z); }`,
-      fragmentShader: `varying vec4 vC; varying float vK; varying float vR; uniform float uTime;
+      vertexShader: `attribute vec4 pcol; attribute vec3 pdat; varying vec4 vC; varying float vK; varying float vR; varying float vS; uniform float uScale;
+        void main() { vC = pcol; vK = pdat.y; vR = pdat.z; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv;
+          vS = max(1.0, floor(pdat.x * uScale / -mv.z + .5)); gl_PointSize = vS; }`,
+      fragmentShader: `varying vec4 vC; varying float vK; varying float vR; varying float vS; uniform float uTime;
+        float bayer(vec2 p) { vec2 q = mod(floor(p), 4.0); float a = mod(q.x + q.y * 2.0, 4.0), b = mod(q.x * 3.0 + q.y, 4.0); return (a * 4.0 + b + .5) / 16.0; }
         void main() {
-          vec2 q = gl_PointCoord * 2.0 - 1.0; float a = 0.0;
-          if (vK < .5) a = smoothstep(1.0, .55, length(q));                                   // puff
-          else if (vK < 1.5) { vec2 e = vec2(q.x, q.y * 2.6); float r = length(e); a = smoothstep(.16, 0.0, abs(r - .8)); }   // ground ring
-          else if (vK < 2.5) { float c = cos(vR), s = sin(vR); vec2 r = vec2(c * q.x - s * q.y, s * q.x + c * q.y); a = step(length(vec2(r.x, r.y * 2.2)), .95); }   // leaf
-          else if (vK < 3.5) { float r = length(q); a = exp(-r * r * 5.0) + smoothstep(.25, 0.0, r) * .6; }                   // glow mote
-          else if (vK < 4.5) { float f = abs(sin(uTime * 14.0 + vR)); vec2 w = vec2(abs(q.x) - .45 * f, q.y); a = step(length(w * vec2(2.2 / max(f, .25), 1.8)), .9); if (abs(q.x) < .08 && abs(q.y) < .5) a = 1.0; }   // butterfly
-          else a = step(max(abs(q.x), abs(q.y)), .8);                                           // square
-          if (a * vC.a < .01) discard;
-          gl_FragColor = vec4(vC.rgb, vC.a * a);
+          vec2 cell = floor(gl_PointCoord * vS);
+          vec2 q = (cell + .5) / vS * 2.0 - 1.0;               // this pixel's centre, -1..1 across the sprite
+          float a = 0.0, shade = 0.0;
+          if (vK < .5) { a = step(length(q), .98); shade = -q.y * .12 - q.x * .06; }                        // dust puff
+          else if (vK < 1.5) { float r = length(vec2(q.x, q.y * 2.6)); a = step(abs(r - .78), max(.24, 1.2 / vS)); }   // ground ring
+          else if (vK < 2.5) {                                                                                 // leaf / petal
+            float ang = floor(vR / .7854 + .5) * .7854, c = cos(ang), s = sin(ang);
+            vec2 r = vec2(c * q.x - s * q.y, s * q.x + c * q.y);
+            a = step(length(vec2(r.x * .9, r.y * 2.1)), 1.0);
+            shade = r.y < 0.0 ? .18 : -.12; if (vS >= 5.0 && abs(r.y) < 1.0 / vS && abs(r.x) < .7) shade = -.28; }
+          else if (vK < 3.5) { float r = max(abs(q.x), abs(q.y)); a = r < .4 ? 1.0 : (abs(q.x) < .4 || abs(q.y) < .4) && r < .95 ? .4 : 0.0; }   // glow mote
+          else if (vK < 4.5) {                                                                                 // butterfly
+            bool up = fract(uTime * 3.0 + vR) < .5; vec2 w = vec2(abs(q.x), q.y);
+            a = abs(q.x) < .2 ? step(abs(q.y), .6) : up ? step(length((w - vec2(.52, -.18)) * vec2(1.9, 1.5)), 1.0) : step(length((w - vec2(.5, .05)) * vec2(1.6, 2.6)), 1.0);
+            shade = abs(q.x) < .2 ? -.5 : q.y < 0.0 ? .15 : -.1; }
+          else a = step(max(abs(q.x), abs(q.y)), .99);                                                      // square
+          float A = vC.a * a;
+          if (A < .01) discard;
+          vec3 col = vC.rgb * (1.0 + shade);
+          ${additive ? 'gl_FragColor = vec4(col, A);' : 'if (A < bayer(gl_FragCoord.xy)) discard; gl_FragColor = vec4(col, 1.0);'}
           #include <colorspace_fragment>
         }`,
     });
