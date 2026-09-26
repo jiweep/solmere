@@ -272,6 +272,7 @@ G.THROW_MULT = [1, 1.25, 1.6, 2.2];   // catch-rate multiplier by throw quality:
       const tm = this.abHook(t, 'dmgTakenMod', t, b, m, eff); if (tm) dmg *= tm;
       const sm = this.abHook(b, 'dmgDealtMod', b, t, m, eff); if (sm) dmg *= sm;
       if (b.item === 'lifegem') dmg *= 1.3;
+      if (this.o.dmgHook) dmg *= this.o.dmgHook(b, t, m, eff, crit);
       if (b.item === 'expertbelt' && eff > 1) dmg *= 1.2;
       let shield = false;
       if (t.resonant && t.vol.resShield && eff > 1) { dmg *= .5; shield = true; }

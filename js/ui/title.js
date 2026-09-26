@@ -27,9 +27,12 @@ G.TitleScene = class {
       const has = slots.some(Boolean);
       const items = [];
       if (has) items.push({ id: 'cont', label: 'Continue' });
-      items.push({ id: 'new', label: 'New Game' }, { id: 'showcase', label: 'Showcase' }, { id: 'opts', label: 'Options' }, { id: 'music', label: 'Music Room' }, { id: 'import', label: 'Import Save File' }, { id: 'help', label: 'How to Play' }, { id: 'credits', label: 'Credits' });
+      const tb = G.dailyTide && G.dailyTide.best();
+      items.push({ id: 'new', label: 'New Game' });
+      if (G.dailyTide) items.push({ id: 'tide', label: 'Daily Tide', right: tb ? tb.marks.slice(0, 14) : '#' + G.dailyTide.dayNo() });
+      items.push({ id: 'showcase', label: 'Showcase' }, { id: 'opts', label: 'Options' }, { id: 'music', label: 'Music Room' }, { id: 'import', label: 'Import Save File' }, { id: 'help', label: 'How to Play' }, { id: 'credits', label: 'Credits' });
       // menu on the left, clear of the sea where Orrelume breaches
-      const k = await G.choose(items, { x: 18, y: 96, w: 100, cancel: -1 });
+      const k = await G.choose(items, { x: 18, y: 88, w: 118, cancel: -1 });
       if (k < 0) { this.stage = 'press'; return; }
       const id = items[k].id;
       if (id === 'cont') { const s = await G.pickSlot('Continue which journey?', true); if (s) { await G.startFromSave(G.persist.read(s)); return; } }
@@ -39,6 +42,7 @@ G.TitleScene = class {
       if (id === 'help') await G.howToPlay();
       if (id === 'credits') await G.rollCredits(false);
       if (id === 'showcase') { await G.runTour(); return; }
+      if (id === 'tide') { await G.dailyTide.start(); G.audio && G.audio.music('title'); }
       if (id === 'music') { await G.musicRoom(); G.audio && G.audio.music('title'); }
     }
   }

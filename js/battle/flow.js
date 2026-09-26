@@ -116,7 +116,7 @@ G.runBattle = async function (cfg) {
     const sides = [{ trainers: [player, ...(cfg.allies || [])] }, { trainers: cfg.foes }];
     const S = G.save.settings;
     const rules = { nuzlocke: S.nuzlocke, setMode: S.setMode || (S.nuzlocke && S.nuzRules.hardcore), noItems: S.noItems || (S.nuzlocke && S.nuzRules.hardcore), noCatch: cfg.noCatch, noCatchMsg: cfg.noCatchMsg };
-    const bt = new G.Battle({ format: cfg.format || 'single', wild: !!cfg.wild, sides, displays: [scene, ...(cfg.extraDisplays || [])], exp: cfg.exp !== false, rules, env: scene.env, weather: cfg.weather, night: G.clock.isNight(), godPlayer: G.save.settings.god && G.save.god.invincible, godCatch: G.save.settings.god && G.save.god.catch100, noRun: cfg.noRun, boss: !!cfg.boss });
+    const bt = new G.Battle({ format: cfg.format || 'single', wild: !!cfg.wild, sides, displays: [scene, ...(cfg.extraDisplays || [])], exp: cfg.exp !== false, rules, env: scene.env, weather: cfg.weather, night: G.clock.isNight(), godPlayer: G.save.settings.god && G.save.god.invincible, godCatch: G.save.settings.god && G.save.god.catch100, noRun: cfg.noRun, boss: !!cfg.boss, dmgHook: cfg.dmgHook });
     if (G.save.settings.god && G.save.god.ohko) bt.o.godOHKO = true;
     scene.bt = bt;
     G.save.stats.battles++;
