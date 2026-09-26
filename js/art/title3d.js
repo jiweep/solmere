@@ -453,6 +453,9 @@
 
   G.title3d = {
     prewarm() { loadPics(); },
+    // resolves once the title's pictures are in (or have failed): the loader stays up until then, so the
+    // flat fallback painting never flashes before the real title
+    ready() { loadPics(); return new Promise(res => { const chk = () => (picsReady || failed) ? res() : setTimeout(chk, 50); chk(); }); },
     // draws the scene into the game viewport; false when WebGL is unavailable or the pictures are still
     // loading (the flat painting is used)
     draw(c, st) {
