@@ -103,7 +103,23 @@
       if (I.pressed('a')) { I.consume('a'); G.audio && G.audio.sfx('select'); this.sc.cmdIndex = this.i; this.done(CMDS[this.i].id); }
       else if (I.pressed('b')) { I.consume('b'); if (this.canBack) { G.audio && G.audio.sfx('back'); this.done('back'); } else if (this.i !== 3 && this.req.canRun) { this.i = 3; G.audio && G.audio.sfx('cursor'); } }
     }
+    // upright phones: the commands are big buttons on the lower screen (FIGHT across the top, the rest below)
+    drawLower() {
+      const U = G.ui, L = G.gfx.lower, W = L.W, H = L.H, COL = { fight: '#ff3b4e', bag: '#e89a1e', party: '#26a86a', run: '#3b82e0' };
+      U.text('What will ', 8, 4, { size: 6.4, weight: 800, color: '#ff8a96', shadow: false });
+      U.text(this.name + ' do?', 8 + U.measure('What will ', 6.4, 800), 3.4, { size: 7.4, weight: 900, color: '#fff', shadow: false });
+      const top = 16, gap = 5, fh = Math.max(20, (H - top - 6) * .5), bh = H - top - fh - gap - 5, bw = (W - 16 - gap * 2) / 3;
+      const rects = [[8, top, W - 16, fh], [8, top + fh + gap, bw, bh], [8 + bw + gap, top + fh + gap, bw, bh], [8 + (bw + gap) * 2, top + fh + gap, bw, bh]];
+      CMDS.forEach((cm, k) => {
+        const [x, y, w, h] = rects[k], sel = this.i === k, dis = (cm.id === 'run' && !this.req.canRun) || (cm.id === 'bag' && !this.req.canItem);
+        U.hot(x, y, w, h, () => { if (this.i !== k) { this.i = k; G.audio && G.audio.sfx('cursor'); } }, () => { this.i = k; G.input.tap('a'); });
+        U.para(x + 1.5, y + 1.5, w, h, 4, '#07060c');
+        U.para(x, y, w, h, 4, dis ? '#2a2a34' : sel ? G.col.light(COL[cm.id], .1) : G.col.dark(COL[cm.id], .25), sel ? { stroke: '#ffffff', lw: .6 } : {});
+        U.text(cm.label, x + w / 2, y + h / 2 - (k ? 4 : 5.5), { size: k ? 8 : 11, weight: 900, color: dis ? '#6a6a78' : '#fff', align: 'center', shadow: 'rgba(0,0,0,.4)' });
+      });
+    }
     draw() {
+      if (G.gfx.lower) { G.lowerDraw(() => G.ui.inLower(() => this.drawLower())); return; }
       const U = G.ui, c = U.c, t = this.t;
       const X = x => U.X(x), Y = y => U.Y(y);
       const para = (px, py, w, h, sk, f, o) => U.para(px, py, w, h, sk, f, o);
@@ -153,7 +169,34 @@
       if (!this.bt) return null;
       const foes = this.bt.active(1 - this.sc.persp); return foes.length === 1 ? foes[0] : null;
     }
+    // upright phones: four large move cards on the lower screen, with type, PP and a matchup hint
+    drawLower() {
+      const U = G.ui, L = G.gfx.lower, W = L.W, H = L.H, gap = 5, top = 16;
+      if (this.req.canResonate) {
+        const on = this.res; U.hot(W - 92, 3, 84, 11, null, () => G.input.tap('r'));
+        U.para(W - 92, 3, 84, 11, 3, on ? '#1ba7b8' : '#2a2c3c', on ? { stroke: '#bffff4', lw: .6 } : {});
+        U.text(on ? '✦ RESONATING' : '✦ Resonate', W - 50, 4.6, { size: 6.4, weight: 800, color: '#fff', align: 'center', shadow: false });
+      }
+      U.text('Choose a move  ·  B: back', 8, 4.6, { size: 6, weight: 700, color: '#8a90a8', shadow: false });
+      const cw = (W - 16 - gap) / 2, ch = (H - top - 5 - gap) / 2, t = this.target();
+      this.req.moves.forEach((mv, k) => {
+        const m = G.MOVES[mv.id], x = 8 + (k % 2) * (cw + gap), y = top + Math.floor(k / 2) * (ch + gap), sel = this.i === k, col = G.TYPE_COLORS[m.type];
+        U.hot(x, y, cw, ch, () => { if (this.i !== k) { this.i = k; G.audio && G.audio.sfx('cursor'); } }, () => { this.i = k; G.input.tap('a'); });
+        U.para(x + 1.5, y + 1.5, cw, ch, 4, '#07060c');
+        U.para(x, y, cw, ch, 4, sel ? G.col.light(col, .12) : G.col.dark(col, .3), sel ? { stroke: '#ffffff', lw: .6 } : {});
+        U.text(m.name, x + 6, y + 3, { size: 8, weight: 800, color: '#fff', shadow: 'rgba(0,0,0,.4)' });
+        const ppc = mv.pp === 0 ? '#ffb0b0' : mv.pp <= mv.maxpp / 4 ? '#ffe08a' : '#eef4ff';
+        U.text(`${G.cap(m.type)} · PP ${mv.pp}/${mv.maxpp}`, x + 6, y + ch - 10, { size: 5.8, weight: 700, color: ppc, shadow: 'rgba(0,0,0,.4)' });
+        if (t && m.cat !== 'status' && G.settings.hints && G.save && G.save.dex.seen[t.mon.sp]) {
+          const eff = this.bt.effectiveness(m, this.bt.at(this.req.ref.s, this.req.ref.i) || t, t);
+          const lbl = eff === 0 ? 'No effect' : eff > 1 ? 'Super effective' : eff < 1 ? 'Not very effective' : '';
+          if (lbl && ch > 26) U.text(lbl, x + 6, y + 13, { size: 5.6, weight: 800, color: eff === 0 ? '#d0d0d8' : eff > 1 ? '#c8ffb0' : '#ffd0c0', shadow: 'rgba(0,0,0,.45)' });
+        }
+        if (mv.dis) U.shape(x, y, cw, ch, 4, 'rgba(20,20,30,.55)');
+      });
+    }
     draw() {
+      if (G.gfx.lower) { G.lowerDraw(() => G.ui.inLower(() => this.drawLower())); return; }
       const U = G.ui;
       this.req.moves.forEach((mv, k) => {
         const m = G.MOVES[mv.id], x = 6 + (k % 2) * 130, y = G.H - 50 + Math.floor(k / 2) * 23, sel = this.i === k;

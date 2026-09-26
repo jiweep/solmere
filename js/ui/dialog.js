@@ -14,7 +14,15 @@ G.TextBox = class {
     this.style = o.style || 'light'; this.size = o.size || 8.4; this.lh = o.lh || 11.6; this.maxLines = o.lines || 3;
     this.pages = []; this.page = 0; this.chars = 0; this.speaker = null; this.state = 'idle'; this.color = o.color;
   }
+  // upright phones: bottom text boxes move to the lower screen, re-wrapped for its width
+  fitLower() {
+    const L = G.gfx && G.gfx.lower, want = !!(L && this.lowerOK !== false && this.y > G.H * .6);
+    if (want && !this.low) { this.home = [this.x, this.y, this.w, this.h, this.size, this.lh]; this.low = true; }
+    if (!want && this.low) { [this.x, this.y, this.w, this.h, this.size, this.lh] = this.home; this.low = false; }
+    if (this.low) { this.x = 4; this.y = 14; this.w = L.W - 8; this.h = L.H - 18; this.size = 8.4; this.lh = 11.6; this.maxLinesLow = Math.max(2, Math.floor((this.h - 10) / this.lh)); }
+  }
   set(text, speaker, look) {
+    this.fitLower();
     text = G.fmtText(G.renameText ? G.renameText(text) : text);
     if (this.speaker !== (speaker || null)) this.pt = 0;
     this.speaker = speaker || null; this.look = look || G.lookForSpeaker(speaker);
@@ -22,7 +30,8 @@ G.TextBox = class {
     this.pages = [];
     for (const part of parts) {
       const lines = G.ui.wrap(part, this.w - 22, this.size, 600);
-      for (let i = 0; i < lines.length; i += this.maxLines) this.pages.push(lines.slice(i, i + this.maxLines));
+      const per = this.low ? this.maxLinesLow : this.maxLines;
+      for (let i = 0; i < lines.length; i += per) this.pages.push(lines.slice(i, i + per));
     }
     this.page = 0; this.chars = 0; this.state = 'typing'; this.t = 0;
   }
@@ -56,6 +65,8 @@ G.TextBox = class {
   typed() { return this.state === 'wait' || this.state === 'done'; }
   lastPage() { return this.page >= this.pages.length - 1; }
   draw(showArrow = true) {
+    // lower screen: drawn after the frame's letterbox is cleared (G.lowerDraws, see game.js)
+    if (this.low && G.gfx.lower && !this._inLow) { G.lowerDraw(() => { this._inLow = true; try { G.ui.inLower(() => this.draw(showArrow)); } finally { this._inLow = false; } }); return; }
     const U = G.ui;
     if (this.style === 'hd') {   // modern slab: translucent dark glass, a thin accent line, white type
       U.c.globalAlpha = .82; U.para(this.x - 2, this.y + 2, this.w + 2, this.h, 5, '#07060c'); U.c.globalAlpha = 1;
@@ -121,7 +132,7 @@ G.TextBox = class {
   // when they have one, otherwise their drawn portrait; it slides in when a new speaker starts talking
   drawPortrait() {
     const a = this.look && G.LOOKS[this.look];
-    if (!a || this.noPortrait) return false;
+    if (!a || this.noPortrait || this.low) return false;
     this.pt = (this.pt || 0) + 1;
     const SEQ = [0, 1, 1, 0, 3, 3, 0, 0, 1, 1, 0, 0, 2, 0], k = G.chars.hasBattle(a, 'n0') ? 'n' + SEQ[Math.floor(G.realTime * 5) % SEQ.length] : 'i';
     const key = this.look + '|' + k; G._bust = G._bust || {};

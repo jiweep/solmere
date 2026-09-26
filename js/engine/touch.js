@@ -62,11 +62,11 @@ G.touch = (function () {
   html.shellon #tA, html.shellon #tB { border: none; width: min(18vmin, 74px); height: min(18vmin, 74px); color: rgba(255,255,255,.85);
     background: radial-gradient(circle at 36% 30%, #f07aa0, #b23a64 55%, #7e1f44); box-shadow: 0 5px 0 #1d1450, inset 0 -3px 6px rgba(0,0,0,.35); }
   html.shellon #tA { right: 7%; bottom: 31vh; } html.shellon #tB { right: calc(7% + min(22vmin, 94px)); bottom: 25vh; }
-  html.shellon #tStart, html.shellon #tRun { background: linear-gradient(#3a3a48, #22222c); border: none; transform: rotate(-22deg);
+  html.shellon #tStart, html.shellon #tRun { background: linear-gradient(#3a3a48, #22222c); border: none; transform: rotate(-12deg);
     box-shadow: 0 3px 0 rgba(0,0,0,.45); width: min(16vmin, 66px); height: min(5.5vmin, 22px); font-size: min(3vmin, 11px); }
   html.shellon #tStart { right: auto; left: 52%; bottom: 11vh; } html.shellon #tRun { right: auto; left: 30%; bottom: 11vh; }
   html.shellon #tRun.on { background: linear-gradient(#3ec08a, #1f8a5a); }
-  html.shellon #tStart.down, html.shellon #tRun.down { transform: rotate(-22deg) translateY(2px); }
+  html.shellon #tStart.down, html.shellon #tRun.down { transform: rotate(-12deg) translateY(2px); }
   @media (orientation: landscape) { #touch > div { opacity: .55; } #touch > div.down, #tpad[class^=act] { opacity: .8; } }
   `;
   const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
@@ -75,7 +75,7 @@ G.touch = (function () {
     const root = document.createElement('div'); root.id = 'touch';
     root.innerHTML = '<div id="tpad"><i class="h"></i><i class="v"></i><b class="u"></b><b class="d"></b><b class="l"></b><b class="r"></b></div>' +
       '<div id="tA" class="tb">A</div><div id="tB" class="tb">B</div>' +
-      '<div id="tStart" class="tb pill">START</div><div id="tRun" class="tb pill">RUN</div>';
+      '<div id="tStart" class="tb pill">START</div><div id="tRun" class="tb pill">AUTO-RUN</div>';
     document.body.appendChild(root);
     // the handheld body (shown only when the phone is upright), laid around the game's screen
     const sh = document.createElement('div'); sh.id = 'shell';
@@ -83,18 +83,32 @@ G.touch = (function () {
     document.body.insertBefore(sh, document.body.firstChild);
     const place = () => {
       const upright = T.shell(); document.documentElement.classList.toggle('shellon', upright);
-      if (!upright) for (const id of ['ff', 'sc', 'dim']) { const e = document.getElementById(id); if (e) { e.style.top = ''; e.style.left = ''; } }
+      if (!upright) { for (const id of ['ff', 'sc', 'dim']) { const e = document.getElementById(id); if (e) { e.style.top = ''; e.style.left = ''; } }
+        for (const id of ['#tpad', '#tA', '#tB', '#tRun', '#tStart']) { const e = root.querySelector(id); if (e) e.removeAttribute('style'); } }
       if (!upright || !G.gfx || !G.gfx.S) return;
       const d = window.devicePixelRatio || 1, x = G.gfx.ox / d, y = G.gfx.oy / d, w = G.W * G.gfx.S / d, h = G.H * G.gfx.S / d;
-      // a slim bezel: the screen runs almost edge to edge
-      const bz = sh.querySelector('.bezel'), pad = 5, padB = 14;
-      Object.assign(bz.style, { left: (x - pad) + 'px', top: (y - pad) + 'px', width: (w + pad * 2) + 'px', height: (h + pad + padB) + 'px' });
-      Object.assign(sh.querySelector('.led').style, { left: '9px', top: (h + pad + 4) + 'px', width: '6px', height: '6px' });
-      const by = y + h + padB + 12; sh.querySelector('.brand').style.top = by + 'px';
-      // the fast-forward, showcase and 3D buttons live on the handheld's body, under the name, not above the screen
+      // a slim bezel around the game screen and, when there is one, the lower (text) screen beneath it
+      const L = G.gfx.lower, lb = L ? (L.y + L.h) / d : y + h, pad = 5, padB = 12;
+      const bz = sh.querySelector('.bezel');
+      Object.assign(bz.style, { left: (x - pad) + 'px', top: (y - pad) + 'px', width: (w + pad * 2) + 'px', height: (lb - y + pad + padB) + 'px' });
+      Object.assign(sh.querySelector('.led').style, { left: '9px', top: (lb - y + pad + 3) + 'px', width: '6px', height: '6px' });
+      const brand = sh.querySelector('.brand'); brand.style.display = L ? 'none' : ''; brand.style.top = (lb + padB + 12) + 'px';
+      // the fast-forward, showcase and 3D buttons sit on the body, under the screens
+      const rowY = lb + padB + (L ? 8 : 46);
       const bw = ['ff', 'sc', 'dim'].map(id => document.getElementById(id)).filter(Boolean);
       let bx = window.innerWidth / 2 - bw.reduce((a, e) => a + e.offsetWidth + 8, -8) / 2;
-      for (const e of bw) { Object.assign(e.style, { top: (by + 34) + 'px', left: bx + 'px' }); bx += e.offsetWidth + 8; }
+      for (const e of bw) { Object.assign(e.style, { top: rowY + 'px', left: bx + 'px' }); bx += e.offsetWidth + 8; }
+      // the controls fill whatever height is left, so they never cover the screens
+      const top0 = rowY + 40, H = window.innerHeight - top0 - 12, W = window.innerWidth;
+      const pill = Math.min(36, H * .14), padS = Math.max(96, Math.min(170, H - pill - 24, W * .44)), btn = Math.max(52, Math.min(78, padS * .46));
+      const mid = top0 + (H - pill - 14) / 2;
+      const put = (id, o) => { const e = root.querySelector(id); if (e) Object.assign(e.style, { bottom: 'auto', right: 'auto', ...o }); };
+      put('#tpad', { left: (W * .06) + 'px', top: (mid - padS / 2) + 'px', width: padS + 'px', height: padS + 'px' });
+      put('#tA', { left: (W * .94 - btn) + 'px', top: (mid - btn * .95) + 'px', width: btn + 'px', height: btn + 'px' });
+      put('#tB', { left: (W * .94 - btn * 2.15) + 'px', top: (mid - btn * .1) + 'px', width: btn + 'px', height: btn + 'px' });
+      const py = top0 + H - pill;
+      put('#tRun', { left: (W * .5 - 104) + 'px', top: py + 'px', height: pill + 'px', width: '96px' });
+      put('#tStart', { left: (W * .5 + 8) + 'px', top: py + 'px', height: pill + 'px' });
     };
     T.place = place;
     window.addEventListener('resize', () => requestAnimationFrame(place)); setInterval(place, 1000); requestAnimationFrame(place);
@@ -128,7 +142,9 @@ G.touch = (function () {
     button('#tA', 'a'); button('#tB', 'b'); button('#tStart', 'start');
     // Run is a toggle (thumbs are busy with the D-pad)
     const run = root.querySelector('#tRun');
-    run.addEventListener('touchstart', e => { e.preventDefault(); unlock(); S.run = !S.run; run.classList.toggle('on', S.run); buzz(); }, { passive: false });
+    // Run toggles Auto-run (hold B to run otherwise; with Auto-run on, holding B walks)
+    const syncRun = () => run.classList.toggle('on', !!(G.settings && G.settings.autoRun)); syncRun(); setInterval(syncRun, 1000);
+    run.addEventListener('touchstart', e => { e.preventDefault(); unlock(); G.settings.autoRun = !G.settings.autoRun; G.persist && G.persist.saveSettings(); syncRun(); G.toast && G.toast(G.settings.autoRun ? 'Auto-run on' : 'Auto-run off'); buzz(); }, { passive: false });
     // no pinch zoom or double-tap zoom on the page
     document.addEventListener('gesturestart', e => e.preventDefault());
     document.addEventListener('dblclick', e => e.preventDefault());

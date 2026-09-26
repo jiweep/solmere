@@ -228,7 +228,8 @@ G.WorldScene = class {
     const I = G.input, p = this.player;
     if (G.showcase && (I.pressed('start') || I.pressed('b'))) { I.consume('b'); I.consume('start'); this.lockRun(() => G.openShowcase()); return; }
     if (G.showcase && I.pressed('noclip')) { I.consume('noclip'); G.save.god.noclip = !G.save.god.noclip; G.toast('Noclip ' + (G.save.god.noclip ? 'on' : 'off')); }
-    if (I.pressed('start') || I.pressed('b')) { I.consume('b'); I.consume('start'); G.run(() => G.openPauseMenu()); return; }
+    // on touch screens B is held to run, so only Start opens the menu there
+    if (I.pressed('start') || (I.pressed('b') && !(G.touch && G.touch.on))) { I.consume('b'); I.consume('start'); G.run(() => G.openPauseMenu()); return; }
     if (I.pressed('a')) { I.consume('a'); G.run(() => this.interact()); return; }
     if (I.pressed('bike')) { I.consume('bike'); G.run(() => this.toggleBike()); return; }
     if (I.pressed('debug') && G.save.settings.god) { I.consume('debug'); G.run(() => G.openDebugMenu()); return; }
@@ -242,7 +243,8 @@ G.WorldScene = class {
   moveSpeed() {
     // BW pacing (the same as DP/HGSS) at 60 fps: walk 16 frames a tile (3.75 tiles/s), run 8, bike 6;
     // swimming is an unhurried 12, and holding run swims fast (8)
-    const run = G.settings.autoRun ? !G.input.isDown('run') : G.input.isDown('run');
+    const held = G.input.isDown('run') || (G.touch && G.touch.on && G.input.isDown('b'));
+    const run = G.settings.autoRun ? !held : held;
     if (this.surfing) return run ? 2 : 16 / 12;
     if (this.biking) return 16 / 6;
     if (run && this.map.type !== 'indoor' || run && this.map.def.canRun) return 2;

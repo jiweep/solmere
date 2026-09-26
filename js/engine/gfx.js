@@ -57,7 +57,15 @@ G.gfx = {
     if (mobile && ch > cw) {
       S = (cw - 12 * dpr) / G.W; this.S = S;   // nearly edge to edge: a 16:9 screen on a narrow phone is width-bound
       this.ox = Math.floor((cw - G.W * S) / 2); this.oy = Math.floor(14 * dpr);
-    }
+      // a second, lower screen under the game (like the DS): dialogue and battle text are drawn there, much
+      // larger than the game screen could hold them. Left out when the phone is too short to fit it.
+      const cssTop = 14 + G.W * S / dpr * G.H / G.W + 14, cssH = Math.min(200, window.innerHeight - cssTop - 250);
+      if (cssH >= 96) {
+        const x = this.ox, y = Math.round(cssTop * dpr), w = G.W * S, h = Math.round(cssH * dpr);
+        const k = Math.min(1.6, h / (72 * S));   // enough room for a name tag and three lines of text
+        this.lower = { x, y, w, h, k, S: S * k, W: w / (S * k), H: h / (S * k) };
+      } else this.lower = null;
+    } else this.lower = null;
     this.shell = !!(mobile && ch > cw);
     if (G.touch && G.touch.place) requestAnimationFrame(G.touch.place);
     this.cx.imageSmoothingEnabled = false;
@@ -142,10 +150,20 @@ G.ui = {
   get c() { return G.gfx.cx; },
   _hot: [], _hotNext: [], _scene: null,
   // clickable region for the mouse, in game units; registered while drawing, owned by the drawing scene
-  hot(x, y, w, h, hover, click) { this._hotNext.push({ x, y, w, h, hover, click, scene: this._scene }); },
+  hot(x, y, w, h, hover, click) {
+    const f = this._lowerFrom;   // drawn on the lower screen: convert to the game screen's units, which pointers use
+    if (f) { const g = G.gfx, k = g.S / f[2]; x = (g.ox + x * g.S - f[0]) / f[2]; y = (g.oy + y * g.S - f[1]) / f[2]; w *= k; h *= k; }
+    this._hotNext.push({ x, y, w, h, hover, click, scene: this._scene });
+  },
   // list/grid cell: hovering selects it (with the cursor blip), clicking selects then confirms
   pick(x, y, w, h, sel, onSel, onClick) {
     this.hot(x, y, w, h, () => { if (!sel) { onSel(); G.audio && G.audio.sfx('cursor'); } }, () => { onSel(); if (onClick) onClick(); else G.input.tap('a'); });
+  },
+  // draw with the lower screen as the canvas (upright phones): same UI calls, larger scale, its own origin
+  inLower(fn) {
+    const g = G.gfx, L = g.lower; if (!L) return fn();
+    const o = [g.ox, g.oy, g.S]; g.ox = L.x; g.oy = L.y; g.S = L.S; this._lowerFrom = o;
+    try { fn(); } finally { [g.ox, g.oy, g.S] = o; this._lowerFrom = null; }
   },
   X(x) { return G.gfx.ox + x * G.gfx.S; },
   Y(y) { return G.gfx.oy + y * G.gfx.S; },

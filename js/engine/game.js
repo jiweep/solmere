@@ -52,6 +52,8 @@ G.update = function () {
   if (G.audio) G.audio.update();
 };
 
+// queue drawing for the lower screen (upright phones); runs after the frame's letterbox is cleared
+G.lowerDraw = function (fn) { (G.lowerDraws || (G.lowerDraws = [])).push([fn, G.ui._scene]); };
 G.render = function () {
   const gx = G.gfx, c = gx.cx, S = gx.S;
   if (gx.shell) c.clearRect(0, 0, gx.canvas.width, gx.canvas.height);   // the handheld body shows around the screen
@@ -121,6 +123,31 @@ G.renderScenes = function (start) {
   if (gx.ox > 0) { c.fillRect(0, 0, gx.ox, gx.canvas.height); c.fillRect(gx.ox + G.W * S, 0, gx.canvas.width, gx.canvas.height); }
   if (gx.oy > 0) { c.fillRect(0, 0, gx.canvas.width, gx.oy); c.fillRect(0, gx.oy + G.H * S, gx.canvas.width, gx.canvas.height); }
   }
+  // the lower screen on upright phones: its glass, then any text boxes drawn into it this frame
+  if (gx.shell && gx.lower) {
+    const L = gx.lower, g = c.createLinearGradient(0, L.y, 0, L.y + L.h);
+    g.addColorStop(0, '#1a1c2e'); g.addColorStop(1, '#10111c'); c.fillStyle = g; c.fillRect(L.x, L.y, L.w, L.h);
+    const q = G.lowerDraws || []; G.lowerDraws = [];
+    // their tap regions join this frame's live list, owned by the scene that queued them
+    const hn = G.ui._hotNext; G.ui._hotNext = G.ui._hot;
+    for (const [f, sc] of q) { G.ui._scene = sc; try { f(); } catch (e) { } }
+    G.ui._hotNext = hn; G.ui._scene = null;
+    // nobody talking: where you are, the time, and your team's health (like a DS's lower screen)
+    const w = G.world && G.world.scene;
+    if (!q.length && w && w.map && G.save && G.scenes.includes(w) && !G.scenes.slice(G.scenes.indexOf(w) + 1).some(s => s.opaque)) try { G.ui.inLower(() => {
+      const U = G.ui, W = L.W, h = G.clock && G.clock.hourF ? G.clock.hourF() : 12, hh = Math.floor(h), mm = Math.floor((h - hh) * 60);
+      U.text(w.map.name || '', 8, 6, { size: 8.4, weight: 800, color: '#f2f4f8', shadow: false });
+      U.text(`${((hh + 11) % 12) + 1}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'}`, W - 8, 6, { size: 7, weight: 700, color: '#9fb0c8', align: 'right', shadow: false });
+      const party = G.save.party.filter(m => !m.egg).slice(0, 6), cw = (W - 20) / 2, rows = Math.max(1, Math.min(3, Math.floor((L.H - 22) / 16)));
+      party.forEach((m, i) => {
+        const col = Math.floor(i / rows), row = i % rows; if (col > 1) return;
+        const x = 8 + col * (cw + 4), y = 22 + row * 16, f = Math.max(0, m.hp / G.mon.maxHP(m));
+        U.text(G.mon.name(m), x, y, { size: 6.4, weight: 700, color: '#dfe6f2', shadow: false });
+        U.text('Lv' + m.lvl, x + cw - 4, y, { size: 6, color: '#9fb0c8', align: 'right', shadow: false });
+        U.bar(x, y + 9, cw - 4, 3, f, U.hpColor(f));
+      });
+    }); } catch (e) { }
+  } else G.lowerDraws = [];
   // fade
   if (G.fade.a > 0) { c.globalAlpha = G.clamp(G.fade.a, 0, 1); c.fillStyle = G.fade.col; c.fillRect(gx.ox, gx.oy, G.W * S, G.H * S); c.globalAlpha = 1; }
   if (!G.photoMode) G.drawOverlays();
