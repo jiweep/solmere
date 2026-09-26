@@ -530,7 +530,7 @@
       if (!it) return;
       const who = tr.isPlayer ? 'You' : this.tname(tr);
       if (it.ball) return this.throwBall(b, it, a.targetRef);
-      if (it.flee) { this.raw(`${who} threw the ${it.name}...`); if (this.wild) { this.raw('The wild mon was distracted! You got away!'); this.end('ran'); } else this.raw('But it had no effect on a trainer\'s mon!'); return; }
+      if (it.flee) { this.raw(`${who} threw the ${it.name}...`); if (this.wild) { this.raw('The wild Echo was distracted! You got away!'); this.end('ran'); } else this.raw('But it had no effect on a trainer\'s Echo!'); return; }
       const party = this.partyOf(b.side, b.owner);
       if (it.xstat) {
         this.raw(`${who} used an ${it.name}!`);
@@ -591,7 +591,7 @@
         this.raw('The trainer blocked the Orb! Don\'t be a thief!'); return;
       }
       const foes = this.active(1);
-      if (foes.length > 1 && !targetRef) { this.raw('There are two wild mons! You can\'t aim properly!'); return; }
+      if (foes.length > 1 && !targetRef) { this.raw('There are two wild Echoes! You can\'t aim properly!'); return; }
       const t = targetRef ? this.at(targetRef.s, targetRef.i) : foes[0];
       if (!t) return;
       this.raw(`${tr.isPlayer ? 'You' : tr.name} threw ${/^[AEIOU]/.test(it.name) ? 'an' : 'a'} ${it.name}!`);
@@ -750,7 +750,7 @@
           if (r.crit) { if (spread) this.say('A critical hit on {0}!', t); else this.raw('A critical hit!'); }
           if (m.multi && t.hp <= 0) break;
         }
-        if (m.multi) this.raw(`The mon was hit ${done} time${done > 1 ? 's' : ''}!`);
+        if (m.multi) this.raw(`The Echo was hit ${done} time${done > 1 ? 's' : ''}!`);
         if (lastShield) { t.vol.resShield = false; this.emit({ t: 'shieldBreak', ref: t.ref() }); this.say('{0}\'s Resonant Shield absorbed the blow and shattered!', t); }
         if (eff > 1) { if (spread) this.say('It\'s super effective on {0}!', t); else this.raw('It\'s super effective!'); }
         else if (eff < 1) { if (spread) this.say('It\'s not very effective on {0}...', t); else this.raw('It\'s not very effective...'); }

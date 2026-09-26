@@ -19,7 +19,7 @@ G.statusBadge = function (st, x, y) {
 G.PartyScene = class {
   constructor(o, res) {
     this.o = o; this.res = res; this.opaque = true; this.i = o.start || 0; this.t = 0; this.swapFrom = -1; this.sub = null;
-    this.msg = o.msg || (o.forced ? 'Choose a mon to send out.' : o.mode === 'battle' ? 'Choose a mon.' : o.mode === 'select' ? (o.prompt || 'Choose a mon.') : 'Choose a mon.');
+    this.msg = o.msg || (o.forced ? 'Choose an Echo to send out.' : o.mode === 'battle' ? 'Choose an Echo.' : o.mode === 'select' ? (o.prompt || 'Choose an Echo.') : 'Choose an Echo.');
     this.party = G.save.party;
     if (this.i >= this.party.length) this.i = 0;
   }
@@ -34,7 +34,7 @@ G.PartyScene = class {
     if (this.i !== i0) this._selT = this.t;
     if (I.pressed('b')) {
       I.consume('b');
-      if (this.swapFrom >= 0) { this.swapFrom = -1; this.msg = 'Choose a mon.'; G.audio && G.audio.sfx('back'); return; }
+      if (this.swapFrom >= 0) { this.swapFrom = -1; this.msg = 'Choose an Echo.'; G.audio && G.audio.sfx('back'); return; }
       if (!this.o.forced) { G.audio && G.audio.sfx('back'); this.close(null); }
       else G.audio && G.audio.sfx('buzz');
     }
@@ -46,12 +46,12 @@ G.PartyScene = class {
     G.audio && G.audio.sfx('select');
     if (this.swapFrom >= 0) {
       const a = this.swapFrom, b = this.i; [this.party[a], this.party[b]] = [this.party[b], this.party[a]];
-      this.swapFrom = -1; this.msg = 'Choose a mon.'; G.audio && G.audio.sfx('swap');
+      this.swapFrom = -1; this.msg = 'Choose an Echo.'; G.audio && G.audio.sfx('swap');
       if (G.world.scene) G.world.scene.placeFollower();
       return;
     }
     if (this.o.mode === 'select') {
-      if (this.o.filter && !this.o.filter(m)) { G.audio && G.audio.sfx('buzz'); this.msg = this.o.filterMsg || 'That mon can\'t be chosen.'; return; }
+      if (this.o.filter && !this.o.filter(m)) { G.audio && G.audio.sfx('buzz'); this.msg = this.o.filterMsg || 'That Echo can\'t be chosen.'; return; }
       this.close(this.i); return;
     }
     const items = [];
@@ -248,7 +248,7 @@ G.SummaryScene = class {
     const nxt = G.mon.expToNext(m);
     U.text(m.lvl >= 100 ? 'Max level' : `To next Lv  ${nxt.toLocaleString()}`, 8, 182, { size: 5.8, weight: 700, color: '#b8bccb' });
     U.bar(8, 192, 112, 3, G.mon.expProgress(m), '#4ab0f4', '#2a2c3a', { border: false });
-    U.text('◀ ▶ pages   ▲ ▼ mons', 66, 208, { size: 5, color: 'rgba(255,255,255,.55)', align: 'center' });
+    U.text('◀ ▶ pages   ▲ ▼ Echoes', 66, 208, { size: 5, color: 'rgba(255,255,255,.55)', align: 'center' });
   }
   drawInfo(px, py, m, sp) {
     const U = G.ui; let y = py + 8;
@@ -343,7 +343,7 @@ G.SummaryScene.prototype.drawInfo = (function () {
   return function (px, py, m, sp) {
     const U = G.ui; let y = py + 8;
     const row = (k, v, col) => { U.text(k, px + 10, y, { size: 6.2, weight: 800, color: '#6a7080' }); U.text(v, px + 70, y, { size: 6.6, weight: 700, color: col || '#283040' }); y += 11.5; };
-    row('Dex No.', '#' + String(sp.num).padStart(3, '0') + '  ' + sp.name + '  ·  ' + (sp.cat || '') + ' Mon');
+    row('Dex No.', '#' + String(sp.num).padStart(3, '0') + '  ' + sp.name + '  ·  ' + (sp.cat || '') + ' Echo');
     row('OT', (m.ot || G.save.name) + (m.otId !== undefined && m.otId !== G.save.otId ? '  (traded)' : ''));
     const nat = G.NATURES[m.nature]; row('Nature', G.cap(m.nature) + (nat.length ? `  (+${G.STAT_SHORT[nat[0]]} −${G.STAT_SHORT[nat[1]]})` : '  (neutral)') + (m.mint ? `  · ${G.cap(m.mint)} mint` : ''));
     const ab = G.ABILITIES[G.mon.ability(m)] || {};

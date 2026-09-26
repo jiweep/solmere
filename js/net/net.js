@@ -230,7 +230,7 @@ G.net = (function () {
         N.tradeInbox = [];
         if (initiator) { N.send({ t: 'trade_req' }); G.toast('Trade request sent...'); }
         else if (!await G.yesno(`${N.partner.name} wants to trade. Open the trade screen?`)) { N.send({ t: 'trade_cancel' }); return; }
-        const i = await G.openParty({ mode: 'select', prompt: 'Choose a mon to offer.', filter: m => G.save.party.length > 1, filterMsg: 'You need at least two mons to trade.' });
+        const i = await G.openParty({ mode: 'select', prompt: 'Choose an Echo to offer.', filter: m => G.save.party.length > 1, filterMsg: 'You need at least two Echoes to trade.' });
         if (i === null || i < 0) { N.send({ t: 'trade_cancel' }); return; }
         const mine = G.save.party[i];
         N.send({ t: 'trade_offer', mon: G.mon.clone(mine) });

@@ -51,7 +51,7 @@
   <div class="orb"></div><h1>SOLMERE</h1><div class="bar"><i></i></div><div class="tip">Waking the tide…</div></div>
 <script>
   // loading screen: a rotating tip until the game is ready (progress is set as each part finishes loading)
-  (function () { const tips = ['Hold Shift to run. Hold it in the water to swim fast.', 'Tab fast-forwards everything.', 'Your lead mon walks behind you. Talk to it!', 'Press W in the Music Room for the newest tracks.', 'The 3D / 2D button in the top bar switches the view.', 'Every town has a Haven: teal roof, a heart on a wave.'];
+  (function () { const tips = ['Hold Shift to run. Hold it in the water to swim fast.', 'Tab fast-forwards everything.', 'Your lead Echo walks behind you. Talk to it!', 'Press W in the Music Room for the newest tracks.', 'The 3D / 2D button in the top bar switches the view.', 'Every town has a Haven: teal roof, a heart on a wave.'];
     let k = 0; const el = document.querySelector('#boot .tip'); window._bootTips = setInterval(() => { if (!el) return; el.style.opacity = 0; setTimeout(() => { el.textContent = tips[k++ % tips.length]; el.style.opacity = 1; }, 300); }, 2400);
     window._bootProgress = f => { const b = document.querySelector('#boot .bar i'); if (b) b.style.width = Math.max(4, Math.round(f * 100)) + '%'; }; })();
 </script>

@@ -195,7 +195,7 @@ G.MOVES = {};
   M('lightscreen', 'Light Screen', 'psychic', 'status', 0, true, 30, { target: 'allySide', screen: 'lightscreen', desc: 'Halves special damage to your side for 5 turns.' });
   M('hypnosis', 'Hypnosis', 'psychic', 'status', 0, 60, 20, { target: 'normal', status: 'slp' });
   M('rest', 'Rest', 'psychic', 'status', 0, true, 5, { fx: 'rest', desc: 'Sleeps for 2 turns to fully restore HP and cure status.' });
-  M('twistroom', 'Twist Room', 'psychic', 'status', 0, true, 5, { pri: -7, target: 'field', fx: 'trickroom', desc: 'Twists space for 5 turns so slower mons move first.' });
+  M('twistroom', 'Twist Room', 'psychic', 'status', 0, true, 5, { pri: -7, target: 'field', fx: 'trickroom', desc: 'Twists space for 5 turns so slower Echoes move first.' });
 
   // ---------------------------------------------------------------- BUG
   M('silkspray', 'Silk Spray', 'bug', 'status', 0, 95, 40, { target: 'foes', stats: { spe: -2 } });

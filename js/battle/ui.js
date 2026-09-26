@@ -21,7 +21,7 @@
   };
   BS.chooseOne = async function (bt, req, canBack) {
     const mon = this.findMonByUid(bt, req.uid);
-    const name = mon ? G.mon.name(mon) : 'your mon';
+    const name = mon ? G.mon.name(mon) : 'your Echo';
     while (true) {
       const cmd = await this.waitMenu(new CmdMenu(this, req, name, canBack, bt));
       if (cmd === 'back') return 'back';
@@ -70,7 +70,7 @@
     return idx;
   };
   BS.offerSwitch = async function (bt, req) {
-    const yes = await G.yesno(`The foe is about to send in ${req.foe}. Will you switch your mon?`);
+    const yes = await G.yesno(`The foe is about to send in ${req.foe}. Will you switch your Echo?`);
     if (!yes) return -1;
     const idx = await G.openParty({ mode: 'battle', canCancel: true, activeUids: this.activeUids(bt) });
     return idx === null ? -1 : idx;

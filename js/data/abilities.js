@@ -38,10 +38,10 @@ G.ABILITIES = {};
   A('frisk', 'Frisk', 'Reveals the foes\' held items on entry.', {
     onStart(bt, b) { const f = bt.foes(b).filter(x => x.item); if (!f.length) return; bt.popup(b); for (const x of f) bt.say('{0} frisked {1} and found its ' + G.ITEMS[x.item].name + '!', b, x); },
   });
-  A('tidelight', 'Tidelight', 'Summons rain on entry. Its Water moves never miss and it heals 1/16 HP each turn in rain.', {
+  A('tidelight', 'Lodestar', 'Summons rain on entry. Its Water moves never miss and it heals 1/16 HP each turn in rain.', {
     onStart(bt, b) { bt.popup(b); bt.setWeather('rain', b); },
     accMod: (bt, b, m) => m.type === 'water' ? 99 : 1,
-    onEndTurn(bt, b) { if (bt.weather === 'rain' && b.hp < b.maxhp) bt.heal(b, b.maxhp / 16, '{0} basked in the Tidelight!'); },
+    onEndTurn(bt, b) { if (bt.weather === 'rain' && b.hp < b.maxhp) bt.heal(b, b.maxhp / 16, '{0} basked in the Lodestar!'); },
   });
   A('voidaura', 'Void Aura', 'Radiates a void that powers up every Dark move on the field by 33%.', {
     onStart(bt, b) { bt.popup(b); bt.say('{0} is radiating a Void Aura!', b); }, fieldAura: 'dark',
@@ -103,7 +103,7 @@ G.ABILITIES = {};
   A('sturdy', 'Sturdy', 'Survives any single hit from full HP with 1 HP left.', { sturdy: true });
   A('shellarmor', 'Shell Armor', 'Protected from critical hits.', { critImmune: true });
   A('magicguard', 'Magic Guard', 'Only takes damage from direct attacks.', { magicGuard: true });
-  A('clearbody', 'Clear Body', 'Prevents other mons from lowering its stats.', { statDropBlock: () => true });
+  A('clearbody', 'Clear Body', 'Prevents other Echoes from lowering its stats.', { statDropBlock: () => true });
   A('keeneye', 'Keen Eye', 'Its accuracy can\'t be lowered.', { statDropBlock: (bt, b, st) => st === 'acc' });
   A('hypercutter', 'Hyper Cutter', 'Its Attack can\'t be lowered by others.', { statDropBlock: (bt, b, st) => st === 'atk' });
   A('defiant', 'Defiant', 'Sharply raises Attack when a foe lowers its stats.', { onStatDropped(bt, b) { bt.popup(b); bt.boost(b, { atk: 2 }, b); } });
@@ -137,7 +137,7 @@ G.ABILITIES = {};
   A('runaway', 'Run Away', 'Can always escape from wild battles.', { runAway: true });
   A('pickup', 'Pickup', 'May pick up an item after battle if it isn\'t holding one.', { pickup: true });
   A('cutecharm', 'Cute Charm', 'Contact may leave the attacker infatuated... or at least very distracted (30% to lower its Attack).', contact((bt, t, s) => { if (G.chance(.3) && s.stages.atk > -6) { bt.popup(t); bt.boost(s, { atk: -1 }, t); } }));
-  A('illuminate', 'Illuminate', 'Its glow draws in wild mons (raises encounter rate when leading). In battle, raises accuracy slightly.', { accMod: () => 1.1, lure: true });
+  A('illuminate', 'Illuminate', 'Its glow draws in wild Echoes (raises encounter rate when leading). In battle, raises accuracy slightly.', { accMod: () => 1.1, lure: true });
   A('synchronize', 'Synchronize', 'Passes burn, poison or paralysis back to whoever inflicted it.', { synchronize: true });
   A('levitate_steel', 'Magnet Float', 'Floats on magnetism, gaining immunity to Ground moves.', { levitate: true });
 })();

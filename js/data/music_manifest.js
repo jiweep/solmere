@@ -1002,7 +1002,7 @@ G.MUSIC_FILES = {
 "loopEnd": 50.11814,
 "duration": 51.61814,
 "bpm": 140.0,
-"title": "The Tidelight \u2014 Ascent",
+"title": "The Lodestar \u2014 Ascent",
 "intro": 0.0,
 "worked": 1790323826
 },
@@ -1211,7 +1211,7 @@ G.MUSIC_FILES = {
 "loopEnd": 52.7809,
 "duration": 54.28091,
 "bpm": 131.99998,
-"title": "Tidelight Isle \u2014 The Storm",
+"title": "Lodestar Isle \u2014 The Storm",
 "intro": 3.63636,
 "worked": 1790323821
 },
@@ -1222,7 +1222,7 @@ G.MUSIC_FILES = {
 "loopEnd": 51.51179,
 "duration": 53.01179,
 "bpm": 84.0,
-"title": "Tidelight Isle \u2014 After the Storm",
+"title": "Lodestar Isle \u2014 After the Storm",
 "intro": 0.0,
 "worked": 1790323834
 },

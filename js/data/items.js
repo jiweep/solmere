@@ -12,43 +12,43 @@ G.POCKETS = [
 (function () {
   const I = (id, name, pocket, price, desc, o = {}) => { G.ITEMS[id] = { id, name, pocket, price, desc, sell: Math.floor(price / 2), ...o }; };
   // ---------------------------------------------------------- medicine
-  I('potion', 'Potion', 'med', 200, 'Restores 20 HP to one mon.', { heal: 20, icon: 'potion', ic: '#9b6be8' });
-  I('superpotion', 'Super Potion', 'med', 600, 'Restores 60 HP to one mon.', { heal: 60, icon: 'potion', ic: '#e8a23b' });
-  I('hyperpotion', 'Hyper Potion', 'med', 1200, 'Restores 120 HP to one mon.', { heal: 120, icon: 'potion', ic: '#e85c9b' });
-  I('maxpotion', 'Max Potion', 'med', 2400, 'Fully restores the HP of one mon.', { heal: 9999, icon: 'potion', ic: '#3bb3e8' });
+  I('potion', 'Potion', 'med', 200, 'Restores 20 HP to one Echo.', { heal: 20, icon: 'potion', ic: '#9b6be8' });
+  I('superpotion', 'Super Potion', 'med', 600, 'Restores 60 HP to one Echo.', { heal: 60, icon: 'potion', ic: '#e8a23b' });
+  I('hyperpotion', 'Hyper Potion', 'med', 1200, 'Restores 120 HP to one Echo.', { heal: 120, icon: 'potion', ic: '#e85c9b' });
+  I('maxpotion', 'Max Potion', 'med', 2400, 'Fully restores the HP of one Echo.', { heal: 9999, icon: 'potion', ic: '#3bb3e8' });
   I('fullrestore', 'Full Restore', 'med', 3000, 'Fully restores HP and cures all status conditions.', { heal: 9999, cure: 'all', icon: 'potion', ic: '#f2d23b' });
   I('antidote', 'Antidote', 'med', 150, 'Cures poison.', { cure: ['psn', 'tox'], icon: 'spray', ic: '#a33ea1' });
   I('parlyzheal', 'Paralyze Heal', 'med', 250, 'Cures paralysis.', { cure: ['par'], icon: 'spray', ic: '#e8c020' });
-  I('awakening', 'Awakening', 'med', 250, 'Wakes up a sleeping mon.', { cure: ['slp'], icon: 'spray', ic: '#6390f0' });
+  I('awakening', 'Awakening', 'med', 250, 'Wakes up a sleeping Echo.', { cure: ['slp'], icon: 'spray', ic: '#6390f0' });
   I('burnheal', 'Burn Heal', 'med', 250, 'Heals a burn.', { cure: ['brn'], icon: 'spray', ic: '#ee8130' });
-  I('iceheal', 'Ice Heal', 'med', 250, 'Thaws a frozen mon.', { cure: ['frz'], icon: 'spray', ic: '#78d0d0' });
+  I('iceheal', 'Ice Heal', 'med', 250, 'Thaws a frozen Echo.', { cure: ['frz'], icon: 'spray', ic: '#78d0d0' });
   I('fullheal', 'Full Heal', 'med', 500, 'Cures all status conditions.', { cure: 'all', icon: 'spray', ic: '#f2d23b' });
-  I('revive', 'Revive', 'med', 1500, 'Revives a fainted mon with half its HP.', { revive: .5, icon: 'revive', ic: '#f2d23b' });
-  I('maxrevive', 'Max Revive', 'med', 4000, 'Revives a fainted mon with full HP.', { revive: 1, icon: 'revive', ic: '#3bb3e8' });
+  I('revive', 'Revive', 'med', 1500, 'Revives a fainted Echo with half its HP.', { revive: .5, icon: 'revive', ic: '#f2d23b' });
+  I('maxrevive', 'Max Revive', 'med', 4000, 'Revives a fainted Echo with full HP.', { revive: 1, icon: 'revive', ic: '#3bb3e8' });
   I('ether', 'Ether', 'med', 1200, 'Restores 10 PP to one move.', { pp: 10, icon: 'bottle', ic: '#6be8c5' });
   I('maxether', 'Max Ether', 'med', 2000, 'Fully restores the PP of one move.', { pp: 99, icon: 'bottle', ic: '#3b82e0' });
-  I('elixir', 'Elixir', 'med', 3000, 'Restores 10 PP to every move of one mon.', { pp: 10, ppAll: true, icon: 'bottle', ic: '#e8a23b' });
-  I('rarecandy', 'Rare Candy', 'med', 4800, 'Raises a mon\'s level by 1.', { level: 1, icon: 'candy', ic: '#6be8e8' });
+  I('elixir', 'Elixir', 'med', 3000, 'Restores 10 PP to every move of one Echo.', { pp: 10, ppAll: true, icon: 'bottle', ic: '#e8a23b' });
+  I('rarecandy', 'Rare Candy', 'med', 4800, 'Raises an Echo\'s level by 1.', { level: 1, icon: 'candy', ic: '#6be8e8' });
   I('expcandy', 'EXP Candy', 'med', 1000, 'Grants a hearty helping of EXP (enough for a level or two early on).', { expc: 1, icon: 'candy', ic: '#f2d23b' });
-  I('hpup', 'HP Up', 'med', 5000, 'Raises the HP effort (EV) of a mon by 10.', { ev: 'hp', icon: 'vitamin', ic: '#3ed16b' });
-  I('protein', 'Protein', 'med', 5000, 'Raises the Attack effort (EV) of a mon by 10.', { ev: 'atk', icon: 'vitamin', ic: '#ef4b4b' });
-  I('iron', 'Iron', 'med', 5000, 'Raises the Defense effort (EV) of a mon by 10.', { ev: 'def', icon: 'vitamin', ic: '#e8a23b' });
-  I('calcium', 'Calcium', 'med', 5000, 'Raises the Sp. Atk effort (EV) of a mon by 10.', { ev: 'spa', icon: 'vitamin', ic: '#3b82e0' });
-  I('zinc', 'Zinc', 'med', 5000, 'Raises the Sp. Def effort (EV) of a mon by 10.', { ev: 'spd', icon: 'vitamin', ic: '#9b5de5' });
-  I('carbos', 'Carbos', 'med', 5000, 'Raises the Speed effort (EV) of a mon by 10.', { ev: 'spe', icon: 'vitamin', ic: '#e85c9b' });
+  I('hpup', 'HP Up', 'med', 5000, 'Raises the HP effort (EV) of an Echo by 10.', { ev: 'hp', icon: 'vitamin', ic: '#3ed16b' });
+  I('protein', 'Protein', 'med', 5000, 'Raises the Attack effort (EV) of an Echo by 10.', { ev: 'atk', icon: 'vitamin', ic: '#ef4b4b' });
+  I('iron', 'Iron', 'med', 5000, 'Raises the Defense effort (EV) of an Echo by 10.', { ev: 'def', icon: 'vitamin', ic: '#e8a23b' });
+  I('calcium', 'Calcium', 'med', 5000, 'Raises the Sp. Atk effort (EV) of an Echo by 10.', { ev: 'spa', icon: 'vitamin', ic: '#3b82e0' });
+  I('zinc', 'Zinc', 'med', 5000, 'Raises the Sp. Def effort (EV) of an Echo by 10.', { ev: 'spd', icon: 'vitamin', ic: '#9b5de5' });
+  I('carbos', 'Carbos', 'med', 5000, 'Raises the Speed effort (EV) of an Echo by 10.', { ev: 'spe', icon: 'vitamin', ic: '#e85c9b' });
   I('ppup', 'PP Up', 'med', 9800, 'Raises the max PP of one move.', { ppup: 1, icon: 'bottle', ic: '#e8e03b' });
-  I('resetbrew', 'Reset Brew', 'med', 3000, 'A bitter tea that resets all of a mon\'s effort values (EVs) to zero.', { evreset: true, icon: 'bottle', ic: '#7a6a4a' });
+  I('resetbrew', 'Reset Brew', 'med', 3000, 'A bitter tea that resets all of an Echo\'s effort values (EVs) to zero.', { evreset: true, icon: 'bottle', ic: '#7a6a4a' });
 
   // ---------------------------------------------------------------- orbs
   I('orb', 'Orb', 'orb', 200, 'A standard capture orb.', { ball: 1, icon: 'orb', ic: '#e8484a' });
   I('greatorb', 'Great Orb', 'orb', 600, 'A well-made orb with a better catch rate.', { ball: 1.5, icon: 'orb', ic: '#3b82e0' });
   I('ultraorb', 'Ultra Orb', 'orb', 1200, 'A high-performance orb with an excellent catch rate.', { ball: 2, icon: 'orb', ic: '#2c2c34' });
-  I('netorb', 'Net Orb', 'orb', 1000, 'Works especially well on Water and Bug mons.', { ball: 'net', icon: 'orb', ic: '#2aa8a0' });
+  I('netorb', 'Net Orb', 'orb', 1000, 'Works especially well on Water and Bug Echoes.', { ball: 'net', icon: 'orb', ic: '#2aa8a0' });
   I('duskorb', 'Dusk Orb', 'orb', 1000, 'Works especially well at night or in caves.', { ball: 'dusk', icon: 'orb', ic: '#3a8a3a' });
   I('quickorb', 'Quick Orb', 'orb', 1000, 'Works especially well if thrown on the first turn.', { ball: 'quick', icon: 'orb', ic: '#e8c020' });
   I('timerorb', 'Timer Orb', 'orb', 1000, 'Grows stronger the longer the battle lasts.', { ball: 'timer', icon: 'orb', ic: '#f0f0f0' });
-  I('healorb', 'Heal Orb', 'orb', 300, 'Fully heals the mon it catches.', { ball: 1, healBall: true, icon: 'orb', ic: '#f58fb8' });
-  I('bondorb', 'Bond Orb', 'orb', 1000, 'A cozy orb. Mons caught in it bond with you faster.', { ball: 1, friendBall: true, icon: 'orb', ic: '#b05ae0' });
+  I('healorb', 'Heal Orb', 'orb', 300, 'Fully heals the Echo it catches.', { ball: 1, healBall: true, icon: 'orb', ic: '#f58fb8' });
+  I('bondorb', 'Bond Orb', 'orb', 1000, 'A cozy orb. Echoes caught in it bond with you faster.', { ball: 1, friendBall: true, icon: 'orb', ic: '#b05ae0' });
   I('crownorb', 'Crown Orb', 'orb', 0, 'The ultimate orb. It never fails.', { ball: 255, icon: 'orb', ic: '#9b3ed8' });
 
   // -------------------------------------------------------------- battle
@@ -57,7 +57,7 @@ G.POCKETS = [
   I('xspatk', 'X Sp. Atk', 'battle', 1000, 'Sharply raises Sp. Atk in battle.', { xstat: 'spa', icon: 'x', ic: '#3b82e0' });
   I('xspdef', 'X Sp. Def', 'battle', 1000, 'Sharply raises Sp. Def in battle.', { xstat: 'spd', icon: 'x', ic: '#9b5de5' });
   I('xspeed', 'X Speed', 'battle', 1000, 'Sharply raises Speed in battle.', { xstat: 'spe', icon: 'x', ic: '#e85c9b' });
-  I('pokedoll', 'Fluff Doll', 'battle', 800, 'Throw it to distract a wild mon and escape for sure.', { flee: true, icon: 'doll', ic: '#e8b07a' });
+  I('pokedoll', 'Fluff Doll', 'battle', 800, 'Throw it to distract a wild Echo and escape for sure.', { flee: true, icon: 'doll', ic: '#e8b07a' });
 
   // ------------------------------------------------------------- berries
   I('oranberry', 'Oran Berry', 'berry', 80, 'Held: restores 10 HP when HP drops below half.', { heal: 10, berry: 'hp', icon: 'berry', ic: '#3b82e0', holdable: true });
@@ -100,35 +100,35 @@ G.POCKETS = [
 
   // ---------------------------------------------------------------- misc
   const stone = (id, name, desc, ic) => I(id, name, 'misc', 3000, desc, { stone: id, icon: 'stone', ic });
-  stone('flamestone', 'Flame Stone', 'A stone that glows with inner heat. Makes certain mons evolve.', '#ee6030');
-  stone('tidestone', 'Tide Stone', 'A stone with a wave trapped inside. Makes certain mons evolve.', '#3b82e0');
-  stone('voltstone', 'Volt Stone', 'A crackling stone. Makes certain mons evolve.', '#e8c020');
-  stone('leafstone', 'Leaf Stone', 'A stone with a leaf pattern. Makes certain mons evolve.', '#3ed16b');
-  stone('froststone', 'Frost Stone', 'A stone that never warms. Makes certain mons evolve.', '#9be0f0');
-  stone('duskstone', 'Dusk Stone', 'A stone as dark as a moonless night. Makes certain mons evolve.', '#4a3a5a');
-  stone('dawnstone', 'Dawn Stone', 'A stone that sparkles like first light. Makes certain mons evolve.', '#f5c0e0');
-  I('linkcord', 'Link Cord', 'misc', 3000, 'A strange cord that coaxes "trade evolution" mons to evolve without a trade.', { stone: 'linkcord', icon: 'cord', ic: '#8a8aa0' });
+  stone('flamestone', 'Flame Stone', 'A stone that glows with inner heat. Makes certain Echoes evolve.', '#ee6030');
+  stone('tidestone', 'Tide Stone', 'A stone with a wave trapped inside. Makes certain Echoes evolve.', '#3b82e0');
+  stone('voltstone', 'Volt Stone', 'A crackling stone. Makes certain Echoes evolve.', '#e8c020');
+  stone('leafstone', 'Leaf Stone', 'A stone with a leaf pattern. Makes certain Echoes evolve.', '#3ed16b');
+  stone('froststone', 'Frost Stone', 'A stone that never warms. Makes certain Echoes evolve.', '#9be0f0');
+  stone('duskstone', 'Dusk Stone', 'A stone as dark as a moonless night. Makes certain Echoes evolve.', '#4a3a5a');
+  stone('dawnstone', 'Dawn Stone', 'A stone that sparkles like first light. Makes certain Echoes evolve.', '#f5c0e0');
+  I('linkcord', 'Link Cord', 'misc', 3000, 'A strange cord that coaxes "trade evolution" Echoes to evolve without a trade.', { stone: 'linkcord', icon: 'cord', ic: '#8a8aa0' });
   const natures = ['Adamant', 'Jolly', 'Modest', 'Timid', 'Bold', 'Impish', 'Calm', 'Careful', 'Brave', 'Quiet', 'Relaxed', 'Sassy', 'Hasty', 'Naive', 'Serious'];
-  for (const n of natures) I('mint_' + n.toLowerCase(), n + ' Mint', 'misc', 5000, `Changes a mon's stat growth to match a ${n} nature. (Its listed nature stays the same.)`, { mint: n.toLowerCase(), icon: 'leaf', ic: '#6be8a0' });
-  I('abilitycapsule', 'Ability Capsule', 'misc', 8000, 'Swaps a mon between its two regular Abilities.', { capsule: true, icon: 'capsule', ic: '#e85c9b' });
-  I('abilitypatch', 'Ability Patch', 'misc', 20000, 'Awakens a mon\'s Hidden Ability.', { patch: true, icon: 'capsule', ic: '#9b3ed8' });
-  I('bottlecap', 'Bottle Cap', 'misc', 15000, 'Maximizes one of a mon\'s Individual Values (IVs).', { cap: 1, icon: 'cap', ic: '#c0c0c0' });
-  I('goldcap', 'Gold Bottle Cap', 'misc', 50000, 'Maximizes all of a mon\'s Individual Values (IVs).', { cap: 6, icon: 'cap', ic: '#f2d23b' });
-  I('repel', 'Repel', 'misc', 350, 'Keeps weaker wild mons away for 100 steps.', { repel: 100, icon: 'spray', ic: '#3ed16b' });
-  I('superrepel', 'Super Repel', 'misc', 500, 'Keeps weaker wild mons away for 200 steps.', { repel: 200, icon: 'spray', ic: '#e8a23b' });
-  I('maxrepel', 'Max Repel', 'misc', 700, 'Keeps weaker wild mons away for 250 steps.', { repel: 250, icon: 'spray', ic: '#3b82e0' });
+  for (const n of natures) I('mint_' + n.toLowerCase(), n + ' Mint', 'misc', 5000, `Changes an Echo's stat growth to match a ${n} nature. (Its listed nature stays the same.)`, { mint: n.toLowerCase(), icon: 'leaf', ic: '#6be8a0' });
+  I('abilitycapsule', 'Ability Capsule', 'misc', 8000, 'Swaps an Echo between its two regular Abilities.', { capsule: true, icon: 'capsule', ic: '#e85c9b' });
+  I('abilitypatch', 'Ability Patch', 'misc', 20000, 'Awakens an Echo\'s Hidden Ability.', { patch: true, icon: 'capsule', ic: '#9b3ed8' });
+  I('bottlecap', 'Bottle Cap', 'misc', 15000, 'Maximizes one of an Echo\'s Individual Values (IVs).', { cap: 1, icon: 'cap', ic: '#c0c0c0' });
+  I('goldcap', 'Gold Bottle Cap', 'misc', 50000, 'Maximizes all of an Echo\'s Individual Values (IVs).', { cap: 6, icon: 'cap', ic: '#f2d23b' });
+  I('repel', 'Repel', 'misc', 350, 'Keeps weaker wild Echoes away for 100 steps.', { repel: 100, icon: 'spray', ic: '#3ed16b' });
+  I('superrepel', 'Super Repel', 'misc', 500, 'Keeps weaker wild Echoes away for 200 steps.', { repel: 200, icon: 'spray', ic: '#e8a23b' });
+  I('maxrepel', 'Max Repel', 'misc', 700, 'Keeps weaker wild Echoes away for 250 steps.', { repel: 250, icon: 'spray', ic: '#3b82e0' });
   I('escaperope', 'Escape Rope', 'misc', 550, 'Returns you to the last entrance of a cave or building.', { escape: true, icon: 'rope', ic: '#b0892a' });
   I('nugget', 'Nugget', 'misc', 10000, 'A nugget of pure gold. Sells for a high price.', { icon: 'coin', ic: '#f2d23b' });
   I('pearl', 'Pearl', 'misc', 2800, 'A lustrous pearl. Sells for a good price.', { icon: 'pearl', ic: '#f5f0f0' });
   I('stardust', 'Stardust', 'misc', 3000, 'Lovely red sand that sparkles. Sells well.', { icon: 'dust', ic: '#ef8b8b' });
-  I('clawfossil', 'Claw Fossil', 'misc', 0, 'A fossil of an ancient mon\'s claw. Can be revived in Galvan Harbor.', { icon: 'fossil', ic: '#b0905a', fossil: 'raptorix' });
-  I('wingfossil', 'Wing Fossil', 'misc', 0, 'A fossil of an ancient mon\'s wing. Can be revived in Galvan Harbor.', { icon: 'fossil', ic: '#a0806a', fossil: 'pterock' });
+  I('clawfossil', 'Claw Fossil', 'misc', 0, 'A fossil of an ancient Echo\'s claw. Can be revived in Galvan Harbor.', { icon: 'fossil', ic: '#b0905a', fossil: 'raptorix' });
+  I('wingfossil', 'Wing Fossil', 'misc', 0, 'A fossil of an ancient Echo\'s wing. Can be revived in Galvan Harbor.', { icon: 'fossil', ic: '#a0806a', fossil: 'pterock' });
 
   // ----------------------------------------------------------------- key
   const K = (id, name, desc, o = {}) => I(id, name, 'key', 0, desc, { icon: o.icon || 'key', ic: o.ic || '#555a66', ...o });
-  K('dex', 'Solmere Dex', 'A high-tech encyclopedia that records every mon you see or catch.', { icon: 'dex', ic: '#e8484a' });
+  K('dex', 'Echodex', 'A high-tech encyclopedia that records every Echo you see or catch.', { icon: 'dex', ic: '#e8484a' });
   K('journal', 'Tamer\'s Journal', 'Your mother\'s gift: a journal that tracks quests and notes.', { icon: 'book', ic: '#b0892a' });
-  K('resonanceband', 'Resonance Band', 'A band that lets a strongly bonded mon Resonate once per battle. Press R in the Fight menu.', { icon: 'band', ic: '#3fd0bf' });
+  K('resonanceband', 'Resonance Band', 'A band that lets a strongly bonded Echo Resonate once per battle. Press R in the Fight menu.', { icon: 'band', ic: '#3fd0bf' });
   K('bike', 'Bike', 'A folding bike for fast travel. Press F to ride or register it.', { icon: 'bike', ic: '#e8484a', field: 'bike' });
   K('trailknife', 'Trail Knife', 'A sturdy knife for clearing thin trees. Walk into one to use it.', { icon: 'knife', ic: '#8a8aa0' });
   K('pickhammer', 'Pick Hammer', 'A hammer that shatters cracked boulders. Walk into one to use it.', { icon: 'hammer', ic: '#b0892a' });
@@ -136,11 +136,11 @@ G.POCKETS = [
   K('tideboard', 'Tide Board', 'A surfboard that lets you ride across water. Face water and press A.', { icon: 'board', ic: '#3b82e0' });
   K('wingwhistle', 'Wing Whistle', 'Summons a Sky Taxi to any town you\'ve visited. Use it from the Town Map.', { icon: 'whistle', ic: '#a98ff3' });
   K('rod', 'Fishing Rod', 'Face water and press A to fish.', { icon: 'rod', ic: '#b0892a', field: 'rod' });
-  K('prorod', 'Pro Rod', 'An expert\'s rod that hooks rarer mons.', { icon: 'rod', ic: '#3b82e0', field: 'rod' });
+  K('prorod', 'Pro Rod', 'An expert\'s rod that hooks rarer Echoes.', { icon: 'rod', ic: '#3b82e0', field: 'rod' });
   K('expshare', 'EXP Share', 'Shares battle EXP with your whole party. Toggle in the Options menu.', { icon: 'share', ic: '#3ed16b' });
   K('dowsing', 'Dowsing Rod', 'Beeps faster as you near hidden items. Toggle it with F while not biking... or just watch for sparkles.', { icon: 'rod', ic: '#e8c020' });
   K('vsrecorder', 'Vs. Recorder', 'Lets trainers you\'ve beaten challenge you again after gym progress.', { icon: 'dex', ic: '#3b82e0' });
-  K('shinycharm', 'Shiny Charm', 'A charm that triples your odds of meeting a shiny mon.', { icon: 'charm', ic: '#f2d23b' });
+  K('shinycharm', 'Shiny Charm', 'A charm that triples your odds of meeting a shiny Echo.', { icon: 'charm', ic: '#f2d23b' });
   K('tidekey', 'Tide Key', 'An ancient key humming with the song of the sea.', { icon: 'key', ic: '#3fd0bf' });
   K('cranekeycard', 'Crane Keycard', 'A keycard for restricted floors of Crane Dynamics.', { icon: 'card', ic: '#e8484a' });
   K('parcel', 'Lab Parcel', 'A parcel from Professor Hale for Warden Juniper.', { icon: 'box', ic: '#b0892a' });

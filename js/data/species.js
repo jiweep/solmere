@@ -277,8 +277,8 @@ G.DEX = [];
   S('orrelume', 'Orrelume', ['water', 'psychic'], [120, 85, 105, 135, 130, 105], ['tidelight', null, 'tidelight'], {
     legend: true, stage: 1, final: true, gender: -1, growth: 'slow', catch: 10, exp: 320,
     learn: L(1, 'watergun', 1, 'confusion', 10, 'bubblejet', 20, 'psybeam', 30, 'surf', 40, 'calmmind', 45, 'psychic', 50, 'tidalhymn', 55, 'recover', 60, 'icebeam', 70, 'hydropump'),
-    tmx: ['water', 'psychic', 'ice', 'fairy', 'normal', 'electric'], h: 12.4, w: 880, cat: 'Tidelight', color: 'blue',
-    dex: 'The leviathan whose song is the Resonance itself. It sleeps beneath the Tidelight, and every bond between mon and person echoes in its heart.' });
+    tmx: ['water', 'psychic', 'ice', 'fairy', 'normal', 'electric'], h: 12.4, w: 880, cat: 'Lodestar', color: 'blue',
+    dex: 'The leviathan whose song is the Resonance itself. It sleeps beneath the Lodestar, and every bond between Echo and person echoes in its heart.' });
   S('nyxalis', 'Nyxalis', ['dark', 'dragon'], [100, 140, 95, 125, 95, 125], ['voidaura', null, 'voidaura'], {
     legend: true, stage: 1, final: true, gender: -1, growth: 'slow', catch: 5, exp: 330,
     learn: L(1, 'bite', 1, 'dragonbreath', 20, 'nightslash', 30, 'dragonclaw', 40, 'darkpulse', 50, 'wyrmdance', 60, 'voidrend', 65, 'dragonpulse', 70, 'outrage', 75, 'dracometeor'),

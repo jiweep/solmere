@@ -4,7 +4,7 @@
 //  display's native resolution: a banded sunset sky with sun-lit clouds, far
 //  islands and a lit harbour town, a live per-pixel sea that reflects the sky
 //  with a glittering sun path, and on the left a faceted rock headland with the
-//  Tidelight (an octagonal lighthouse with gallery, lantern room and cap), the
+//  Lodestar (an octagonal lighthouse with gallery, lantern room and cap), the
 //  keeper's cottage and pines. Animated on top: the lantern's beam, drifting
 //  clouds, gulls, a sailboat, chimney smoke, surf, sea sparkle, fireflies,
 //  shooting stars and, now and then, Orrelume breaching with a real waterline,
@@ -113,7 +113,7 @@
     for (let y = HZ - 10; y < HZ; y++) L.set(0, y, haze, 0);
     return L.canvas();
   }
-  // the headland: faceted cliff, grass cap, pines, cottage and the Tidelight
+  // the headland: faceted cliff, grass cap, pines, cottage and the Lodestar
   const LAMP = [152, 58];
   function paintHead(bare) {
     const L = new Layer(AW, AH, M), rng = new G.RNG(5);
@@ -168,9 +168,9 @@
     if (!bare) paintLighthouse(L);
     return L;
   }
-  // the painted Tidelight (the flat title, and what the 3D sea reflects)
+  // the painted Lodestar (the flat title, and what the 3D sea reflects)
   function paintLighthouse(L) {
-    // the Tidelight: octagonal tapered tower, red and white bands, lit facets toward the sun
+    // the Lodestar: octagonal tapered tower, red and white bands, lit facets toward the sun
     const bx = LAMP[0], base = 216, top = 84;
     for (let y = top; y < base; y++) {
       const t = (y - top) / (base - top), hw = 11 + t * 6;

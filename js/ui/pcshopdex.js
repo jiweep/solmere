@@ -65,13 +65,13 @@ G.PCScene = class {
     const m = this.cur(); if (!m) return;
     if (op === 'Summary') { const list = this.side === 'party' ? G.save.party : this.boxList; await G.openSummary(list, this.i); }
     if (op === 'Move') {
-      if (this.side === 'party' && G.save.party.filter(x => x.hp > 0 && !x.dead).length <= 1 && m.hp > 0) { this.msg = 'That\'s your last mon able to battle!'; G.audio && G.audio.sfx('buzz'); return; }
+      if (this.side === 'party' && G.save.party.filter(x => x.hp > 0 && !x.dead).length <= 1 && m.hp > 0) { this.msg = 'That\'s your last Echo able to battle!'; G.audio && G.audio.sfx('buzz'); return; }
       if (this.side === 'party' && G.save.party.length <= 1) { this.msg = 'You can\'t leave with an empty party!'; G.audio && G.audio.sfx('buzz'); return; }
       const list = this.side === 'party' ? G.save.party : this.boxList;
       list.splice(this.i, 1); this.held = { m, from: this.side, idx: this.i, list }; this.msg = 'Place it where?'; G.audio && G.audio.sfx('select');
     }
     if (op === 'Release') {
-      if (this.side === 'party' && G.save.party.length <= 1) { this.msg = 'That\'s your last mon!'; return; }
+      if (this.side === 'party' && G.save.party.length <= 1) { this.msg = 'That\'s your last Echo!'; return; }
       if (await G.yesno(`Release ${G.mon.name(m)}? You won't be able to get it back.`)) {
         const list = this.side === 'party' ? G.save.party : this.boxList; list.splice(this.i, 1);
         if (m.item) G.bag.add(m.item);
@@ -251,7 +251,7 @@ G.DexScene = class {
       if (seen) {
         U.img(G.monArt.front(id, false, Math.floor(this.t / 14) % 4), 222, 24 + Math.sin(this.t / 20) * 1.5);
         U.para(196, 118, 156, 16, 6, '#07060c'); U.text(sp.name, 276, 120, { size: 10, weight: 800, align: 'center', color: '#fff' });
-        U.text(`The ${sp.cat} Mon`, 272, 138, { size: 6.4, color: '#6a7080', align: 'center' });
+        U.text(`The ${sp.cat} Echo`, 272, 138, { size: 6.4, color: '#6a7080', align: 'center' });
         U.typeBadge(sp.types[0], sp.types[1] ? 234 : 253, 148, 34, 9); if (sp.types[1]) U.typeBadge(sp.types[1], 272, 148, 34, 9);
         U.text(caught ? 'Press Z for details' : 'Catch it to learn more!', 272, 166, { size: 6, color: '#8a90a0', align: 'center' });
       } else { U.img(G.monArt.silhouette(id, '#3a3a48'), 222, 24); U.text('???', 272, 122, { size: 10, weight: 900, align: 'center', color: '#8a90a0' }); }
@@ -268,7 +268,7 @@ G.DexScene = class {
     U.text('◀ ▶ pages · ▲ ▼ browse' + (G.save.dex.shiny[id] ? ' · Z shiny' : ' · Z cry'), 83, 196, { size: 5, align: 'center', color: '#8a90a0' });
     U.panel(166, 8, 210, 200, 'paper', { r: 6, slab: true });
     const X = 172; let y = 16;
-    if (!caught && this.page > 0) { U.text('Catch this mon to unlock this page.', 270, 100, { size: 6.6, color: '#8a7550', align: 'center' }); return; }
+    if (!caught && this.page > 0) { U.text('Catch this Echo to unlock this page.', 270, 100, { size: 6.6, color: '#8a7550', align: 'center' }); return; }
     if (this.page === 0) {
       if (caught) { const lines = G.ui.wrap(sp.dex, 196, 6.2); lines.forEach((l, k) => U.text(l, X, 16 + k * 9.4, { size: 6.2, color: '#4a3a20' })); y = 24 + lines.length * 9.4; }
       else { U.text('Not enough data. Catch one to learn more!', X, y, { size: 6.2, color: '#4a3a20' }); y = 30; }

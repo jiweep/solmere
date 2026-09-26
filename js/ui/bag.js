@@ -86,7 +86,7 @@ G.BagScene = class {
     }
     if (act === 'reg') { G.save.reg = G.save.reg === id ? null : id; G.toast(G.save.reg ? `${it.name} registered to F` : 'Unregistered'); return; }
     if (act === 'give') {
-      const k = await G.openParty({ mode: 'select', prompt: `Give the ${it.name} to which mon?` });
+      const k = await G.openParty({ mode: 'select', prompt: `Give the ${it.name} to which Echo?` });
       if (k === null || k < 0) return;
       const m = G.save.party[k];
       if (m.item) { if (!await G.yesno(`${G.mon.name(m)} is already holding a ${G.ITEMS[m.item].name}. Swap it for the ${it.name}?`)) return; G.bag.add(m.item); }
@@ -98,14 +98,14 @@ G.BagScene = class {
     const it = G.ITEMS[id];
     if (it.ball) {
       if (this.o.wild === false) { this.close({ item: id }); return; }
-      if (G.save.party.length >= 6 && G.save.boxes.every(b => b.length >= 30)) { await G.say('There\'s no room left for another mon!'); return; }
+      if (G.save.party.length >= 6 && G.save.boxes.every(b => b.length >= 30)) { await G.say('There\'s no room left for another Echo!'); return; }
       this.close({ item: id }); return;
     }
     if (it.xstat || it.flee) { this.close({ item: id, target: undefined }); return; }
     if (it.pocket === 'med' || it.pocket === 'berry') {
       if (it.level || it.ev || it.ppup || it.evreset || it.expc) { await G.say('That can\'t be used in battle.'); return; }
       const k = await G.openParty({
-        mode: 'select', prompt: `Use the ${it.name} on which mon?`,
+        mode: 'select', prompt: `Use the ${it.name} on which Echo?`,
         filter: m => G.itemUsefulOn(id, m), filterMsg: 'It won\'t have any effect.', label: m => G.itemLabelFor(id, m),
       });
       if (k === null || k < 0) return;
@@ -235,15 +235,15 @@ G.useItemField = async function (id, bagScene) {
     if (id === 'wingwhistle') { if (bagScene) bagScene.close(null); await G.openTownMap({ fly: true }); return false; }
     if (id === 'dex') { await G.openDex(); return false; }
     if (id === 'journal') { await G.openQuests(); return false; }
-    if (id === 'expshare') { G.save.settings.expShare = !G.save.settings.expShare; await G.say(`EXP Share turned ${G.save.settings.expShare ? 'ON. Your whole party will share battle EXP' : 'OFF. Only mons that battle will earn EXP'}.`); return false; }
+    if (id === 'expshare') { G.save.settings.expShare = !G.save.settings.expShare; await G.say(`EXP Share turned ${G.save.settings.expShare ? 'ON. Your whole party will share battle EXP' : 'OFF. Only Echoes that battle will earn EXP'}.`); return false; }
     if (id === 'tideboard') { await G.say('Face some water and press Z to ride the Tide Board!'); return false; }
-    if (id === 'resonanceband') { await G.say('The band hums with a soft warmth.\\pIn battle, open FIGHT and press R to let one mon Resonate: its main type\'s moves hit much harder, and a Resonant Shield softens the first super-effective hit it takes. Once per battle!'); return false; }
+    if (id === 'resonanceband') { await G.say('The band hums with a soft warmth.\\pIn battle, open FIGHT and press R to let one Echo Resonate: its main type\'s moves hit much harder, and a Resonant Shield softens the first super-effective hit it takes. Once per battle!'); return false; }
     if (id === 'vsrecorder') { await G.say('Trainers you\'ve beaten may want a rematch after you earn more badges. Just talk to them again!'); return false; }
     if (id === 'lantern') { await G.say('The Lantern lights your way automatically in dark places.'); return false; }
     if (id === 'dowsing') { const n = G.hiddenItemNear ? G.hiddenItemNear() : null; await G.say(n ? `The rod is twitching! Something is hidden about ${n} step${n > 1 ? 's' : ''} away...` : 'The rod isn\'t reacting. Nothing hidden nearby.'); return false; }
     return false;
   }
-  if (it.repel) { if (G.save.repel > 0) { await G.say('The effects of a previous repellent are still lingering.'); return false; } G.bag.remove(id); G.save.repel = it.repel; G.audio && G.audio.sfx('item'); await G.say(`You used the ${it.name}. Weaker wild mons will stay away for a while.`); return false; }
+  if (it.repel) { if (G.save.repel > 0) { await G.say('The effects of a previous repellent are still lingering.'); return false; } G.bag.remove(id); G.save.repel = it.repel; G.audio && G.audio.sfx('item'); await G.say(`You used the ${it.name}. Weaker wild Echoes will stay away for a while.`); return false; }
   if (it.escape) {
     const w = G.world.scene; if (!w || w.map.type === 'outdoor') { await G.say('You can\'t use that here.'); return false; }
     if (w.map.def.noEscape) { await G.say('A strange force prevents escaping from here!'); return false; }
@@ -251,36 +251,36 @@ G.useItemField = async function (id, bagScene) {
     const r = G.save.lastOutdoor; await w.warpTo(r.map, r.x, r.y, 'down'); return false;
   }
   if (it.pocket === 'tm') {
-    const m = await pickMon(`Teach ${G.MOVES[it.tm].name} to which mon?`, x => G.canLearnTM(x.sp, it.tm) && !G.mon.hasMove(x, it.tm), x => G.itemLabelFor(id, x), 'It can\'t learn that move.');
+    const m = await pickMon(`Teach ${G.MOVES[it.tm].name} to which Echo?`, x => G.canLearnTM(x.sp, it.tm) && !G.mon.hasMove(x, it.tm), x => G.itemLabelFor(id, x), 'It can\'t learn that move.');
     if (!m) return false;
     await G.learnWithPrompt(m, it.tm); return false;
   }
   if (it.stone) {
-    const m = await pickMon(`Use the ${it.name} on which mon?`, x => !!G.mon.evoTarget(x, { trigger: 'item', item: it.stone }), x => G.itemLabelFor(id, x), 'It won\'t have any effect.');
+    const m = await pickMon(`Use the ${it.name} on which Echo?`, x => !!G.mon.evoTarget(x, { trigger: 'item', item: it.stone }), x => G.itemLabelFor(id, x), 'It won\'t have any effect.');
     if (!m) return false;
     const to = G.mon.evoTarget(m, { trigger: 'item', item: it.stone });
     G.bag.remove(id); if (bagScene) bagScene.close(null);
     await G.evolveMon(m, to, { item: true }); return false;
   }
   if (it.mint) {
-    const m = await pickMon(`Use the ${it.name} on which mon?`); if (!m) return false;
+    const m = await pickMon(`Use the ${it.name} on which Echo?`); if (!m) return false;
     if (!await G.yesno(`${G.mon.name(m)}'s stats will grow as if it had a ${G.cap(it.mint)} nature. Use it?`)) return false;
     G.bag.remove(id); m.mint = it.mint; G.audio && G.audio.sfx('heal'); await G.say(`${G.mon.name(m)}'s stats may grow differently now!`); return false;
   }
   if (it.capsule) {
-    const m = await pickMon('Use the Ability Capsule on which mon?', x => !!G.SPECIES[x.sp].abil[1] && x.abil !== 2, null, 'It won\'t have any effect.'); if (!m) return false;
+    const m = await pickMon('Use the Ability Capsule on which Echo?', x => !!G.SPECIES[x.sp].abil[1] && x.abil !== 2, null, 'It won\'t have any effect.'); if (!m) return false;
     const sp = G.SPECIES[m.sp], nw = m.abil === 0 ? 1 : 0;
     if (!await G.yesno(`Change ${G.mon.name(m)}'s Ability to ${G.ABILITIES[sp.abil[nw]].name}?`)) return false;
     G.bag.remove(id); m.abil = nw; await G.say(`${G.mon.name(m)}'s Ability became ${G.ABILITIES[sp.abil[nw]].name}!`); return false;
   }
   if (it.patch) {
-    const m = await pickMon('Use the Ability Patch on which mon?', x => !!G.SPECIES[x.sp].abil[2] && x.abil !== 2, null, 'It won\'t have any effect.'); if (!m) return false;
+    const m = await pickMon('Use the Ability Patch on which Echo?', x => !!G.SPECIES[x.sp].abil[2] && x.abil !== 2, null, 'It won\'t have any effect.'); if (!m) return false;
     const sp = G.SPECIES[m.sp];
     if (!await G.yesno(`Awaken ${G.mon.name(m)}'s Hidden Ability, ${G.ABILITIES[sp.abil[2]].name}?`)) return false;
     G.bag.remove(id); m.abil = 2; await G.say(`${G.mon.name(m)}'s Ability became ${G.ABILITIES[sp.abil[2]].name}!`); return false;
   }
   if (it.cap) {
-    const m = await pickMon(`Use the ${it.name} on which mon?`, x => G.STATS.some(s => x.ivs[s] < 31), null, 'Its potential is already maxed out!'); if (!m) return false;
+    const m = await pickMon(`Use the ${it.name} on which Echo?`, x => G.STATS.some(s => x.ivs[s] < 31), null, 'Its potential is already maxed out!'); if (!m) return false;
     if (it.cap >= 6) { for (const s of G.STATS) m.ivs[s] = 31; }
     else {
       const opts = G.STATS.filter(s => m.ivs[s] < 31);
@@ -291,11 +291,11 @@ G.useItemField = async function (id, bagScene) {
     await G.say(`${G.mon.name(m)} reached its full potential! (Hyper Training)`); return false;
   }
   // medicine & berries
-  const m = await pickMon(`Use the ${it.name} on which mon?`, x => G.itemUsefulOn(id, x), x => G.itemLabelFor(id, x), 'It won\'t have any effect.');
+  const m = await pickMon(`Use the ${it.name} on which Echo?`, x => G.itemUsefulOn(id, x), x => G.itemLabelFor(id, x), 'It won\'t have any effect.');
   if (!m) return false;
   const n = G.mon.name(m), max = G.mon.maxHP(m);
   if (it.revive) {
-    if (G.save.settings.nuzlocke && m.dead) { await G.say('Fallen mons cannot be revived.'); return false; }
+    if (G.save.settings.nuzlocke && m.dead) { await G.say('Fallen Echoes cannot be revived.'); return false; }
     m.hp = Math.max(1, Math.floor(max * it.revive)); m.status = null; G.bag.remove(id); G.audio && G.audio.sfx('heal'); await G.say(`${n} was revived!`); return false;
   }
   if (it.level) {

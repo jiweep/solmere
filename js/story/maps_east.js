@@ -1,7 +1,7 @@
 'use strict';
 // ============================================================================
 //  Maps: Duskmere, Ruins, Route 5, Frostpeak, Mt. Glacia, Skyreach, Crane HQ,
-//        Route 6, Tidelight Isle & lighthouse
+//        Route 6, Lodestar Isle & lighthouse
 // ============================================================================
 (function () {
   const D = G.defMap;
@@ -33,9 +33,9 @@
         { type: 'sign', x: 18, y: 18, text: '{p}DUSKMERE GYM{w} — Warden: Mireille\\n"Bring your own light."' },
         { type: 'npc', id: 'dm_gguard', x: 23, y: 19, look: 'mystic', dir: 'down', script: 'dusk_gym_guard', cond: '!ruins_done' },
         { type: 'npc', id: 'dm_ode', x: 11, y: 19, look: 'oldman', dir: 'down', script: 'lamplighter' },
-        { type: 'npc', id: 'dm_w1', x: 18, y: 9, look: 'woman', dir: 'left', move: 'wander', radius: 2, text: 'The mist never lifts in Duskmere. We light lanterns so lost spirits can find their way home.' },
+        { type: 'npc', id: 'dm_w1', x: 18, y: 9, look: 'woman', dir: 'left', move: 'wander', radius: 2, text: 'The mist never lifts in Duskmere. We light lanterns so lost spirits can find their way home. And so tourists stop walking into the lake.' },
         { type: 'npc', id: 'dm_rodguy', x: 16, y: 23, look: 'fisher', dir: 'down', script: 'prorod_guy' },
-        { type: 'npc', id: 'dm_kid', x: 10, y: 17, look: 'girl', dir: 'up', move: 'look', text: 'My grandma says Wispurr are the ghosts of cats who loved their families too much to leave. I think that\'s nice.' },
+        { type: 'npc', id: 'dm_kid', x: 10, y: 17, look: 'girl', dir: 'up', move: 'look', text: 'Grandma says Wispurr are the ghosts of cats who loved their families too much to leave. I think that\'s nice. My cat is alive and hates me.' },
         { type: 'sign', id: 'lant1', x: 12, y: 6, invisible: true, script: 'spirit_lantern', lantern: 1 },
         { type: 'sign', id: 'lant2', x: 17, y: 15, invisible: true, script: 'spirit_lantern', lantern: 2 },
         { type: 'sign', id: 'lant3', x: 3, y: 19, invisible: true, script: 'spirit_lantern', lantern: 3 },
@@ -44,7 +44,7 @@
       ], spawn: [14, 12] });
   })();
   G.defHouse('dusk_house1', 'Duskmere House', 2, [{ type: 'npc', id: 'dh1', x: 6, y: 5, look: 'mystic', dir: 'left', script: 'fortune_teller' }], { wall: 'rose' });
-  G.defHouse('dusk_house2', 'Duskmere House', 0, [{ type: 'npc', id: 'dh2', x: 2, y: 4, look: 'oldwoman', dir: 'right', text: 'Twelve years ago the Tidelight flared so bright you could read by it here. Then it went dark for a week. They say a young scientist lost her partner mon that night.' }]);
+  G.defHouse('dusk_house2', 'Duskmere House', 0, [{ type: 'npc', id: 'dh2', x: 2, y: 4, look: 'oldwoman', dir: 'right', text: 'Twelve years ago the Lodestar flared so bright you could read by it here. Then it went dark for a week. They say a young scientist lost her partner that night. And another one never forgave herself.' }]);
   D({ id: 'ruins', name: 'Ruins of Echo', subtitle: 'Voices of the old tide', area: 'ruins', type: 'cave', music: 'ruins', env: 'ruins', theme: 'dusk',
     legend: { '=': { g: 'pave', enc: 'cave' }, 'S': { o: 'statue', solid: true }, 'g': { o: 'grave', solid: true } },
     grid: [
@@ -79,7 +79,7 @@
       { type: 'npc', id: 'ru_grey', x: 11, y: 2, look: 'grey', dir: 'up', script: 'grey1', cond: '!ruins_done' },
       { type: 'trigger', x: 11, y: 4, w: 2, h: 1, script: 'grey1', cond: '!ruins_done' },
       { type: 'sign', x: 12, y: 1, invisible: true, text: 'An empty stone cradle, shaped for a key. Wave patterns are carved all around it. Ancient script reads: "The sea gate opens for the song."' },
-      { type: 'sign', x: 8, y: 5, invisible: true, text: 'A worn gravestone: "Here rests Aurel, first Tamer to hear the Tidelight sing."' },
+      { type: 'sign', x: 8, y: 5, invisible: true, text: 'A worn gravestone: "Here rests Aurel, first Tamer to hear the Lodestar sing."' },
       { type: 'item', id: 'ru_i1', x: 5, y: 9, item: 'duskstone' },
       { type: 'item', id: 'ru_i2', x: 18, y: 9, item: 'tm30' },
       { type: 'item', id: 'ru_trap', x: 7, y: 13, item: 'rarecandy', monTrap: 'coffret', lvl: 28 },
@@ -179,8 +179,8 @@
         { type: 'npc', id: 'fp_sguard', x: 2, y: 12, look: 'ranger', dir: 'down', script: 'starfall_guard', cond: '!champion' },
         { type: 'trigger', x: 1, y: 10, w: 1, h: 2, script: 'starfall_guard', cond: '!champion' },
         { type: 'npc', id: 'fp_boots', x: 16, y: 20, look: 'veteran', dir: 'up', script: 'grip_boots' },
-        { type: 'npc', id: 'fp_kid', x: 20, y: 20, look: 'skier', dir: 'left', move: 'wander', radius: 2, text: 'The pond froze solid! Watch me slide! Wheeee!' },
-        { type: 'npc', id: 'fp_w', x: 9, y: 11, look: 'woman', dir: 'down', move: 'look', text: 'Crane Dynamics trucks drove through the pass last week. Heading for Skyreach, loaded with glowing crystals.' },
+        { type: 'npc', id: 'fp_kid', x: 20, y: 20, look: 'skier', dir: 'left', move: 'wander', radius: 2, text: 'The pond froze solid! Watch me slide! WHEEEEE— I\'m okay!' },
+        { type: 'npc', id: 'fp_w', x: 9, y: 11, look: 'woman', dir: 'down', move: 'look', text: 'Crane trucks came through the pass last week. Heading for Skyreach, loaded with glowing crystals. The crystals were humming. Sad humming.' },
         { type: 'trainer', id: 'fp_s1', x: 17, y: 21, look: 'skier', dir: 'right', sight: 3, trainer: 'fp_skier1' },
         { type: 'trainer', id: 'fp_s2', x: 8, y: 14, look: 'skier', dir: 'right', sight: 3, trainer: 'fp_skier2' },
         { type: 'item', id: 'fp_h1', x: 27, y: 22, item: 'nevermeltice', hidden: true },
@@ -236,7 +236,7 @@
         { type: 'trainer', id: 'mg_h', x: 16, y: 11, look: 'hiker', dir: 'left', sight: 1, trainer: 'mg_hiker' },
         { type: 'trainer', id: 'mg_a', x: 24, y: 15, look: 'ace_f', dir: 'left', sight: 2, trainer: 'mg_ace' },
         { type: 'trainer', id: 'mg_v', x: 33, y: 13, look: 'veteran', dir: 'left', sight: 2, trainer: 'mg_vet' },
-        { type: 'npc', id: 'mg_tip', x: 7, y: 14, look: 'hiker', dir: 'down', text: 'Big boulders block the pass. Grip Boots let you shove them into the holes. If you mess up, step outside and they reset!' },
+        { type: 'npc', id: 'mg_tip', x: 7, y: 14, look: 'hiker', dir: 'down', text: 'Boulders block the pass. Grip Boots let you shove them into the holes. Mess it up? Step outside and they reset. Like nothing happened. Like my life.' },
         { type: 'item', id: 'mg_i1', x: 4, y: 22, item: 'tm13' },
         { type: 'item', id: 'mg_i2', x: 36, y: 25, item: 'maxrevive' },
         { type: 'item', id: 'mg_i3', x: 12, y: 23, item: 'nevermeltice' },
@@ -273,9 +273,9 @@
         { type: 'npc', id: 'sk_wren', x: 16, y: 12, look: 'wren', dir: 'down', script: 'hq_wren', cond: ['badge5', '!hq_started'] },
         { type: 'trigger', x: 13, y: 13, w: 7, h: 1, script: 'hq_wren', cond: ['badge5', '!hq_started'] },
         { type: 'npc', id: 'sk_sailor', x: 15, y: 4, look: 'sailor', dir: 'up', script: 'sky_sailor' },
-        { type: 'npc', id: 'sk_w1', x: 17, y: 21, look: 'gentleman', dir: 'left', move: 'wander', radius: 2, text: 'Skyreach is the richest city in Solmere. Crane Dynamics pays for everything. Everything has a price, of course.' },
-        { type: 'npc', id: 'sk_w2', x: 7, y: 21, look: 'lady', dir: 'right', move: 'look', text: 'Warden Kaelen used to be Champion, you know. Before Sable. They say he still flies his Tempestral over the Mere at dawn.' },
-        { type: 'npc', id: 'sk_kid', x: 26, y: 21, look: 'kid', dir: 'down', move: 'wander', radius: 2, text: 'A Link Cord makes Bouldrok evolve! The Skyreach shop sells them. I saved up for a whole year!' },
+        { type: 'npc', id: 'sk_w1', x: 17, y: 21, look: 'gentleman', dir: 'left', move: 'wander', radius: 2, text: 'Skyreach is the richest city in Solmere. Crane pays for everything. And everything has a price. Mine was my afternoons.' },
+        { type: 'npc', id: 'sk_w2', x: 7, y: 21, look: 'lady', dir: 'right', move: 'look', text: 'Warden Kaelen used to be Champion, before Sable. They say he still flies his Tempestral over the Mere at dawn. Showing off. Beautifully.' },
+        { type: 'npc', id: 'sk_kid', x: 26, y: 21, look: 'kid', dir: 'down', move: 'wander', radius: 2, text: 'A Link Cord makes Bouldrok evolve! The shop sells them! I saved up for a whole year! I have no Bouldrok! I\'m planning ahead!' },
         { type: 'item', id: 'sk_h1', x: 1, y: 25, item: 'dragonfang', hidden: true },
       ], spawn: [16, 17] });
   })();
@@ -285,7 +285,7 @@
     objs: [
       { type: 'npc', id: 'clerk', x: 0, y: 3, look: 'clerk', dir: 'right', script: 'mart_clerk' },
       { type: 'npc', id: 'clerk2', x: 0, y: 5, look: 'clerk', dir: 'right', script: 'sky_special' },
-      { type: 'npc', id: 'skm1', x: 9, y: 5, look: 'ace', dir: 'up', text: 'Held items change everything at high levels. A Life Gem on a fast attacker? Chef\'s kiss.' },
+      { type: 'npc', id: 'skm1', x: 9, y: 5, look: 'ace', dir: 'up', text: 'Held items change everything at high levels. A Life Gem on a fast attacker? Perfection. Chef\'s kiss. Two chef\'s kisses.' },
     ], spawn: [6, 6] });
   G.defHouse('sky_house1', 'Skyreach House', 1, [{ type: 'npc', id: 'skh1', x: 7, y: 5, look: 'scientist', dir: 'left', script: 'iv_judge' }]);
   G.defHouse('sky_house2', 'Skyreach House', 2, [{ type: 'npc', id: 'skh2', x: 3, y: 5, look: 'oldman', dir: 'right', script: 'hidden_power_guy' }]);
@@ -379,7 +379,7 @@
     objs: [
       { type: 'npc', id: 'spire_recep', x: 2, y: 2, look: 'clerk', dir: 'down', script: 'spire_recep' },
       { type: 'npc', id: 'spire_ex', x: 10, y: 2, look: 'clerk', dir: 'down', script: 'spire_exchange' },
-      { type: 'npc', id: 'spire_fan', x: 3, y: 6, look: 'ace', dir: 'right', text: 'Every Spire battle is at Lv. 50, no matter what. Pure strategy!' },
+      { type: 'npc', id: 'spire_fan', x: 3, y: 6, look: 'ace', dir: 'right', text: 'Every Spire battle is at Level 50, no matter what. Pure strategy. No grinding. Just brains. I have lost 400 times.' },
     ], spawn: [6, 7] });
   // --------------------------------------------------------------- ROUTE 6
   (function () {
@@ -411,7 +411,7 @@
     m.blob(6, 9, 2.4, 2, '"', { only: '.' }); m.blob(19, 12, 2.4, 2, '"', { only: '.' });
     for (const [x, y] of [[5, 5], [20, 5], [4, 13], [21, 9], [7, 15], [18, 15]]) m.put(x, y, 'Y');
     m.put(10, 9, 'l'); m.put(15, 9, 'l');
-    D({ id: 'tidelight', name: 'Tidelight Isle', subtitle: 'Heart of the Mere', town: 'tidelight', area: 'tidelight', music: () => G.flag('tidelight_done') ? 'tidelight_calm' : 'tidelight', theme: 'beach', env: 'lighthouse', grid: m.done(),
+    D({ id: 'tidelight', name: 'Lodestar Isle', subtitle: 'Heart of the Mere', town: 'tidelight', area: 'tidelight', music: () => G.flag('tidelight_done') ? 'tidelight_calm' : 'tidelight', theme: 'beach', env: 'lighthouse', grid: m.done(),
       conn: { s: { map: 'route6', off: -3 } },
       enc: { grass: { lv: [42, 46], list: [['galeclaw', 20], ['hootsage', 20], ['luminelle', 15], ['cinderwing', 15], ['bogmaw', 15], ['chimelle', 15]] }, surf: { lv: [40, 45], list: [['jellume', 40], ['riptalon', 30], ['crustank', 30]] } },
       objs: [
@@ -419,12 +419,12 @@
         { type: 'npc', id: 'tl_g1', x: 10, y: 11, look: 'grunt', dir: 'right', script: 'tl_grunt', cond: '!tidelight_done' },
         { type: 'npc', id: 'tl_g2', x: 15, y: 11, look: 'grunt_f', dir: 'left', script: 'tl_grunt', cond: '!tidelight_done' },
         { type: 'npc', id: 'tl_hale', x: 9, y: 14, look: 'hale', dir: 'right', script: 'tl_hale', cond: 'tidelight_done' },
-        { type: 'sign', x: 14, y: 16, text: '{c}TIDELIGHT ISLE{w}\\nThe lighthouse at the heart of the Mere.' },
+        { type: 'sign', x: 14, y: 16, text: '{c}LODESTAR ISLE{w}\\nThe oldest lighthouse in the world. Please do not climb it. People keep climbing it.' },
         { type: 'item', id: 'tl_h1', x: 20, y: 13, item: 'tidestone', hidden: true },
       ], spawn: [12, 15] });
   })();
   const LH = { type: 'indoor', wall: 'stone', floor: '#8a8e9a', floor2: '#6a6e7a', env: 'lighthouse', music: () => G.flag('tidelight_done') ? 'tidelight_calm' : 'lighthouse', legend: { '.': { g: 'gymfloor' }, ',': { g: 'gymfloor2' } }, noEscape: true };
-  D({ id: 'lh1', name: 'Tidelight Lighthouse 1F', ...LH,
+  D({ id: 'lh1', name: 'Lodestar Lighthouse 1F', ...LH,
     grid: ['WWWWWWWWWWWWW', 'WWWWWWWWWWWWW', 'q.q.......^.q', '.............', '..,,,,,,,,,..', '..,.......,..', '..,.q...q.,..', '..,.......,..', '..,,,,,,,,,..', '.............', 'o...........k', '......M......'],
     legend: { ...LH.legend, 'k': { o: 'crate', solid: true } },
     warps: [{ x: 6, y: 11, to: 'tidelight', tx: 12, ty: 7, dir: 'down' }, { x: 10, y: 2, to: 'lh2', tx: 8, ty: 2, dir: 'left' }],
@@ -434,7 +434,7 @@
       { type: 'npc', id: 'lh_grey', x: 9, y: 2, look: 'grey', dir: 'down', script: 'lh_grey', cond: '!lh_grey_done' },
       { type: 'item', id: 'lh1_i', x: 0, y: 3, item: 'fullrestore' },
     ], spawn: [6, 10] });
-  D({ id: 'lh2', name: 'Tidelight Lighthouse 2F', ...LH,
+  D({ id: 'lh2', name: 'Lodestar Lighthouse 2F', ...LH,
     grid: ['WWWWWWWWWWWWW', 'WWWWWWWWWWWWW', 'q.^......v..q', '.............', '.WWWW...WWWW.', '.W.........W.', '.W.q.....q.W.', '.W.........W.', '.WWWW...WWWW.', '.............', 'q...........q'],
     warps: [{ x: 9, y: 2, to: 'lh1', tx: 10, ty: 3, dir: 'down' }, { x: 2, y: 2, to: 'lhtop', tx: 6, ty: 9, dir: 'up', cond: 'lh_lark_done' }],
     objs: [
@@ -442,7 +442,7 @@
       { type: 'npc', id: 'lh_lark', x: 3, y: 2, look: 'lark', dir: 'down', script: 'lh_lark', cond: '!lh_lark_done' },
       { type: 'item', id: 'lh2_i', x: 6, y: 6, item: 'maxrevive' },
     ], spawn: [9, 3] });
-  D({ id: 'lhtop', name: 'Tidelight Summit', ...LH, dark: false, env: 'lighthouse',
+  D({ id: 'lhtop', name: 'Lodestar Summit', ...LH, dark: false, env: 'lighthouse',
     legend: { '.': { g: 'gymfloor' }, ',': { g: 'gymfloor2' }, 'E': { o: 'machine', solid: true, light: 'screen' }, 'O': { o: 'statue', solid: true } },
     grid: ['nnnnnnnnnnnnn', 'nnnnnnnnnnnnn', 'nnnnnEOEnnnnn', 'nn..E...E..nn', 'n...........n', 'n...,,,,,...n', 'n...,...,...n', 'n...,,,,,...n', 'n...........n', 'nn.........nn', 'nnnnn.^.nnnnn'],
     warps: [{ x: 6, y: 10, to: 'lh2', tx: 2, ty: 3, dir: 'down' }],

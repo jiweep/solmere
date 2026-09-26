@@ -44,8 +44,8 @@
       warps: [{ x: 8, y: 17, to: 'victoryroad', tx: 29, ty: 1, dir: 'down', kind: 'cave' }, { x: 9, y: 17, to: 'victoryroad', tx: 29, ty: 1, dir: 'down', kind: 'cave' }, { x: 10, y: 17, to: 'victoryroad', tx: 29, ty: 1, dir: 'down', kind: 'cave' }, { x: 11, y: 17, to: 'victoryroad', tx: 29, ty: 1, dir: 'down', kind: 'cave' }],
       objs: [
         G.bld('gym', 5, 2, 10, 6, { roof: 'purple', accent: '#f4d040', door: 5, to: 'conclave_lobby', tx: 6, ty: 7 }),
-        { type: 'sign', x: 12, y: 9, text: '{y}THE CONCLAVE{w}\\n"Here the Tidelight\'s finest are tested, and remembered."' },
-        { type: 'npc', id: 'cc_vet', x: 6, y: 12, look: 'veteran', dir: 'right', move: 'look', text: 'Beyond those doors, there\'s no turning back. Four of the Conclave, then the Champion. Heal up and stock up!' },
+        { type: 'sign', x: 12, y: 9, text: '{y}THE CONCLAVE{w}\\n"Here the Lodestar\'s finest are tested, and remembered."' },
+        { type: 'npc', id: 'cc_vet', x: 6, y: 12, look: 'veteran', dir: 'right', move: 'look', text: 'Beyond those doors there\'s no turning back. Four of the Conclave, then the Champion. Heal up. Stock up. Say something nice to your team.' },
       ], spawn: [9, 13] });
   })();
   const room = (id, name, floor, floor2, elite, next, flag, music, wall = 'gym') => D({

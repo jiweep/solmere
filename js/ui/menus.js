@@ -9,7 +9,7 @@ G.openPauseMenu = async function () {
     let start = G.pauseIndex || 0;
     while (true) {
       const items = [];
-      if (G.bag.has('dex')) items.push({ id: 'dex', label: 'Dex', icon: 'dex', col: '#e8484a' });
+      if (G.bag.has('dex')) items.push({ id: 'dex', label: 'Echodex', icon: 'dex', col: '#e8484a' });
       if (G.save.party.length) items.push({ id: 'party', label: 'Party', icon: 'orb', col: '#e8484a' });
       items.push({ id: 'bag', label: 'Bag', icon: 'box', col: '#b0892a' });
       items.push({ id: 'card', label: G.save.name, icon: 'card', col: '#3b82e0' });
@@ -87,14 +87,14 @@ G.openTrainerCard = function () {
       U.para(4, 8, 282, 20, 6, '#07060c'); U.para(4, 26, 282, 2, 6, '#ff3b4e'); U.text('TAMER CARD', 20, 11.5, { size: 10, weight: 800, color: '#fff' });
       U.text(`ID No. ${String(s.otId).padStart(5, '0')}`, 270, 15, { size: 6.4, weight: 800, color: '#fff', align: 'right' });
       if (this.page === 0) {
-        const rows = [['Name', s.name], ['Money', '$' + s.money.toLocaleString()], ['Dex', `${d.caught} caught / ${d.seen} seen`], ['Time', G.fmtTime(s.playtime)], ['Difficulty', G.DIFF[s.settings.difficulty].name + (s.settings.nuzlocke ? ' · Nuzlocke' : '') + (s.settings.randomizer && s.settings.randomizer.on ? ' · Random' : '')], ['Started', new Date(s.created).toLocaleDateString()]];
+        const rows = [['Name', s.name], ['Money', '$' + s.money.toLocaleString()], ['Echodex', `${d.caught} caught / ${d.seen} seen`], ['Time', G.fmtTime(s.playtime)], ['Difficulty', G.DIFF[s.settings.difficulty].name + (s.settings.nuzlocke ? ' · Nuzlocke' : '') + (s.settings.randomizer && s.settings.randomizer.on ? ' · Random' : '')], ['Started', new Date(s.created).toLocaleDateString()]];
         rows.forEach(([k, v], i) => { U.text(k, 22, 38 + i * 14, { size: 7, weight: 800, color: '#6a7080' }); U.text(v, 100, 38 + i * 14, { size: 7.2, weight: 700 }); });
         U.text('BADGES', 22, 128, { size: 6.4, weight: 900, color: '#6a7080' });
         G.BADGE_ORDER.forEach((id, i) => { const x = 36 + i * 40, y = 158; U.panel(x - 16, y - 16, 32, 32, 'dark', { r: 16, noShadow: true }); if (s.badges.includes(id)) G.drawBadge(G.BADGES[id], x, y, 11, this.t); });
         if (G.flag('champion')) U.text('★ CHAMPION ★', 150, 190, { size: 7, weight: 900, color: '#d99a14', align: 'center' });
       } else {
         const st = s.stats;
-        const rows = [['Battles', st.battles], ['Wild battles', st.wild], ['Trainers beaten', st.trainers], ['Mons caught', st.caught], ['Shinies found', st.shinies], ['Evolutions', st.evolutions], ['Steps taken', st.steps], ['Money earned', '$' + st.earned.toLocaleString()], ['Highest level', st.highestLvl], ['Battle Spire best', s.spire.best]];
+        const rows = [['Battles', st.battles], ['Wild battles', st.wild], ['Trainers beaten', st.trainers], ['Echoes caught', st.caught], ['Shinies found', st.shinies], ['Evolutions', st.evolutions], ['Steps taken', st.steps], ['Money earned', '$' + st.earned.toLocaleString()], ['Highest level', st.highestLvl], ['Battle Spire best', s.spire.best]];
         rows.forEach(([k, v], i) => { U.text(k, 22, 38 + i * 15.5, { size: 7, weight: 800, color: '#6a7080' }); U.text(String(v), 262, 38 + i * 15.5, { size: 7.2, weight: 700, align: 'right' }); });
       }
       U.text('◀ ▶ flip card', 145, 198, { size: 5.4, align: 'center', color: '#8a90a0' });
@@ -108,7 +108,7 @@ G.openOptions = function (oo = {}) {
     { k: 'render3d', label: '3D World (F3)', vals: [false, true], names: ['Off', 'On'] },
     { k: 'textSpeed', label: 'Text Speed', vals: [0, 1, 2, 3], names: ['Slow', 'Mid', 'Fast', 'Instant'] },
     { k: 'battleAnims', label: 'Battle Animations', vals: [true, false], names: ['On', 'Off'] },
-    { k: 'encounters', label: 'Wild Mons', vals: ['visible', 'classic'], names: ['Visible', 'Random'] },
+    { k: 'encounters', label: 'Wild Echoes', vals: ['visible', 'classic'], names: ['Visible', 'Random'] },
     { k: 'battleSpeed', label: 'Battle Speed', vals: [1, 1.5, 2, 3], names: ['1x', '1.5x', '2x', '3x'] },
     { k: 'ffSpeed', label: 'Fast-Forward Speed', vals: [2, 3, 4, 6, 8, 12, 16, 24], names: ['2x', '3x', '4x', '6x', '8x', '12x', '16x', '24x'] },
     { k: 'ffMode', label: 'Fast-Forward Key (Tab)', vals: ['toggle', 'hold'], names: ['Toggle', 'Hold'] },
@@ -219,7 +219,7 @@ G.openEncounters = function () {
       U.panel(12, 20, G.W - 22, 188, 'light', { r: 6, slab: true });
       U.pHeader('ENCOUNTERS', 6, 4, { sub: m.name });
       if (G.save.settings.nuzlocke) { const e = G.save.nuz.enc[G.nuzArea(m)]; U.text(e ? `Nuzlocke: used (${G.SPECIES[e.sp].name} — ${e.result})` : 'Nuzlocke: first encounter still available!', G.W / 2, 26, { size: 6, align: 'center', weight: 800, color: e ? '#c83a3a' : '#2aa86a' }); }
-      if (!tables.length) U.text('No wild mons live here.', G.W / 2, 100, { size: 7.4, align: 'center', color: '#8a90a0' });
+      if (!tables.length) U.text('No wild Echoes live here.', G.W / 2, 100, { size: 7.4, align: 'center', color: '#8a90a0' });
       let y = 36;
       for (const [k, label] of tables) {
         const T = E[k]; U.text(`${label}  (Lv ${T.lv[0]}–${T.lv[1]})`, 18, y, { size: 6.4, weight: 800, color: '#3a6a4a' }); y += 9;

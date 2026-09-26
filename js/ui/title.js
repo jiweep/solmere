@@ -172,18 +172,18 @@ G.NewGameScene = class {
     this.v = { difficulty: 'normal', nuzlocke: false, dupes: true, shinyc: true, hardcore: false, random: false, rwild: true, rtrain: true, rstart: true, rsimilar: true, levelCap: 'off', setMode: false, god: false, look: 'player_a' };
     this.rows = [
       { k: 'difficulty', label: 'Difficulty', vals: ['easy', 'normal', 'hard', 'master'], names: ['Easy', 'Normal', 'Hard', 'Master'], desc: ['Gentle: +50% EXP, weaker trainers, damage hints on.', 'The classic experience, tuned for players who know type matchups.', 'Smarter AI that switches and heals, stronger trainers with better IVs. Bosses are trained.', 'For veterans: max-IV trained teams, held items, the smartest AI. Bring a plan.'] },
-      { k: 'levelCap', label: 'Level Caps', vals: ['off', 'soft', 'hard'], names: ['Off', 'Soft', 'Hard'], desc: ['No level caps.', 'EXP drops to 10% above the next Warden\'s ace level.', 'Mons cannot level past the next Warden\'s ace level (shown in the menu).'] },
-      { k: 'setMode', label: 'Battle Style', vals: [false, true], names: ['Switch', 'Set'], desc: ['You may switch when the foe sends a new mon.', 'No free switch when the foe sends a new mon (competitive rules).'] },
-      { k: 'nuzlocke', label: 'Nuzlocke Mode', vals: [false, true], names: ['Off', 'On'], desc: ['Standard rules.', 'Only the first encounter per area may be caught. Fainted mons are gone forever. You must nickname everything. Ends if your whole party falls.'] },
+      { k: 'levelCap', label: 'Level Caps', vals: ['off', 'soft', 'hard'], names: ['Off', 'Soft', 'Hard'], desc: ['No level caps.', 'EXP drops to 10% above the next Warden\'s ace level.', 'Echoes cannot level past the next Warden\'s ace level (shown in the menu).'] },
+      { k: 'setMode', label: 'Battle Style', vals: [false, true], names: ['Switch', 'Set'], desc: ['You may switch when the foe sends a new Echo.', 'No free switch when the foe sends a new Echo (competitive rules).'] },
+      { k: 'nuzlocke', label: 'Nuzlocke Mode', vals: [false, true], names: ['Off', 'On'], desc: ['Standard rules.', 'Only the first encounter per area may be caught. Fainted Echoes are gone forever. You must nickname everything. Ends if your whole party falls.'] },
       { k: 'dupes', label: '  · Dupes Clause', vals: [true, false], names: ['On', 'Off'], dep: 'nuzlocke', desc: ['Encounters of lines you already own don\'t use up the area.', 'Every first encounter counts.'] },
       { k: 'shinyc', label: '  · Shiny Clause', vals: [true, false], names: ['On', 'Off'], dep: 'nuzlocke', desc: ['Shinies can always be caught.', 'Shinies follow normal rules.'] },
       { k: 'hardcore', label: '  · Hardcore', vals: [false, true], names: ['Off', 'On'], dep: 'nuzlocke', desc: ['Items allowed in battle.', 'No items in battle, Set mode forced, no PC healing.'] },
       { k: 'random', label: 'Randomizer', vals: [false, true], names: ['Off', 'On'], desc: ['Species appear as designed.', 'Shuffle species, seeded per save. A fresh adventure every time!'] },
-      { k: 'rwild', label: '  · Wild mons', vals: [true, false], names: ['On', 'Off'], dep: 'random', desc: ['Randomize wild encounters.', 'Keep wild encounters.'] },
+      { k: 'rwild', label: '  · Wild Echoes', vals: [true, false], names: ['On', 'Off'], dep: 'random', desc: ['Randomize wild encounters.', 'Keep wild encounters.'] },
       { k: 'rtrain', label: '  · Trainers', vals: [true, false], names: ['On', 'Off'], dep: 'random', desc: ['Randomize trainer teams.', 'Keep trainer teams.'] },
       { k: 'rstart', label: '  · Starters', vals: [true, false], names: ['On', 'Off'], dep: 'random', desc: ['Randomize the starter choices.', 'Keep the classic three.'] },
       { k: 'rsimilar', label: '  · Similar strength', vals: [true, false], names: ['On', 'Off'], dep: 'random', desc: ['Replacements have similar base stat totals.', 'Anything goes. Chaos.'] },
-      { k: 'god', label: 'God Mode (testing)', vals: [false, true], names: ['Off', 'On'], desc: ['Off.', 'Adds a God Mode menu (pause menu, or ` key): invincibility, one-hit KOs, noclip, warps, chapter skips, give mons/items and more.'] },
+      { k: 'god', label: 'God Mode (testing)', vals: [false, true], names: ['Off', 'On'], desc: ['Off.', 'Adds a God Mode menu (pause menu, or ` key): invincibility, one-hit KOs, noclip, warps, chapter skips, give Echoes/items and more.'] },
       { k: 'start', label: '▶  BEGIN JOURNEY', start: true, desc: ['All set? Your adventure in Solmere awaits.'] },
     ];
   }
@@ -231,13 +231,14 @@ G.startFromSave = async function (data) {
 };
 G.howToPlay = async function () {
   await G.say([
-    'Welcome to Solmere! You\'re a new Tamer setting out to earn the six Warden badges and challenge the Conclave.',
-    'Walk into tall grass to meet wild mons. Weaken them, then throw Orbs to catch them. Battle Tamers who spot you to earn money and EXP.',
-    'Everything seasoned players expect is here: natures, IVs & EVs (see Summary ▸ Stats), abilities, held items, weather, hazards, doubles, and the physical/special split.',
-    'Resonance: once per battle, press R in the Fight menu to let a mon Resonate. Its main type hits much harder and a shield blunts the first super-effective blow.',
-    'Quality of life: free move relearner (Party ▸ Moves), no HMs (key items clear obstacles), Always Run and Turbo (Tab), and an encounter list for every area in the menu.',
-    'Co-op: run the included server and choose Link in the menu. You and a friend can explore together, team up in double battles, trade, and battle each other.',
-    'Press H in the overworld any time for the controls. Good luck, Tamer!',
+    'Welcome to Solmere! You\'re a brand-new Tamer. Six Warden badges, the Conclave, then the Champion. Easy. (It is not easy.)',
+    'Wild Echoes roam the grass, water and caves. Bump into one to battle it. Wear it down, then throw an Orb. Much weaker ones you already own get Swept, and chained sweeps pay bonus EXP.',
+    'Tamers who spot you will battle you. Win for money and EXP. Lose and you\'ll wake up at a Haven, poorer and wiser.',
+    'The deep stuff is all here: natures, IVs & EVs (Summary ▸ Stats), abilities, held items, weather, hazards, doubles, and the physical/special split.',
+    'Resonance: once per battle, press R in the Fight menu to let an Echo Resonate. Its main type hits much harder, and a shield blunts the first super-effective hit.',
+    'No HMs (key items clear obstacles), a free move relearner (Party ▸ Moves), Always Run, and Turbo on Tab.',
+    'Co-op: run the included server and choose Link in the menu to explore, trade and battle with a friend.',
+    'Press H in the overworld for controls any time. Go be legendary.',
   ]);
 };
 G.rollCredits = async function (ending) {
@@ -398,7 +399,7 @@ G.openDebugMenu = async function () {
   while (true) {
     const tog = (k, l) => ({ id: 't_' + k, label: `${l}: ${g[k] ? 'ON' : 'off'}` });
     const items = [tog('invincible', 'Invincible'), tog('ohko', 'One-hit KOs'), tog('noclip', 'Walk through walls'), tog('noEnc', 'No encounters'), tog('catch100', '100% catch'), tog('speed', 'Fast walk'),
-      { id: 'heal', label: 'Heal party' }, { id: 'chapter', label: 'Jump to chapter…' }, { id: 'warp', label: 'Warp to map…' }, { id: 'mon', label: 'Give mon…' }, { id: 'item', label: 'Give item…' },
+      { id: 'heal', label: 'Heal party' }, { id: 'chapter', label: 'Jump to chapter…' }, { id: 'warp', label: 'Warp to map…' }, { id: 'mon', label: 'Give Echo…' }, { id: 'item', label: 'Give item…' },
       { id: 'kit', label: 'Give key items + Skill Discs + $' }, { id: 'lvl', label: 'Party +10 levels' }, { id: 'dex', label: 'Complete Dex' }, { id: 'time', label: 'Set time of day…' }, { id: 'trainer', label: 'Battle trainer…' }, { id: 'badges', label: 'Give all badges' }, { id: 'close', label: 'Close' }];
     const k = await G.choose(items, { x: 8, y: 8, w: 150, maxRows: 14, title: 'GOD MODE', cancel: items.length - 1 });
     if (k < 0 || items[k].id === 'close') return false;
@@ -449,7 +450,7 @@ G.jumpToChapter = async function (ch) {
 };
 
 // ------------------------------------------------------------------ prologue --
-// A cold open before the Professor: the night the Tidelight went dark and something in the Mere sang.
+// A cold open before the Professor: the night the Lodestar went dark and something in the Mere sang.
 G.PrologueScene = class extends G.TitleScene {
   constructor() { super(); this.caption = ''; this.capA = 0; this.lampLevel = 1; this.breachK = 0; this.glowBreach = true; this.skip = false; this.night = 0; }
   enter() { }
@@ -475,17 +476,18 @@ G.runPrologue = async function () {
   const cap = async (text, hold = 170) => { sc.caption = text; for (let i = 0; i <= 20; i++) { sc.capA = i / 20; await wait(1); } await wait(hold); for (let i = 20; i >= 0; i--) { sc.capA = i / 20; await wait(1); } };
   try {
     await G.fadeIn(50);
-    await cap('Twelve years ago...', 110);
+    await cap('Twelve years ago, two scientists tried to record a song.', 130);
     for (let i = 0; i <= 60; i++) { sc.night = i / 60; await wait(1); }
-    await cap('On the night of the spring tide, the Tidelight went dark.', 40);
+    await cap('"Thirty more seconds," one of them said.', 110);
+    await cap('Then the Lodestar went dark.', 40);
     for (let i = 0; i < 70; i++) { sc.lampLevel = i > 55 ? 0 : (G.rand() < .45 ? 0 : .4 + G.rand() * .6); await wait(1); }
     sc.lampLevel = 0; await wait(40);
     const rise = (async () => { for (let i = 0; i <= 260; i++) { sc.breachK = .2 + .3 * i / 260; if (i === 110) { G.audio && G.audio.cry('orrelume'); } await wait(1); } })();
     await cap('And from the black water, something rose... and sang.', 140);
     await rise;
-    await cap('Every mon in Solmere heard that song. Every person who loved one felt it.', 170);
-    await cap('Some say it was saying goodbye.', 110);
-    await cap('Others say... it was calling someone.', 150);
+    await cap('Every Echo in Solmere heard it. Every person who loved one felt it.', 160);
+    await cap('Hidden in the song was a name.', 120);
+    await cap('Somebody has spent twelve years trying to answer it.', 160);
   } catch (e) { if (e !== SKIP) throw e; }
   await G.fadeOut(40, '#eaf6ff');
   G.pop(sc);

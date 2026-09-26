@@ -590,8 +590,8 @@ G.WorldScene = class {
         return;
       }
       if (c.water && this.surfing && (G.bag.has('rod') || G.bag.has('prorod'))) { await G.fish(); return; }
-      if (c.o === 'tv') { await G.say(G.pick(['A cooking show is on. Today: "Seven Ways to Cook a Sunberry."', 'It\'s a documentary about the Tidelight. The narrator sounds very serious.', 'A commercial: "Crane Dynamics — Bonds Built to Last!"', 'The weather channel: "Rain expected over Duskmere. As always."'])); return; }
-      if (c.o === 'shelf') { await G.say(G.pick(['Books about mon habitats, neatly arranged.', '"Resonance: Fact or Folklore?" It\'s dog-eared from rereading.', 'A cookbook. The berry tart page is stained with juice.', '"Advanced Type Matchups, Vol. 3." The margins are full of notes.'])); return; }
+      if (c.o === 'tv') { await G.say(G.pick(['A cooking show is on. Today: "Seven Ways to Cook a Sunberry."', 'It\'s a documentary about the Lodestar. The narrator sounds very serious.', 'A commercial: "Crane Dynamics — Bonds Built to Last!"', 'The weather channel: "Rain expected over Duskmere. As always."'])); return; }
+      if (c.o === 'shelf') { await G.say(G.pick(['Books about Echo habitats, neatly arranged.', '"Resonance: Fact or Folklore?" It\'s dog-eared from rereading.', 'A cookbook. The berry tart page is stained with juice.', '"Advanced Type Matchups, Vol. 3." The margins are full of notes.'])); return; }
       if (c.o === 'healer' || c.o === 'machine') { await G.say('It\'s humming softly.'); return; }
     } finally { this.busy--; }
   }

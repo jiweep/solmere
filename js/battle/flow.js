@@ -271,18 +271,18 @@ G.blackout = async function (cfg) {
   if (G.flag('league_entered') && !G.flag('hof_pending')) for (const f of ['e1_done', 'e2_done', 'e3_done', 'e4_done', 'league_entered', 'elite4_done']) G.setFlag(f, false);
   G.save.money -= lost;
   G.fade.a = 1;
-  await G.say(`You have no more mons that can fight!\\pYou panicked and dropped $${lost.toLocaleString()}...\\p...\\p... ... ...\\pYou scurried to a Haven, protecting your exhausted mons from further harm...`, { box: { style: 'dark' } });
+  await G.say(`You have no more Echoes that can fight!\\pYou panicked and dropped $${lost.toLocaleString()}...\\p...\\p... ... ...\\pYou scurried to a Haven, protecting your exhausted Echoes from further harm...`, { box: { style: 'dark' } });
   G.party.healAll();
   const h = G.save.lastHeal;
   const w = G.world.scene;
   if (w) { w.enterMap(h.map, h.x, h.y, 'up', { noBanner: true }); w.surfing = false; w.biking = false; }
   await G.fadeIn(20);
-  await G.say('Welcome back. Your mons have been fully restored. Please be careful out there.', { speaker: 'Nurse' });
+  await G.say('Welcome back. Your Echoes have been fully restored. Please be careful out there.', { speaker: 'Nurse' });
 };
 G.nuzlockeFailed = async function () {
   G.fade.a = 1; G.audio && G.audio.stopMusic();
   const n = G.save.graveyard.length;
-  await G.say(`Every one of your companions has fallen.\\pYour Nuzlocke run has ended after ${G.fmtTime(G.save.playtime)}, with ${G.save.badges.length} badge${G.save.badges.length === 1 ? '' : 's'} and ${n} mon${n === 1 ? '' : 's'} laid to rest.`, { box: { style: 'dark' } });
+  await G.say(`Every one of your companions has fallen.\\pYour Nuzlocke run has ended after ${G.fmtTime(G.save.playtime)}, with ${G.save.badges.length} badge${G.save.badges.length === 1 ? '' : 's'} and ${n} ${n === 1 ? 'Echo' : 'Echoes'} laid to rest.`, { box: { style: 'dark' } });
   const k = await G.ask('What will you do?', ['Continue (rules off)', 'Return to title'], { box: { style: 'dark' }, cancel: 0 });
   if (k === 0) {
     G.save.settings.nuzlocke = false; G.save.nuz.failed = true;
@@ -353,7 +353,7 @@ G.fish = async function () {
     for (let f = 0; f < 32; f++) { await G.wait(1); if (G.input.pressed('a')) { G.input.consume('a'); hooked = true; break; } }
     G.pop(box);
     if (!hooked) { await G.say('It got away...'); return; }
-    await G.say('You landed a mon!', { auto: 20 });
+    await G.say('You landed an Echo!', { auto: 20 });
     w.battling = false;
     await G.startWild('fish');
   } finally { w.busy--; }
@@ -406,7 +406,7 @@ G.trainerSpotted = async function (e, dist) {
 G.trainerBattleFromEnt = async function (e, rematch) {
   const T = G.TRAINERS[e.trainer]; if (!T) return;
   const w = G.world.scene;
-  if (!G.save.party.some(m => m.hp > 0 && !m.dead)) { await G.say('You have no mons that can fight!'); return; }
+  if (!G.save.party.some(m => m.hp > 0 && !m.dead)) { await G.say('You have no Echoes that can fight!'); return; }
   if (T.intro && !rematch) await G.say(T.intro, { speaker: T.name });
   else if (rematch) await G.say(T.rematchIntro || 'Here we go again!', { speaker: T.name });
   // double with partner trainer?
@@ -507,7 +507,7 @@ G.dexRegister = async function (m) {
       U.text('Registered to the Dex!', G.W / 2, 18, { size: 8, weight: 800, color: '#fff', align: 'center' });
       U.panel(164, 30, 172, 108, 'light', { r: 6 });
       U.text(`#${String(sp.num).padStart(3, '0')} ${sp.name}`, 172, 36, { size: 9, weight: 800 });
-      U.text(`The ${sp.cat} Mon`, 172, 48, { size: 6.4, color: '#6a7080' });
+      U.text(`The ${sp.cat} Echo`, 172, 48, { size: 6.4, color: '#6a7080' });
       U.typeBadge(sp.types[0], 172, 58, 34, 9); if (sp.types[1]) U.typeBadge(sp.types[1], 210, 58, 34, 9);
       U.text(`Ht ${sp.h} m   Wt ${sp.w} kg`, 172, 71, { size: 6, color: '#4a5060' });
       G.ui.wrap(sp.dex, 156, 5.8).slice(0, 6).forEach((l, k) => U.text(l, 172, 82 + k * 8.4, { size: 5.8, color: '#4a5060' }));

@@ -79,7 +79,7 @@ G.touch = (function () {
     document.body.appendChild(root);
     // the handheld body (shown only when the phone is upright), laid around the game's screen
     const sh = document.createElement('div'); sh.id = 'shell';
-    sh.innerHTML = '<div class="bezel"><div class="led"></div><div class="ledl">POWER</div></div><div class="brand">SOLMERE<small>TIDELIGHT</small></div><div class="grille"></div>';
+    sh.innerHTML = '<div class="bezel"><div class="led"></div><div class="ledl">POWER</div></div><div class="brand">SOLMERE</div><div class="grille"></div>';
     document.body.insertBefore(sh, document.body.firstChild);
     const place = () => {
       const upright = T.shell(); document.documentElement.classList.toggle('shellon', upright);
