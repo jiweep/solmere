@@ -50,6 +50,7 @@ G.makeWild = function (sp, lvl, o = {}) {
   sp = o.noRandom ? sp : G.randomizeSpecies(sp, 'wild');
   let shinyMult = G.bag.has('shinycharm') ? 3 : 1;
   if (o.echo) shinyMult *= 8;
+  if (o.comboMult) shinyMult *= o.comboMult;
   const m = G.mon.create(sp, lvl, { shinyMult, perfectIVs: o.echo ? 3 : o.legend ? 3 : 0, hidden: o.echo ? G.chance(.4) : false, shiny: o.shiny });
   if (o.moves) m.moves = o.moves.map(id => G.mon.newMove(id));
   return m;

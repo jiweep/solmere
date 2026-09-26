@@ -228,6 +228,54 @@
     await sc.wait(14);
   };
   // ------------------------------------------------------------ catching
+  // The throw ring: a ring closes in on the target; release (A) as it shrinks into the target zone.
+  // Inside the zone: Nice, deeper: Great, near the centre: Perfect. The zone is smaller for Echoes that
+  // are hard to catch. Resolves to 0-3 (miss/nice/great/perfect), or -1 when backed out with B.
+  G.throwRing = function (sc, t) {
+    return new Promise(res => {
+      let a = 60; try { a = t.bt.catchChance(t, { ball: 1 }).a; } catch (e) { }
+      const zone = 7 + 13 * Math.min(1, Math.max(0, a / 255)), R0 = 46, PER = 62;
+      const s = sc.slot(t.ref()), NAMES = ['MISS', 'NICE!', 'GREAT!', 'PERFECT!'], COLS = ['#a0a8c0', '#8af0a0', '#7ad8ff', '#ffe070'];
+      const pos = () => { const C = sc.cam, z = C ? C.z : 1, x = s.x + s.offx, y = s.y - 30 * (s.sc || 1) + s.offy;
+        return C ? { x: (x - C.cx + C.x) * z + C.cx, y: (y - C.cy + C.y) * z + C.cy } : { x, y }; };
+      G.push({
+        lowres: false, t: 0, done: null, dt: 0,
+        radius() { const k = (this.t % PER) / PER; return R0 * (1 - k * k * (3 - 2 * k) * 1.02) + 1; },
+        update(top) {
+          this.t++;
+          if (this.done !== null) { if (++this.dt > 34) { G.pop(this); res(this.done); } return; }
+          if (!top) return;
+          const I = G.input;
+          if (I.pressed('b')) { I.consume('b'); G.audio && G.audio.sfx('back'); G.pop(this); res(-1); return; }
+          if (I.pressed('a')) {
+            I.consume('a');
+            const r = this.radius(), q = r > zone ? 0 : r > zone * .62 ? 1 : r > zone * .3 ? 2 : 3;
+            this.done = q; this.hitR = r;
+            G.audio && G.audio.sfx(q === 3 ? 'shiny' : q ? 'select' : 'buzz');
+            if (q >= 2) for (let i = 0; i < (q === 3 ? 16 : 8); i++) { const an = i / (q === 3 ? 16 : 8) * Math.PI * 2, p = pos(); sc.fxp.add({ x: p.x, y: p.y, vx: Math.cos(an) * 2.4, vy: Math.sin(an) * 2.4, drag: .9, life: 24, type: 'star', size: q === 3 ? 3 : 2, color: COLS[q], blend: 'lighter' }); }
+          }
+        },
+        drawUI() {
+          const U = G.ui, c = U.c, S = G.gfx.S, p = pos();
+          const ring = (r, col, w, al) => { c.save(); c.globalAlpha = al; c.strokeStyle = col; c.lineWidth = w * S; c.beginPath(); c.arc(U.X(p.x), U.Y(p.y), r * S, 0, Math.PI * 2); c.stroke(); c.restore(); };
+          // the zone, banded: nice, great, perfect
+          c.save(); c.globalAlpha = .22; c.fillStyle = '#8af0a0'; c.beginPath(); c.arc(U.X(p.x), U.Y(p.y), zone * S, 0, Math.PI * 2); c.fill();
+          c.fillStyle = '#7ad8ff'; c.beginPath(); c.arc(U.X(p.x), U.Y(p.y), zone * .62 * S, 0, Math.PI * 2); c.fill();
+          c.globalAlpha = .35; c.fillStyle = '#ffe070'; c.beginPath(); c.arc(U.X(p.x), U.Y(p.y), zone * .3 * S, 0, Math.PI * 2); c.fill(); c.restore();
+          ring(zone, '#ffffff', 1, .7);
+          if (this.done === null) {
+            const r = this.radius(), inZ = r <= zone;
+            ring(r, inZ ? (r <= zone * .3 ? '#ffe070' : r <= zone * .62 ? '#7ad8ff' : '#8af0a0') : '#ff6a7a', 2.2, 1);
+            U.text('Z throw · X back', p.x, p.y - R0 - 12, { size: 6, weight: 800, align: 'center', color: '#ffffff', outline: 'rgba(0,0,0,.6)' });
+          } else {
+            const k = Math.min(1, this.dt / 6), q = this.done;
+            ring(this.hitR + this.dt * 1.5, COLS[q], 2, 1 - this.dt / 34);
+            U.text(NAMES[q], p.x, p.y - 34 - k * 6, { size: 8 + (q === 3 ? 6 : q * 2) * (1.3 - .3 * k), weight: 900, align: 'center', color: COLS[q], outline: '#1a0a20', alpha: 1 - Math.max(0, this.dt - 24) / 10 });
+          }
+        },
+      });
+    });
+  };
   G.throwAnim = async function (sc, e) {
     const s = sc.slot(e.ref); if (!s) return;
     const c = center(s);

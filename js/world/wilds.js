@@ -42,10 +42,12 @@ G.wilds = (() => {
     const [x, y, t] = G.pick(cand);
     let enc = G.rollEncounter(w.map, t); if (!enc) return;
     const E = w.map.def.enc;
-    if (t === 'grass' && E.rare && G.rand() < .07) enc = { sp: G.pick(E.rare.list)[0], lvl: enc.lvl + 2 };   // the odd rare one, a little tougher
+    // a Catch Combo (catches from Great-or-better throws in a row) draws rarer and shinier Echoes out
+    const cc = (G.save.vars && G.save.vars.catchCombo) || 0, tier = cc >= 10 ? 3 : cc >= 6 ? 2 : cc >= 3 ? 1 : 0;
+    if (t === 'grass' && E.rare && G.rand() < [.07, .12, .18, .25][tier]) enc = { sp: G.pick(E.rare.list)[0], lvl: enc.lvl + 2 };   // the odd rare one, a little tougher
     const L = lead();
     if (G.save.repel > 0 && L && enc.lvl < L.lvl) return;
-    const mon = G.makeWild(enc.sp, enc.lvl);
+    const mon = G.makeWild(enc.sp, enc.lvl, { comboMult: [1, 2, 4, 8][tier] });
     const weak = L && L.lvl - mon.lvl >= SWEEP_GAP, r = G.rand();
     const mood = weak ? 'shy' : r < .16 ? 'bold' : r < .4 ? 'curious' : 'calm';
     const e = new G.Ent({ id: 'wild' + (++w._wildN || (w._wildN = 1)), x, y, dir: G.pick(['up', 'down', 'left', 'right']), kind: 'wild', monSprite: mon.sp, shiny: mon.shiny, mon, table: t, mood, life: G.randInt(60 * 35, 60 * 70) });

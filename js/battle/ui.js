@@ -44,8 +44,14 @@
         const it = G.ITEMS[r.item];
         let targetRef = null;
         if (it.ball && bt && bt.active(1).length > 1) { targetRef = await this.waitMenu(new TargetMenu(this, req, bt, { target: 'normal', ball: true })); if (targetRef === null) continue; }
+        let throwQ;
+        if (it.ball && bt && bt.wild && !bt.rules.noCatch) {   // the throw ring: time the release
+          const t = targetRef ? bt.at(targetRef.s, targetRef.i) : bt.active(1)[0];
+          throwQ = t ? await G.throwRing(this, t) : 0;
+          if (throwQ < 0) continue;
+        }
         G.bag.remove(r.item);
-        return { type: 'item', item: r.item, target: r.target, moveIdx: r.moveIdx, targetRef };
+        return { type: 'item', item: r.item, target: r.target, moveIdx: r.moveIdx, targetRef, throwQ };
       }
       if (cmd === 'party') {
         const idx = await G.openParty({ mode: 'battle', canCancel: true, req, exclude: [...this.pendingSwitch], activeUids: this.activeUids(bt) });

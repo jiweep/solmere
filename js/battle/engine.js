@@ -3,6 +3,7 @@
 //  Battle engine. Pure rules + async controller requests. Emits declarative
 //  events that any number of displays (local scene, network guest) animate.
 // ============================================================================
+G.THROW_MULT = [1, 1.25, 1.6, 2.2];   // catch-rate multiplier by throw quality: miss, nice, great, perfect
 (function () {
   const stageMult = s => s >= 0 ? (2 + s) / 2 : 2 / (2 - s);
   const accMult = s => s >= 0 ? (3 + s) / 3 : 3 / (3 - s);
@@ -529,7 +530,7 @@
       const b = a.b, it = G.ITEMS[a.item], tr = this.trainerOf(b);
       if (!it) return;
       const who = tr.isPlayer ? 'You' : this.tname(tr);
-      if (it.ball) return this.throwBall(b, it, a.targetRef);
+      if (it.ball) return this.throwBall(b, it, a.targetRef, a.throwQ);
       if (it.flee) { this.raw(`${who} threw the ${it.name}...`); if (this.wild) { this.raw('The wild Echo was distracted! You got away!'); this.end('ran'); } else this.raw('But it had no effect on a trainer\'s Echo!'); return; }
       const party = this.partyOf(b.side, b.owner);
       if (it.xstat) {
@@ -567,7 +568,7 @@
       }
       this.emit({ t: 'partyUpdate', side: b.side, owner: b.owner });
     }
-    catchChance(t, it) {
+    catchChance(t, it, q) {
       const sp = t.sp; let bm = it.ball;
       if (bm === 255) return { a: 999, shakes: 4 };
       if (bm === 'net') bm = t.hasType('water') || t.hasType('bug') ? 3.5 : 1;
@@ -577,14 +578,14 @@
       let a = (3 * t.maxhp - 2 * t.hp) * sp.catch * bm / (3 * t.maxhp);
       if (t.status === 'slp' || t.status === 'frz') a *= 2.5; else if (t.status) a *= 1.5;
       if (t.lvl < 13) a *= Math.max(1, (36 - 2 * t.lvl) / 10);
-      a *= (this.o.catchMult || 1);
+      a *= (this.o.catchMult || 1) * (G.THROW_MULT[q] || 1);
       if (this.o.godCatch) a = 999;
       if (a >= 255) return { a, shakes: 4 };
       const bb = 65536 / Math.pow(255 / a, .25);
       let shakes = 0; for (let i = 0; i < 4; i++) { if (G.rand() * 65536 < bb) shakes++; else break; }
       return { a, shakes };
     }
-    async throwBall(b, it, targetRef) {
+    async throwBall(b, it, targetRef, q) {
       const tr = this.trainerOf(b);
       if (!this.wild) {
         this.emit({ t: 'throw', ball: it.id, ref: this.active(1)[0].ref(), blocked: true });
@@ -599,7 +600,7 @@
         this.emit({ t: 'throw', ball: it.id, ref: t.ref(), shakes: 0, caught: false, deflect: true });
         this.raw(this.rules.noCatchMsg || 'The Orb was deflected! You can\'t catch this one.'); return;
       }
-      const { shakes } = this.catchChance(t, it);
+      const { shakes } = this.catchChance(t, it, q);
       const caught = shakes >= 4;
       this.emit({ t: 'throw', ball: it.id, ref: t.ref(), shakes: Math.min(3, shakes), caught });
       if (caught) {
@@ -612,6 +613,14 @@
         if (this.active(1).length === 0) this.end('caught');
       } else {
         this.raw(['Oh no! It broke free!', 'Aww! It appeared to be caught!', 'Aargh! Almost had it!', 'Gah! It was so close, too!'][Math.min(3, shakes)]);
+      }
+      // catch combo: catches from Great-or-better throws in a row draw rarer (and shinier) wild Echoes
+      if (tr.isPlayer && q !== undefined && G.save && G.save.vars) {
+        const V = G.save.vars, before = V.catchCombo || 0;
+        V.catchCombo = caught && q >= 2 ? before + 1 : caught ? before : 0;
+        if (V.catchCombo > before) { const n = V.catchCombo; this.raw(`Catch Combo x${n}!${n === 3 ? ' Rare Echoes are starting to notice you.' : n === 6 ? ' Shinies are drawn to you now!' : n === 10 ? ' The whole region can feel it. Legendary streak!' : ''}`); }
+        else if (before >= 2 && !V.catchCombo) this.raw(`The Catch Combo of ${before} ended.`);
+        V.bestCombo = Math.max(V.bestCombo || 0, V.catchCombo);
       }
     }
     // ------------------------------------------------------ moves
