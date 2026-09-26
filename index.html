@@ -24,36 +24,97 @@
   #dim:hover { opacity: 1; }
   #dim.on { background: rgba(80,200,210,.85); color: #06201f; border-color: rgba(255,255,255,.6); }
   #ff.on { background: rgba(255,196,40,.9); color: #1a1405; opacity: .95; border-color: rgba(255,255,255,.6); }
-  /* loading screen: a night sea, the title, a bobbing Orb and a real progress bar */
-  #boot { position: fixed; inset: 0; z-index: 10; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
-    background: radial-gradient(120% 80% at 50% 18%, #1d3b6a 0%, #0c1834 45%, #050914 100%); color: #dff6f2; font: 600 14px "Avenir Next", system-ui, sans-serif; transition: opacity .45s; }
+  /* loading screen: pixel art on a small canvas, scaled up by whole pixels (drawn by the script below) */
+  #boot { position: fixed; inset: 0; z-index: 10; background: #070b1c; display: flex; align-items: center; justify-content: center; transition: opacity .45s; }
   #boot.done { opacity: 0; pointer-events: none; }
-  #boot .stars { position: absolute; inset: 0; background-image: radial-gradient(1px 1px at 12% 22%, #fff9, transparent), radial-gradient(1px 1px at 78% 14%, #fffa, transparent), radial-gradient(1.5px 1.5px at 42% 8%, #fff, transparent), radial-gradient(1px 1px at 64% 30%, #fff8, transparent), radial-gradient(1px 1px at 88% 40%, #fff7, transparent), radial-gradient(1px 1px at 24% 36%, #fff6, transparent), radial-gradient(1.5px 1.5px at 6% 12%, #fffc, transparent); animation: twinkle 3.2s ease-in-out infinite alternate; }
-  @keyframes twinkle { from { opacity: .55; } to { opacity: 1; } }
-  #boot .sea { position: absolute; left: -10%; right: -10%; bottom: 0; height: 30%; background: linear-gradient(#10305a, #081428); }
-  #boot .sea::before, #boot .sea::after { content: ""; position: absolute; left: 0; right: 0; top: -14px; height: 28px; background: repeating-radial-gradient(circle at 20px -6px, transparent 0 16px, #2a6aa0 17px 19px, transparent 20px) 0 0 / 40px 28px; animation: tide 6s linear infinite; opacity: .8; }
-  #boot .sea::after { top: 8px; opacity: .45; animation-duration: 9s; animation-direction: reverse; }
-  @keyframes tide { to { background-position: 40px 0; } }
-  #boot .beam { position: absolute; top: 34%; left: 50%; width: 140vmax; height: 90px; margin-left: -70vmax; background: linear-gradient(90deg, transparent 20%, #fff4c822 48%, #fff4c844 50%, #fff4c822 52%, transparent 80%); transform-origin: 50% 50%; animation: sweep 7s ease-in-out infinite alternate; filter: blur(6px); }
-  @keyframes sweep { from { transform: rotate(-8deg); } to { transform: rotate(8deg); } }
-  #boot .orb { position: relative; width: 58px; height: 58px; border-radius: 50%; background: radial-gradient(circle at 36% 30%, #fff 0 8%, #8af0e0 14%, #2fb8c8 42%, #0e4a66 100%); box-shadow: 0 0 34px #2fb8c888, inset -6px -8px 14px #0006; animation: bob 2.4s ease-in-out infinite; }
-  #boot .orb::after { content: ""; position: absolute; left: -16px; right: -16px; top: 22px; height: 12px; border-radius: 50%; border: 3px solid #d8a84a; border-top-color: transparent; transform: rotate(-16deg); }
-  @keyframes bob { 50% { transform: translateY(-8px); } }
-  #boot h1 { position: relative; margin: 0; font: 900 clamp(34px, 7vw, 64px)/1 "Avenir Next", system-ui, sans-serif; letter-spacing: .14em; color: #fff; text-shadow: 0 3px 0 #0e4a66, 0 0 26px #2fb8c866; }
-  #boot h2 { position: relative; margin: -8px 0 0; font: 700 13px "Avenir Next", system-ui, sans-serif; letter-spacing: .5em; color: #8af0e0; }
-  #boot .bar { position: relative; width: min(320px, 70vw); height: 8px; border-radius: 5px; background: #ffffff18; overflow: hidden; box-shadow: inset 0 0 0 1px #ffffff22; }
-  #boot .bar i { position: absolute; inset: 0 auto 0 0; width: 4%; border-radius: 5px; background: linear-gradient(90deg, #2fb8c8, #8af0e0); transition: width .35s ease-out; }
-  #boot .tip { position: relative; max-width: 80vw; min-height: 1.4em; color: #9fb4c8; font-weight: 500; font-size: 13px; text-align: center; transition: opacity .3s; }
+  #boot canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 </style>
 </head>
 <body>
-<div id="boot"><div class="stars"></div><div class="beam"></div><div class="sea"></div>
-  <div class="orb"></div><h1>SOLMERE</h1><div class="bar"><i></i></div><div class="tip">Waking the tide…</div></div>
+<div id="boot"><canvas width="240" height="135"></canvas></div>
 <script>
-  // loading screen: a rotating tip until the game is ready (progress is set as each part finishes loading)
-  (function () { const tips = ['Hold Shift to run. Hold it in the water to swim fast.', 'Tab fast-forwards everything.', 'Your lead Echo walks behind you. Talk to it!', 'Press W in the Music Room for the newest tracks.', 'The 3D / 2D button in the top bar switches the view.', 'Every town has a Haven: teal roof, a heart on a wave.'];
-    let k = 0; const el = document.querySelector('#boot .tip'); window._bootTips = setInterval(() => { if (!el) return; el.style.opacity = 0; setTimeout(() => { el.textContent = tips[k++ % tips.length]; el.style.opacity = 1; }, 300); }, 2400);
-    window._bootProgress = f => { const b = document.querySelector('#boot .bar i'); if (b) b.style.width = Math.max(4, Math.round(f * 100)) + '%'; }; })();
+  // Loading screen, in the game's own pixel style: a night sea under a lighthouse whose beam sweeps round,
+  // the SOLMERE wordmark, a segmented progress bar and rotating tips in the pixel font. 240x135, scaled up
+  // by whole pixels. Progress is set as each part of the game finishes loading.
+  (function () {
+    const root = document.getElementById('boot'), cv = root.querySelector('canvas'), c = cv.getContext('2d'), W = 240, H = 135;
+    const tips = ['Hold Shift to run. In water, hold it to swim fast.', 'Tab fast-forwards everything.', 'Your lead Echo walks behind you. Talk to it!', 'Walk into weak wild Echoes to Sweep them.', 'The 3D / 2D button up top switches the view.', 'Every town has a Haven: teal roof, a heart on a wave.'];
+    const GL = { S: ['.#####.', '##...##', '##.....', '.#####.', '.....##', '##...##', '.#####.'], O: ['..###..', '.#####.', '#######', '.......', '#######', '.......', '..###..'],
+      L: ['##.....', '##.....', '##.....', '##.....', '##.....', '##.....', '######.'], M: ['##...##', '###.###', '#######', '##.#.##', '##...##', '##...##', '##...##'],
+      E: ['######', '##....', '##....', '#####.', '##....', '##....', '######'], R: ['######.', '##...##', '##...##', '######.', '##.##..', '##..##.', '##...##'] };
+    const FACE = ['#fff6d0', '#ffe590', '#ffcc62', '#ffae50', '#ff8c4c', '#f06a5a', '#d44e6e'], SUN = ['#fff4a8', '#ffd660', '#ffb04a', '#ff8a4c', '#ff6a60', '#f8527c', '#e84e84'];
+    let prog = .04, shown = .04, tip = 0, t = 0, fontOK = false;
+    window._bootProgress = f => { prog = Math.max(prog, f); };
+    try { document.fonts.load('9px SolPix9').then(() => { fontOK = true; }); } catch (e) { }
+    const px = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x | 0, y | 0, w | 0, h | 0); };
+    const h2 = (a, b) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
+    function fit() {
+      const k = Math.max(1, Math.floor(Math.min(innerWidth / W, innerHeight / H)));
+      cv.style.width = W * k + 'px'; cv.style.height = H * k + 'px';
+    }
+    addEventListener('resize', fit); fit();
+    function word(cx, y0) {
+      const text = 'SOLMERE', cells = [], Z = 2;
+      const x0 = Math.round(cx / Z - 29);
+      let x = x0;
+      for (let li = 0; li < text.length; li++) {
+        const g = GL[text[li]], bob = Math.round(Math.sin(t / 22 - li * .8) * .7);
+        for (let y = 0; y < 7; y++) for (let xx = 0; xx < g[y].length; xx++) if (g[y][xx] === '#') cells.push([x + xx + Math.floor((6 - y) / 3), y0 + y + bob, y, text[li] === 'O']);
+        x += g[0].length + 1;
+      }
+      const key = new Set(cells.map(q => q[0] + ',' + q[1]));
+      const P = (x, y, col) => px(x * Z, y * Z, Z, Z, col);
+      for (const [x, y] of cells) for (let dy = -1; dy <= 2; dy++) for (let dx = -1; dx <= 1; dx++) if (!key.has((x + dx) + ',' + (y + dy))) P(x + dx, y + dy, '#1a0818');   // outline
+      for (const [x, y] of cells) { if (!key.has(x + ',' + (y + 1))) P(x, y + 1, '#7a2456'); }   // extrusion
+      const gp = (t % 240) * .7 - 20;
+      for (const [x, y, row, sun] of cells) { const g = x + row * .6 - gp; P(x, y, g > 0 && g < 2.5 ? '#ffffff' : !key.has(x + ',' + (y - 1)) ? '#fffbe8' : (sun ? SUN : FACE)[row]); }
+    }
+    function frame() {
+      if (root.classList.contains('done') || !root.isConnected) return;
+      t++; shown += (prog - shown) * .12;
+      // sky in stepped bands, dithered at each step
+      const SKY = ['#070b1c', '#0a1026', '#0e1630', '#131c3c', '#1a2448', '#212c54', '#2a3460'];
+      for (let y = 0; y < 86; y++) { const f = y / 86 * (SKY.length - 1), i = Math.floor(f), fr = f - i; for (let x = 0; x < W; x++) px(x, y, 1, 1, SKY[Math.min(SKY.length - 1, i + ((fr > .5 && (x + y) % 2) || fr > .85 ? 1 : 0))]); }
+      for (let i = 0; i < 46; i++) { const x = Math.floor(h2(i, 1) * W), y = Math.floor(h2(i, 2) * 80), tw = Math.sin(t / 18 + i * 1.7); if (tw > -.3) px(x, y, 1, 1, tw > .7 ? '#ffffff' : '#8a9ac8'); if (tw > .95 && i % 5 === 0) { px(x - 1, y, 1, 1, '#8a9ac8'); px(x + 1, y, 1, 1, '#8a9ac8'); px(x, y - 1, 1, 1, '#8a9ac8'); px(x, y + 1, 1, 1, '#8a9ac8'); } }
+      // moon
+      for (let y = -6; y <= 6; y++) for (let x = -6; x <= 6; x++) { const d = x * x + y * y; if (d <= 36) px(38 + x, 22 + y, 1, 1, d > 28 ? '#c8d0f0' : (x + y > 3 ? '#e8ecff' : '#fffdf0')); }
+      // far islands
+      for (let x = 0; x < W; x++) { const hh = Math.max(0, Math.round(5 * Math.sin(x / 13) + 3 * Math.sin(x / 5 + 2) - 2)); if (x < 90 || x > 150) px(x, 86 - hh, 1, hh, '#10142a'); }
+      // the sea: stepped bands and rolling crests, the lamp's reflection wobbling on it
+      for (let y = 86; y < H; y++) { const k = (y - 86) / (H - 86); px(0, y, W, 1, k < .2 ? '#1a2a58' : k < .45 ? '#14224a' : k < .7 ? '#0e1a3c' : '#0a1330'); }
+      for (let row = 0; row < 7; row++) { const y = 89 + row * 6 + row * row * .3, sp = 5 + row * 2, off = (t * (.3 + row * .12)) % (sp * 4); for (let x = -sp * 4; x < W; x += sp * 4) { const X = Math.round(x + off + (row % 2) * sp * 2); px(X, y, sp, 1, row < 2 ? '#3a5a98' : '#2a4a86'); if (row > 2) px(X + 1, y - 1, sp - 2, 1, '#5a7ac0'); } }
+      for (let y = 88; y < H; y += 2) { const w = 2 + (y - 88) * .08, wob = Math.round(Math.sin(t / 10 + y) * 1.5); c.globalAlpha = .5 - (y - 88) / 120; px(196 - w / 2 + wob, y, w, 1, '#ffe6a0'); }
+      c.globalAlpha = 1;
+      // lighthouse on its rock, lamp and a stepped beam sweeping round
+      const LX = 196, LB = 94;
+      for (let y = 0; y < 9; y++) { const w = 10 + y * 3 + (y % 2); px(LX - w / 2, LB - 5 + y, w, 1, y < 2 ? '#3a2838' : '#1c1422'); if (y < 6) px(LX - w / 2, LB - 5 + y, 2, 1, '#6a4a5a'); }
+      for (let x = -15; x < 16; x += 3) if (Math.sin(t / 12 + x) > 0) px(LX + x, LB + 4, 2, 1, '#c8dcff');   // foam at its foot
+      for (let y = 0; y < 34; y++) { const w = 7 - Math.floor(y / 12); px(LX - w / 2, LB - 4 - y, w, 1, Math.floor(y / 6) % 2 ? '#e8e2ee' : '#c83a48'); px(LX + w / 2 - 1, LB - 4 - y, 1, 1, Math.floor(y / 6) % 2 ? '#a89cb0' : '#8a2434'); }
+      px(LX - 5, LB - 40, 10, 2, '#2a2838'); px(LX - 3, LB - 46, 6, 6, '#ffe6a0'); px(LX - 4, LB - 48, 8, 2, '#c83a48'); px(LX - 2, LB - 50, 4, 2, '#c83a48'); px(LX, LB - 52, 1, 2, '#2a2838');
+      const ang = Math.sin(t / 90) * 1.1 + Math.PI, lx = LX, ly = LB - 43;
+      for (let r = 6; r < 160; r += 1) { const sp = r * .16 + 1, a = Math.max(0, .16 - r / 1100); if (a <= 0) break; const cx = lx + Math.cos(ang) * r, cy = ly + Math.sin(ang) * r * .35;
+        c.globalAlpha = Math.round(a * 16) / 16; px(cx, cy - sp * .35, 1, Math.max(1, sp * .7), '#fff4d8'); }
+      c.globalAlpha = 1;
+      for (const [r, a] of [[9, .12], [6, .2], [4, .35]]) { c.globalAlpha = a; for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) if (x * x + y * y <= r * r) px(lx + x, ly + y, 1, 1, '#fff0c0'); }
+      c.globalAlpha = 1;
+      c.globalAlpha = 1;
+      // wordmark, a bobbing orb, the bar, the tip
+      word(W / 2, 9);
+      const oy = 70 + Math.round(Math.sin(t / 20) * 1.5);
+      for (let y = -5; y <= 5; y++) for (let x = -5; x <= 5; x++) { const d = x * x + y * y; if (d <= 25) px(120 + x, oy + y, 1, 1, d > 19 ? '#0e4a66' : (x < -1 && y < -1 ? '#ffffff' : x + y < 2 ? '#8af0e0' : '#2fb8c8')); }
+      px(113, oy, 15, 1, '#d8a84a');
+      const BX = 70, BY = 106, BW = 100, seg = 20, lit = Math.round(shown * seg);
+      px(BX - 2, BY - 2, BW + 4, 8, '#1a0818'); px(BX - 1, BY - 1, BW + 2, 6, '#2a3050');
+      for (let i = 0; i < seg; i++) { const on = i < lit; px(BX + i * 5, BY, 4, 4, on ? (i === lit - 1 && t % 20 < 10 ? '#ffffff' : '#8af0e0') : '#161a30'); if (on) px(BX + i * 5, BY, 4, 1, '#d8fff8'); }
+      if (t % 150 === 0) tip++;
+      const tt = tips[tip % tips.length], fa = Math.min(1, (t % 150) / 12, (150 - t % 150) / 12);
+      c.globalAlpha = fa; c.fillStyle = '#9fb4c8'; c.textAlign = 'center'; c.textBaseline = 'top';
+      c.font = fontOK ? '9px SolPix9' : '8px monospace'; c.fillText(tt, W / 2, 116); c.globalAlpha = 1;
+      requestAnimationFrame(frame);
+    }
+    c.imageSmoothingEnabled = false;
+    requestAnimationFrame(frame);
+  })();
 </script>
 <canvas id="game"></canvas>
 <button id="ff" title="Fast-forward (Tab)">▶▶</button>
