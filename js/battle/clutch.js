@@ -14,15 +14,26 @@ G.clutch = (() => {
   let recs = [], sc = null, want = false, pending = null;
   const supported = () => typeof MediaRecorder !== 'undefined' && !!document.getElementById('game').captureStream;
   const on = () => G.settings.clips !== false && supported();
-  const mime = () => ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'].find(m => { try { return MediaRecorder.isTypeSupported(m); } catch (e) { return false; } });
+  const mime = () => ['video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4', 'video/webm;codecs=vp9,opus'].find(m => { try { return MediaRecorder.isTypeSupported(m); } catch (e) { return false; } });
+  // recorders watch a 960x540 mirror of the game view (cheap to encode, whatever the screen's size),
+  // refreshed every frame while a battle is being recorded
+  let mirror = null, mctx = null;
+  function pump() {
+    if (!want && !pending) return;
+    const g = G.gfx, src = document.getElementById('game');
+    mctx.imageSmoothingEnabled = false;
+    try { mctx.drawImage(src, g.ox, g.oy, G.W * g.S, G.H * g.S, 0, 0, 960, 540); } catch (e) { }
+    requestAnimationFrame(pump);
+  }
   function stream() {
-    const cv = document.getElementById('game'), s = cv.captureStream(30);
+    if (!mirror) { mirror = document.createElement('canvas'); mirror.width = 960; mirror.height = 540; mctx = mirror.getContext('2d'); }
+    const s = mirror.captureStream(30);
     try { const a = G.audio && G.audio.stream && G.audio.stream(); if (a) for (const tr of a.getAudioTracks()) s.addTrack(tr); } catch (e) { }
     return s;
   }
   function startRec(slot) {
     const m = mime(); if (!m) return;
-    let r; try { r = new MediaRecorder(stream(), { mimeType: m, videoBitsPerSecond: 4e6 }); } catch (e) { return; }
+    let r; try { r = new MediaRecorder(stream(), { mimeType: m, videoBitsPerSecond: 3e6 }); } catch (e) { return; }
     const rec = { r, chunks: [], t0: performance.now(), slot, mime: m };
     r.ondataavailable = ev => { if (ev.data && ev.data.size) rec.chunks.push(ev.data); };
     r.onstop = () => { if (rec.keep) rec.keep(new Blob(rec.chunks, { type: m.split(';')[0] })); };
@@ -36,7 +47,7 @@ G.clutch = (() => {
   let timer = null;
   function begin(scene) {
     sc = scene; want = on(); if (!want) return;
-    recs = []; startRec(0);
+    recs = []; startRec(0); requestAnimationFrame(pump);
     setTimeout(() => { if (want && !recs[1]) startRec(1); }, 8000);
     clearInterval(timer); timer = setInterval(cycle, 1000);
   }
