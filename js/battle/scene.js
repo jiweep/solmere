@@ -76,9 +76,9 @@ G.BattleScene = class {
         if (r) this.camFocus(this.slot(r), 1.07, 34);
         if (anims) await G.battleAnim(this, e); else await this.wait(6); return;
       }
-      case 'hit': G.clutch && G.clutch.hit(this, e); return this.playHit(e);
+      case 'hit': G.clutch && G.clutch.hit(this, e); if (e.eff > 1 && G.tutorial) G.tutorial.queue('types'); return this.playHit(e);
       case 'hp': { const s0 = this.slot(e.ref), from = s0 ? s0.dispHp : 0; if (s0) s0._hpBefore = from; await this.playHP(e); G.clutch && G.clutch.hp(this, e, from); return; }
-      case 'faint': G.clutch && G.clutch.faint(this, e); return this.playFaint(e);
+      case 'faint': G.clutch && G.clutch.faint(this, e); if (e.ref && e.ref.s === 0 && G.tutorial) G.tutorial.queue('faint'); return this.playFaint(e);
       case 'status': { const s = this.slot(e.ref); if (s) s.status = e.status; if (e.status) { G.audio && G.audio.sfx('status_' + e.status); if (anims && s) await G.statusAnim(this, e.ref, e.status); } return; }
       case 'statusAnim': if (anims) await G.statusAnim(this, e.ref, e.status); return;
       case 'stat': return this.playStat(e);
@@ -88,7 +88,7 @@ G.BattleScene = class {
       case 'exp': return this.playExp(e);
       case 'levelup': return this.playLevelUp(e);
       case 'throw': return G.throwAnim(this, e);
-      case 'caught': { const s = this.slot(e.ref); if (s) s.visible = false; G.clutch && G.clutch.caught(this, e.q, s); if (G.audio) { G.audio.stopMusic(); G.audio.jingle('caught'); } await this.wait(160); return; }
+      case 'caught': { const s = this.slot(e.ref); if (s) s.visible = false; G.tutorial && G.tutorial.queue('caught'); G.clutch && G.clutch.caught(this, e.q, s); if (G.audio) { G.audio.stopMusic(); G.audio.jingle('caught'); } await this.wait(160); return; }
       case 'resonate': return this.playResonate(e);
       case 'screen': if (e.kind === 'none') this.screens[e.side] = {}; else this.screens[e.side][e.kind] = !e.off; if (!e.off && e.kind !== 'none') await this.wait(14); return;
       case 'hazard': if (e.kind === 'clear') this.hazards[e.side] = {}; else this.hazards[e.side][e.kind] = e.n; await this.wait(10); return;

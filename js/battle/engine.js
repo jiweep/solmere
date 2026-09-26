@@ -619,7 +619,7 @@ G.THROW_MULT = [1, 1.25, 1.6, 2.2];   // catch-rate multiplier by throw quality:
       if (tr.isPlayer && q !== undefined && G.save && G.save.vars) {
         const V = G.save.vars, before = V.catchCombo || 0;
         V.catchCombo = caught && q >= 2 ? before + 1 : caught ? before : 0;
-        if (V.catchCombo > before) { const n = V.catchCombo; this.raw(`Catch Combo x${n}!${n === 3 ? ' Rare Echoes are starting to notice you.' : n === 6 ? ' Shinies are drawn to you now!' : n === 10 ? ' The whole region can feel it. Legendary streak!' : ''}`); }
+        if (V.catchCombo > before) { const n = V.catchCombo; this.raw(`Catch Combo x${n}!${n === 3 ? ' Rare Echoes are starting to notice you.' : n === 6 ? ' Shinies are drawn to you now!' : n === 10 ? ' The whole region can feel it!' : ''}`); }
         else if (before >= 2 && !V.catchCombo) this.raw(`The Catch Combo of ${before} ended.`);
         V.bestCombo = Math.max(V.bestCombo || 0, V.catchCombo);
       }

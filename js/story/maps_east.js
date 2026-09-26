@@ -33,9 +33,9 @@
         { type: 'sign', x: 18, y: 18, text: '{p}DUSKMERE GYM{w} — Warden: Mireille\\n"Bring your own light."' },
         { type: 'npc', id: 'dm_gguard', x: 23, y: 19, look: 'mystic', dir: 'down', script: 'dusk_gym_guard', cond: '!ruins_done' },
         { type: 'npc', id: 'dm_ode', x: 11, y: 19, look: 'oldman', dir: 'down', script: 'lamplighter' },
-        { type: 'npc', id: 'dm_w1', x: 18, y: 9, look: 'woman', dir: 'left', move: 'wander', radius: 2, text: 'The mist never lifts in Duskmere. We light lanterns so lost spirits can find their way home. And so tourists stop walking into the lake.' },
+        { type: 'npc', id: 'dm_w1', x: 18, y: 9, look: 'woman', dir: 'left', move: 'wander', radius: 2, text: 'The mist never lifts in Duskmere. We light lanterns so lost spirits can find their way home.' },
         { type: 'npc', id: 'dm_rodguy', x: 16, y: 23, look: 'fisher', dir: 'down', script: 'prorod_guy' },
-        { type: 'npc', id: 'dm_kid', x: 10, y: 17, look: 'girl', dir: 'up', move: 'look', text: 'Grandma says Wispurr are the ghosts of cats who loved their families too much to leave. I think that\'s nice. My cat is alive and hates me.' },
+        { type: 'npc', id: 'dm_kid', x: 10, y: 17, look: 'girl', dir: 'up', move: 'look', text: 'Grandma says Wispurr are the spirits of cats who loved their families too much to leave. I think that\'s nice.' },
         { type: 'sign', id: 'lant1', x: 12, y: 6, invisible: true, script: 'spirit_lantern', lantern: 1 },
         { type: 'sign', id: 'lant2', x: 17, y: 15, invisible: true, script: 'spirit_lantern', lantern: 2 },
         { type: 'sign', id: 'lant3', x: 3, y: 19, invisible: true, script: 'spirit_lantern', lantern: 3 },
@@ -179,8 +179,8 @@
         { type: 'npc', id: 'fp_sguard', x: 2, y: 12, look: 'ranger', dir: 'down', script: 'starfall_guard', cond: '!champion' },
         { type: 'trigger', x: 1, y: 10, w: 1, h: 2, script: 'starfall_guard', cond: '!champion' },
         { type: 'npc', id: 'fp_boots', x: 16, y: 20, look: 'veteran', dir: 'up', script: 'grip_boots' },
-        { type: 'npc', id: 'fp_kid', x: 20, y: 20, look: 'skier', dir: 'left', move: 'wander', radius: 2, text: 'The pond froze solid! Watch me slide! WHEEEEE— I\'m okay!' },
-        { type: 'npc', id: 'fp_w', x: 9, y: 11, look: 'woman', dir: 'down', move: 'look', text: 'Crane trucks came through the pass last week. Heading for Skyreach, loaded with glowing crystals. The crystals were humming. Sad humming.' },
+        { type: 'npc', id: 'fp_kid', x: 20, y: 20, look: 'skier', dir: 'left', move: 'wander', radius: 2, text: 'The pond froze solid! Watch me slide! Wheeee!' },
+        { type: 'npc', id: 'fp_w', x: 9, y: 11, look: 'woman', dir: 'down', move: 'look', text: 'Crane wagons came through the pass last week, heading for Skyreach and loaded with glowing crystals. The crystals were humming, sadly.' },
         { type: 'trainer', id: 'fp_s1', x: 17, y: 21, look: 'skier', dir: 'right', sight: 3, trainer: 'fp_skier1' },
         { type: 'trainer', id: 'fp_s2', x: 8, y: 14, look: 'skier', dir: 'right', sight: 3, trainer: 'fp_skier2' },
         { type: 'item', id: 'fp_h1', x: 27, y: 22, item: 'nevermeltice', hidden: true },
@@ -236,7 +236,7 @@
         { type: 'trainer', id: 'mg_h', x: 16, y: 11, look: 'hiker', dir: 'left', sight: 1, trainer: 'mg_hiker' },
         { type: 'trainer', id: 'mg_a', x: 24, y: 15, look: 'ace_f', dir: 'left', sight: 2, trainer: 'mg_ace' },
         { type: 'trainer', id: 'mg_v', x: 33, y: 13, look: 'veteran', dir: 'left', sight: 2, trainer: 'mg_vet' },
-        { type: 'npc', id: 'mg_tip', x: 7, y: 14, look: 'hiker', dir: 'down', text: 'Boulders block the pass. Grip Boots let you shove them into the holes. Mess it up? Step outside and they reset. Like nothing happened. Like my life.' },
+        { type: 'npc', id: 'mg_tip', x: 7, y: 14, look: 'hiker', dir: 'down', text: 'Boulders block the pass. With Grip Boots you can push them into the holes. If you get stuck, step outside and they\'ll be back where they started.' },
         { type: 'item', id: 'mg_i1', x: 4, y: 22, item: 'tm13' },
         { type: 'item', id: 'mg_i2', x: 36, y: 25, item: 'maxrevive' },
         { type: 'item', id: 'mg_i3', x: 12, y: 23, item: 'nevermeltice' },
@@ -273,9 +273,9 @@
         { type: 'npc', id: 'sk_wren', x: 16, y: 12, look: 'wren', dir: 'down', script: 'hq_wren', cond: ['badge5', '!hq_started'] },
         { type: 'trigger', x: 13, y: 13, w: 7, h: 1, script: 'hq_wren', cond: ['badge5', '!hq_started'] },
         { type: 'npc', id: 'sk_sailor', x: 15, y: 4, look: 'sailor', dir: 'up', script: 'sky_sailor' },
-        { type: 'npc', id: 'sk_w1', x: 17, y: 21, look: 'gentleman', dir: 'left', move: 'wander', radius: 2, text: 'Skyreach is the richest city in Solmere. Crane pays for everything. And everything has a price. Mine was my afternoons.' },
-        { type: 'npc', id: 'sk_w2', x: 7, y: 21, look: 'lady', dir: 'right', move: 'look', text: 'Warden Kaelen used to be Champion, before Sable. They say he still flies his Tempestral over the Mere at dawn. Showing off. Beautifully.' },
-        { type: 'npc', id: 'sk_kid', x: 26, y: 21, look: 'kid', dir: 'down', move: 'wander', radius: 2, text: 'A Link Cord makes Bouldrok evolve! The shop sells them! I saved up for a whole year! I have no Bouldrok! I\'m planning ahead!' },
+        { type: 'npc', id: 'sk_w1', x: 17, y: 21, look: 'gentleman', dir: 'left', move: 'wander', radius: 2, text: 'Skyreach is the richest city in Solmere. Crane pays for everything here. But everything has a price.' },
+        { type: 'npc', id: 'sk_w2', x: 7, y: 21, look: 'lady', dir: 'right', move: 'look', text: 'Warden Kaelen was Champion once, before Sable. They say he still flies his Tempestral over the Mere at dawn.' },
+        { type: 'npc', id: 'sk_kid', x: 26, y: 21, look: 'kid', dir: 'down', move: 'wander', radius: 2, text: 'A Link Cord makes Bouldrok evolve! I saved up for a whole year to buy one. Now I just need a Bouldrok.' },
         { type: 'item', id: 'sk_h1', x: 1, y: 25, item: 'dragonfang', hidden: true },
       ], spawn: [16, 17] });
   })();
@@ -285,7 +285,7 @@
     objs: [
       { type: 'npc', id: 'clerk', x: 0, y: 3, look: 'clerk', dir: 'right', script: 'mart_clerk' },
       { type: 'npc', id: 'clerk2', x: 0, y: 5, look: 'clerk', dir: 'right', script: 'sky_special' },
-      { type: 'npc', id: 'skm1', x: 9, y: 5, look: 'ace', dir: 'up', text: 'Held items change everything at high levels. A Life Gem on a fast attacker? Perfection. Chef\'s kiss. Two chef\'s kisses.' },
+      { type: 'npc', id: 'skm1', x: 9, y: 5, look: 'ace', dir: 'up', text: 'Held items change everything at high levels. A Life Gem on a fast attacker is hard to beat.' },
     ], spawn: [6, 6] });
   G.defHouse('sky_house1', 'Skyreach House', 1, [{ type: 'npc', id: 'skh1', x: 7, y: 5, look: 'scientist', dir: 'left', script: 'iv_judge' }]);
   G.defHouse('sky_house2', 'Skyreach House', 2, [{ type: 'npc', id: 'skh2', x: 3, y: 5, look: 'oldman', dir: 'right', script: 'hidden_power_guy' }]);
@@ -379,7 +379,7 @@
     objs: [
       { type: 'npc', id: 'spire_recep', x: 2, y: 2, look: 'clerk', dir: 'down', script: 'spire_recep' },
       { type: 'npc', id: 'spire_ex', x: 10, y: 2, look: 'clerk', dir: 'down', script: 'spire_exchange' },
-      { type: 'npc', id: 'spire_fan', x: 3, y: 6, look: 'ace', dir: 'right', text: 'Every Spire battle is at Level 50, no matter what. Pure strategy. No grinding. Just brains. I have lost 400 times.' },
+      { type: 'npc', id: 'spire_fan', x: 3, y: 6, look: 'ace', dir: 'right', text: 'Every Spire battle is fought at Level 50, no matter what. It\'s pure strategy.' },
     ], spawn: [6, 7] });
   // --------------------------------------------------------------- ROUTE 6
   (function () {
@@ -419,7 +419,7 @@
         { type: 'npc', id: 'tl_g1', x: 10, y: 11, look: 'grunt', dir: 'right', script: 'tl_grunt', cond: '!tidelight_done' },
         { type: 'npc', id: 'tl_g2', x: 15, y: 11, look: 'grunt_f', dir: 'left', script: 'tl_grunt', cond: '!tidelight_done' },
         { type: 'npc', id: 'tl_hale', x: 9, y: 14, look: 'hale', dir: 'right', script: 'tl_hale', cond: 'tidelight_done' },
-        { type: 'sign', x: 14, y: 16, text: '{c}LODESTAR ISLE{w}\\nThe oldest lighthouse in the world. Please do not climb it. People keep climbing it.' },
+        { type: 'sign', x: 14, y: 16, text: '{c}LODESTAR ISLE{w}\\nThe oldest lighthouse in the world.' },
         { type: 'item', id: 'tl_h1', x: 20, y: 13, item: 'tidestone', hidden: true },
       ], spawn: [12, 15] });
   })();

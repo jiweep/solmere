@@ -111,6 +111,7 @@ G.wilds = (() => {
   async function doSweep(w, e, L) {
     const m = e.mon, x = e.px + 8, y = e.py + 8;
     // chains: sweeps within a few seconds of each other stack a combo, worth more each time
+    G.tutorial && G.tutorial.queue('sweep');
     const ch = w._sweep = w._sweep && w.frame - w._sweep.t < 60 * 5 ? { n: w._sweep.n + 1, t: w.frame } : { n: 1, t: w.frame };
     G.audio && G.audio.sfx('hit'); if (ch.n >= 2) G.audio && G.audio.sfx('sparkle');
     w.fx.add({ x, y, life: 16, type: 'ring', size: 3, grow: 4, color: '#ffffff', lw: 2, blend: 'lighter', glow: true });

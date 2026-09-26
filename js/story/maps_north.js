@@ -43,17 +43,17 @@
         G.bld('house', 30, 19, 5, 4, { roof: 'teal', door: 2, to: 'bikeshop', tx: 5, ty: 6 }),
         G.house(37, 19, 'galvan_house1', 'gray'), G.house(3, 30, 'galvan_house2', 'brown'), G.house(38, 30, 'galvan_house3', 'blue'),
         { type: 'sign', x: 19, y: 19, text: '{b}GALVAN HARBOR{w}\\n"Where the current carries you."' },
-        { type: 'sign', x: 39, y: 12, text: '{y}GALVAN GYM{w}\\nWarden: Ione\\n"Feel the current, drop the beat!"' },
-        { type: 'sign', x: 8, y: 12, text: '{c}CRANE DYNAMICS{w} — Galvan Office\\n"Bonds Built to Last."' },
+        { type: 'sign', x: 39, y: 12, text: '{y}GALVAN GYM{w}\\nWarden: Ione\\n"Keeper of the harbour lights."' },
+        { type: 'sign', x: 8, y: 12, text: '{c}CRANE DYNAMICS{w} — Galvan Office\\n"Stronger Together."' },
         { type: 'sign', x: 16, y: 12, text: 'Galvan Harbor Museum of Natural History. Fossil Revival Lab inside!' },
         { type: 'sign', x: 24, y: 34, text: '↓ Whisperwood    → Route 3' },
         { type: 'sign', x: 30, y: 27, text: '{c}THE OLD CANAL{w}\\nPaper-boat races every Sunday. No Echoes in the water, please.' },
         { type: 'npc', id: 'gv_marv', x: 7, y: 3, look: 'fisher', dir: 'up', script: 'old_salt_marv' },
         { type: 'npc', id: 'gv_rhoda', x: 9, y: 34, look: 'oldwoman', dir: 'left', script: 'rhoda' },
-        { type: 'npc', id: 'gv_w1', x: 13, y: 25, look: 'worker', dir: 'right', move: 'wander', radius: 3, text: 'Crane built the power plant, the docks, the tram... This city runs on Crane. Now they want our bonds too. Tell me that\'s normal.' },
+        { type: 'npc', id: 'gv_w1', x: 13, y: 25, look: 'worker', dir: 'right', move: 'wander', radius: 3, text: 'Crane built the power plant, the docks, the tram... This whole city runs on Crane. And now they want our bonds, too.' },
         { type: 'npc', id: 'gv_w2', x: 41, y: 9, look: 'woman', dir: 'left', move: 'look', text: 'Director Crane was a brilliant scientist before she ran the company. She never smiles in photos. Like she\'s waiting for someone.' },
-        { type: 'npc', id: 'gv_kid', x: 22, y: 32, look: 'kid', dir: 'down', move: 'wander', radius: 2, text: 'Zipsquee glide between the power poles at night! Their cheeks glow like fireflies! My score\'s 12. I don\'t care. I love my Zipsquee.' },
-        { type: 'npc', id: 'gv_canal', x: 27, y: 27, look: 'sailor', dir: 'down', move: 'look', text: 'Kids race paper boats down the canal every Sunday. Crane wants to pave it over for a Chorus billboard. Over my soggy body.' },
+        { type: 'npc', id: 'gv_kid', x: 22, y: 32, look: 'kid', dir: 'down', move: 'wander', radius: 2, text: 'Zipsquee glide between the power poles at night! Their cheeks glow like fireflies!' },
+        { type: 'npc', id: 'gv_canal', x: 27, y: 27, look: 'sailor', dir: 'down', move: 'look', text: 'Children race paper boats down the canal every Sunday. Crane wants to fill it in and build a factory. Not while I\'m around.' },
         { type: 'npc', id: 'gv_vsr', x: 8, y: 24, look: 'officer', dir: 'right', script: 'vsrecorder_npc' },
         { type: 'npc', id: 'gv_quay', x: 30, y: 5, look: 'gentleman', dir: 'up', move: 'look', text: 'The ferries used to run out to the Lodestar. Nobody\'s gone out there in twelve years. Nobody talks about why.' },
         { type: 'trainer', id: 'gv_sailor_e', x: 23, y: 3, look: 'sailor', dir: 'down', sight: 1, trainer: 'gv_sailor' },
@@ -73,8 +73,8 @@
     warps: [{ x: 6, y: 7, to: '_back' }],
     objs: [
       { type: 'npc', id: 'cl_recep', x: 6, y: 3, look: 'clerk', dir: 'down', script: 'crane_reception' },
-      { type: 'npc', id: 'cl_sci', x: 3, y: 5, look: 'scientist', dir: 'right', move: 'look', text: 'Our Chorus bands measure Resonance in real time! Soon every Tamer in Solmere will wear one! The terms of service are... thorough.' },
-      { type: 'npc', id: 'cl_g', x: 10, y: 5, look: 'grunt', dir: 'left', text: 'I\'m security. Just security. Nothing to see here. Especially not in the basement. Forget I said basement.' },
+      { type: 'npc', id: 'cl_sci', x: 3, y: 5, look: 'scientist', dir: 'right', move: 'look', text: 'Our Chorus bands measure Resonance as it happens! Soon every Tamer in Solmere will wear one!' },
+      { type: 'npc', id: 'cl_g', x: 10, y: 5, look: 'grunt', dir: 'left', text: 'I\'m security. Please keep to the lobby.' },
       { type: 'sign', x: 1, y: 4, invisible: true, text: 'A display: "The Chorus Initiative — harmonizing every bond in Solmere." A diagram shows the Lodestar wired to a massive machine.' },
     ], spawn: [6, 6] });
   D({ id: 'museum', name: 'Galvan Harbor Museum', type: 'indoor', wall: 'wood', music: 'lab', floor: '#c8b8a0', canRun: true,
@@ -86,7 +86,7 @@
       { type: 'sign', x: 3, y: 2, invisible: true, text: 'Exhibit: Raptorix skull. A Claw Fossil holds the memory of its terrible bite.' },
       { type: 'sign', x: 9, y: 2, invisible: true, text: 'Exhibit: "The Lodestar Legend." A mural shows a luminous whale singing beneath a lighthouse while Echoes and people hold hands.' },
       { type: 'sign', x: 12, y: 2, invisible: true, text: 'Exhibit: The Starfall Comet. Centuries ago a comet crashed north of Frostpeak. Locals say something came with it.' },
-      { type: 'npc', id: 'mu_v', x: 2, y: 5, look: 'gentleman', dir: 'up', text: 'The mural says Orrelume\'s song IS Resonance. Poetic nonsense or ancient science? The gift shop sells mugs for both.' },
+      { type: 'npc', id: 'mu_v', x: 2, y: 5, look: 'gentleman', dir: 'up', text: 'The mural says Orrelume\'s song is Resonance itself. Is it poetry, or ancient science? Nobody knows for certain.' },
     ], spawn: [6, 6] });
   // Galvan gym: switch barriers
   D({ id: 'galvan_gym', name: 'Galvan Gym', type: 'indoor', music: 'gym', floor: '#3a4458', floor2: '#4a5470', wall: 'gym', env: 'gym',
@@ -149,7 +149,7 @@
         { type: 'trainer', id: 'r3_hiker_e', x: 18, y: 17, look: 'hiker', dir: 'up', sight: 2, trainer: 'r3_hiker' },
         { type: 'trainer', id: 'r3_ace_e', x: 36, y: 11, look: 'ace_f', dir: 'left', sight: 3, trainer: 'r3_ace' },
         { type: 'trainer', id: 'r3_kid_e', x: 26, y: 7, look: 'kid', dir: 'down', sight: 2, trainer: 'r3_kid' },
-        { type: 'npc', id: 'r3_old', x: 8, y: 7, look: 'oldman', dir: 'down', move: 'look', text: 'The cave ahead sings when the wind blows. Crystals, they say. People in gray coats keep hauling crates out. Very quietly. Very loudly.' },
+        { type: 'npc', id: 'r3_old', x: 8, y: 7, look: 'oldman', dir: 'down', move: 'look', text: 'The cave ahead sings when the wind blows. It\'s the crystals, they say. Lately, people in grey coats keep hauling crates out of it.' },
         { type: 'item', id: 'r3_i1', x: 39, y: 18, item: 'tm40' },
         { type: 'item', id: 'r3_i2', x: 45, y: 5, item: 'stardust' },
         { type: 'item', id: 'r3_i3', x: 3, y: 17, item: 'greatorb', qty: 3 },
@@ -226,12 +226,12 @@
         { type: 'sign', x: 24, y: 33, text: '{o}CINDERVALE{w}\\n"Temper your steel, warm your heart."' },
         { type: 'sign', x: 26, y: 7, text: '{r}CINDERVALE GYM{w} — The Forge\\nWarden: Brann' },
         { type: 'sign', x: 35, y: 30, text: 'Ember Springs — Rest your weary bones! (Bathhouse on the left. Towels provided.)' },
-        { type: 'sign', x: 26, y: 17, text: '{o}SMITHS\' ROW{w}\\nHammers from dawn to dusk. Earplugs sold separately.' },
-        { type: 'npc', id: 'cv_smith', x: 11, y: 9, look: 'worker', dir: 'down', move: 'look', text: 'Brann forged every Warden\'s badge case himself. He says a badge is just metal until someone earns it. Then he yells about it.' },
-        { type: 'npc', id: 'cv_old', x: 35, y: 21, look: 'oldwoman', dir: 'left', move: 'look', text: 'The volcano sleeps because the Volcanoth colony under us sleeps. Don\'t wake them. Please. I\'ve just repainted.' },
-        { type: 'npc', id: 'cv_kid', x: 12, y: 18, look: 'boy', dir: 'right', move: 'wander', radius: 3, text: 'Water types feel weaker in Cindervale! It\'s the ash! Probably! I\'m eight!' },
-        { type: 'npc', id: 'cv_bath', x: 23, y: 29, look: 'oldman', dir: 'right', move: 'look', text: 'Ahh. The spring comes up hot from the mountain\'s heart. My knees are forty years younger. The rest of me has not been informed.' },
-        { type: 'npc', id: 'cv_row', x: 31, y: 17, look: 'blackbelt', dir: 'down', move: 'look', text: 'Every blade on this row was tempered in lava. Don\'t touch the lava channels. People keep touching the lava channels.' },
+        { type: 'sign', x: 26, y: 17, text: '{o}SMITHS\' ROW{w}\\nHammers ring from dawn to dusk.' },
+        { type: 'npc', id: 'cv_smith', x: 11, y: 9, look: 'worker', dir: 'down', move: 'look', text: 'Brann forged every Warden\'s badge himself. He says a badge is only metal until someone earns it.' },
+        { type: 'npc', id: 'cv_old', x: 35, y: 21, look: 'oldwoman', dir: 'left', move: 'look', text: 'The volcano sleeps because the Volcanoth beneath it sleep. Let\'s hope they never wake.' },
+        { type: 'npc', id: 'cv_kid', x: 12, y: 18, look: 'boy', dir: 'right', move: 'wander', radius: 3, text: 'My Water-type Echo doesn\'t like the heat in Cindervale. It keeps asking to go home!' },
+        { type: 'npc', id: 'cv_bath', x: 23, y: 29, look: 'oldman', dir: 'right', move: 'look', text: 'Ahh. The spring comes up hot from the mountain\'s heart. My old knees feel forty years younger.' },
+        { type: 'npc', id: 'cv_row', x: 31, y: 17, look: 'blackbelt', dir: 'down', move: 'look', text: 'Every blade on this row was tempered in lava. Please don\'t touch the channels.' },
         { type: 'trigger', x: 2, y: 17, w: 1, h: 3, script: 'rival2', cond: ['lark1_done', '!rival2_done'] },
         { type: 'item', id: 'cv_i1', x: 40, y: 15, item: 'charcoal' },
         { type: 'item', id: 'cv_h1', x: 3, y: 33, item: 'flamestone', hidden: true },
@@ -240,7 +240,7 @@
   G.defHouse('cinder_house1', 'Cindervale House', 1, [{ type: 'npc', id: 'ch1', x: 1, y: 5, look: 'veteran', dir: 'right', script: 'name_rater_cinder' }]);
   G.defHouse('cinder_house2', 'Cindervale House', 0, [{ type: 'npc', id: 'ch2', x: 7, y: 5, look: 'woman', dir: 'left', script: 'mint_lady' }]);
   G.defHouse('cinder_house3', 'Cindervale House', 1, [
-    { type: 'npc', id: 'ch3', x: 1, y: 5, look: 'hiker', dir: 'right', text: 'I climbed to the crater rim once. You can hear the Volcanoth breathing down there. Slow. Like a lullaby. I didn\'t sleep for a week.' },
+    { type: 'npc', id: 'ch3', x: 1, y: 5, look: 'hiker', dir: 'right', text: 'I climbed to the crater rim once. You can hear the Volcanoth breathing down there, slow and deep, like a lullaby.' },
     { type: 'npc', id: 'ch3b', x: 8, y: 5, monSprite: 'kindlet', dir: 'left', text: 'Kindlet is warming its paws by the stove.' },
   ], { wall: 'wood' });
   D({ id: 'hotspring', name: 'Ember Springs', type: 'indoor', wall: 'wood', music: 'house', floor: '#b88a5a',
@@ -248,7 +248,7 @@
     warps: [{ x: 5, y: 7, to: '_back' }],
     objs: [
       { type: 'npc', id: 'kiko', x: 8, y: 5, look: 'nurse', dir: 'left', script: 'kiko' },
-      { type: 'npc', id: 'hs_old', x: 1, y: 3, look: 'oldman', dir: 'right', text: 'Ahh... the springs heal body and soul. Mostly body. The soul is a work in progress.' },
+      { type: 'npc', id: 'hs_old', x: 1, y: 3, look: 'oldman', dir: 'right', text: 'Ahh... the springs heal body and soul.' },
       { type: 'npc', id: 'hs_m1', x: 5, y: 3, monSprite: 'sealet', dir: 'down', text: 'A wild Sealet is floating on its back, blissfully.' },
     ], spawn: [5, 6] });
   // Cindervale gym: forge with lava
@@ -303,7 +303,7 @@
         { type: 'trainer', id: 'r4_punk_e', x: 19, y: 26, look: 'punk', dir: 'left', sight: 2, trainer: 'r4_punk' },
         { type: 'trainer', id: 'r4_bb_e', x: 12, y: 30, look: 'blackbelt', dir: 'left', sight: 3, trainer: 'r4_bb' },
         { type: 'trainer', id: 'r4_mystic_e', x: 13, y: 38, look: 'mystic', dir: 'left', sight: 2, trainer: 'r4_mystic' },
-        { type: 'npc', id: 'r4_ranger', x: 7, y: 16, look: 'ranger', dir: 'right', move: 'look', text: 'Volcano ash turns the grass gold here. Fire-type Echoes wander all the way to Duskmere. Nobody told them to stop.' },
+        { type: 'npc', id: 'r4_ranger', x: 7, y: 16, look: 'ranger', dir: 'right', move: 'look', text: 'Volcanic ash turns the grass gold here. Fire-type Echoes wander this road all the way to Duskmere.' },
         { type: 'item', id: 'r4_i1', x: 19, y: 5, item: 'tm38' },
         { type: 'item', id: 'r4_i2', x: 21, y: 37, item: 'hyperpotion' },
         { type: 'item', id: 'r4_i3', x: 4, y: 26, item: 'burnheal', qty: 2 },

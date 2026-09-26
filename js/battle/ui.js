@@ -20,6 +20,12 @@
     return out;
   };
   BS.chooseOne = async function (bt, req, canBack) {
+    if (!canBack && G.tutorial && G.tutorial.on()) {   // first-time tips, before the command menu opens
+      await G.tutorial.battle(this, 'battle');
+      if (bt && !bt.wild) await G.tutorial.battle(this, 'trainer');
+      if (bt && bt.wild && !bt.rules.noCatch && G.bag.has('orb')) await G.tutorial.battle(this, 'catching');
+      await G.tutorial.battleFlush(this);
+    }
     const mon = this.findMonByUid(bt, req.uid);
     const name = mon ? G.mon.name(mon) : 'your Echo';
     while (true) {
@@ -47,6 +53,7 @@
         let throwQ;
         if (it.ball && bt && bt.wild && !bt.rules.noCatch) {   // the throw ring: time the release
           const t = targetRef ? bt.at(targetRef.s, targetRef.i) : bt.active(1)[0];
+          if (G.tutorial) await G.tutorial.battle(this, 'throw');
           throwQ = t ? await G.throwRing(this, t) : 0;
           if (throwQ < 0) continue;
         }

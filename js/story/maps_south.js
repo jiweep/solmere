@@ -67,25 +67,25 @@
         G.house(24, 16, 'bh_cafe', 'teal'),
         G.bld('lab', 22, 24, 7, 4, { roof: 'teal', door: 3, to: 'lab', tx: 5, ty: 8 }),
         { type: 'sign', x: 16, y: 11, text: '{b}Brinehollow{w}\\n"Where the tide begins."' },
-        { type: 'sign', x: 21, y: 27, text: '{c}HALE RESONANCE LAB{w}\\nProf. Marisol Hale — Visitors welcome (knock loudly, she\'s usually underwater)' },
-        { type: 'sign', x: 3, y: 15, text: '{o}MARKET ROW{w}\\nFresh catch at dawn · Shells, charms & bad jokes all day' },
+        { type: 'sign', x: 21, y: 27, text: '{c}HALE RESONANCE LAB{w}\\nProf. Marisol Hale — Visitors welcome' },
+        { type: 'sign', x: 3, y: 15, text: '{o}MARKET ROW{w}\\nFresh catch at dawn · Shells and charms all day' },
         { type: 'sign', x: 23, y: 18, text: '{c}THE DRIFTWOOD CAFÉ{w}\\nSea-salt cocoa and the best view in town.' },
-        { type: 'npc', id: 'bh_girl', x: 20, y: 10, look: 'girl', dir: 'down', move: 'wander', radius: 2, text: 'Professor Hale studies how Echoes and people bond. She also studies how long a person can live on coffee. Both are going great.' },
+        { type: 'npc', id: 'bh_girl', x: 20, y: 10, look: 'girl', dir: 'down', move: 'wander', radius: 2, text: 'Professor Hale studies how Echoes and people bond. Her lab is down on the pier, past the market.' },
         { type: 'npc', id: 'bh_fisher', x: 31, y: 32, look: 'fisher', dir: 'down', script: 'bh_fisher' },
-        { type: 'npc', id: 'bh_old', x: 4, y: 26, look: 'oldman', dir: 'right', move: 'look', text: 'Every spring the Lodestar glows brighter. Last year it flickered. Old bones like mine notice these things. So do old knees.' },
-        { type: 'npc', id: 'bh_boy', x: 11, y: 10, look: 'boy', dir: 'left', move: 'wander', radius: 2, text: 'Hold Shift to run! Tab makes EVERYTHING faster! You can click menus too! I learned all this by pressing every button!' },
-        { type: 'npc', id: 'bh_vendor', x: 8, y: 15, look: 'woman', dir: 'down', move: 'look', text: 'Shells! Lucky charms! ...No, I don\'t sell Orbs, love. It\'s a shell stall. Read the sign. There\'s no sign. Trust me.' },
-        { type: 'npc', id: 'bh_sailor', x: 20, y: 26, look: 'sailor', dir: 'right', move: 'look', text: 'Stairs by the market go down to the cove. Mind the gulls. They steal sandwiches. They have stolen my will to live.' },
-        { type: 'npc', id: 'bh_look', x: 33, y: 10, look: 'lady', dir: 'down', move: 'look', text: 'On a clear day you can see the Lodestar from this bench. Just a speck of light on the Mere. I come here to think. Mostly about lunch.' },
-        { type: 'npc', id: 'bh_kid2', x: 10, y: 26, look: 'kid', dir: 'up', move: 'wander', radius: 2, text: 'I found a shell shaped like a Sealet! ...It\'s a rock. But it\'s a Sealet-ish rock! Its name is Gerald.' },
+        { type: 'npc', id: 'bh_old', x: 4, y: 26, look: 'oldman', dir: 'right', move: 'look', text: 'Every spring the Lodestar glows brighter. Last year, it flickered. Old folk like me notice these things.' },
+        { type: 'npc', id: 'bh_boy', x: 11, y: 10, look: 'boy', dir: 'left', move: 'wander', radius: 2, text: 'Hold Shift to run! And Tab makes everything faster! You can use the mouse in menus, too.' },
+        { type: 'npc', id: 'bh_vendor', x: 8, y: 15, look: 'woman', dir: 'down', move: 'look', text: 'Shells! Lucky charms! ...Orbs? No, dear, you\'ll find those at the Mart in Fernwick.' },
+        { type: 'npc', id: 'bh_sailor', x: 20, y: 26, look: 'sailor', dir: 'right', move: 'look', text: 'The stairs by the market go down to the cove. Mind the gulls. They\'ll steal your lunch.' },
+        { type: 'npc', id: 'bh_look', x: 33, y: 10, look: 'lady', dir: 'down', move: 'look', text: 'On a clear day you can see the Lodestar from this bench, just a speck of light far out on the Mere. I come here to think.' },
+        { type: 'npc', id: 'bh_kid2', x: 10, y: 26, look: 'kid', dir: 'up', move: 'wander', radius: 2, text: 'I found a shell shaped just like a Sealet! I\'m going to keep it forever.' },
         { type: 'trigger', x: 17, y: 0, w: 4, h: 1, script: 'bh_block', cond: '!got_starter' },
         { type: 'item', id: 'bh_hidden1', x: 1, y: 27, item: 'pearl', hidden: true },
         { type: 'item', id: 'bh_park', x: 33, y: 20, item: 'oranberry' },
       ], spawn: [18, 9] });
   })();
   G.defHouse('bh_cafe', 'The Driftwood Café', 2, [
-    { type: 'npc', id: 'cafe_owner', x: 9, y: 4, look: 'clerk', dir: 'left', text: 'Welcome! Sea-salt cocoa is free for anyone starting their journey. You haven\'t started yet? Then it\'s free twice.' },
-    { type: 'npc', id: 'cafe_old', x: 2, y: 5, look: 'oldwoman', dir: 'right', text: 'Your mother left on her journey from this very table. Ordered two cocoas and forgot to drink either. Some things run in families.' },
+    { type: 'npc', id: 'cafe_owner', x: 9, y: 4, look: 'clerk', dir: 'left', text: 'Welcome! Sea-salt cocoa is free for anyone about to start their journey.' },
+    { type: 'npc', id: 'cafe_old', x: 2, y: 5, look: 'oldwoman', dir: 'right', text: 'Your mother set out on her own journey from this very table, many years ago. She ordered two cocoas and was too excited to drink either.' },
   ], { wall: 'wood', music: 'house' });
   // ------------------------------------------------------------- ROUTE 1 -
   (function () {
@@ -114,11 +114,11 @@
         G.bld('gym', 1, 13, 6, 4, { roof: 'gray', accent: '#f4d040', door: 3, to: 'victorygate', tx: 5, ty: 6 }),
         { type: 'sign', x: 8, y: 36, text: '{b}ROUTE 1{w}\\n↑ Fernwick Town   ↓ Brinehollow' },
         { type: 'sign', x: 6, y: 18, text: '{r}VICTORY GATE{w}\\nOnly Tamers with all six Warden badges may pass.' },
-        { type: 'sign', x: 8, y: 13, text: 'Hollis Farm — Fresh berries & naps. "Please close the gate, Snoozle escapes!"' },
+        { type: 'sign', x: 8, y: 13, text: 'Hollis Farm — Fresh berries. "Please close the gate, or Snoozle wanders off!"' },
         { type: 'trainer', id: 'r1_kid_e', x: 15, y: 30, look: 'kid', dir: 'left', sight: 3, trainer: 'r1_kid' },
         { type: 'trainer', id: 'r1_lass_e', x: 7, y: 17, look: 'lass', dir: 'right', sight: 3, trainer: 'r1_lass' },
         { type: 'trigger', x: 9, y: 37, w: 4, h: 1, script: 'route1_tutorial', cond: ['got_starter', '!route1_tut'] },
-        { type: 'npc', id: 'r1_man', x: 14, y: 12, look: 'man', dir: 'down', move: 'wander', radius: 2, text: 'Wild Echoes hang out in the tall grass. Bump into one to battle. Tire it out, then throw an Orb. Sleepy ones are easier. Like me after lunch.' },
+        { type: 'npc', id: 'r1_man', x: 14, y: 12, look: 'man', dir: 'down', move: 'wander', radius: 2, text: 'Wild Echoes live in the tall grass. Walk into one to battle it. Weaken it, then throw an Orb. Sleeping Echoes are easier to catch.' },
         { type: 'npc', id: 'snoozle_lost', x: 17, y: 4, monSprite: 'snoozle', dir: 'down', script: 'lostcub_found', cond: ['lostcub_active', '!lostcub_done'] },
         { type: 'item', id: 'r1_potion', x: 3, y: 36, item: 'potion' },
         { type: 'item', id: 'r1_orb', x: 18, y: 6, item: 'orb', qty: 2 },
@@ -127,7 +127,7 @@
   })();
   G.defHouse('hollis_house', 'Hollis Farmhouse', 2, [
     { type: 'npc', id: 'hollis', x: 6, y: 4, look: 'farmer', dir: 'left', script: 'hollis' },
-    { type: 'npc', id: 'snoozle_home', x: 3, y: 5, monSprite: 'snoozle', dir: 'down', text: 'Snoozle is snoring contentedly. "Zzz... zzz..."', cond: 'lostcub_done' },
+    { type: 'npc', id: 'snoozle_home', x: 3, y: 5, monSprite: 'snoozle', dir: 'down', text: 'Snoozle is snoring contentedly.', cond: 'lostcub_done' },
   ], { wall: 'wood' });
   D({ id: 'victorygate', name: 'Victory Gate', type: 'indoor', wall: 'stone', music: 'gate', floor: '#b8b0a0',
     grid: ['WWWWW:WWWWW', 'WWWWW:WWWWW', 'S....:....S', '.....:.....', 'K...........'.slice(0, 11), '.....:.....', '.....:.....', '.....M.....'],
@@ -172,30 +172,30 @@
         { type: 'sign', x: 24, y: 7, text: '{g}FERNWICK GYM{w}\\nWarden: Juniper\\n"Gentle roots, unbreakable bloom."' },
         { type: 'sign', x: 24, y: 34, text: '{b}FERNWICK TOWN{w}\\nThe town where flowers never close.' },
         { type: 'sign', x: 40, y: 20, text: '→ Route 2 · Whisperwood beyond' },
-        { type: 'sign', x: 8, y: 29, text: '{g}SUNKEN GARDEN{w}\\nMind the steps. Mind the koi. Mind Granny Ivy\'s tulips.' },
+        { type: 'sign', x: 8, y: 29, text: '{g}SUNKEN GARDEN{w}\\nPlease mind the steps, the koi, and Granny Ivy\'s tulips.' },
         { type: 'sign', x: 19, y: 16, text: '{o}BLOSSOM SQUARE{w}\\nFountain restored by the Fernwick Garden Club.' },
         { type: 'npc', id: 'fw_guard', x: 41, y: 17, look: 'ranger', dir: 'left', script: 'fern_guard_talk', cond: '!badge1' },
         { type: 'trigger', x: 40, y: 18, w: 1, h: 2, script: 'fern_guard', cond: '!badge1' },
         { type: 'npc', id: 'fw_bea', x: 17, y: 22, look: 'lady', dir: 'down', script: 'florist_bea' },
-        { type: 'npc', id: 'fw_kid', x: 12, y: 19, look: 'kid', dir: 'right', move: 'wander', radius: 2, text: 'The Warden\'s gym is a hedge maze! I got lost in it for a whole afternoon! Juniper brought me juice!' },
-        { type: 'npc', id: 'fw_man', x: 26, y: 16, look: 'man', dir: 'left', move: 'look', text: 'Crane Dynamics put up posters everywhere. "CHORUS: See Your Bond." My Echo is a Mossbun. I can see it. It\'s right there.' },
+        { type: 'npc', id: 'fw_kid', x: 12, y: 19, look: 'kid', dir: 'right', move: 'wander', radius: 2, text: 'The Warden\'s gym is a hedge maze! I got lost in it for a whole afternoon, until Juniper came to find me.' },
+        { type: 'npc', id: 'fw_man', x: 26, y: 16, look: 'man', dir: 'left', move: 'look', text: 'Crane Dynamics has put up posters everywhere: "CHORUS: Feel Your Bond Grow." My Mossbun and I don\'t need a band to know we\'re friends.' },
         { type: 'npc', id: 'fw_dowse', x: 8, y: 31, look: 'hiker', dir: 'left', script: 'dowsing_man' },
-        { type: 'npc', id: 'fw_view', x: 37, y: 10, look: 'girl', dir: 'down', move: 'look', text: 'From up here you can see the whole square. When the petals blow just right, the fountain looks like it\'s snowing pink. It\'s my screensaver.' },
-        { type: 'npc', id: 'fw_gard', x: 13, y: 32, look: 'oldwoman', dir: 'left', move: 'look', text: 'Those koi are older than I am. Well. Nearly. They\'re definitely wiser.' },
-        { type: 'npc', id: 'fw_stall', x: 26, y: 22, look: 'farmer', dir: 'down', move: 'look', text: 'Tulips, twelve colours! The thirteenth is a secret. It grows only in the Sunken Garden. Don\'t ask. You\'ll never find it. Okay, you might.' },
+        { type: 'npc', id: 'fw_view', x: 37, y: 10, look: 'girl', dir: 'down', move: 'look', text: 'From up here you can see the whole square. When the petals blow just right, the fountain looks like it\'s snowing pink.' },
+        { type: 'npc', id: 'fw_gard', x: 13, y: 32, look: 'oldwoman', dir: 'left', move: 'look', text: 'Those koi are nearly as old as I am, and far wiser.' },
+        { type: 'npc', id: 'fw_stall', x: 26, y: 22, look: 'farmer', dir: 'down', move: 'look', text: 'Tulips in twelve colours! They say a thirteenth grows somewhere in the Sunken Garden.' },
         { type: 'item', id: 'fw_hid1', x: 40, y: 33, item: 'superpotion', hidden: true },
         { type: 'item', id: 'fw_garden', x: 3, y: 33, item: 'oranberry', qty: 2 },
       ], spawn: [21, 21] });
   })();
   G.defHouse('fern_house1', 'Fernwick House', 0, [
-    { type: 'npc', id: 'fh1', x: 2, y: 4, look: 'oldwoman', dir: 'right', text: 'Juniper was the shyest girl in Fernwick. Then she met her first Budling. Now she wins every garden contest and never says sorry about it.' },
+    { type: 'npc', id: 'fh1', x: 2, y: 4, look: 'oldwoman', dir: 'right', text: 'Juniper was the shyest girl in Fernwick, until she met her first Budling. Now she wins every garden contest.' },
     { type: 'npc', id: 'fh1b', x: 7, y: 5, monSprite: 'glimmer', dir: 'left', text: 'Glimmer is glowing softly. It seems very happy here.' },
   ]);
   G.defHouse('fern_house2', 'Fernwick House', 1, [
     { type: 'npc', id: 'fh2', x: 7, y: 4, look: 'man', dir: 'left', script: 'nickname_rater' },
   ]);
   G.defHouse('fern_house3', 'Fernwick House', 2, [
-    { type: 'npc', id: 'fh3', x: 3, y: 5, look: 'woman', dir: 'right', text: 'The Garden Club meets every morning to argue about tulips. I always win. By arguing longer.' },
+    { type: 'npc', id: 'fh3', x: 3, y: 5, look: 'woman', dir: 'right', text: 'The Garden Club meets every morning to talk about tulips. We never agree on anything.' },
     { type: 'npc', id: 'fh3b', x: 9, y: 5, monSprite: 'budling', dir: 'left', text: 'Budling is sunbathing by the window.' },
   ]);
   // Fernwick Gym: hedge maze

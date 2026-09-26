@@ -98,21 +98,21 @@ G.clutch = (() => {
       // the comeback: a win with one Echo left standing, after the rest of a full team went down
       if (scene && result && result.outcome === 'win' && G.save) {
         const party = G.save.party.filter(m => !m.egg), alive = party.filter(m => m.hp > 0);
-        if (party.length >= 3 && alive.length === 1 && !moments) { sc = scene; moment('COMEBACK!', `${G.mon.name(alive[0])} carried the whole team`, '#ff7ad8'); return new Promise(r => setTimeout(() => { end(); r(); }, 2600)); }
+        if (party.length >= 3 && alive.length === 1 && !moments) { sc = scene; moment('COMEBACK!', `${G.mon.name(alive[0])} won it for the whole team`, '#ff7ad8'); return new Promise(r => setTimeout(() => { end(); r(); }, 2600)); }
       }
       end();
     },
     hit(scene, e) { lastHit[e.ref.s + ':' + e.ref.i] = { crit: !!e.crit, eff: e.eff || 1 }; },
     hp(scene, e, from) {
       const s = scene.slot(e.ref); if (!s || e.heal || e.silent) return;
-      if (mine(s) && e.hp > 0 && e.hp / e.max <= .08 && from / e.max >= .3) moment('CLUTCH!', `${s.name || 'It'} hung on with ${e.hp} HP`);
+      if (mine(s) && e.hp > 0 && e.hp / e.max <= .08 && from / e.max >= .3) moment('LAST STAND!', `${s.name || 'It'} hung on with ${e.hp} HP`);
     },
     faint(scene, e) {
       const s = scene.slot(e.ref), h = lastHit[e.ref.s + ':' + e.ref.i]; if (!s || mine(s) || !h) return;
-      if (s.maxhp && s._hpBefore === s.maxhp && scene.bt && !scene.bt.wild) moment('ONE SHOT!', 'Full HP to zero in one hit', '#ff7a5a');
-      else if (h.crit) moment('CRIT KO!', 'A critical hit to finish it', '#7ad8ff');
+      if (s.maxhp && s._hpBefore === s.maxhp && scene.bt && !scene.bt.wild) moment('ONE BLOW!', 'Full health to nothing in a single hit', '#ff7a5a');
+      else if (h.crit) moment('CRITICAL FINISH!', 'A critical hit to end it', '#7ad8ff');
     },
-    caught(scene, q, mon) { if (q === 3 && mon && (mon.shiny || (G.SPECIES[mon.sp] && G.SPECIES[mon.sp].catch <= 90))) { sc = scene; moment('PERFECT CATCH!', mon.shiny ? 'A shiny, first try' : 'Right in the center', '#ffe070'); } },
+    caught(scene, q, mon) { if (q === 3 && mon && (mon.shiny || (G.SPECIES[mon.sp] && G.SPECIES[mon.sp].catch <= 90))) { sc = scene; moment('PERFECT CATCH!', mon.shiny ? 'A rare colour, caught first time' : 'Right in the centre', '#ffe070'); } },
     // the banner, drawn over the battle UI
     draw(scene) {
       if (want) G.ui.text('SOLMERE · jiweep.github.io/solmere', G.W / 2, G.H - 7, { size: 4.6, weight: 700, align: 'center', color: 'rgba(255,255,255,.4)' });   // clips carry the way back

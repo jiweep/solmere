@@ -16,6 +16,7 @@ G.openPauseMenu = async function () {
       if (G.bag.has('journal')) items.push({ id: 'quests', label: 'Journal', icon: 'book', col: '#b0892a' });
       items.push({ id: 'map', label: 'Map', icon: 'whistle', col: '#a98ff3' });
       items.push({ id: 'enc', label: 'Encounters', icon: 'leaf', col: '#2aa86a' });
+      items.push({ id: 'guide', label: 'Guide', icon: 'book', col: '#2aa86a' });
       items.push({ id: 'save', label: 'Save', icon: 'book', col: '#1ba7b8' });
       items.push({ id: 'options', label: 'Options', icon: 'gem', col: '#9b5de5' });
       if (location.protocol.startsWith('http')) items.push({ id: 'link', label: 'Link (Co-op)', icon: 'cord', col: '#2bb3a3' });
@@ -32,6 +33,7 @@ G.openPauseMenu = async function () {
       if (id === 'quests') await G.openQuests();
       if (id === 'map') { const flew = await G.openTownMap({ fly: G.bag.has('wingwhistle') }); if (flew) return; }
       if (id === 'enc') await G.openEncounters();
+      if (id === 'guide') await G.tutorial.guide();
       if (id === 'save') { await G.saveFlow(); }
       if (id === 'options') await G.openOptions();
       if (id === 'link') await G.net.openLinkMenu();
@@ -106,6 +108,7 @@ G.openOptions = function (oo = {}) {
   const S = G.settings, sv = G.save;
   const opts = [
     { k: 'render3d', label: '3D World (F3)', vals: [false, true], names: ['Off', 'On'] },
+    { k: 'tips', label: 'Tutorial Tips', vals: [true, false], names: ['On', 'Off'], save: true, get: () => !!(sv && sv.vars && sv.vars.tips), apply: v => { if (sv && sv.vars) sv.vars.tips = v; } },
     { k: 'textSpeed', label: 'Text Speed', vals: [0, 1, 2, 3], names: ['Slow', 'Mid', 'Fast', 'Instant'] },
     { k: 'battleAnims', label: 'Battle Animations', vals: [true, false], names: ['On', 'Off'] },
     { k: 'encounters', label: 'Wild Echoes', vals: ['visible', 'classic'], names: ['Visible', 'Random'] },

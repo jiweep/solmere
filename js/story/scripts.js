@@ -61,31 +61,34 @@
     await G.fadeIn(30);
     await G.tween(bd.show, { hale: 1 }, 30);
     const say = (t) => G.say(t, { speaker: HALE });
-    await say(`Oh! You're awake. You're awake, right? Blink twice. Great. Hi!`);
-    await say(`I'm Marisol Hale. Professor Hale. I study Resonance: the actual, measurable song between people and Echoes.\\pI have the graphs. Mostly!`);
+    await say(`Hello there! Welcome to Solmere. My name is Marisol Hale, though most people here just call me the Professor.`);
+    await say(`I study Resonance: the bond that grows between people and the creatures we call Echoes. When a Tamer and an Echo truly trust each other, you can almost hear it.`);
     G.audio && G.audio.cry('glimmer');
     await G.tween(bd.show, { mon: 1 }, 24);
-    await say(`This is Glimmer. It glows when it trusts someone. It's glowing at you. It does not glow at me. We're working on it.`);
-    await say(`This is Solmere: a ring of towns around a great inland sea, the Mere. In the middle stands the Lodestar, the oldest lighthouse in the world.`);
-    await say(`Something enormous sleeps under it. Its song is why Echoes exist at all. That's the legend. I'm trying to make it a footnote.`);
-    await say(`Right. Paperwork! Tell me about yourself.`);
+    await say(`This is Glimmer. It glows when it trusts someone... and look at that. It's glowing at you already.`);
+    await say(`Solmere is a ring of towns around a great inland sea, the Mere. At its heart stands the Lodestar, the oldest lighthouse in the world.`);
+    await say(`Legend says something vast sleeps beneath it, and that its song is where every Echo came from. I've spent my life trying to learn whether that's true.`);
+    await say(`But that's enough about me. Tell me about yourself.`);
     await G.tween(bd.show, { hale: 0, mon: 0 }, 16);
     G.save.look = await G.pickLook();
     if (G.world.scene) G.world.scene.player = null;
     await G.tween(bd.show, { player: 1 }, 20);
     const name = await G.askName({ title: 'What\'s your name?', start: '', max: 10, def: ['Alex', 'Robin', 'Kai', 'Sky'][['player_a', 'player_b', 'player_c', 'player_d'].indexOf(G.save.look)] || 'Alex', icon: () => G.chars.sheet(G.LOOKS[G.save.look]).down[Math.floor(G.realTime * 4) % 3] });
     G.save.name = name;
-    await say(`${name}. Good name. Strong vowels.`);
-    const k = await choose(`So, ${name}... how do you feel about today?`, ['Ready. So ready.', 'I was told there\'d be snacks.', 'I overslept and I\'m still in it.'], HALE);
-    await say([`Ooh, I like that. Hold onto it, it's going to get tested.`, `There are snacks. There are always snacks. I respect the priorities.`, `Honestly? Same. I've been awake for thirty hours. We'll get through this together.`][k]);
+    await say(`${name}. It suits you.`);
+    const k = await choose(`How are you feeling about today, ${name}?`, ['Excited. I\'ve waited years for this.', 'Ready for anything.', 'A little nervous, honestly.'], HALE);
+    await say([`Good. Hold on to that feeling. The road ahead will test it, and it will carry you further than you think.`, `That's the spirit! Just remember that brave and careful can travel together.`, `That's all right. Everyone is, the first time. Being nervous only means you care.`][k]);
+    const exp = await G.ask(`Tell me, ${name}, have you ever travelled with Echoes before?`, ['No, this is all new to me.', 'Yes, I know the basics.'], { speaker: HALE });
+    G.save.vars.tips = exp === 0;
+    await say(exp === 0 ? `Then I'll make sure you're never left guessing. Whenever something new comes up, a short tip will explain it. You can reread them all from the Guide in your menu.` : `Wonderful. Then I won't bore you with the basics. If you ever want a refresher, the Guide in your menu has every tip.`);
     await G.tween(bd.show, { player: 0, wren: 1 }, 20);
-    await say(`And this is your neighbor and best friend since forever. They already filmed three "day one" intros this morning. What's their name?`);
+    await say(`And this is your neighbour and best friend. The two of you have been inseparable since you could walk. What was their name again?`);
     const rn = await G.askName({ title: 'Your best friend\'s name?', start: 'Wren', max: 10, def: 'Wren', icon: () => G.chars.sheet(G.LOOKS.wren).down[Math.floor(G.realTime * 4) % 3] });
     G.save.rival = rn;
-    await say(`${rn}! Yes. The two of you have been counting down to this day since you could count.`);
+    await say(`${rn}, of course! Loud, brave, and never still for a second. You two have been counting down to this day for years.`);
     await G.tween(bd.show, { wren: 0, hale: 1 }, 20);
-    await say(`Today you each get your first partner Echo. Come find me at my lab on the Brinehollow pier. It's the building with the smoke. The good kind of smoke!`);
-    await say(`One more thing. Out there, the bond is the whole game. Take care of your partner, and it'll take care of you. That one's not a joke.`);
+    await say(`Today, you each receive your first partner Echo. Come and find me at my lab, down on the Brinehollow pier.`);
+    await say(`One more thing. Out there, the bond is everything. Look after your partner, and it will look after you.`);
     await G.fadeOut(40);
     G.pop(bd);
     G.setFlag('intro_done');
@@ -95,56 +98,57 @@
     G.defineRivals();
     G.persist.write();
     await G.fadeIn(30);
-    await G.say('Sunlight. Birds. A phone buzzing with forty messages from ' + rn + '. Today\'s the day.\\p{k}(X or Esc opens the menu. H shows the controls.){w}');
+    await G.say('Morning light, and gulls calling over the harbour. Today is the day.' + (G.save.vars.tips ? '' : '\\p{k}(X or Esc opens the menu. H shows the controls.){w}'));
+    await G.tutorial.show('controls'); await G.tutorial.show('menu');
   };
   // ------------------------------------------------------------- HOME
   SC.mom = async (S) => {
     S.facePlayer('mom');
     if (!G.flag('mom_talk')) {
-      await S.say(`Morning. You're up before noon. Mark the calendar.`, MOM);
-      await S.say(`Professor Hale called. Twice. Then ${R()} called. Eleven times. Then ${R()} ran past the window yelling your name, which was a choice.`, MOM);
-      await S.say(`Here. A Tamer's Journal. It tracks what you're doing so you don't have to remember, which, respectfully, you won't.`, MOM);
+      await S.say(`Good morning, sleepyhead. Professor Hale came by looking for you. So did ${R()}, three times, and then ran past the window shouting your name.`, MOM);
+      await S.say(`Here, take this. It's a Tamer's Journal. It keeps track of where you're headed and what you've promised people, in case you forget.`, MOM);
       await S.give('journal');
       S.quest('main1', 'lab');
-      const k = await choose('Mom looks at you for a long second.', ['I\'ll make you proud.', 'Can I have the car?', 'Don\'t make it weird.'], MOM);
-      await S.say([`You already do. Now go before I get emotional in front of the toaster.`, `We don't have a car. We have a bike with a basket. You can't have that either.`, `I'm your mother. It's my job to make it weird. Go. Hold Shift to run. I love you. Go.`][k], MOM);
+      const k = await choose('Mom looks at you for a long moment.', ['I\'ll make you proud.', 'I\'ll be back before you know it.', 'Don\'t worry about me.'], MOM);
+      await S.say([`You already have. Now go on, before I get teary in front of the whole kitchen.`, `I'll hold you to that. There will always be a warm bed for you here.`, `Worrying is my job. Yours is to go and have an adventure.`][k], MOM);
+      await S.say(`The lab is down on the pier, past the market. If you're in a hurry, hold Shift to run. Off you go.`, MOM);
       S.set('mom_talk'); return;
     }
     const b = G.save.badges.length;
-    if (G.flag('champion')) { await S.say(`The Champion. In my kitchen. The neighbors have been "dropping by" all week. I told them you're busy. You're eating soup.`, MOM); await S.heal(); return; }
-    await S.say(G.pick([`You look tired. Sit. Soup first, destiny second.`, `${b ? `${b} badge${b > 1 ? 's' : ''}. I put them on the fridge. Next to your drawing of a horse from when you were four. ` : ''}Eat something.`, `Did you change your socks? Don't answer. Change your socks. And heal your Echoes.`, `I listened to my answering machine today. It was just ${R()} asking if you were home. For nine minutes.`]), MOM);
+    if (G.flag('champion')) { await S.say(`The Champion of Solmere, sitting at my kitchen table. I'm so proud of you. Now eat your soup before it goes cold.`, MOM); await S.heal(); return; }
+    await S.say(G.pick([`You look tired. Sit down and rest a while.`, `${b ? `${b} badge${b > 1 ? 's' : ''}! I keep them on the windowsill where the light catches them. ` : ''}Have something to eat before you go.`, `Are you eating properly out there? And looking after your Echoes?`, `${R()} came by this morning asking if you were home. That child has never once knocked.`]), MOM);
     await S.heal();
-    await S.say('There. Everyone\'s fixed. Go be brave. Text me.', MOM);
+    await S.say('There. Everyone\'s rested. Go carefully, and come home soon.', MOM);
   };
   SC.wren_mom = async (S) => {
     S.facePlayer('wrenmom');
-    if (G.flag('champion')) { await S.say(`${R()} told me everything. Twice. With diagrams. Thank you for looking out for my kid. Both of them, actually.`, 'Wren\'s Mom'); return; }
-    if (G.flag('rival3_done') && !G.flag('hq_done')) { await S.say(`${R()} stopped posting. That kid posts when they sneeze. If you see them, tell them I'm not mad. I'm just... here.`, 'Wren\'s Mom'); return; }
-    await S.say(`${R()} left for the lab at dawn. With a ring light. That kid wants to be Champion like their big sibling so badly it hurts to watch. I hope they remember to have fun.`, 'Wren\'s Mom');
+    if (G.flag('champion')) { await S.say(`${R()} told me everything. Thank you for looking out for my child. For both of my children, really.`, 'Wren\'s Mom'); return; }
+    if (G.flag('rival3_done') && !G.flag('hq_done')) { await S.say(`${R()} hasn't written home in weeks. If you see them, tell them I'm not angry. Tell them to come home.`, 'Wren\'s Mom'); return; }
+    await S.say(`${R()} left for the lab at dawn. They want to be Champion like their big sibling so badly. I just hope they remember to enjoy the journey.`, 'Wren\'s Mom');
   };
   // ------------------------------------------------------------- BRINEHOLLOW
   SC.bh_block = async (S) => {
-    await S.say(`"${P()}! You can't go out there with no partner! That's literally how people end up on the news! LAB! PIER! NOW!"`, WREN());
+    await S.say(`${P()}, wait! You can't go into the tall grass without an Echo of your own. Wild ones live out there! Come on, the Professor's lab is down on the pier.`, WREN());
     await pushBack(S, 'up');
   };
   SC.bh_fisher = async (S) => {
     S.facePlayer('bh_fisher');
-    await S.say('You can fish Flopfin off this pier. Nobody wants a Flopfin. It flops. That\'s the whole thing.', 'Fisherman');
-    if (G.bag.has('rod')) await S.say('Got a rod? Face the water, press Z. When the {r}!{w} pops, reel it in. Don\'t overthink it. Flopfin doesn\'t.', 'Fisherman');
+    await S.say('You can fish for Flopfin off this pier. Folk say they\'re good for nothing but flopping. I say every Echo has its day.', 'Fisherman');
+    if (G.bag.has('rod')) await S.say('Got a rod? Face the water and press Z. When the {r}!{w} appears, press Z again to reel it in.', 'Fisherman');
   };
   // ------------------------------------------------------------- LAB
   SC.lab_enter = async (S) => {
     if (G.flag('lab_intro') || G.flag('got_starter')) return;
     await G.wait(10);
     await S.emote('wren_lab', '!');
-    await S.say(`${P()}! FINALLY. Chat, they're here. There's no chat. I'm practicing.`, WREN());
-    await S.say(`You made it! Mind the cables. And the puddle. I was measuring how far a Sealet can sneeze.`, HALE);
+    await S.say(`${P()}! There you are! I've been waiting since sunrise!`, WREN());
+    await S.say(`Welcome, welcome! Mind the cables on the floor. This way.`, HALE);
     await S.walkTo('player', 5, 6);
     S.face('player', 'up');
-    await S.say('Three Orbs. Three young Echoes. Each one has been waiting for somebody specific. Let\'s find out if it\'s you.', HALE);
-    await S.say('{g}Budling{w}, a Grass fawn with a sapling on its head. {r}Kindlet{w}, a Fire kit with its ears literally on fire. And {b}Sealet{w}, a Water pup with the best whiskers in Solmere. It knows.', HALE);
-    await S.say(`${P()}, you got here second, but ${R()} insisted you pick first. Which was very sweet.`, HALE);
-    await S.say('It\'s not sweet! It\'s strategy! I pick after, so I pick the one that BEATS yours. Content!', WREN());
+    await S.say('On the table are three Orbs, and inside each is a young Echo looking for a partner.', HALE);
+    await S.say('{g}Budling{w}, a Grass fawn with a sapling on its head. {r}Kindlet{w}, a Fire kit whose ears glow like embers. And {b}Sealet{w}, a Water pup, gentle and clever.', HALE);
+    await S.say(`${P()}, ${R()} insisted that you choose first. That was kind of them.`, HALE);
+    await S.say('Kind? It\'s tactics! If I choose second, I can pick the one that beats yours.', WREN());
     S.set('lab_intro');
   };
   const starterPreview = (sp) => new Promise(res => G.push({
@@ -178,46 +182,47 @@
     if (!ok) return;
     G.setVar('starter', sp);
     G.defineRivals();
-    await S.giveMon(sp, 5, { starter: true, bond: 120, ball: 'orb', text: `${starterName(shown)} looks at you like you're the most interesting thing it has ever seen.` });
+    await S.giveMon(sp, 5, { starter: true, bond: 120, ball: 'orb', text: `${starterName(shown)} looks up at you, and something in you feels it look.` });
     S.set('got_starter');
     S.w.spawnEnts();
+    await G.tutorial.show('partner');
     const rsp = G.rivalOf[sp];
-    await S.say(`Then I'm taking ${starterName(rsp)}. Type advantage. Called it. Clip that.`, WREN());
-    await S.say(`${R()} received ${starterName(G.randomizeSpecies(rsp, 'starter'))}! It immediately tries to eat the ring light.`);
-    await S.say(`Oh! Before I forget: an Echodex. It records every Echo you see and catch. I built it myself. Mostly! Don't drop it in water. Or near water.`, HALE);
+    await S.say(`Then I choose ${starterName(rsp)}! It has the type advantage. Told you!`, WREN());
+    await S.say(`${R()} received ${starterName(G.randomizeSpecies(rsp, 'starter'))}!`);
+    await S.say(`And this is for you both: an Echodex. It records every Echo you meet and catch. I built it myself. Mostly!`, HALE);
     await S.give('dex');
-    await S.say(`${P()}. You and me. Right now. First battle. For the archive.`, WREN());
-    await S.say('In my LAB? ...Fine. Do not knock over the Resonance meter. It cost more than this building.', HALE);
+    await S.say(`${P()}, let's battle! Right now! Our very first one!`, WREN());
+    await S.say('Here in the lab? ...Oh, very well. Just mind the equipment.', HALE);
     const won = await G.storyBattle('rival1', { canLose: true });
     S.set('rival1_done');
-    await S.say(won ? `No. No no no. That was a warm-up. That was a WARM-UP, ${P()}. I'm deleting the footage.` : `YES! Did you see that?! First win ever! I'm framing this. Don't worry, you'll catch up. Probably!`, WREN());
-    await S.say('Nobody broke anything. I\'m calling that a triumph. Let me patch your Echoes up.', HALE);
+    await S.say(won ? `I lost?! ...That was a warm-up. Next time, ${P()}, I'll win for real.` : `I won! Our first battle, and I won! Don't worry, ${P()}. You'll get me next time.`, WREN());
+    await S.say('What a match! Both of you did well. Let me look after your Echoes.', HALE);
     await S.heal();
-    await S.say(`Favor time! Warden Juniper in Fernwick, north up Route 1, has been waiting on my research notes. Could you run them over? The mail is... slow. The mail is a Flopfin.`, HALE);
+    await S.say(`Could I ask a favour? Warden Juniper in Fernwick, north along Route 1, is waiting on my research notes. Would you take them to her?`, HALE);
     await S.give('parcel');
     S.quest('main1', 'parcel');
-    await S.say(`And ${P()}... Juniper runs a gym. Six Wardens, six badges, then the Conclave, then the Champion. I'm not saying do it. I'm saying it's right there.`, HALE);
-    await S.say(`Race you. Loser posts an apology video. See you on Route 1!`, WREN());
+    await S.say(`And ${P()}... Juniper is also a Warden, and runs Fernwick's gym. Earn six Warden badges, and the road to the Conclave and the Champion opens. It's a long road. It might be yours.`, HALE);
+    await S.say(`Six badges! I'm getting there first. See you on Route 1!`, WREN());
     const wr = S.npc('wren_lab');
     if (wr) { await S.move('wren_lab', 'dddr', 2); S.remove('wren_lab'); G.audio && G.audio.sfx('door'); }
   };
   SC.starter_budling = S => chooseStarter(S, 'budling');
   SC.starter_kindlet = S => chooseStarter(S, 'kindlet');
   SC.starter_sealet = S => chooseStarter(S, 'sealet');
-  SC.wren_lab = async (S) => { S.facePlayer('wren_lab'); await S.say(G.flag('lab_intro') ? 'Pick one! I\'ve been standing here since sunrise! My legs are asleep! Both of them!' : `${P()}! Over here! This is history!`, WREN()); };
+  SC.wren_lab = async (S) => { S.facePlayer('wren_lab'); await S.say(G.flag('lab_intro') ? 'Go on, choose! The Orbs are on the table. Take a look at each one.' : `${P()}! Over here!`, WREN()); };
   SC.lab_aide = async (S) => {
     S.facePlayer('aide');
-    const lines = ['The Resonance meter spikes whenever an Echo evolves. Also when the Professor finds her coffee. Same reading, weirdly.', 'An Echo\'s nature changes how its stats grow. Summary screen: red arrow up, blue arrow down. Science!', 'Every Echo has hidden potential called IVs. The summary shows them plainly. We don\'t do secrets here. Except the Professor\'s password. It\'s "password".', 'Walk with your partner. It builds bond. Some Echoes evolve from bond alone. Friendship, but with numbers.'];
+    const lines = ['The Resonance meter jumps whenever an Echo evolves. We still don\'t fully understand why.', 'An Echo\'s nature shapes how its stats grow. On the Summary screen, a red arrow marks the stat it favours and a blue arrow the one it neglects.', 'Every Echo is born with its own hidden potential. The Summary screen shows it, so you can see what each one is best at.', 'Walk with your partner and your bond will grow. Some Echoes only evolve once they trust you completely.'];
     await S.say(G.pick(lines), 'Lab Aide');
   };
   SC.hale = async (S) => {
     S.facePlayer('hale');
-    if (!G.flag('got_starter')) { await S.say('Three Orbs on the table. Go on. One of them is already looking at you.', HALE); return; }
+    if (!G.flag('got_starter')) { await S.say('The three Orbs are on the table. Take your time, and choose the one that feels right.', HALE); return; }
     const d = G.dexCount();
-    if (d.caught >= 40 && !G.flag('dex40')) { await S.say(`${d.caught} species?! You're doing my job better than me. Please take this before I get insecure.`, HALE); await S.give('expcandy', 5); S.set('dex40'); S.quest('side_dex', 'part2'); }
-    if (d.caught >= 70 && !G.flag('dex70')) { await S.say(`${d.caught} species. I'm genuinely emotional. Take the Shiny Charm. It triples your odds of a shiny Echo. Don't tell the other researchers I have it.`, HALE); await S.give('shinycharm'); S.set('dex70'); S.quest('side_dex', 'done'); return; }
+    if (d.caught >= 40 && !G.flag('dex40')) { await S.say(`${d.caught} species already? That's remarkable work. Please, take these for your trouble.`, HALE); await S.give('expcandy', 5); S.set('dex40'); S.quest('side_dex', 'part2'); }
+    if (d.caught >= 70 && !G.flag('dex70')) { await S.say(`${d.caught} species... I never thought I'd see an Echodex this full. Take the Shiny Charm. It makes rare, differently coloured Echoes far more likely to appear.`, HALE); await S.give('shinycharm'); S.set('dex70'); S.quest('side_dex', 'done'); return; }
     if (!G.save.quests.side_dex) S.quest('side_dex', 'part1');
-    const tips = G.flag('champion') ? `Champion ${P()}. Weird news from Starfall Peak, north-west of Frostpeak. The stars over it are going out. One. By. One. I'd go look, but I'm afraid of heights. And stars.` : `${d.caught} of ${d.total} species caught. Night brings different Echoes. So does water, and fishing. Go! Be curious! Bring me data!`;
+    const tips = G.flag('champion') ? `Champion ${P()}, strange news from Starfall Peak, north-west of Frostpeak. The stars above it are going out, one by one. Would you go and see?` : `${d.caught} of ${d.total} species caught. Different Echoes come out at night, and more live in the water. Stay curious!`;
     await S.say(tips, HALE);
     if (G.flag('champion') && !G.save.quests.post1) S.quest('post1', 'start');
   };
@@ -226,15 +231,22 @@
     const w = S.w;
     await S.approach('r1w', 'wren', { prefer: ['up', 'left', 'right'] });
     await S.emote('r1w', '!');
-    await S.say(`Wait wait wait. Before you sprint into the grass like a gremlin, tutorial time. I've been rehearsing.`, WREN());
-    await S.say('See the wild Echoes wandering around? Bump into one to battle. Weaken it, then throw an Orb. Sleepy or paralyzed ones are way easier to catch.', WREN());
-    await S.say('And if one\'s WAY weaker than your lead and you already have it? Just walk through it. Sweep. Don\'t waste your life.', WREN());
+    await S.say(`${P()}, wait up! The Professor asked me to give you these.`, WREN());
     await S.give('orb', 5);
-    await S.say(`Your Echodex tracks what lives in every area. "Encounters" in the menu. Okay. Tutorial over. Race to Fernwick. Loser buys Sun Berries. GO!`, WREN());
+    if (G.tutorial.on()) {
+      await S.say(`Orbs are for catching wild Echoes. Have you caught one before? Let's try it together. Look, there's a Nibbit in the grass!`, WREN());
+      await G.tutorial.show('wild');
+      await S.say(`Weaken it with a move first, then throw an Orb from your Bag. I'll watch!`, WREN());
+      await G.startWild(null, { species: 'nibbit', lvl: 2, noRandom: true });
+      const got = G.party.allMons().some(m => m.sp === 'nibbit');
+      await S.say(got ? `You caught it! Your very first catch. That's how it's done!` : `It got away? Don't worry. There are plenty more in the grass. Try again as you go!`, WREN());
+      if (!got) G.bag.add('orb', 2);
+    }
+    await S.say(`Now, I'll race you to Fernwick! Loser buys the Sun Berries. Go!`, WREN());
     await S.fadeOut(10); S.remove('r1w'); await S.fadeIn(10);
     S.set('route1_tut');
     // a real race: the clock only runs while you're walking the route (battles pause it)
-    await S.say('{k}RACE! Reach Fernwick before the timer runs out. Hold Shift to run. Battles pause the clock!{w}');
+    await S.say('{k}RACE! Reach Fernwick, to the north, before the timer runs out. Hold Shift to run. Battles pause the clock.{w}');
     G.setVar('raceLeft', 60 * 22); S.set('race_active');
     G.audio && G.audio.sfx('exclaim');
   };
@@ -244,95 +256,96 @@
     await S.approach('rw', 'wren', { prefer: ['up', 'left', 'right'] });
     if (won) {
       await S.emote('rw', '!');
-      await S.say(`Huff... huff... HOW. I took a shortcut! Through a HEDGE! I have leaves in places!`, WREN());
-      await S.say('Fine. A deal\'s a deal. Sun Berries. Give one to your partner to hold; it eats it when it\'s hurting. Unlike me, who is hurting and has nothing.', WREN());
+      await S.say(`Huff... huff... How are you so fast? I even took a shortcut through a hedge!`, WREN());
+      await S.say('A deal\'s a deal. Here are your Sun Berries. Give one to an Echo to hold, and it will eat it when it\'s badly hurt.', WREN());
       await S.give('sunberry', 2);
       G.save.stats.raceWins = (G.save.stats.raceWins || 0) + 1;
     } else {
-      await S.say(`TOO SLOW! Undefeated! Well. One win, one loss. The narrative is complicated. You owe me Sun Berries.`, WREN());
+      await S.say(`Beat you! That makes us even, I think. You owe me Sun Berries!`, WREN());
     }
-    await S.say('Gym\'s at the top of town. Juniper looks gentle. She is not gentle. See you in there!', WREN());
+    await S.say('The gym is at the top of town. Juniper looks gentle, but they say she\'s tough. See you in there!', WREN());
     await S.fadeOut(10); S.remove('rw'); await S.fadeIn(10);
   };
   SC.hollis = async (S) => {
     S.facePlayer('hollis');
     if (!G.flag('lostcub_active')) {
-      await S.say('A young Tamer! Could you help an old farmer? My Snoozle wandered off again. It naps in tall grass up north on Route 1. Follows its nose. Its nose is an idiot.', 'Farmer Hollis');
+      await S.say('A young Tamer! Could you help an old farmer? My Snoozle has wandered off again. It likes to nap in the tall grass to the north, near the pond.', 'Farmer Hollis');
       S.set('lostcub_active'); S.quest('side_lostcub', 'find'); S.w.spawnEnts(); return;
     }
-    if (!G.flag('lostcub_found')) { await S.say('Any sign of Snoozle? Big, fluffy, snoring like a tractor. You can\'t miss it. People do, somehow.', 'Farmer Hollis'); return; }
+    if (!G.flag('lostcub_found')) { await S.say('Any sign of Snoozle? Big and fluffy, and it snores. Try the tall grass north of the pond.', 'Farmer Hollis'); return; }
     if (!G.flag('lostcub_done')) {
-      await S.say('SNOOZLE! You found it! It followed the berries again, didn\'t it. Of course it did.', 'Farmer Hollis');
-      await S.say('Take this Soothe Bell. An Echo holding it bonds with you faster. Snoozle used to wear it. Snoozle ate the ribbon.', 'Farmer Hollis');
+      await S.say('Snoozle! You found it! It went after the wild berries again, didn\'t it?', 'Farmer Hollis');
+      await S.say('Please, take this Soothe Bell. An Echo that holds it grows close to you faster.', 'Farmer Hollis');
       await S.give('soothebell');
-      await S.say('And... Snoozle\'s little brother has been staring at you this whole time. I think he\'s decided you\'re his person. Would you take him?', 'Farmer Hollis');
+      await S.say('And... Snoozle\'s little brother hasn\'t taken his eyes off you. I think he\'d like to travel with you. Would you take him along?', 'Farmer Hollis');
       if (await G.yesno('Take the young Snoozle?')) await S.giveMon('snoozle', 8, { text: 'The little Snoozle yawned, climbed into an Orb, and was asleep before it closed.', bond: 140 });
-      else await S.say('No worries. He\'ll wait. He\'s very good at waiting. It\'s mostly napping.', 'Farmer Hollis');
+      else await S.say('That\'s all right. He\'ll be here if you change your mind.', 'Farmer Hollis');
       S.set('lostcub_done'); S.quest('side_lostcub', 'done'); S.w.spawnEnts(); return;
     }
     if (!G.flag('lostcub_gift') && !G.party.hasSpecies('snoozle')) { if (await G.yesno('Snoozle\'s little brother still wants to come with you. Take him?')) { await S.giveMon('snoozle', 10, { bond: 140 }); S.set('lostcub_gift'); } return; }
-    await S.say('Snoozle sleeps sixteen hours a day. I\'m not jealous. I\'m extremely jealous.', 'Farmer Hollis');
+    await S.say('Snoozle sleeps sixteen hours a day. Some days I envy it.', 'Farmer Hollis');
   };
   SC.lostcub_found = async (S) => {
-    await S.say('A huge, fluffy Snoozle is snoring in the grass. It smells like berries and bad decisions.');
+    await S.say('A big, fluffy Snoozle is fast asleep in the grass, with berry juice on its paws.');
     G.audio && G.audio.cry('snoozle');
     await S.emote('snoozle_lost', 'zzz', 40);
-    await S.say('Snoozle wakes up, sniffs you, smells Hollis\'s farm... and waddles off toward home at a very dignified speed.');
+    await S.say('Snoozle wakes, sniffs at you, catches the scent of Hollis\'s farm on the breeze... and waddles off home.');
     S.remove('snoozle_lost'); S.set('lostcub_found'); S.quest('side_lostcub', 'return');
   };
   G.QUESTS.side_lostcub.steps = { find: G.QUESTS.side_lostcub.desc, return: 'Snoozle headed home. Go see Farmer Hollis at his farmhouse on Route 1.' };
   SC.gate_guard = async (S) => {
     S.facePlayer('gateguard');
     const b = G.save.badges.length;
-    if (b < 6) { await S.say(`Victory Road. Six Warden badges or no entry. You have ${b}. I don't make the rules. I just enjoy them.`, 'Guard'); return; }
-    if (!G.flag('tidelight_done')) { await S.say('Six badges. Nice. But the Lodestar has gone dark, and the Conclave sealed the road until it shines again. Very dramatic. Not my call.', 'Guard'); return; }
-    await S.say('The Lodestar\'s burning again, and everybody knows who lit it. Road\'s open. Go get famous.', 'Guard');
+    if (b < 6) { await S.say(`Beyond this gate lies Victory Road. Only Tamers with all six Warden badges may pass. You have ${b}.`, 'Guard'); return; }
+    if (!G.flag('tidelight_done')) { await S.say('Six badges. Well done. But the Lodestar has gone dark, and the Conclave has closed the road until its light returns.', 'Guard'); return; }
+    await S.say('The Lodestar shines again, and all of Solmere knows who relit it. The road is open. Good luck, Tamer.', 'Guard');
     await S.move('gateguard', 'l', 1); S.face('gateguard', 'right');
     S.set('vr_open');
   };
   // ------------------------------------------------------------- FERNWICK
   SC.fern_guard = async (S) => {
-    await S.say('Hold it! Rangers saw people in gray coats sneaking around Whisperwood. Nobody goes east without a Warden\'s badge. Juniper\'s orders. She was very polite about it. It was terrifying.', 'Ranger');
+    await S.say('Hold on! Rangers have seen people in grey coats sneaking around Whisperwood. Warden Juniper has asked that nobody go east without her badge.', 'Ranger');
     await pushBack(S, 'right');
   };
   SC.fern_guard_talk = async (S) => { S.facePlayer('fw_guard'); await S.say('Earn Juniper\'s badge and the road east is yours.', 'Ranger'); };
   SC.florist_bea = async (S) => {
     S.facePlayer('fw_bea');
     if (!G.save.quests.side_petals) {
-      await S.say('Headed to Galvan Harbor? My sister Rhoda lives there. Tell her the birthday bouquet is coming by boat. She thinks I forgot. I DID forget. It\'s coming now.', 'Florist Bea');
-      await S.say('Here, something for the road. It\'s a seed. Think of it as a flower with potential.', 'Florist Bea');
+      await S.say('Are you heading to Galvan Harbor? My sister Rhoda lives there. Would you tell her that her birthday bouquet is on its way by boat?', 'Florist Bea');
+      await S.say('Here, a little something for the road.', 'Florist Bea');
       await S.give('oranberry', 2); S.quest('side_petals', 'go'); S.set('bouquet'); return;
     }
-    if (G.save.quests.side_petals.step === 'done') { await S.say('Rhoda wrote! She loved the bouquet and does not know I forgot. We take this to the grave.', 'Florist Bea'); return; }
-    await S.say('Rhoda lives in the south-east corner of Galvan Harbor. Bouquet. Boat. You\'ve got it.', 'Florist Bea');
+    if (G.save.quests.side_petals.step === 'done') { await S.say('Rhoda wrote to me! She loved the bouquet. Thank you for passing on the message.', 'Florist Bea'); return; }
+    await S.say('Rhoda lives in the south-east corner of Galvan Harbor. Thank you for doing this!', 'Florist Bea');
   };
   SC.dowsing_man = async (S) => {
     S.facePlayer('fw_dowse');
-    if (!G.bag.has('dowsing')) { await S.say('Treasure! Buried everywhere! Take my spare Dowsing Rod. Use it from the Bag and it\'ll sniff out hidden items. I\'ve found eleven coins and one tooth. Not mine.', 'Treasure Hunter'); await S.give('dowsing'); return; }
-    await S.say('Dead ends. Behind trees. The corner nobody checks. That\'s where the good stuff lives. Also, the tooth.', 'Treasure Hunter');
+    if (!G.bag.has('dowsing')) { await S.say('There\'s treasure buried all over Solmere! Take my spare Dowsing Rod. Use it from the Bag and it will point you to hidden items nearby.', 'Treasure Hunter'); await S.give('dowsing'); return; }
+    await S.say('Dead ends, the backs of trees, the corners nobody bothers to check. That\'s where the best finds are.', 'Treasure Hunter');
   };
   SC.nickname_rater = async (S) => {
     S.facePlayer('fh2');
     const m = G.party.lead(); if (!m) return;
-    await S.say(`Ah, ${G.mon.name(m)}! ${m.nick ? 'Now THAT is a name. It has weight. It has flavor. Ten out of ten.' : 'No nickname?! Give it one from the Party menu. Echoes deserve names. I named my kettle.'}`, 'Name Enthusiast');
+    await S.say(`Ah, ${G.mon.name(m)}! ${m.nick ? 'What a fine name. You can tell it was chosen with care.' : 'No nickname yet? You can give it one from the Party menu. A name makes a partner feel like family.'}`, 'Name Enthusiast');
   };
   SC.gym_guide = async (S, ctx) => {
     const id = S.w.map.id;
     const info = {
-      fernwick_gym: ['Grass', 'Fire, Flying, Bug, Poison and Ice all wilt grass. Watch out for Leech Seed. It\'s rude and it adds up.'],
-      galvan_gym: ['Electric', 'Ground types don\'t even notice Electric moves. Step on the glowing pads to drop the barriers.'],
-      cinder_gym: ['Fire', 'Water, Ground and Rock put the fire out. Brann\'s ace Resonates, so save something strong for the end.'],
-      dusk_gym: ['Ghost', 'Dark and Ghost moves haunt ghosts right back. Normal and Fighting moves go straight through them. Awkward.'],
-      frost_gym: ['Ice', 'Slide carefully. Fire, Fighting, Rock and Steel shatter ice. Sigrid fights in snow, which makes Ice types tougher.'],
-      sky_gym: ['Dragon', 'Ice, Dragon and Fairy are how you handle dragons. Kaelen\'s Tempestral is the real deal. Bring a plan. Bring two.'],
+      fernwick_gym: ['Grass', 'Fire, Flying, Bug, Poison and Ice moves are strong against Grass. Watch out for Leech Seed: it drains a little health every turn.'],
+      galvan_gym: ['Electric', 'Ground types are immune to Electric moves. Step on the glowing pads to lower the barriers.'],
+      cinder_gym: ['Fire', 'Water, Ground and Rock moves put out the fire. Brann\'s last Echo can Resonate, so save something strong for the end.'],
+      dusk_gym: ['Ghost', 'Dark and Ghost moves are strong against Ghosts. Normal and Fighting moves pass straight through them.'],
+      frost_gym: ['Ice', 'Mind the slippery floor. Fire, Fighting, Rock and Steel moves shatter ice. Sigrid battles in the snow, which makes her Ice types tougher.'],
+      sky_gym: ['Dragon', 'Ice, Dragon and Fairy moves are strong against Dragons. Kaelen\'s Tempestral is a formidable Echo. Come prepared.'],
     }[id] || ['?', 'Good luck!'];
-    await S.say(`Hey, future champ! This gym runs ${info[0]} types. ${info[1]}`, 'Gym Guide');
-    if (id === 'dusk_gym' && !G.bag.has('lantern')) { await S.say('It\'s pitch black in there. Take this Lantern. Mireille says the dark "builds character." It builds bruises.', 'Gym Guide'); await S.give('lantern'); }
-    if (!G.bag.has('ether') && G.chance(.5)) { await S.say('Here, on the house. Don\'t tell my manager. I am the manager.', 'Gym Guide'); await S.give('superpotion', 2); }
+    await S.say(`Hello there, challenger! This gym's Warden uses ${info[0]}-type Echoes. ${info[1]}`, 'Gym Guide');
+    if (id === 'dusk_gym' && !G.bag.has('lantern')) { await S.say('It\'s pitch black in there. Take this Lantern, so you can see where you\'re going.', 'Gym Guide'); await S.give('lantern'); }
+    if (!G.bag.has('ether') && G.chance(.5)) { await S.say('And here, take these. Good luck in there!', 'Gym Guide'); await S.give('superpotion', 2); }
   };
   const wardenWin = async (S, o) => {
     await S.badge(o.badge);
     S.set(o.flag);
+    G.tutorial.queue('badge');
     if (o.tm) { await S.say(o.tmText, o.name); await S.give(o.tm); }
     if (o.extra) await o.extra();
     for (const t of o.gymTrainers || []) G.save.trainers[t] = G.save.trainers[t] || { badges: G.save.badges.length };
@@ -341,68 +354,68 @@
   SC.juniper = async (S) => {
     const N = 'Warden Juniper';
     S.facePlayer('juniper_npc');
-    if (G.flag('badge1')) { await S.say('The flowers bloomed brighter after our battle. I\'m choosing to take that personally. Whisperwood is east, past Route 2. Be careful, sweet pea.', N); return; }
+    if (G.flag('badge1')) { await S.say('The flowers seem brighter since our battle. Whisperwood is east, past Route 2. Do be careful, dear.', N); return; }
     if (G.bag.has('parcel') && !G.flag('parcel_given')) {
-      await S.say('Oh! Mail? From Marisol! Her handwriting is still a crime scene.', N);
+      await S.say('Oh! Notes from Marisol? How lovely. Thank you for bringing them all this way.', N);
       G.bag.remove('parcel'); S.set('parcel_given');
-      await S.say('"Bond strength correlates with growth, recovery, and courage." Lovely. There\'s also a coffee ring shaped like a heart. Also lovely.', N);
-      await S.say('But you didn\'t walk all this way to be a mail carrier, did you? You want a badge. I can see it. It\'s all over your face.', N);
+      await S.say('"The stronger the bond, the faster an Echo grows, heals and finds its courage." She always did put it beautifully.', N);
+      await S.say('But you didn\'t come all this way just to deliver a letter, did you? I can see it in your eyes. You want a badge.', N);
     }
-    await S.say('I\'m Juniper, Warden of Fernwick. People think gardening is gentle. Gardening is ripping out everything that isn\'t winning.', N);
+    await S.say('I\'m Juniper, Warden of Fernwick. People think a gardener must be gentle. But a garden only thrives if you are patient, and stubborn, and you never give up.', N);
     await S.say('Show me what you\'ve been growing, dear.', N);
     const won = await G.storyBattle('juniper');
     if (!won) return;
-    await S.say('...Oh, I haven\'t lost in a while. It feels awful. Here! The Bloom Badge! I\'m fine!', N);
-    await wardenWin(S, { badge: 'bloom', flag: 'badge1', name: N, tm: 'tm19', tmText: 'And TM19: Giga Drain. Drain their HP, heal your own. Very efficient. Very me.', gymTrainers: ['fg_1', 'fg_2'] });
-    await S.say('A favor, since you\'re so capable. Gray-coated strangers are poking at the Heartroot Shrine deep in Whisperwood, east on Route 2. Go see what they want. I\'ll tell the guard you\'re allowed. I\'ll tell them nicely.', N);
+    await S.say('...My, my. It has been a long time since I lost. You have earned this: the Bloom Badge.', N);
+    await wardenWin(S, { badge: 'bloom', flag: 'badge1', name: N, tm: 'tm19', tmText: 'And this is TM19, Giga Drain. It drains the foe\'s health to restore your own.', gymTrainers: ['fg_1', 'fg_2'] });
+    await S.say('May I ask a favour? Strangers in grey coats have been seen at the Heartroot Shrine, deep in Whisperwood, east along Route 2. Would you find out what they want? I\'ll let the guard know you may pass.', N);
     S.quest('main1', 'done'); S.quest('main2', 'go');
   };
   // ------------------------------------------------------------- ROUTE 2
   SC.berry_lady = async (S) => {
     S.facePlayer('r2_berry');
     const day = Math.floor(G.save.playtime / 2880);
-    if (G.getVar('berryday', -1) === day) { await S.say('The bushes need a day to grow back. Plants have boundaries. (A day here is about 48 minutes.)', 'Berry Farmer'); return; }
+    if (G.getVar('berryday', -1) === day) { await S.say('The bushes need a day to grow back. Come again tomorrow! (A day here is about 48 minutes.)', 'Berry Farmer'); return; }
     G.setVar('berryday', day);
     const b = G.pick(['oranberry', 'sunberry', 'cheriberry', 'chestoberry', 'pechaberry', 'rawstberry', 'lumenberry', 'leppaberry']);
-    await S.say('The bushes are heavy today! Take some before the Nibbits find out.', 'Berry Farmer');
+    await S.say('The bushes are heavy with fruit today! Please, take some.', 'Berry Farmer');
     await S.give(b, 2);
   };
   // ------------------------------------------------------------- WHISPERWOOD
   SC.wood_grunts = async (S) => {
     if (G.flag('wood_done')) return;
     const g1 = S.npc('ww_g1'), g2 = S.npc('ww_g2');
-    await S.say('"Pry it LOOSE." "I AM prying! The roots are holding on! Is that normal?! Are roots allowed to do that?!"');
+    await S.say('"Get it loose!" "I\'m trying! The roots won\'t let go. It\'s like they\'re holding on to it!"');
     G.audio && G.audio.music('encounter_villain');
     if (g1) g1.dir = 'down'; if (g2) g2.dir = 'down';
     await S.emote('ww_g1', '!', 30);
-    await S.say('Uh. A kid. Okay. Official Hollow business. Nothing to see. Please leave. Please?', 'Hollow Grunt');
+    await S.say('Who are you? This is Hollow business. Turn around and forget you saw us.', 'Hollow Grunt');
     let won = await G.storyBattle('ww_grunt1'); if (!won) return;
-    await S.say('Seriously?! Okay, my turn. I have a MUCH scarier Echo. It\'s the same Echo. I\'m just more confident.', 'Hollow Grunt');
+    await S.say('You beat him? Then you\'ll deal with me!', 'Hollow Grunt');
     won = await G.storyBattle('ww_grunt2'); if (!won) return;
-    await S.say('Tch! We already chipped off a shard anyway. The Director will be... fine with that. Probably. Run!', 'Hollow Grunt');
+    await S.say('Tch! Doesn\'t matter. We already broke off a shard. The Director will have to make do. Let\'s go!', 'Hollow Grunt');
     await Promise.all([S.move('ww_g1', 'uu', 2), S.move('ww_g2', 'uu', 2)]); await S.fadeOut(8);
     S.remove('ww_g1'); S.remove('ww_g2'); await S.fadeIn(8);
     S.restoreMusic();
-    await S.say(`You're not hurt? Good. I'm Ash, Whisperwood Ranger. They jumped me at the shrine. Two of them. I'm counting it as a draw.`, 'Ranger Ash');
-    await S.say('Gray coats, visors, and every gadget stamped with a Crane Dynamics logo. Here: a Trail Knife. Clears the thin saplings blocking paths around Solmere.', 'Ranger Ash');
+    await S.say(`You're not hurt? Good. I'm Ash, the Whisperwood Ranger. They caught me off guard at the shrine. Thank you for stepping in.`, 'Ranger Ash');
+    await S.say('Grey coats, and every tool they carried was stamped with the mark of Crane Dynamics. Here, take this Trail Knife. It clears the thin saplings that block paths around Solmere.', 'Ranger Ash');
     await S.give('trailknife');
     await S.say(`"${P()}! ${P()}!"`);
     await S.approach('wwhale', 'hale', { prefer: ['up', 'left', 'right', 'down'] });
-    await S.say(`You're okay! Juniper called. I ran here. I do not run. My body is filing a complaint.`, HALE);
-    await S.say('Look at the Heartroot. It\'s a Resonance crystal. It was pulsing in time with your team the whole battle. That\'s... that\'s not a small thing, you know.', HALE);
+    await S.say(`You're all right! Juniper sent word, and I came as fast as I could.`, HALE);
+    await S.say('Look at the Heartroot. It\'s a Resonance crystal, and it was pulsing in time with your team through the whole battle. That doesn\'t happen for just anyone.', HALE);
     await S.say('I think you\'re ready for this. A Resonance Band.', HALE);
     await S.give('resonanceband');
-    await S.say('Once per battle, an Echo that trusts you can {c}Resonate{w}. Its main type hits ridiculously hard, and a Resonant Shield softens the first super-effective hit.\\pIn battle, open FIGHT and press R. Save it for the moment that matters.', HALE);
-    await S.say('And an EXP Share, so your whole team grows together. Even the ones napping in the back.', HALE);
+    await S.say('Once per battle, an Echo that trusts you can {c}Resonate{w}. Moves of its main type hit far harder, and a Resonant Shield softens the first super-effective hit it takes.\\pIn battle, open FIGHT and press R. Save it for the moment that matters.', HALE);
+    await S.say('And this EXP Share, so your whole team grows stronger together, even the Echoes that don\'t battle.', HALE);
     await S.give('expshare');
-    await S.say('Crane Dynamics gear on the Hollow... Galvan Harbor is north. Warden Ione might know something. And if anyone offers you a "free trial" of anything? Run.', HALE);
+    await S.say('Crane Dynamics tools in the hands of the Hollow... I don\'t like it. Galvan Harbor is to the north. Warden Ione may know something.', HALE);
     await S.fadeOut(10); S.remove('wwhale'); await S.fadeIn(10);
     S.set('wood_done'); S.quest('main2', 'done'); S.quest('main3', 'go');
     G.persist.write();
   };
   SC.ranger_ash = async (S) => {
     S.facePlayer('ww_ash');
-    await S.say(G.flag('wood_done') ? 'The Heartroot is healing. I can hear it humming. Galvan Harbor is north through the trees.' : 'The shrine! The gray coats are at the shrine!', 'Ranger Ash');
+    await S.say(G.flag('wood_done') ? 'The Heartroot is healing. I can hear it humming. Galvan Harbor is north, through the trees.' : 'The shrine! The grey coats are at the shrine!', 'Ranger Ash');
   };
   // ------------------------------------------------------------- GALVAN
   SC.crane_speech = async (S) => {
@@ -412,106 +425,106 @@
     const wr = S.spawn({ id: 'gv_wren', x: 20, y: 11, look: 'wren', dir: 'right' });
     const c1 = S.spawn({ id: 'gv_c1', x: 24, y: 11, look: 'worker', dir: 'left' });
     const c2 = S.spawn({ id: 'gv_c2', x: 21, y: 12, look: 'woman', dir: 'up' });
-    await S.say('A crowd has packed the fountain square. Phones up. A woman in a white coat steps onto the fountain\'s edge like she owns it. She does.');
+    await S.say('A crowd has filled the fountain square. A woman in a white coat steps up onto the fountain\'s edge, and the square falls quiet.');
     crane.dir = 'down';
     const N = 'Director Crane';
-    await S.say('Hi, Galvan. For twelve years Crane Dynamics has kept your lights on. Today I want to keep something else on.', N);
-    await S.say('Your bond. The thing between you and your Echo. It\'s the realest thing any of us have. And you\'ve never once been able to see it.', N);
-    await S.say('Chorus changes that. One band. Your Resonance, measured, live. Your score. Your streak. The leaderboard. And for the top of it... Boosts.', N);
-    await S.say('Join the Crane Fellowship, and be seen. Everyone deserves to be seen.', N);
-    await S.say('The crowd goes wild. A kid faints. Director Crane isn\'t watching them, though. She\'s watching the middle of the Mere.');
+    await S.say('People of Galvan. For twelve years, Crane Dynamics has kept the lights of this harbour burning. Today, I want to offer you something more.', N);
+    await S.say('Your bond with your Echo is the truest thing you have. And yet you have never been able to see it, or to know how strong it truly is.', N);
+    await S.say('The Chorus band changes that. It measures your Resonance, and with its Amplifier, it makes that bond stronger than time alone ever could.', N);
+    await S.say('Join the Crane Fellowship, and become the Tamer you were always meant to be.', N);
+    await S.say('The crowd erupts in applause. But Director Crane isn\'t looking at them. Her eyes are on the far middle of the Mere.');
     await S.move('gv_crane', 'ddd', 1); S.remove('gv_crane');
     S.remove('gv_c1'); S.remove('gv_c2');
     S.remove('gv_wren'); await S.approach('gv_wren', 'wren');
-    await S.say(`${P()}. ${P()}. Did you HEAR that?! A LEADERBOARD. For BONDS. My whole life has been building to this sentence.`, WREN());
-    const k = await choose(`${R()} is vibrating slightly.`, ['Just be careful, okay?', 'Race you to the top of it.', 'You said "free trial" wrong.'], WREN());
-    await S.say([`Careful is for people who aren't about to be famous. ...I'll be careful. Ish.`, `Oh, it's ON. First place gets bragging rights. Second place gets content.`, `I didn't say "free trial." ...Why is your face like that. What do you know.`][k], WREN());
-    await S.say('Ione\'s gym first. Then I\'m signing up. Sable will HAVE to notice me when my score is on a screen.', WREN());
+    await S.say(`${P()}! Did you hear that? The Fellowship! Fellows are the best Tamers in Solmere. Everyone knows their names.`, WREN());
+    const k = await choose(`${R()}'s eyes are shining.`, ['Just be careful, all right?', 'I\'ll race you to the top.', 'Forcing a bond seems wrong.'], WREN());
+    await S.say([`Careful? It's a band, not a dragon. ...But all right. I'll be careful.`, `You're on! Whoever ranks higher buys dinner.`, `It's not forcing, it's... helping. That's all. Right?`][k], WREN());
+    await S.say('Ione\'s gym first. Then I\'m joining. If I become a Fellow, Sable will have to notice me.', WREN());
     await S.fadeOut(10); S.remove('gv_wren'); await S.fadeIn(10);
     S.restoreMusic(); S.set('crane_speech');
   };
   SC.ione = async (S) => {
     const N = 'Warden Ione';
     S.facePlayer('ione_npc');
-    if (G.flag('badge2')) { await S.say('Keep the current flowing! Route 3 is east. Glimmer Cave goes through to Cindervale. Bring snacks. The cave is long and the acoustics are incredible.', N); return; }
-    await S.say('WELCOME to the Galvan Gym, where the voltage is high and the bass is HIGHER!', N);
-    await S.say('I\'m Ione. Days, I keep the city grid alive. Nights, I DJ at the docks. Right now? I\'m about to drop the beat. On you.', N);
+    if (G.flag('badge2')) { await S.say('Route 3 is to the east. Glimmer Cave runs beneath the cliffs to Cindervale. It\'s a long cave, so stock up first.', N); return; }
+    await S.say('Welcome to the Galvan Gym!', N);
+    await S.say('I\'m Ione. I keep the harbour\'s lights burning, every lamp and every beacon. Let\'s see if you can keep up with the current!', N);
     const won = await G.storyBattle('ione'); if (!won) return;
-    await S.say('Okay! OKAY! You didn\'t just keep up, you remixed me. Current Badge. It\'s yours. Wear it loud.', N);
-    await wardenWin(S, { badge: 'current', flag: 'badge2', name: N, tm: 'tm34', tmText: 'TM34: Volt Dash. Hit hard, switch out, leave them confused. The perfect transition.', gymTrainers: ['gg_1', 'gg_2', 'gg_3'] });
-    await S.say('Real talk? Crane Dynamics sponsors my gym. But those Fellowship kids... glassy eyes, Echoes wired way too tight. Something\'s off in the mix.', N);
-    await S.say('East along Route 3. Glimmer Cave leads to Cindervale. Stay loud.', N);
+    await S.say('Well done! You didn\'t just keep up, you outpaced me. The Current Badge is yours.', N);
+    await wardenWin(S, { badge: 'current', flag: 'badge2', name: N, tm: 'tm34', tmText: 'And TM34, Volt Dash. Strike, then switch out in the same move.', gymTrainers: ['gg_1', 'gg_2', 'gg_3'] });
+    await S.say('Can I be honest with you? Crane Dynamics built half the machines in this city. But those new Fellows... their Echoes look strained, like they\'re being pushed too hard. Something isn\'t right.', N);
+    await S.say('Head east along Route 3. Glimmer Cave will take you through to Cindervale. Good luck.', N);
     S.quest('main3', 'done'); S.quest('main4', 'go');
   };
   SC.bike_shop = async (S) => {
     S.facePlayer('bikeguy');
-    if (G.bag.has('bike')) { await S.say('How\'s the bike? F to hop on and off. Tell people where you got it. Tell them LOUDLY.', 'Spoke'); return; }
-    if (!G.flag('badge2')) { await S.say('I only give my prototype bikes to Tamers with two badges. Free advertising. If you\'re cool. Are you cool? Two badges and we\'ll know.', 'Spoke'); return; }
-    await S.say('TWO badges. You\'re exactly my demographic. Folding bike, free. Just ride it past as many people as possible.', 'Spoke');
+    if (G.bag.has('bike')) { await S.say('How\'s the bike treating you? Press F to hop on and off.', 'Spoke'); return; }
+    if (!G.flag('badge2')) { await S.say('I build folding bikes, and I give my best one to any Tamer with two badges. Come back when you\'ve earned them!', 'Spoke'); return; }
+    await S.say('Two badges! Then this folding bike is yours, as promised. It\'s the finest I\'ve ever made.', 'Spoke');
     await S.give('bike', 1, { note: 'Press F to hop on or off. You can also register it in the Bag.' });
     S.set('got_bike');
   };
   SC.old_salt_marv = async (S) => {
     S.facePlayer('gv_marv');
     const N = 'Old Salt Marv';
-    if (!G.bag.has('rod')) { await S.say('Ahoy, youngster. You fish? You do now. Take my old rod. Face the water, press Z, reel when the "!" shows.', N); await S.give('rod'); }
+    if (!G.bag.has('rod')) { await S.say('Ahoy there, youngster. Ever tried fishing? Take my old rod. Face the water, press Z, and reel in when the "!" appears.', N); await S.give('rod'); }
     const q = G.save.quests.side_fish;
-    if (q && q.step === 'done') { await S.say('I dream about your Riptalon. They\'re good dreams. Mostly screaming. Good screaming.', N); return; }
+    if (q && q.step === 'done') { await S.say('I still think about your Riptalon. Fifty years I waited to see one. Thank you, youngster.', N); return; }
     if (G.save.party.some(m => m.sp === 'riptalon')) {
-      await S.say('Is that... a RIPTALON?! From a FLOPFIN?! FIFTY YEARS! FIFTY YEARS THEY LAUGHED AT ME!', N);
-      await S.say('Take my Pro Rod. You earned it. You earned it for both of us. It hooks rarer Echoes in deep water.', N);
+      await S.say('Is that... a Riptalon? Raised from a Flopfin? Fifty years they laughed at me, and I was right all along!', N);
+      await S.say('Take my Pro Rod. You\'ve earned it. It hooks rarer Echoes in deep water.', N);
       await S.give('prorod'); S.quest('side_fish', 'done'); return;
     }
     if (!q) S.quest('side_fish', 'go');
-    await S.say('Everyone laughs at Flopfin. Flops, flops, flops. But I KNOW it becomes something terrifying. Show me a Riptalon and my Pro Rod is yours.', N);
+    await S.say('Everyone laughs at Flopfin. But I know that, with patience, it becomes something magnificent. Show me a Riptalon, and my Pro Rod is yours.', N);
   };
   SC.rhoda = async (S) => {
     S.facePlayer('gv_rhoda');
     if (G.flag('bouquet') && G.save.quests.side_petals && G.save.quests.side_petals.step !== 'done') {
-      await S.say('A bouquet? By BOAT? From Bea? She remembered! ...She forgot, didn\'t she. It\'s fine. It\'s very Bea.', 'Rhoda');
-      await S.say('Take this. Bea grew it years ago. It powers up Grass moves. She\'ll never know it was regifted.', 'Rhoda');
+      await S.say('A bouquet, coming by boat? From Bea? She remembered my birthday!', 'Rhoda');
+      await S.say('Thank you for bringing the news. Please, take this. It powers up Grass moves.', 'Rhoda');
       await S.give('miracleseed'); S.quest('side_petals', 'done'); return;
     }
-    await S.say('The harbor\'s nice. The air smells like diesel and ambition. I miss Fernwick\'s flowers.', 'Rhoda');
+    await S.say('I like the harbour, but I do miss Fernwick\'s flowers.', 'Rhoda');
   };
   SC.vsrecorder_npc = async (S) => {
     S.facePlayer('gv_vsr');
-    if (!G.bag.has('vsrecorder') && G.flag('badge2')) { await S.say('You look like someone who enjoys a rematch. This Vs. Recorder lets trainers you\'ve beaten challenge you again after each new badge. Revenge, organized.', 'Officer Jenna'); await S.give('vsrecorder'); return; }
-    await S.say(G.bag.has('vsrecorder') ? 'Beaten trainers want rematches after each new badge. Just talk to them again. They\'ve been practicing. Out of spite.' : 'Come back with Ione\'s badge. I\'ve got something for you. It\'s not a ticket. Probably.', 'Officer Jenna');
+    if (!G.bag.has('vsrecorder') && G.flag('badge2')) { await S.say('You look like someone who enjoys a rematch. With this Vs. Recorder, trainers you\'ve beaten can challenge you again after each new badge.', 'Officer Jenna'); await S.give('vsrecorder'); return; }
+    await S.say(G.bag.has('vsrecorder') ? 'After each new badge, trainers you\'ve beaten will want a rematch. Just talk to them again.' : 'Come back once you have Ione\'s badge. I\'ll have something for you.', 'Officer Jenna');
   };
   SC.ev_trainer = async (S) => {
     S.facePlayer('gh1');
     const N = 'Stat Scholar';
-    await S.say('Effort Values! Every Echo you beat trains your team a little. Like the gym, but you never have to go. I can show you them, or wipe them. For a fee.', N);
+    await S.say('Every Echo you defeat trains your team a little, in its own way. These are Effort Values. I can show you them, or clear them for a fee.', N);
     const k = await G.ask('What would you like?', ['Check lead Echo', 'Reset EVs ($2,000)', 'Nothing'], { speaker: N });
     const m = G.party.lead();
     if (k === 0 && m) await S.say(`${G.mon.name(m)}: ${G.STATS.map(s => G.STAT_SHORT[s] + ' ' + m.evs[s]).join(', ')}. Total ${G.mon.totalEVs(m)}/510.`, N);
     if (k === 1) {
       const i = await G.openParty({ mode: 'select', prompt: 'Reset whose EVs?' }); if (i === null || i < 0) return;
-      if (G.save.money < 2000) { await S.say('You can\'t afford a fresh start. Relatable.', N); return; }
-      G.save.money -= 2000; for (const s of G.STATS) G.save.party[i].evs[s] = 0; await S.say('Done! A clean slate. Like it never went to the gym at all.', N);
+      if (G.save.money < 2000) { await S.say('I\'m afraid you don\'t have enough money.', N); return; }
+      G.save.money -= 2000; for (const s of G.STATS) G.save.party[i].evs[s] = 0; await S.say('Done! A clean slate.', N);
     }
   };
   SC.move_tutor = async (S) => {
     S.facePlayer('gh2');
     const N = 'Move Tutor';
     const moves = ['bondstrike', 'helpinghand', 'drainpunch', 'zenstrike', 'heatwave', 'icygust', 'aerialace', 'ironhead', 'seedbomb', 'shadowclaw', 'playrough', 'earthpower'];
-    await S.say('I teach special moves. $2,000 each. No refunds. No crying. Pick an Echo and I\'ll show you what it can learn.', N);
+    await S.say('I teach special moves, for $2,000 each. Choose an Echo, and I\'ll show you what it can learn.', N);
     const i = await G.openParty({ mode: 'select', prompt: 'Teach which Echo?' }); if (i === null || i < 0) return;
     const m = G.save.party[i];
     const ok = moves.filter(mv => (mv === 'bondstrike' || mv === 'helpinghand' || G.canLearnTM(m.sp, mv) || G.SPECIES[m.sp].types.concat(G.SPECIES[m.sp].tmx || []).includes(G.MOVES[mv].type)) && !G.mon.hasMove(m, mv));
-    if (!ok.length) { await S.say(`${G.mon.name(m)} already knows everything I'd teach it. Honestly, it should be teaching me.`, N); return; }
+    if (!ok.length) { await S.say(`${G.mon.name(m)} already knows everything I could teach it.`, N); return; }
     const k = await G.choose(ok.map(mv => ({ label: G.MOVES[mv].name, right: G.cap(G.MOVES[mv].type) })).concat([{ label: 'Cancel' }]), { x: 150, y: 20, w: 150, cancel: ok.length, title: 'Teach which move?' });
     if (k < 0 || k >= ok.length) return;
-    if (G.save.money < 2000) { await S.say('You don\'t have enough money. Knowledge isn\'t free. It\'s two thousand.', N); return; }
+    if (G.save.money < 2000) { await S.say('I\'m afraid you don\'t have enough money. Each lesson is $2,000.', N); return; }
     if (await G.learnWithPrompt(m, ok[k])) G.save.money -= 2000;
   };
   const tradeFlow = async (S, id, want, give, nick, lvl, N) => {
-    if (G.flag('trade_' + id)) { await S.say(`How's ${nick}? Be honest. Do they talk about me? ...Don't answer.`, N); return; }
-    await S.say(`I'm looking for a ${G.SPECIES[want].name}. I'll trade you my ${G.SPECIES[give].name}, "${nick}." They're a lot. You'll love them.`, N);
+    if (G.flag('trade_' + id)) { await S.say(`How is ${nick} doing? I hope you two are getting along.`, N); return; }
+    await S.say(`I'm looking for a ${G.SPECIES[want].name}. Would you trade me one for my ${G.SPECIES[give].name}, ${nick}?`, N);
     if (!await G.yesno(`Trade a ${G.SPECIES[want].name} for ${nick}?`)) return;
     const i = await G.openParty({ mode: 'select', prompt: `Trade which ${G.SPECIES[want].name}?`, filter: m => m.sp === want, filterMsg: `That's not a ${G.SPECIES[want].name}.` });
-    if (i === null || i < 0) { await S.say('Aw. Maybe next time. I\'ll be here. With my feelings.', N); return; }
+    if (i === null || i < 0) { await S.say('That\'s all right. Maybe another time.', N); return; }
     const old = G.save.party[i];
     const nm = G.mon.create(give, Math.max(lvl, old.lvl), { perfectIVs: 2, ot: N.split(' ').pop(), otId: 12345, nick, met: { loc: S.w.map.name + ' (trade)', lvl } });
     nm.bond = 90; if (old.item) G.bag.add(old.item);
@@ -524,7 +537,7 @@
   SC.trade_npc_frost = S => { S.facePlayer('fh2'); return tradeFlow(S, 'frost', 'rascoon', 'shiftail', 'Fluffles', 30, 'Skier Mika'); };
   SC.crane_reception = async (S) => {
     S.facePlayer('cl_recep');
-    await S.say(G.flag('hq_done') ? 'The Director has... stepped down. The app is "under maintenance." I\'m "under maintenance." Brochure? They\'re collectors\' items now.' : 'Welcome to Crane Dynamics! The Director works out of HQ in Skyreach. Can I interest you in Chorus? Free trial! Just sync your band and agree to the terms. All of them.', 'Receptionist');
+    await S.say(G.flag('hq_done') ? 'The Director has stepped down, and the Chorus bands have all been recalled. It\'s very quiet here now.' : 'Welcome to Crane Dynamics! The Director works from our tower in Skyreach. Would you like to hear about the Chorus band and the Crane Fellowship?', 'Receptionist');
   };
   SC.dr_orla = async (S) => {
     S.facePlayer('orla');
@@ -532,14 +545,14 @@
     const f = ['clawfossil', 'wingfossil'].find(i => G.bag.has(i));
     if (f) {
       const sp = G.ITEMS[f].fossil;
-      await S.say(`A ${G.ITEMS[f].name}! Oh, oh, OH. The Revival Lab can bring it back. Give me one moment and absolutely no questions.`, N);
+      await S.say(`A ${G.ITEMS[f].name}! Wonderful. Our Revival Lab can bring it back to life. Give me just a moment.`, N);
       G.bag.remove(f); await S.fadeOut(20); G.audio && G.audio.sfx('pc_on'); await S.wait(60); await S.fadeIn(20);
-      await S.say('IT\'S ALIVE! Ahem. It worked! Here!', N);
-      await S.giveMon(sp, 25, { perfectIVs: 2, text: `The ${G.SPECIES[sp].name} blinks at the modern world, decides it's fine, and nuzzles your hand.` });
+      await S.say('It worked! Here it is!', N);
+      await S.giveMon(sp, 25, { perfectIVs: 2, text: `The ${G.SPECIES[sp].name} blinks at a world it has never seen, then nuzzles your hand.` });
       S.quest('side_fossil', 'done'); return;
     }
     if (!G.save.quests.side_fossil) S.quest('side_fossil', 'go');
-    await S.say('Dr. Orla, curator. Diggers in Glimmer Cave, east of Route 3, keep turning up fossils. Bring me one and I\'ll wake it up. Ethically! Mostly!', N);
+    await S.say('I\'m Dr. Orla, the curator. Diggers in Glimmer Cave, east of Route 3, keep finding fossils. Bring me one, and I\'ll bring it back to life.', N);
   };
   // ------------------------------------------------------------- GLIMMER CAVE
   SC.lark1 = async (S) => {
@@ -548,70 +561,70 @@
     S.faceEach('gc_lark', 'player');
     G.audio && G.audio.music('encounter_villain');
     await S.emote('gc_lark', '!');
-    await S.say('Oh, it\'s YOU. The kid who made my grunts cry in the woods. They wrote a group message about you. It had eleven voice notes.', N);
-    await S.say('I\'m Lark. Admin of the Hollow. These singing crystals? Ours now. The Director needs every drop of Resonance they\'ve got. Don\'t ask why. I didn\'t.', N);
-    const k = await choose('Lark is inspecting her nails, which are chipped from crystal-prying.', ['Leave the crystals alone.', 'Nice coat. Is it a costume?', 'Okay. Anyway.'], N);
-    await S.say([`Aww, a hero. That's adorable. I'm gonna flatten you, but it's adorable.`, `It is NOT a costume. It's a UNIFORM. It has a hood. ...It's a little bit of a costume.`, `"Okay, anyway"?! Nobody "okay anyway"s me! I'm the "okay anyway"-er!`][k], N);
+    await S.say('Well, well. You\'re the one who sent my people running from Whisperwood.', N);
+    await S.say('I\'m Lark, an Admin of the Hollow. These singing crystals belong to us now. The Director needs every drop of Resonance in them. Don\'t ask me why. I never do.', N);
+    const k = await choose('Lark watches you with a crooked smile.', ['Leave the crystals alone.', 'I\'m not scared of you.', 'Why do you work for them?'], N);
+    await S.say([`A hero, then. How sweet. Let's see how long that lasts.`, `You will be.`, `...Because they wanted me. Nobody else ever did. Enough talking!`][k], N);
     const won = await G.storyBattle('lark1'); if (!won) return;
-    await S.say('UGH! Fine! Keep your stupid glowing rocks! The Director doesn\'t even need them anymore. She\'s got bigger fish.', N);
-    await S.say('Like, "sleeping under a lighthouse" big. Toodles, nerd!', N);
+    await S.say('Tch! Fine, keep your glowing rocks. The Director won\'t need them soon anyway. She\'s after something far bigger.', N);
+    await S.say('Something that sleeps beneath a lighthouse. See you around, hero.', N);
     await S.move('gc_lark', 'lll', 2); S.remove('gc_lark');
     S.set('lark1_done'); S.restoreMusic();
-    await S.say('"Hello?! Is the scary lady gone?! Asking for me!"');
+    await S.say('"Hello? Is someone there? Have they gone?"');
     await SC.rocco_hammer(S);
   };
   SC.rocco_hammer = async (S) => {
     S.facePlayer('gc_rocco');
     const N = 'Hiker Rocco';
-    if (!G.flag('lark1_done')) { await S.say('Psst! The Hollow blasted the exit shut and trapped me in here! There\'s a whole gang of them in the crystal chamber! I\'m hiding! Badly!', N); return; }
+    if (!G.flag('lark1_done')) { await S.say('Psst! The Hollow blasted the exit shut and trapped me in here! There\'s a whole gang of them in the crystal chamber!', N); return; }
     if (!G.bag.has('pickhammer')) {
-      await S.say('You chased them off! Bless you! They sealed the way to Cindervale with rubble. Take my Pick Hammer and smash right through. It\'s very therapeutic.', N);
+      await S.say('You chased them off! Thank you! They blocked the way to Cindervale with rubble. Take my Pick Hammer and break right through.', N);
       await S.give('pickhammer', 1, { note: 'Walk up to a cracked rock and press Z to smash it.' });
       return;
     }
-    await S.say('Cindervale is just past those rocks. The hot springs there will fix everything. Your back. Your team. Your soul.', N);
+    await S.say('Cindervale is just past those rocks. Its hot springs are the best place in Solmere to rest.', N);
   };
   SC.fossil_dig = async (S) => {
     S.facePlayer('gc_dig');
     const N = 'Digger Pim';
-    if (G.flag('got_fossil')) { await S.say('Take care of that fossil! Dr. Orla in Galvan can revive it. She gets very excited. Stand back when she does.', N); return; }
-    await S.say('Two fossils in one dig! My bag holds one. You found me, so you choose. Choose wisely. Or quickly. Quickly is also fine.', N);
+    if (G.flag('got_fossil')) { await S.say('Take good care of that fossil! Dr. Orla at the Galvan Harbor Museum can revive it.', N); return; }
+    await S.say('Two fossils in one dig! But my bag only has room for one. You found me, so you choose.', N);
     const k = await G.ask('Which fossil will you take?', ['Claw Fossil', 'Wing Fossil'], { speaker: N, cancel: -1 });
     if (k < 0) return;
     await S.give(k === 0 ? 'clawfossil' : 'wingfossil');
     S.set('got_fossil'); S.quest('side_fossil', 'go');
-    await S.say('Dr. Orla! Galvan Harbor Museum! Go!', N);
+    await S.say('Take it to Dr. Orla at the Galvan Harbor Museum. She can bring it back to life!', N);
   };
   // ------------------------------------------------------------- CINDERVALE
   SC.rival2 = async (S) => {
     await S.approach('cv_wren', 'wren_crane', { prefer: ['right', 'down', 'up'] });
     await S.emote('cv_wren', '!');
-    await S.say(`${P()}! Look! Official Fellowship scarf! And the band! Resonance score: 1,204. Top twenty in the region. TOP. TWENTY.`, WREN());
-    await S.say('They have machines that measure your bond and push it higher. My team has never hit this hard. I feel like the main character.', WREN());
-    await S.say('Let\'s see your number.', WREN());
+    await S.say(`${P()}! Look, a Fellowship scarf! And the Chorus band! I'm ranked twentieth of all the Fellows. Twentieth, after just a few weeks!`, WREN());
+    await S.say('The band\'s Amplifier pushes our bond higher than it\'s ever been. My team has never been this strong.', WREN());
+    await S.say('Come on. Let\'s see how you measure up!', WREN());
     const won = await G.storyBattle('rival2');
     S.set('rival2_done');
     if (!won) return;
-    await S.say('Tch. My score dropped nine points. NINE. Do you know how that looks?! ...Whatever. The Fellowship says there\'s something big at the Ruins of Echo in Duskmere. I\'m going.', WREN());
+    await S.say('Tch. That\'ll cost me my rank... Whatever. The Fellowship says something important is happening at the Ruins of Echo, near Duskmere. I\'m going.', WREN());
     await S.fadeOut(10); S.remove('cv_wren'); await S.fadeIn(10);
   };
   SC.kiko = async (S) => {
     S.facePlayer('kiko');
     const N = 'Attendant Kiko';
     const q = G.save.quests.side_spring;
-    if (q && q.step === 'done') { await S.say('The springs are cozy. Soak as long as you like. Your problems will still be there. But warmer.', N); await S.heal(); return; }
+    if (q && q.step === 'done') { await S.say('Soak as long as you like. The springs will ease every ache.', N); await S.heal(); return; }
     if (!q) S.quest('side_spring', 'go');
     const has = t => G.save.party.some(m => G.SPECIES[m.sp].types.includes(t));
     if (has('fire') && has('water') && has('ice')) {
-      await S.say('Fire, Water AND Ice, soaking TOGETHER?! Steamy! Splashy! Chilly! It\'s the dream! Take these Leftovers. Straight from the snack bar. Mostly fresh.', N);
+      await S.say('Fire, Water and Ice Echoes, all resting in the springs together! I\'ve dreamed of this for years. Please, take these Leftovers as thanks.', N);
       await S.give('leftovers'); S.quest('side_spring', 'done'); return;
     }
-    await S.say('Welcome to Ember Springs! My life\'s dream: a Fire, a Water AND an Ice Echo relaxing together. Bring one of each. Meanwhile, soak free.', N);
+    await S.say('Welcome to Ember Springs! My dream is to see a Fire, a Water and an Ice Echo resting in the springs together. Bring one of each! Until then, soak for free.', N);
     await S.heal();
   };
   SC.mint_lady = async (S) => {
     S.facePlayer('ch2');
-    await S.say('Mints! Grown in volcanic soil. A mint changes how an Echo\'s stats grow, like a new nature. $5,000. They\'re very strong mints.', 'Mint Grower');
+    await S.say('These mints are grown in volcanic soil. A mint changes how an Echo\'s stats grow, just like a new nature. $5,000 each.', 'Mint Grower');
     const stock = ['mint_adamant', 'mint_jolly', 'mint_modest', 'mint_timid', 'mint_bold', 'mint_impish', 'mint_calm', 'mint_careful', 'mint_brave', 'mint_quiet'];
     await new Promise(res => G.push(new G.ShopScene(stock, res)));
   };
@@ -619,42 +632,42 @@
     S.facePlayer('ch1');
     const N = 'Old Seer Tomas';
     const m = G.party.lead();
-    if (m) { const ab = G.ABILITIES[G.mon.ability(m)]; await S.say(`Your ${G.mon.name(m)}... its ability is ${ab.name}. ${m.abil === 2 ? 'A HIDDEN ability! Rare. I have goosebumps. I always have goosebumps, it\'s a volcano town, but still.' : G.SPECIES[m.sp].abil[2] ? 'It has a hidden talent, sleeping. Sparkling grass hides Echoes whose talents are already awake.' : ''}`, N); }
-    if (G.flag('badge3') && !G.flag('got_capsule')) { await S.say('Take this Ability Capsule. It swaps an Echo between its two regular abilities. I foresaw you needing it. I also foresaw lunch.', N); await S.give('abilitycapsule'); S.set('got_capsule'); }
+    if (m) { const ab = G.ABILITIES[G.mon.ability(m)]; await S.say(`Your ${G.mon.name(m)}... its ability is ${ab.name}. ${m.abil === 2 ? 'A hidden ability! That\'s rare indeed.' : G.SPECIES[m.sp].abil[2] ? 'It has a hidden talent, still sleeping. Echoes found in sparkling grass sometimes have theirs already awake.' : ''}`, N); }
+    if (G.flag('badge3') && !G.flag('got_capsule')) { await S.say('Take this Ability Capsule. It switches an Echo between its two regular abilities. I had a feeling you would need it.', N); await S.give('abilitycapsule'); S.set('got_capsule'); }
   };
   SC.brann = async (S) => {
     const N = 'Warden Brann';
     S.facePlayer('brann_npc');
-    if (G.flag('badge3')) { await S.say('DUSKMERE is SOUTH along ROUTE 4! And the Hollow was talking about the Ruins of Echo! WATCH YOURSELF! That\'s my indoor voice!', N); return; }
-    await S.say('HAH! A CHALLENGER! I\'m BRANN! Forty years shaping steel! Twenty shaping Tamers! Zero years speaking quietly!', N);
-    await S.say('Heat shows the flaws in metal! Battle shows the flaws in bonds! Let\'s see what YOU\'RE MADE OF!', N);
+    if (G.flag('badge3')) { await S.say('Duskmere is south, along Route 4! And watch yourself. The Hollow has been sniffing around the Ruins of Echo!', N); return; }
+    await S.say('HAH! A challenger! I\'m Brann! Forty years shaping steel, and twenty shaping Tamers!', N);
+    await S.say('Heat reveals the flaws in metal, and battle reveals the flaws in a bond! Let\'s see what you\'re made of!', N);
     const won = await G.storyBattle('brann'); if (!won) return;
-    await S.say('HAAA! You\'ve got fire in you, kid! The GOOD kind! The Forge Badge is YOURS!', N);
-    await wardenWin(S, { badge: 'forge', flag: 'badge3', name: N, tm: 'tm35', tmText: 'And TM35: FLAMETHROWER! Reliable as a good hammer! LOUDER than a good hammer!', gymTrainers: ['cg_1', 'cg_2', 'cg_3'],
-      extra: async () => { await S.say('And THIS! My old Wing Whistle! My Cinderwing\'s getting old, but the Sky Taxi still answers it! Flies you to any town you\'ve visited! Use it from the Map!', N); await S.give('wingwhistle'); } });
-    await S.say('NEWS from Duskmere! The Hollow is heading for the Ruins of Echo! Something about a KEY! Route 4, SOUTH! GO!', N);
+    await S.say('HAAA! There\'s real fire in you! The Forge Badge is yours!', N);
+    await wardenWin(S, { badge: 'forge', flag: 'badge3', name: N, tm: 'tm35', tmText: 'And TM35, Flamethrower! As reliable as a good hammer!', gymTrainers: ['cg_1', 'cg_2', 'cg_3'],
+      extra: async () => { await S.say('And take this, my old Wing Whistle! Blow it, and the Sky Taxi will fly you to any town you\'ve visited. Use it from the Map!', N); await S.give('wingwhistle'); } });
+    await S.say('Word from Duskmere: the Hollow is heading for the Ruins of Echo, after some kind of key! Take Route 4, south. Hurry!', N);
     S.quest('main4', 'done'); S.quest('main5', 'go');
   };
   // ------------------------------------------------------------- DUSKMERE
-  SC.dusk_gym_guard = async (S) => { S.facePlayer('dm_gguard'); await S.say('Warden Mireille ran to the Ruins of Echo, north-east of town. She said intruders were "upsetting the spirits." She says that a lot. This time she ran.', 'Gym Apprentice'); };
+  SC.dusk_gym_guard = async (S) => { S.facePlayer('dm_gguard'); await S.say('Warden Mireille hurried to the Ruins of Echo, north-east of town. She said intruders were disturbing the spirits.', 'Gym Apprentice'); };
   SC.grey1 = async (S) => {
     if (G.flag('ruins_done')) return;
     const N = 'Admin Grey';
     G.audio && G.audio.music('encounter_villain');
     S.face('ru_grey', 'down');
     await S.say('...', N);
-    await S.say('You are the anomaly Lark keeps sending voice notes about. I am Grey. Admin. Hollow. Analytics.', N);
+    await S.say('You are the one Lark keeps complaining about. I am Grey, an Admin of the Hollow.', N);
     await S.say('The Tide Key has already left its cradle. The probability that you change anything here is four percent.', N);
     await S.say('I would like to see the four percent.', N);
     const won = await G.storyBattle('grey1'); if (!won) return;
     await S.say('Interesting. I will revise the model to six percent. The key is already on its way to the Director.', N);
-    await S.say('Grey raises a hand. A Nightwing drops out of the dark and carries him off into the mist, very efficiently.');
+    await S.say('Grey raises a hand. A Nightwing swoops down out of the dark and carries him off into the mist.');
     G.audio && G.audio.sfx('fly');
     S.remove('ru_grey');
     await S.approach('ru_mir', 'mireille', { prefer: ['down', 'left', 'right'] });
-    await S.say('The cradle is empty. I came the moment the spirits began to wail. You faced them alone? Brave little flame. Stupid, but brave.', 'Warden Mireille');
+    await S.say('The cradle is empty. I came the moment the spirits began to wail. You faced them alone? Brave little flame.', 'Warden Mireille');
     await S.say('The Tide Key opens the sea gate beneath the Lodestar. The old songs say Orrelume sleeps behind it. If Crane has the key...', 'Warden Mireille');
-    await S.say('Come to my gym when you\'re ready. We have much to discuss. After I see what burns in you. It\'s a whole ritual. There are candles.', 'Warden Mireille');
+    await S.say('Come to my gym when you are ready. We have much to discuss, once I have seen what burns in you.', 'Warden Mireille');
     await S.fadeOut(10); S.remove('ru_mir'); await S.fadeIn(10);
     S.set('ruins_done'); S.restoreMusic(); S.quest('main5', 'gym');
     G.persist.write();
@@ -663,28 +676,28 @@
   SC.mireille = async (S) => {
     const N = 'Warden Mireille';
     S.facePlayer('mireille_npc');
-    if (G.flag('badge4')) { await S.say('Professor Hale waits for you on the Duskmere pier. She has been pacing. Pacing is very un-goth. Go, little flame.', N); return; }
-    await S.say('Welcome, little flame. In darkness we see what truly matters. Also, the lights are off on purpose. It\'s an aesthetic.', N);
-    await S.say('My Echoes are the whispers of those who loved too much to leave. Yes, I know how that sounds. Let us see if your bond shines through them anyway.', N);
+    if (G.flag('badge4')) { await S.say('Professor Hale is waiting for you on the Duskmere pier. Go, little flame.', N); return; }
+    await S.say('Welcome, little flame. It is in darkness that we see what truly matters.', N);
+    await S.say('My Echoes are the whispers of those who loved too much to leave. Let us see if your bond can shine through them.', N);
     const won = await G.storyBattle('mireille'); if (!won) return;
-    await S.say('The candle flickers... and still it burns. As do you. The Veil Badge. I\'m moved. I\'ll be writing a poem about this. You can\'t stop me.', N);
-    await wardenWin(S, { badge: 'veil', flag: 'badge4', name: N, tm: 'tm58', tmText: 'TM58: Wisp Flame. A gentle burn that weakens a foe\'s physical attacks. Gentle. Like me.', gymTrainers: ['dg_1', 'dg_2', 'dg_3'] });
-    await S.say('Professor Hale arrived while we fought. She\'s on the pier. She has a story you need to hear. She\'s been rehearsing it for twelve years.', N);
+    await S.say('The candle flickers... and still it burns. As do you. The Veil Badge is yours.', N);
+    await wardenWin(S, { badge: 'veil', flag: 'badge4', name: N, tm: 'tm58', tmText: 'And TM58, Wisp Flame. A ghostly burn that weakens the foe\'s physical attacks.', gymTrainers: ['dg_1', 'dg_2', 'dg_3'] });
+    await S.say('Professor Hale arrived while we fought. She waits on the pier. She has a story you need to hear, one she has kept for twelve years.', N);
   };
   SC.dusk_hale = async (S) => {
     S.facePlayer('dm_hale');
-    if (G.flag('got_surf')) { await S.say('South across the lake to Frostpeak. I\'ll stay and dig through Vesper\'s old research. It\'s the least I can do. It is, genuinely, the least.', HALE); return; }
+    if (G.flag('got_surf')) { await S.say('Frostpeak is south, across the lake. I\'ll stay here and go through Vesper\'s old research. It\'s the least I can do.', HALE); return; }
     await S.say(`${P()}. Mireille told me. The Tide Key. Vesper actually did it.`, HALE);
     await S.say('Twelve years ago, Vesper Crane and I worked at the Lodestar together. We wanted to record Orrelume\'s song. The first recording, ever.', HALE);
     await S.say('Her partner was a Luminelle named Lumi. The sweetest Echo you ever met. When the song started, Lumi... sang back.', HALE);
     await S.say('And here\'s the part I\'ve never said out loud. Vesper wanted to stop. Lumi was shaking. And I said, "Thirty more seconds. We\'ll never get this again."', HALE);
     await S.say('The Lodestar flared so bright the whole Mere went white. When it faded, Lumi was gone. No trace. Gone.', HALE);
-    const k = await choose('Hale can\'t quite look at you.', ['You didn\'t know. It wasn\'t your fault.', 'That\'s... a lot to drop on a kid.', 'Thirty seconds. Wow.'], HALE);
-    await S.say([`That's kind of you. It's also not entirely true. I've had twelve years to decide which.`, `It is. I'm sorry. You're the only one who keeps showing up, so you get the truth. That's the deal, apparently.`, `Yeah. Thirty seconds. I've done the math on those thirty seconds every night since.`][k], HALE);
+    const k = await choose('Hale can\'t quite look at you.', ['You couldn\'t have known.', 'Why are you telling me this?', 'Does Vesper blame you?'], HALE);
+    await S.say([`That's kind of you. I've had twelve years to decide whether it's true.`, `Because you keep turning up where it matters. You deserve the truth.`, `She's never said so. She's never had to.`][k], HALE);
     await S.say('If Vesper wants the sea gate, she wants to force Orrelume to sing again. Loud enough to reach Lumi, wherever she is. And she won\'t care what it costs anyone else. I taught her that.', HALE);
     await S.say('I can\'t stop her. But you can reach places I can\'t. Take this Tide Board. Face the water and press Z to surf.', HALE);
     await S.give('tideboard');
-    await S.say('South across the lake to Frostpeak Village. Warden Sigrid is a dear friend. She\'ll look after you. Loudly.', HALE);
+    await S.say('Head south across the lake to Frostpeak Village. Warden Sigrid is a dear friend. She\'ll look after you.', HALE);
     S.set('got_surf'); S.quest('main5', 'done'); S.quest('main6', 'go');
     G.persist.write();
   };
@@ -693,9 +706,9 @@
     const N = 'Lamplighter Ode';
     const lit = [1, 2, 3, 4].filter(i => G.flag('lantern' + i)).length;
     const q = G.save.quests.side_lanterns;
-    if (q && q.step === 'done') { await S.say('The spirits rest easy. You\'ve a lamplighter\'s heart. The pay is terrible, but you\'ve got the heart.', N); return; }
+    if (q && q.step === 'done') { await S.say('The spirits rest easy now. You have a lamplighter\'s heart.', N); return; }
     if (lit >= 4) {
-      await S.say('All four spirit lanterns burn! Hear that? The spirits are singing. Slightly off-key. It\'s tradition.', N);
+      await S.say('All four spirit lanterns are burning! Can you hear that? The spirits are singing.', N);
       await S.say('Take these. A Spell Tag for your ghostly friends, and a Dusk Stone. Some Echoes evolve under its dark light.', N);
       await S.give('spelltag'); await S.give('duskstone'); S.quest('side_lanterns', 'done'); return;
     }
@@ -708,7 +721,7 @@
     if (!G.save.quests.side_lanterns) { await S.say('An old stone lantern. Its wick is cold. Someone in town probably knows about it.'); return; }
     if (!G.clock.isNight()) { await S.say('The wick won\'t catch in daylight. The spirits only come out at night. (7 PM - 5 AM)'); return; }
     G.setFlag('lantern' + n); G.audio && G.audio.sfx('ability');
-    await S.say('You light the spirit lantern. A tiny voice whispers: "...thank you... also, hi..."');
+    await S.say('You light the spirit lantern. A faint voice whispers: "...thank you..."');
     if ([1, 2, 3, 4].every(i => G.flag('lantern' + i))) {
       await S.say('The last lantern flares! A Wispurr drifts out of the light to see who did that!');
       await G.startWild(null, { species: 'wispurr', lvl: 30, noRandom: true, hidden: true });
@@ -716,48 +729,48 @@
   };
   SC.prorod_guy = async (S) => {
     S.facePlayer('dm_rodguy');
-    await S.say('Deep lake, big fish. A Pro Rod pulls up the good stuff: Mireel, Riptalon, even Crustank. Crustank bit me once. I respect it.', 'Fisher Lou');
-    if (!G.flag('lou_gift')) { await S.say('Take some Net Orbs. Great for Water types. Terrible for hats. Long story.', 'Fisher Lou'); await S.give('netorb', 5); S.set('lou_gift'); }
+    await S.say('Deep lake, big fish. With a Pro Rod you can hook Mireel, Riptalon, even Crustank.', 'Fisher Lou');
+    if (!G.flag('lou_gift')) { await S.say('Here, take some Net Orbs. They work especially well on Water and Bug types.', 'Fisher Lou'); await S.give('netorb', 5); S.set('lou_gift'); }
   };
   SC.fortune_teller = async (S) => {
     S.facePlayer('dh1');
     const m = G.party.lead(); if (!m) return;
     const best = G.STATS.reduce((a, s) => m.ivs[s] > m.ivs[a] ? s : a, 'hp');
-    await S.say(`I see... ${G.mon.name(m)}'s greatest gift is its ${G.STAT_NAMES[best]}. ${G.pick(['A shiny will cross your path when you least expect it. Probably while you\'re looking at your phone.', 'Sparkling grass holds Echoes with awakened talents.', 'The Lodestar will shine again. Because of you. No pressure.', 'Your rival\'s heart is heavier than their posts suggest.'])}`, 'Fortune Teller');
+    await S.say(`I see... ${G.mon.name(m)}'s greatest gift is its ${G.STAT_NAMES[best]}. ${G.pick(['A rare, shining Echo will cross your path when you least expect it.', 'Sparkling grass holds Echoes with awakened talents.', 'The Lodestar will shine again, and you will have a hand in it.', 'Your friend\'s heart is heavier than their smile suggests.'])}`, 'Fortune Teller');
   };
   // ------------------------------------------------------------- ROUTE 5
   SC.glowing_scale = async (S) => {
     S.facePlayer('r5_scale');
-    if (G.save.quests.side_scale) { await S.say('Did the elder in Frostpeak know what the scale is? Is it cursed? Please say it\'s cursed. That would be so cool.', 'Island Girl'); return; }
-    await S.say('This washed up on my island. It glows. It HUMS. Like it\'s singing. Could you take it to Elder Vesna in Frostpeak? She knows all the old stories.', 'Island Girl');
+    if (G.save.quests.side_scale) { await S.say('Did Elder Vesna know what the scale is? I\'ve been wondering ever since.', 'Island Girl'); return; }
+    await S.say('This washed up on my island. It glows, and it hums, as if it\'s singing. Could you take it to Elder Vesna in Frostpeak? She knows all the old stories.', 'Island Girl');
     await S.give('oldamber'); S.quest('side_scale', 'go');
   };
   SC.rival3 = async (S) => {
     await S.approach('r5w', 'wren_crane', { prefer: ['down', 'left', 'right'] });
     await S.emote('r5w', '...', 40);
     await S.say('Took you long enough.', WREN());
-    await S.say('Score\'s 3,880. Number four in Solmere. The Director gave me a Boost. It forces Resonance. All the time. No waiting for a bond. No waiting for anything.', WREN());
-    await S.say(`I'm going to be Champion, ${P()}. Before Sable even looks up. Starting with you.`, WREN());
+    await S.say('I\'m ranked fourth of all the Fellows now. The Director fitted my band with a new Amplifier. It forces Resonance, every moment of every battle. No waiting for a bond to grow. No waiting at all.', WREN());
+    await S.say(`I'm going to be Champion, ${P()}, and Sable will have to look at me. Starting with you.`, WREN());
     const won = await G.storyBattle('rival3');
     S.set('rival3_done');
     const st = G.lineAt(G.rivalOf[G.getVar('starter', 'kindlet')], 36);
     await S.say(`${R()}'s ${G.SPECIES[st].name} is trembling. It lets out a thin, tired cry. It sounds like it's been crying for a while.`);
-    await S.say('Hey. Hey, what\'s wrong? You\'re shaking. Is it the Boost? Did the Boost do this? ...How long has it been doing this?', WREN());
-    const k = await choose(`${R()} is staring at their partner.`, ['Take the band off. Right now.', 'Your score\'s gonna tank. Worth it.', 'It\'s been doing it since Cindervale.'], WREN());
-    await S.say([`...Yeah. Yeah. I— I need to think. Don't follow me. Please.`, `Don't. Don't make it a joke. Not this one. ...Don't follow me.`, `You saw it? You saw it and I didn't? ...I need to think. Don't follow me.`][k], WREN());
+    await S.say('Hey. Hey, what\'s wrong? You\'re shaking. Is it the Amplifier? Did the Amplifier do this? ...How long has it been like this?', WREN());
+    const k = await choose(`${R()} is staring at their partner.`, ['Take the band off. Right now.', 'It\'s not too late to stop.', 'It\'s been like this since Cindervale.'], WREN());
+    await S.say([`...Yeah. Yeah. I... I need to think. Don't follow me. Please.`, `I hope you're right. I... I need to think. Don't follow me.`, `You saw it? You saw it, and I didn't? ...I need to think. Don't follow me.`][k], WREN());
     await S.fadeOut(10); S.remove('r5w'); await S.fadeIn(10);
   };
   // ------------------------------------------------------------- FROSTPEAK
   SC.starfall_guard = async (S) => {
-    await S.say('Nope! Starfall Peak is far too dangerous. Only the Champion of Solmere may climb it. Those are the rules. I wrote them. They\'re good rules.', 'Mountain Ranger');
+    await S.say('I\'m sorry, but Starfall Peak is far too dangerous. Only the Champion of Solmere may climb it.', 'Mountain Ranger');
     await pushBack(S, 'left');
   };
   SC.grip_boots = async (S) => {
     S.facePlayer('fp_boots');
     const N = 'Old Halvard';
-    if (G.bag.has('gripboots')) { await S.say('Mt. Glacia Pass is east. Shove the boulders into the holes to cross. Lift with your legs. Or your Echo\'s legs.', N); return; }
-    if (!G.flag('badge5')) { await S.say('My daughter Sigrid runs the gym. Beat her and I\'ll give you what you need for the pass. She won\'t let you. But try.', N); return; }
-    await S.say('Sigrid says you\'re the real thing. These Grip Boots got me over Mt. Glacia a hundred times. Walk into a boulder to push it. Feel powerful.', N);
+    if (G.bag.has('gripboots')) { await S.say('Mt. Glacia Pass is to the east. Push the boulders into the holes to make a way across.', N); return; }
+    if (!G.flag('badge5')) { await S.say('My daughter Sigrid runs the gym. Beat her, and I\'ll give you what you need to cross the pass.', N); return; }
+    await S.say('Sigrid says you\'re the real thing. These Grip Boots carried me over Mt. Glacia a hundred times. Walk into a boulder to push it.', N);
     await S.give('gripboots'); S.set('got_boots');
   };
   SC.elder_vesna = async (S) => {
@@ -766,84 +779,84 @@
     if (G.bag.has('oldamber')) {
       await S.say('That scale... child, that is a scale of Orrelume itself. It hasn\'t shed one in a hundred years.', N);
       await S.say('The old song says Solmere has two great lights. The song of the sea, and the hunger of the stars. The sea sings bonds together. The stars... remember whatever falls.', N);
-      await S.say('If Orrelume is shedding, it is afraid. Keep the scale close. You may need its song. And take this Frost Stone. I\'ve been holding it for someone interesting. You\'ll do.', N);
+      await S.say('If Orrelume is shedding, it is afraid. Keep the scale close. You may need its song. And take this Frost Stone. I have kept it a long time, waiting for the right person.', N);
       await S.give('froststone'); S.quest('side_scale', 'done'); S.set('scale_read'); return;
     }
-    await S.say('Frostpeak remembers the old songs. The sea. The stars. And the lighthouse standing between them, pretending it isn\'t nervous.', N);
+    await S.say('Frostpeak remembers the old songs: the sea, the stars, and the lighthouse that stands between them.', N);
   };
   SC.sigrid = async (S) => {
     const N = 'Warden Sigrid';
     S.facePlayer('sigrid_npc');
-    if (G.flag('badge5')) { await S.say(`Mt. Glacia Pass, east of the village. Skyreach City is past it. And ${R()} came through... looking lost. Like, actually lost. Not map-lost.`, N); return; }
-    await S.say('WELCOME TO THE SUMMIT! I\'m Sigrid! Three-time Solmere Games champion! On skis! Also a Warden! Mostly skis!', N);
-    await S.say('Balance! Speed! Nerves of ICE! Let\'s see you keep your footing! Let\'s GOOO!', N);
+    if (G.flag('badge5')) { await S.say(`Mt. Glacia Pass is east of the village, and Skyreach City lies beyond it. ${R()} came through here, too... looking lost. Not the kind of lost a map can fix.`, N); return; }
+    await S.say('Welcome to the summit! I\'m Sigrid, Warden of Frostpeak. I\'ve climbed every peak in Solmere, and I\'ve never once turned back!', N);
+    await S.say('Balance, speed, and nerves of ice! Let\'s see you keep your footing!', N);
     const won = await G.storyBattle('sigrid'); if (!won) return;
-    await S.say('INCREDIBLE! Like the first morning after a blizzard! Personal best! Yours, not mine! The Rime Badge!', N);
-    await wardenWin(S, { badge: 'rime', flag: 'badge5', name: N, tm: 'tm14', tmText: 'TM14: Blizzard! It never misses in snow. Like me. On skis.', gymTrainers: ['ig_1', 'ig_2'] });
-    await S.say(`Dad, Halvard, will want to meet you. He's by the frozen pond. And ${R()}... they headed for Skyreach. They didn't post. That scared me more than anything.`, N);
+    await S.say('Incredible! Like the first clear morning after a blizzard! The Rime Badge is yours!', N);
+    await wardenWin(S, { badge: 'rime', flag: 'badge5', name: N, tm: 'tm14', tmText: 'And TM14, Blizzard! In the snow, it never misses.', gymTrainers: ['ig_1', 'ig_2'] });
+    await S.say(`My father, Halvard, will want to meet you. He's by the frozen pond. And ${R()}... they headed for Skyreach. They wouldn't say a word to anyone. That worried me more than anything.`, N);
     S.quest('main6', 'done'); S.quest('main7', 'go');
   };
   // ------------------------------------------------------------- SKYREACH
-  SC.sky_gym_guard = async (S) => { S.facePlayer('sk_gguard'); await S.say('Warden Kaelen walked into Crane HQ this morning to "have a word" and never came out. The gym is closed. Nobody\'s calm about it.', 'Dragon Tamer'); };
-  SC.sky_sailor = async (S) => { S.facePlayer('sk_sailor'); await S.say(G.flag('badge6') ? 'The Lodestar is straight north across the water. Surf safe. Wave at it for me.' : 'The sea route north leads to the Lodestar. It went dark last night. First time in my whole life. Felt like the sky blinked.', 'Sailor'); };
+  SC.sky_gym_guard = async (S) => { S.facePlayer('sk_gguard'); await S.say('Warden Kaelen went into the Crane tower this morning to have a word with the Director, and never came out. The gym is closed until he returns.', 'Dragon Tamer'); };
+  SC.sky_sailor = async (S) => { S.facePlayer('sk_sailor'); await S.say(G.flag('badge6') ? 'The Lodestar is straight north across the water. Surf safely.' : 'The sea route north leads to the Lodestar. It went dark last night, for the first time in my whole life. It felt like the sky had blinked.', 'Sailor'); };
   SC.hq_wren = async (S) => {
     if (G.flag('hq_started')) return;
     S.faceEach('sk_wren', 'player');
     await S.say(`${P()}. Wait. Please.`, WREN());
-    await S.say('I was wrong. About Crane, about the Fellowship, about the score. All of it. The Boost was hurting my partner and I kept refreshing my number.', WREN());
-    await S.say('I threw the band in the lake. My score\'s zero now. It feels weird. It feels like I can breathe.', WREN());
-    await S.say('I overheard them. Warden Kaelen is locked up on the Director\'s floor. And Crane\'s moving the Chorus Engine core to the Lodestar. Tonight.', WREN());
-    await S.say('I swiped a keycard on my way out. The lobby elevator needs it. We stop her. Together. Like we used to do everything.', WREN());
+    await S.say('I was wrong. About Crane, about the Fellowship, about my rank. All of it. The Amplifier was hurting my partner, and all I cared about was climbing higher.', WREN());
+    await S.say('I threw the band into the lake. I\'m not a Fellow any more. It feels strange... like I can finally breathe.', WREN());
+    await S.say('I overheard them. Warden Kaelen is locked up on the Director\'s floor. And Crane is moving the Chorus Engine\'s core to the Lodestar. Tonight.', WREN());
+    await S.say('I took a keycard on my way out. The lobby elevator needs it. We stop her. Together, like we always used to do everything.', WREN());
     await S.give('cranekeycard');
     S.set('hq_started'); S.set('hq_card'); S.quest('main7', 'hq');
-    await S.say('Meet you upstairs. And... thanks for not saying "I told you so." You\'re saying it with your face, but thanks.', WREN());
+    await S.say('I\'ll meet you upstairs. And... thank you for not saying "I told you so."', WREN());
     await S.move('sk_wren', 'u', 2); S.remove('sk_wren');
   };
   G.QUESTS.main7.steps = { go: G.QUESTS.main7.desc, hq: 'Infiltrate Crane Dynamics HQ with Wren and free Warden Kaelen.', gym: 'Crane fled. Challenge Warden Kaelen at the Skyreach Gym.' };
   SC.hq1_enter = async (S) => { if (G.flag('hq_started') && !G.flag('hq_done')) G.toast('The elevator at the back leads to the Director\'s floor.'); };
-  SC.hq_elevator_guard = async (S) => { S.facePlayer('hq_lift'); await S.say('No keycard, no elevator! Director\'s orders! I\'ve never been in the elevator either!', 'Hollow Grunt'); };
-  SC.hq_recep = async (S) => { S.facePlayer('hq_recep'); await S.say(G.flag('hq_done') ? 'Everyone\'s being questioned. I just answer phones. I have answered a LOT of phones today.' : 'W-welcome to Crane Dynamics! Please don\'t hurt me! I just answer phones! Have you tried Chorus?! Sorry! Reflex!', 'Receptionist'); };
+  SC.hq_elevator_guard = async (S) => { S.facePlayer('hq_lift'); await S.say('No keycard, no elevator! Director\'s orders!', 'Hollow Grunt'); };
+  SC.hq_recep = async (S) => { S.facePlayer('hq_recep'); await S.say(G.flag('hq_done') ? 'Everyone here is being questioned. I only worked the front desk. I never knew what they were doing upstairs.' : 'W-welcome to Crane Dynamics! Please, I only work the front desk!', 'Receptionist'); };
   SC.hq_admins = async (S) => {
     if (G.flag('hq_admins_done')) return;
     G.audio && G.audio.music('encounter_villain');
-    await S.say('YOU?! AGAIN?! Do you ever go HOME?! Do you even HAVE a home?!', 'Admin Lark');
-    await S.say('And the defector. Their score went from 3,880 to zero. Statistically, the most interesting thing that has ever happened on our platform.', 'Admin Grey');
+    await S.say('You again?! Don\'t you ever give up?', 'Admin Lark');
+    await S.say('And the Fellow who left us. Ranked fourth, and threw it all away. I did not predict that.', 'Admin Grey');
     await S.approach('hqw', 'wren', { prefer: ['down', 'left', 'right'] });
-    await S.say(`Two on two. Ready, ${P()}? Let's show them what a bond looks like when nobody's counting!`, WREN());
+    await S.say(`Two on two. Ready, ${P()}? Let's show them what a real bond looks like!`, WREN());
     const won = await G.storyBattle('grey2', { withTrainer: 'lark2', ally: 'wren_ally', double: true }); if (!won) { S.remove('hqw'); return; }
-    await S.say('...Go. The Director is waiting. I estimate a twelve percent chance you change her mind. I\'m... rooting for twelve.', 'Admin Grey');
-    await S.say('Ugh, fine! Not my problem! It is a LITTLE bit my problem! Whatever!', 'Admin Lark');
+    await S.say('...Go. The Director is waiting. I estimate a twelve percent chance that you change her mind. I find that I am hoping for the twelve.', 'Admin Grey');
+    await S.say('Tch. Go on, then. Before I change my mind.', 'Admin Lark');
     S.remove('hq_grey'); S.remove('hq_lark');
     S.set('hq_admins_done');
-    await S.say('I\'ll get Kaelen out. You go after Crane. Go go go!', WREN());
+    await S.say('I\'ll get Kaelen out. You go after Crane. Hurry!', WREN());
     await S.fadeOut(8); S.remove('hqw'); S.spawn({ id: 'hqw', x: 3, y: 3, look: 'wren', dir: 'left' }); await S.fadeIn(8);
     S.restoreMusic();
   };
   SC.hq_crane = async (S) => {
-    if (!G.flag('hq_admins_done')) { await S.say('"Grey. Lark. Please remove the child. Gently. They\'re trending."', 'Director Crane'); return; }
+    if (!G.flag('hq_admins_done')) { await S.say('"Grey. Lark. Please see our young guest out."', 'Director Crane'); return; }
     const N = 'Director Crane';
     S.facePlayer('hq_crane');
     S.music('crane');
-    await S.say('So this is the Tamer who keeps unravelling my plans. You look so... young. I was young once. It was awful.', N);
+    await S.say('So this is the Tamer who keeps unravelling my plans. You look so young.', N);
     await S.say('Have you ever heard the voice of the one you love most... and then nothing? Twelve years of nothing.', N);
-    await S.say('Every Chorus band in Solmere feeds its bond into my Engine. It\'s in the terms of service. Page four hundred. Nobody reads page four hundred.', N);
-    await S.say('When I fire it, Orrelume will sing louder than it ever has. Loud enough to reach Lumi. Every bond in Solmere, borrowed for a moment. A small price for a miracle.', N);
-    const k = await choose('Crane waits, genuinely curious what you\'ll say.', ['You\'re hurting everyone to fix your own pain.', 'Page four hundred?! That\'s evil. That\'s so evil.', 'Hale told me about the thirty seconds.'], N);
-    await S.say([`Yes. I've done the math. I'm at peace with it. Mostly.`, `It's not evil. It's legal. Those are very different departments.`, `...Did she. Then she finally told someone the truth. Good for Marisol. It changes nothing.`][k], N);
+    await S.say('Every Chorus band in Solmere draws a little of its bond into my Engine. The Fellows never asked where their strength was going.', N);
+    await S.say('When I fire it, Orrelume will sing louder than it ever has. Loud enough to reach Lumi. Every bond in Solmere, borrowed for a single moment. A small price for a miracle.', N);
+    const k = await choose('Crane waits, curious what you will say.', ['You\'re hurting everyone to ease your own pain.', 'Those bonds aren\'t yours to take.', 'Hale told me what happened.'], N);
+    await S.say([`Yes. I've weighed it, and I've made my peace with it.`, `Nothing is ever given. Everything is taken by someone. I've simply chosen what to take.`, `...Did she? Then Marisol has finally told someone the truth. It changes nothing.`][k], N);
     const won = await G.storyBattle('crane1'); if (!won) return;
     await S.say('...So your bond is real. Real enough to hurt me. Real enough to...', N);
-    await S.say('No. It doesn\'t matter. The core is already on its way to the Lodestar. Goodbye, child. Log off.', N);
+    await S.say('No. It doesn\'t matter. The core is already on its way to the Lodestar. Goodbye, child.', N);
     G.audio && G.audio.sfx('warp'); await G.flashScreen('#ffffff', 20);
     S.remove('hq_crane');
-    await S.say('Crane vanishes in a flash of white. A teleporter pad hums where she stood. Of course she has a teleporter.');
+    await S.say('Crane vanishes in a flash of white light. A teleporter pad hums softly where she stood.');
     await SC.hq_kaelen(S);
   };
   SC.hq_kaelen = async (S) => {
     if (!G.flag('hq_admins_done') || G.flag('hq_done')) { if (!G.flag('hq_admins_done')) await S.say('A tall man in a violet coat sits calmly in a glass cell, reading. He nods at you like you\'re late.'); return; }
     S.remove('hq_kaelen'); await S.approach('hq_kaelen', 'kaelen');
-    await S.say('Thank you, both of you. Crane\'s people ambushed me while I was looking into her shipments. Very rude. I didn\'t get to finish my book.', 'Warden Kaelen');
+    await S.say('Thank you, both of you. Crane\'s people took me while I was looking into her shipments.', 'Warden Kaelen');
     await S.say('The Lodestar is north across the water. But first, my gym. The dragons will want to measure you before you face her again.', 'Warden Kaelen');
-    await S.say(`I'll help the police lock this place down. ${P()}... thanks. For not giving up on me. Even when I made it really easy.`, WREN());
+    await S.say(`I'll help the police secure the tower. ${P()}... thank you for not giving up on me, even when I gave you every reason to.`, WREN());
     S.set('hq_done'); S.quest('main7', 'gym');
     G.persist.write();
     await S.fadeOut(20); S.remove('hq_kaelen'); S.remove('hqw'); await S.fadeIn(20);
@@ -851,31 +864,31 @@
   SC.kaelen = async (S) => {
     const N = 'Warden Kaelen';
     S.facePlayer('kaelen_npc');
-    if (G.flag('badge6')) { await S.say('North of the city, the sea route leads to the Lodestar. Go. Save the song. I\'d come, but I get seasick. Dragons don\'t help.', N); return; }
-    await S.say('I was Champion once, before Sable. I learned that strength without a reason is just noise. Very loud noise. I was very loud.', N);
+    if (G.flag('badge6')) { await S.say('North of the city, the sea route leads to the Lodestar. Go, and save the song.', N); return; }
+    await S.say('I was Champion once, before Sable. It taught me that strength without a reason is only noise.', N);
     await S.say('Now. Let\'s see if you can weather my storm.', N);
     const won = await G.storyBattle('kaelen'); if (!won) return;
-    await S.say('The storm passes. The dragons respect you. So do I, which is rarer. The Wyrm Badge.', N);
+    await S.say('The storm has passed. The dragons respect you, and so do I. The Wyrm Badge is yours.', N);
     await wardenWin(S, { badge: 'wyrm', flag: 'badge6', name: N, tm: 'tm50', tmText: 'TM50: Dragon Pulse. A dragon\'s roar, given shape.', gymTrainers: ['sg_1', 'sg_2', 'sg_3'] });
-    await S.say('Six badges. The Conclave will call. But first... the Lodestar. Surf north from the harbor. Go.', N);
+    await S.say('Six badges. The Conclave will call for you soon. But first, the Lodestar. Surf north from the harbour.', N);
     S.quest('main7', 'done'); S.quest('main8', 'go');
   };
   SC.iv_judge = async (S) => {
     S.facePlayer('skh1');
     const m = G.party.lead(); if (!m) return;
     const tot = G.STATS.reduce((a, s) => a + m.ivs[s], 0);
-    await S.say(`${G.mon.name(m)}'s total potential: ${tot}/186. ${tot >= 170 ? 'OUTSTANDING. A gem among gems. I need to sit down.' : tot >= 130 ? 'Relatively superior! Tell your friends!' : tot >= 90 ? 'Above average! Like most people think they are!' : 'Decent potential. Bonds matter more anyway. That\'s what I tell myself.'}`, 'IV Judge');
-    if (G.flag('champion') && !G.flag('got_caps')) { await S.say('For a Champion... Bottle Caps. Hyper Training maxes out an IV. Don\'t tell the purists.', 'IV Judge'); await S.give('bottlecap', 3); S.set('got_caps'); }
+    await S.say(`${G.mon.name(m)}'s total potential: ${tot}/186. ${tot >= 170 ? 'Outstanding! A gem among gems.' : tot >= 130 ? 'Very good potential indeed.' : tot >= 90 ? 'Above average. A fine Echo.' : 'Decent potential. And a strong bond matters more than any number.'}`, 'IV Judge');
+    if (G.flag('champion') && !G.flag('got_caps')) { await S.say('For the Champion, these Bottle Caps. Each one raises one of an Echo\'s hidden potentials to its peak.', 'IV Judge'); await S.give('bottlecap', 3); S.set('got_caps'); }
   };
   SC.hidden_power_guy = async (S) => {
     S.facePlayer('skh2');
-    if (!G.flag('got_tm20')) { await S.say('In my day we made decoys out of straw to fool opponents. It never worked. This TM does. Decoy!', 'Old Strategist'); await S.give('tm20'); S.set('got_tm20'); return; }
-    await S.say('A Decoy blocks status moves and soaks up hits. Pair it with a boosting move and watch your opponent get very quiet.', 'Old Strategist');
+    if (!G.flag('got_tm20')) { await S.say('In my day, we made decoys out of straw to fool our opponents. This TM works far better. Decoy!', 'Old Strategist'); await S.give('tm20'); S.set('got_tm20'); return; }
+    await S.say('A Decoy blocks status moves and takes hits in your Echo\'s place. Pair it with a move that raises your stats.', 'Old Strategist');
   };
   // ------------------------------------------------------------- THE LODESTAR
   SC.tl_grunt = async (S, ctx) => {
     S.facePlayer(ctx.ent.id);
-    await S.say(G.pick(['The Director\'s at the top. We\'re supposed to stop you. But honestly? I just joined for the free hoodie.', 'Can you hear it? The song\'s getting quieter. That\'s not what the onboarding video said.', 'My score used to be 900. Now I can\'t feel my Echo. Is that... is that the Boost?']), 'Hollow Grunt');
+    await S.say(G.pick(['The Director is at the top. We\'re supposed to stop you... but I\'m not sure any more that we should.', 'Can you hear it? The song is getting quieter. That isn\'t what they told us would happen.', 'I used to feel my Echo\'s heart through the band. Now I can\'t feel anything at all.']), 'Hollow Grunt');
   };
   SC.lh_grey = async (S) => {
     const N = 'Admin Grey';
@@ -890,10 +903,10 @@
   SC.lh_lark = async (S) => {
     const N = 'Admin Lark';
     S.facePlayer('lh_lark');
-    await S.say('You know the worst part? I LIKED it here. The Hollow was the first place that ever picked me. First. Not last. First.', N);
-    await S.say('So I\'m not letting you through without a fight. That\'s just... who I am. I\'m a lot. I know.', N);
+    await S.say('You know the worst part? I liked it here. The Hollow was the first place that ever chose me. First. Not last.', N);
+    await S.say('So I\'m not letting you through without a fight. That\'s just who I am.', N);
     const won = await G.storyBattle('lark3'); if (!won) return;
-    await S.say('...Go. Stop her. Somebody has to, and it was never gonna be me. ...You\'re not a nerd. I take it back. You\'re a big nerd.', N);
+    await S.say('...Go. Stop her. Somebody has to, and it was never going to be me. ...And, hero? Thanks.', N);
     await S.move('lh_lark', 'r', 1); S.face('lh_lark', 'left');
     S.set('lh_lark_done');
   };
@@ -906,7 +919,7 @@
     S.face('top_crane', 'down');
     await S.say('You\'re too late. Listen. It\'s changing. Soon it will call out to everything that has ever lived, and loved, in Solmere.', N);
     await S.say('Lumi. I\'m almost there. I can almost hear you.', N);
-    await S.say(`It's hurting them! Every Echo on the Mere is crying! Can't you hear it, Director?!`, P());
+    await S.say(`It's hurting them! Every Echo on the Mere is crying out! Can't you hear it, Director?`, P());
     await S.say('I hear one voice. I have for twelve years. Step aside, or go quiet with the rest.', N);
     const won = await G.storyBattle('crane2'); if (!won) return;
     await S.say('Lumi... I\'m sorry. I couldn\'t even do this right.', N);
@@ -920,13 +933,13 @@
     await S.say('Out of the Mere rises something vast, glowing like the dawn. The song pours out, clear and whole again.');
     await S.say('...Vesper...', '???');
     await S.say('...That voice... Lumi?! LUMI!', N);
-    await S.say('...It\'s okay... I\'m part of the song now... I always was... Let go, Vesper... and live...', '???');
-    await S.say('Vesper Crane sinks to her knees and cries. For the first time she looks her age. And, somehow, lighter.', '');
+    await S.say('...It\'s all right... I\'m part of the song now... I always was... Let go, Vesper... and live...', '???');
+    await S.say('Vesper Crane sinks to her knees and weeps. For the first time, she looks her age. And somehow, lighter.', '');
     S.music('legend');
     await S.say('The leviathan turns its luminous eyes on you. It wants to test the bond that set it free!');
     const r = await G.startWild(null, { species: 'orrelume', lvl: 50, legend: true, noRandom: true, noRun: false });
     if (G.party.allMons().some(m => m.sp === 'orrelume')) S.set('orrelume_caught');
-    else { S.set('orrelume_away'); await S.say('Orrelume dives beneath the waves with a long, echoing call. It sounded a little like "see you later."'); }
+    else { S.set('orrelume_away'); await S.say('Orrelume dives beneath the waves with a long, echoing call, as if promising to return.'); }
     await S.fadeOut(30);
     S.remove('top_crane');
     const hale = S.spawn({ id: 'toph', x: 5, y: 8, look: 'hale', dir: 'up' });
@@ -934,13 +947,13 @@
     const sb = S.spawn({ id: 'tops', x: 6, y: 5, look: 'sable', dir: 'down' });
     await S.fadeIn(30);
     S.music('tidelight_calm');
-    await S.say(`${P()}! You did it! Vesper turned herself in. She said she heard Lumi. That the song carried her voice.`, HALE);
-    await S.say('I told her about the thirty seconds. To her face. She said, "I know, Marisol. I was there." Then she hugged me. I\'m still processing.', HALE);
-    await S.say(`${P()}, that was UNREAL. I didn't film any of it. First time in my life. ...Oh. Uh. Hi, Sable.`, WREN());
-    await S.say(`So you're the one ${R()} never shuts up about.`, 'Champion Sable');
-    await S.say('I\'m Sable. Champion. I got here as fast as I could when the light went out. Looks like I arrived just in time to be completely unnecessary.', 'Champion Sable');
-    await S.say('The Lodestar\'s shining. The Conclave\'s opened Victory Road, west of Route 1. I\'ll be waiting at the top. Don\'t make it easy.', 'Champion Sable');
-    await S.say(`And ${R()}... I'm proud of you. I should've said it before you needed a leaderboard to hear it.`, 'Champion Sable');
+    await S.say(`${P()}! You did it! Vesper has turned herself in. She said she heard Lumi, that the song carried her voice.`, HALE);
+    await S.say('I told her the truth about that day, to her face. She said, "I know, Marisol. I was there." And then she embraced me.', HALE);
+    await S.say(`${P()}, that was incredible! I... oh. Um. Hello, Sable.`, WREN());
+    await S.say(`So you're the one ${R()} is always talking about.`, 'Champion Sable');
+    await S.say('I\'m Sable, the Champion. I came as fast as I could when the light went out. It seems you didn\'t need me.', 'Champion Sable');
+    await S.say('The Lodestar shines again. The Conclave has opened Victory Road, west of Route 1. I\'ll be waiting at the top.', 'Champion Sable');
+    await S.say(`And ${R()}... I'm proud of you. I should have told you long before you went looking for it somewhere else.`, 'Champion Sable');
     await S.fadeOut(20); S.remove('toph'); S.remove('topw'); S.remove('tops');
     S.set('tidelight_done'); S.quest('main8', 'done'); S.quest('main9', 'go');
     G.persist.write();
@@ -949,29 +962,29 @@
   };
   SC.tl_hale = async (S) => {
     S.facePlayer('tl_hale');
-    await S.say('I\'m going to study the Lodestar properly now. No machines. No deadlines. Just listening. Come here, let me heal your team.', HALE);
+    await S.say('I\'m going to study the Lodestar properly now. No machines, no deadlines. Just listening. Come here, let me heal your team.', HALE);
     await S.heal();
   };
   // ------------------------------------------------------------- VICTORY ROAD
   SC.rival4 = async (S) => {
     await S.approach('vrw', 'wren', { prefer: ['up', 'down', 'left', 'right'] });
     await S.emote('vrw', '!');
-    await S.say(`${P()}. Knew you'd make it.`, WREN());
-    await S.say('I\'ve been thinking. About what strength actually is. The Boost made my team strong, and it made them hurt, and I didn\'t care as long as the number went up.', WREN());
-    await S.say('That wasn\'t strength. That was me being scared of getting left behind. By Sable. By you.', WREN());
-    await S.say('No Boosts. No score. No camera. Just me and my team. One last battle before the Conclave. The real one.', WREN());
+    await S.say(`${P()}. I knew you'd make it.`, WREN());
+    await S.say('I\'ve been thinking about what strength really is. The Amplifier made my team strong, and it made them hurt, and I didn\'t care as long as I kept climbing.', WREN());
+    await S.say('That wasn\'t strength. That was me being afraid of being left behind. By Sable. By you.', WREN());
+    await S.say('No band. No rank. Just me and my team. One last battle before the Conclave. A real one.', WREN());
     const won = await G.storyBattle('rival4'); if (!won) { S.remove('vrw'); return; }
     S.set('rival4_done');
-    await S.say(`Ha... hahaha! Best battle of my life, and nobody saw it but us. That's kind of perfect. Go on. Sable's waiting. And ${P()}... thanks. For everything.`, WREN());
+    await S.say(`Ha... hahaha! The best battle of my life, and nobody saw it but us. That's just right. Go on, Sable's waiting. And ${P()}... thank you. For everything.`, WREN());
     await S.fadeOut(10); S.remove('vrw'); await S.fadeIn(10);
   };
   // ------------------------------------------------------------- CONCLAVE
-  SC.league_shop = async (S) => { S.facePlayer('cl_shop'); await G.openShop(['ultraorb', 'hyperpotion', 'maxpotion', 'fullrestore', 'revive', 'maxrevive', 'fullheal', 'maxether', 'elixir', 'xattack', 'xspatk', 'xspeed', 'maxrepel'], { greet: 'Last shop before the Conclave. Prices reflect that. Sorry. Not sorry.' }); };
+  SC.league_shop = async (S) => { S.facePlayer('cl_shop'); await G.openShop(['ultraorb', 'hyperpotion', 'maxpotion', 'fullrestore', 'revive', 'maxrevive', 'fullheal', 'maxether', 'elixir', 'xattack', 'xspatk', 'xspeed', 'maxrepel'], { greet: 'The last shop before the Conclave. Stock up well.' }); };
   SC.league_guard = async (S) => {
     S.facePlayer('cl_guard');
     const N = 'Conclave Guard';
-    if (G.save.badges.length < 6) { await S.say('Six badges to enter. That\'s the rule. It\'s a very old rule. It\'s on a plaque.', N); return; }
-    await S.say('Beyond this door: the four members of the Conclave, then the Champion. Once you go in, there\'s no leaving until you win. Or lose. Mostly win, we hope.', N);
+    if (G.save.badges.length < 6) { await S.say('Only Tamers with six badges may enter the Conclave.', N); return; }
+    await S.say('Beyond this door wait the four members of the Conclave, and then the Champion. Once you enter, there is no turning back until it\'s decided.', N);
     if (!await G.yesno('Enter the Conclave?', { speaker: N })) return;
     S.set('league_entered');
     await S.move('cl_guard', 'l', 1); S.face('cl_guard', 'right');
@@ -996,12 +1009,12 @@
     S.facePlayer('sable_npc');
     if (G.flag('champion')) return;
     await S.say(`So. You came.`, N);
-    await S.say(`${R()} has talked about you since the day you both got your first Echoes. How you always made them want to be better. How you never once gave up on them. Even when they made it really easy.`, N);
-    await S.say('I\'ve heard every one of your adventures twice. Once on the news, and once from my little sibling at three in the morning.', N);
-    await S.say('Everyone in Solmere is watching this. I stopped caring about that years ago. Let\'s make it worth watching anyway.', N);
+    await S.say(`${R()} has talked about you since the day you both got your first Echoes. How you always made them want to be better. How you never gave up on them.`, N);
+    await S.say('I\'ve heard every one of your adventures twice: once from the town criers, and once from my little sibling, late into the night.', N);
+    await S.say('All of Solmere is waiting to hear how this ends. I stopped caring about that years ago. But let\'s give them something worth hearing.', N);
     const won = await G.storyBattle('sable'); if (!won) return;
-    await S.say('...Oh. So that\'s what it feels like. Huh. It\'s kind of great, actually.', N);
-    await S.say(`From this moment, you're the Champion of Solmere, ${P()}. Welcome to the part where everyone wants a photo. Come on. The Hall of Fame.`, N);
+    await S.say('...So that\'s what it feels like. You know, it\'s not so bad.', N);
+    await S.say(`From this moment, you are the Champion of Solmere, ${P()}. Come. The Hall of Fame awaits.`, N);
     S.set('champion'); S.set('champion_scene_done');
     await S.move('sable_npc', 'l', 1); S.face('sable_npc', 'right');
     S.quest('main9', 'done');
@@ -1009,7 +1022,7 @@
   SC.hall_of_fame = async (S) => {
     if (G.flag('hof_done') && !G.flag('hof_pending')) { return; }
     G.audio && G.audio.music('halloffame');
-    await S.say('Sable leads you into a golden hall. Your partners\' names will be written here forever. Or until the building is renovated.', '');
+    await S.say('Sable leads you into a golden hall. Here, your partners\' names will be remembered forever.', '');
     const party = G.save.party.slice();
     const sc = { opaque: true, t: 0, i: 0, parts: new G.Particles(),
       update() { this.t++; this.parts.update(); if (this.t % 3 === 0) this.parts.add({ x: G.rand() * G.W, y: -4, vy: .6 + G.rand(), vx: (G.rand() - .5) * .3, life: 300, size: 1.5, color: G.pick(['#ffe070', '#ffffff', '#ffd0a0']), type: 'star', blend: 'lighter' }); },
@@ -1029,7 +1042,7 @@
     G.maps.reset();
     await S.w.warpTo('home2f', 3, 4, 'down');
     G.persist.write();
-    await S.say('Home. Your bed has never been this soft. Mom left a note on the pillow: "Proud of you. Soup in the fridge. Change your socks."\\p...\\pBut Professor Hale keeps calling, and there are strange rumors about the stars over Starfall Peak...');
+    await S.say('Home. Your bed has never felt so soft. Mom has left a note on the pillow: "So proud of you. There\'s soup on the stove."\\p...\\pBut Professor Hale has sent word, and there are strange rumours about the stars over Starfall Peak...');
     S.quest('post1', 'start');
     G.toast('Game saved. Post-game unlocked: Battle Spire (Skyreach), Starfall Peak (west of Frostpeak), rematches!', { life: 400 });
   };
@@ -1041,7 +1054,7 @@
     G.audio && G.audio.music('encounter_boss');
     await S.say('...!', '???');
     const won = await G.storyBattle('wanderer'); if (!won) return;
-    await S.say('The Wanderer smiles, tips their cap, and presses something into your hand. When you look up, the summit is empty. Show-off.');
+    await S.say('The Wanderer smiles, tips their cap, and presses something into your hand. When you look up, the summit is empty.');
     await S.give('crownorb');
     S.set('wanderer_done'); S.remove('sf_wanderer'); S.restoreMusic();
   };
@@ -1051,11 +1064,11 @@
     await S.say('It opens its eyes. The whole sky holds its breath.');
     await G.startWild(null, { species: 'nyxalis', lvl: 65, legend: true, noRandom: true });
     S.set('nyxalis_done'); S.remove('sf_nyx');
-    await S.say('The stars bloom back over Starfall Peak, brighter than before. Somewhere, Professor Hale just felt a disturbance in her graphs.');
+    await S.say('The stars bloom back over Starfall Peak, brighter than before.');
     S.quest('post1', 'done');
   };
   SC.orrelume_return = async (S) => {
-    await S.say('A soft song drifts up from the water. Orrelume came back. It looks like it\'s been waiting for you.');
+    await S.say('A soft song drifts up from the water. Orrelume has returned. It seems to have been waiting for you.');
     await G.startWild(null, { species: 'orrelume', lvl: 55, legend: true, noRandom: true });
     if (G.party.allMons().some(m => m.sp === 'orrelume')) { S.set('orrelume_caught'); S.remove('tl_orre'); }
   };
@@ -1063,10 +1076,10 @@
   SC.spire_recep = async (S) => {
     S.facePlayer('spire_recep');
     const N = 'Spire Host';
-    if (!G.flag('champion')) { await S.say('The Battle Spire is for Champions only. Come back when you\'ve conquered the Conclave. We\'ll be here. Being exclusive.', N); return; }
+    if (!G.flag('champion')) { await S.say('The Battle Spire is open only to Champions. Come back once you have conquered the Conclave.', N); return; }
     const sp = G.save.spire; sp.bp = sp.bp || 0;
     await S.say(`Welcome to the Battle Spire! Seven battles in a row, three Echoes each, all at Level 50. Streak: ${sp.streak}. Best: ${sp.best}. BP: ${sp.bp}.`, N);
-    if (G.save.party.filter(m => !m.egg).length < 3) { await S.say('It\'s three-on-three. Come back with at least three Echoes. Math is the first test.', N); return; }
+    if (G.save.party.filter(m => !m.egg).length < 3) { await S.say('Battles here are three against three. Please come back with at least three Echoes.', N); return; }
     if (!await G.yesno('Take on the challenge?', { speaker: N })) return;
     await S.say('Choose three Echoes. They battle at Level 50 and heal fully between rounds.', N);
     const picks = [];
@@ -1087,11 +1100,11 @@
       await S.say(`Battle ${n + 1} of 7${boss ? ' — the Spire Master!' : ''}`, N);
       for (const m of team) G.mon.healFull(m);
       const r = await G.runBattle({ foes: [G.makeTrainerCfg(tid)], format: 'single', music: G.TRAINERS[tid].music, boss, env: 'league', playerParty: team, exp: false, noMoney: true, noPost: true, canLose: true, noRun: true });
-      if (!r || r.outcome !== 'win') { sp.streak = 0; await S.say('Your streak has ended. Well fought! The Spire remembers. The Spire is petty.', N); G.persist.write(); return; }
+      if (!r || r.outcome !== 'win') { sp.streak = 0; await S.say('Your streak has ended. Well fought! We hope to see you again.', N); G.persist.write(); return; }
       sp.streak++; sp.best = Math.max(sp.best, sp.streak); sp.bp += boss ? 10 : 1 + Math.floor(sp.streak / 7);
       if (n < 6 && !await G.yesno(`Victory! Streak: ${sp.streak}. Continue to battle ${n + 2}?`, { speaker: N })) { G.persist.write(); return; }
     }
-    await S.say(`You conquered the Spire! Streak: ${sp.streak}. BP: ${sp.bp}. Spend it at the counter on the right. You've earned a little shopping.`, N);
+    await S.say(`You conquered the Spire! Streak: ${sp.streak}. BP: ${sp.bp}. You can spend your BP at the counter on the right.`, N);
     G.persist.write();
   };
   SC.spire_exchange = async (S) => {
@@ -1102,7 +1115,7 @@
       const k = await G.choose(stock.map(([id, c]) => ({ label: G.ITEMS[id].name, right: c + ' BP' })).concat([{ label: 'Done' }]), { x: 120, y: 10, w: 180, maxRows: 12, title: `BP: ${sp.bp}`, cancel: stock.length });
       if (k < 0 || k >= stock.length) return;
       const [id, c] = stock[k];
-      if (sp.bp < c) { await S.say('Not enough BP. Win more. That\'s the whole business model.', 'Exchange'); continue; }
+      if (sp.bp < c) { await S.say('You don\'t have enough BP for that.', 'Exchange'); continue; }
       sp.bp -= c; G.bag.add(id); G.audio && G.audio.sfx('money'); G.toast('Got ' + G.ITEMS[id].name);
     }
   };
@@ -1110,21 +1123,21 @@
   SC.nurse = async (S) => {
     const e = S.npc('nurse'); if (e) e.dir = 'down';
     const hc = G.save.settings.nuzlocke && G.save.settings.nuzRules.hardcore;
-    await S.say(`Welcome to the Tamer Haven! Want me to fix your Echoes up?`, 'Nurse');
+    await S.say(`Welcome to the Tamer Haven! Shall I restore your Echoes to full health?`, 'Nurse');
     const k = await G.ask('Heal your party?', ['Yes please', 'No thanks'], { speaker: 'Nurse' });
-    if (k !== 0) { await S.say('Okay! Stay safe. Hydrate. Both of you.', 'Nurse'); return; }
-    await S.say('One sec. Don\'t touch the machine. It bites.', 'Nurse');
+    if (k !== 0) { await S.say('All right. Take care out there!', 'Nurse'); return; }
+    await S.say('Just a moment, please.', 'Nurse');
     if (e) e.dir = 'left';
     await S.heal();
     if (e) e.dir = 'down';
     if (G.save.settings.nuzlocke && G.save.graveyard.length) await S.say('Your team is rested. And... I lit a candle for the ones who didn\'t make it. I always do.', 'Nurse');
-    await S.say(G.pick(['All fixed! Good as new. Better, maybe. I\'m very good.', 'Done! They\'re rested, fed, and one of them winked at me.', 'Fully healed! Please stop fighting things that are bigger than you. You won\'t. But please.']), 'Nurse');
+    await S.say(G.pick(['Your Echoes are fully healed. We hope to see you again!', 'All done! Your team is rested and ready.', 'Your Echoes are back to full strength. Take care out there!']), 'Nurse');
     const w = S.w; if (w.map.def.isHaven && G.save.returnTo) G.save.lastHeal = { map: w.map.id, x: 7, y: 6, back: { ...G.save.returnTo } };
   };
   SC.haven_board = async (S) => {
     const main = Object.keys(G.QUESTS).find(id => G.QUESTS[id].main && G.save.quests[id] && G.save.quests[id].step !== 'done');
     const Q = main ? G.QUESTS[main] : null;
-    const st = Q ? ((Q.steps && Q.steps[G.save.quests[main].step]) || Q.desc) : 'No urgent news! Go catch something weird.';
+    const st = Q ? ((Q.steps && Q.steps[G.save.quests[main].step]) || Q.desc) : 'No urgent news. A fine day for exploring!';
     await S.say(`{c}TAMER BOARD{w} — Current goal:\\n${st}`, 'Haven Aide');
     const side = Object.keys(G.QUESTS).filter(id => !G.QUESTS[id].main && G.save.quests[id] && G.save.quests[id].step !== 'done');
     if (side.length) await S.say(`Open side quests: ${side.map(id => G.QUESTS[id].name).join(', ')}. Your Journal has the details.`, 'Haven Aide');
@@ -1132,25 +1145,25 @@
   SC.haven_tips = async (S) => {
     S.facePlayer('hv1');
     await S.say(G.pick([
-      'The PC in every Haven connects to your boxes. You can heal from it too. Nobody knows how. Don\'t ask.',
-      'Held items like Leftovers or a Sun Berry turn losing battles around. Snacks win wars.',
-      'Stat boosts reset when an Echo switches out. Status conditions don\'t. Burns are forever. Well, until you heal.',
-      'Critical hits ignore the target\'s defense boosts and your Attack drops. Handy!',
-      'Weather changes everything: rain powers Water, sun powers Fire, snow toughens Ice.',
-      'Sparkling tall grass hides rare Echoes with perfect potential. And better shiny odds!',
-      'Walk into weak wild Echoes you already own and you Sweep them. Chain sweeps for bonus EXP.',
-      'Your walking buddy has moods. Face it and press Z. It has opinions.',
-      'Tab toggles Turbo. Great for grinding. Or for impatient people. Like me.',
-      'Q in battle shows every stat change and field effect. Knowledge is power. Power is also power.',
+      'The PC in every Haven connects to your storage boxes, where Echoes beyond your party of six are kept.',
+      'Held items like Leftovers or a Sun Berry can turn a losing battle around.',
+      'Stat changes wear off when an Echo switches out. Status conditions like burns and poison stay until healed.',
+      'Critical hits ignore the target\'s raised defences, and your own lowered Attack.',
+      'Weather changes everything: rain powers Water moves, sun powers Fire moves, and snow toughens Ice types.',
+      'Sparkling tall grass hides rare Echoes with exceptional potential.',
+      'Walk into a much weaker wild Echo of a kind you already own, and you\'ll Sweep past it without a battle. Chain sweeps for bonus EXP.',
+      'Your partner walking behind you has moods of its own. Face it and press Z to see how it\'s feeling.',
+      'Tab toggles Turbo, which speeds everything up.',
+      'Press Q in battle to see every stat change and field effect.',
     ]), 'Old Tamer');
   };
   SC.haven_chat = async (S) => {
     S.facePlayer('hv2');
     const b = G.save.badges.length;
-    await S.say(G.pick(b < 2 ? ['I want to be a Warden someday! Or a baker. Why not both. A baking Warden.', 'My Pipwing evolved yesterday! It\'s SO fluffy now. I can\'t find it half the time.'] : b < 4 ? ['My cousin joined the Crane Fellowship. His score is 2,000. He doesn\'t call anymore. He posts, though.', 'Glimmer Cave\'s crystals sing when the wind blows through them. Or when Admins yell in them.'] : ['The Lodestar\'s beam looked weaker last night. That\'s bad, right? That feels bad.', 'They say Champion Sable has never lost a battle in Solmere. Must be exhausting.']), 'Tamer');
+    await S.say(G.pick(b < 2 ? ['I want to be a Warden someday!', 'My Pipwing evolved yesterday! It\'s so much bigger now.'] : b < 4 ? ['My cousin joined the Crane Fellowship. He\'s become so strong... but he never comes home any more.', 'The crystals in Glimmer Cave sing when the wind blows through them.'] : ['The Lodestar\'s beam looked weaker last night. That can\'t be good.', 'They say Champion Sable has never lost a battle in Solmere.']), 'Tamer');
   };
   SC.mart_clerk = async (S) => { S.facePlayer('clerk'); await G.openShop(G.martStock()); };
-  SC.mart_chat = async (S) => { S.facePlayer('mt1'); await S.say(G.pick(['Buy ten Orbs at once and they throw in a free Heal Orb! Capitalism, but nice.', 'Repels are a must for caves. Trust me. I\'ve seen things.', 'The shop gets better stuff as you earn badges. Loyalty program. It\'s just badges.']), 'Shopper'); };
+  SC.mart_chat = async (S) => { S.facePlayer('mt1'); await S.say(G.pick(['Buy ten Orbs at once, and they\'ll add a free Heal Orb!', 'Repels are a must for long caves.', 'The shops stock better goods as you earn more badges.']), 'Shopper'); };
   SC.mart_special = async (S) => {
     S.facePlayer('clerk2');
     const town = G.save.returnTo ? G.save.returnTo.map : 'fernwick';
@@ -1161,11 +1174,11 @@
       duskmere: ['duskorb', 'timerorb', 'spelltag', 'duskstone', 'dawnstone', 'tm60', 'tm45'],
       frostpeak: ['iceheal', 'froststone', 'nevermeltice', 'tm07', 'tm61', 'leppaberry', 'lumenberry'],
     }[town] || ['greatorb', 'superpotion', 'repel'];
-    await G.openShop(stock, { greet: 'Local specialties! Things you can only get here. Or online. But here!', speaker: 'Clerk' });
+    await G.openShop(stock, { greet: 'Local specialties! Things you won\'t find anywhere else.', speaker: 'Clerk' });
   };
   SC.sky_special = async (S) => {
     S.facePlayer('clerk2');
-    await G.openShop(['lifegem', 'powerband', 'focuslens', 'swiftscarf', 'leftovers', 'guardvest', 'spikedhelm', 'expertbelt', 'scopelens', 'widelens', 'gritsash', 'linkcord', 'abilitycapsule', 'leafstone', 'tidestone', 'voltstone', 'tm26', 'tm24', 'tm13', 'tm04', 'tm01'], { greet: 'Skyreach Supply. The finest held items in Solmere. Priced accordingly.', speaker: 'Clerk' });
+    await G.openShop(['lifegem', 'powerband', 'focuslens', 'swiftscarf', 'leftovers', 'guardvest', 'spikedhelm', 'expertbelt', 'scopelens', 'widelens', 'gritsash', 'linkcord', 'abilitycapsule', 'leafstone', 'tidestone', 'voltstone', 'tm26', 'tm24', 'tm13', 'tm04', 'tm01'], { greet: 'Welcome to Skyreach Supply, home of the finest held items in Solmere.', speaker: 'Clerk' });
   };
   // ------------------------------------------------------ map patches
   // extra NPCs that belong to later story beats
@@ -1173,7 +1186,7 @@
   G.MAPDEFS.tidelight.objs.push({ type: 'npc', id: 'tl_orre', x: 12, y: 22, monSprite: 'orrelume', dir: 'up', script: 'orrelume_return', cond: ['champion', 'orrelume_away', '!orrelume_caught'] });
   G.MAPDEFS.victorygate.objs = [
     { type: 'npc', id: 'gateguard', x: 5, y: 2, look: 'officer', dir: 'down', script: 'gate_guard', cond: '!vr_open' },
-    { type: 'npc', id: 'gateguard2', x: 4, y: 2, look: 'officer', dir: 'right', text: 'Victory Road lies beyond. Good luck, Tamer. Hydrate.', cond: 'vr_open' },
+    { type: 'npc', id: 'gateguard2', x: 4, y: 2, look: 'officer', dir: 'right', text: 'Victory Road lies beyond. Good luck, Tamer.', cond: 'vr_open' },
   ];
   G.MAPDEFS.route2.objs.forEach(o => { if (o.id === 'r2_i3') o.item = 'tm11'; });
   G.MAPDEFS.lh1.warps[1].cond = 'lh_grey_done';
@@ -1183,14 +1196,14 @@
   G.MAPDEFS.champ.objs.push({ type: 'npc', id: 'sable_npc2', x: 5, y: 2, look: 'sable', dir: 'down', script: 'champion_rematch', cond: ['champion_scene_done', 'hof_done'] });
   G.eliteRematch = function (id) {
     const rid = id + '_r'; const T = G.TRAINERS[id];
-    if (!G.TRAINERS[rid]) G.TRAINERS[rid] = { ...T, party: T.party.map(p => ({ ...p, lvl: p.lvl + 16 })), intro: 'Welcome back, Champion. I\'ve been practicing. Out of spite. Let\'s go.', defeat: T.defeat };
+    if (!G.TRAINERS[rid]) G.TRAINERS[rid] = { ...T, party: T.party.map(p => ({ ...p, lvl: p.lvl + 16 })), intro: 'Welcome back, Champion. I\'ve been training since our last battle. Let\'s begin.', defeat: T.defeat };
     return rid;
   };
   SC.champion_rematch = async (S) => {
     S.facePlayer('sable_npc2');
-    if (!await G.yesno('Back for another round, Champion? Fine. But I\'ve been training too.', { speaker: 'Sable' })) return;
+    if (!await G.yesno('Back for another battle, Champion? Good. I\'ve been training too.', { speaker: 'Sable' })) return;
     const won = await G.storyBattle('sable_rematch');
-    if (won) await S.say('You keep getting stronger. It\'s honestly annoying. Solmere\'s lucky to have you.', 'Sable');
+    if (won) await S.say('You keep getting stronger. Solmere is lucky to have you.', 'Sable');
   };
   G.vibe = vibe;
 })();
