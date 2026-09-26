@@ -294,6 +294,7 @@ G.WorldScene = class {
     if (p.jump) { f.startJump(d, 1); f.nx = p.x; f.ny = p.y; }
   }
   afterStep() {
+    { const L = G.party.lead(); if (L && G.tidemarks && !this.surfing) { G.tidemarks.onStep(L); if (G.tidemarks.pending() && !this.busy) G.run(() => G.tidemarks.announce()); } }
     const p = this.player, m = this.map;
     this.lastMoved = true;
     G.save.stats.steps++;
@@ -1066,7 +1067,7 @@ G.WorldScene = class {
     }
   }
   drawFollower(b, f, ox, oy) {
-    const img = G.monArt ? G.monArt.overworld(f.mon.sp, f.mon.shiny, f.dir, f.animF || 0) : null;
+    const img = G.monArt ? G.monArt.of(f.mon, 'overworld', f.animF || 0, f.dir) : null;
     if (!img) return;
     const hop = f.moving ? Math.abs(Math.sin(f.prog / 16 * Math.PI)) * 2 : 0;
     const x = Math.round(f.px - ox + 8 - img.width / 2), y = Math.round(f.py - oy + 16 - img.height - hop - (f.hop || 0));

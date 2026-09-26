@@ -78,6 +78,7 @@ G.mon = {
       else {
         let v = Math.floor((2 * b + iv + Math.floor(ev / 4)) * m.lvl / 100) + 5;
         if (nat[0] === s) v = Math.floor(v * 1.1); else if (nat[1] === s) v = Math.floor(v * .9);
+        if (m.form && G.tidemarks) v = Math.floor(v * G.tidemarks.statMult(m, s));
         o[s] = v;
       }
     });
@@ -159,7 +160,7 @@ G.mon = {
   hasMove(m, id) { return m.moves.some(x => x.id === id); },
   // compact display info (for battle scene/network)
   info(m) {
-    return { uid: m.uid, sp: m.sp, name: G.mon.name(m), lvl: m.lvl, gender: m.gender, shiny: m.shiny, hp: m.hp, maxhp: G.mon.maxHP(m), status: m.status, ball: m.ball, dead: m.dead };
+    return { uid: m.uid, sp: m.sp, name: G.mon.name(m), lvl: m.lvl, gender: m.gender, shiny: m.shiny, hp: m.hp, maxhp: G.mon.maxHP(m), status: m.status, ball: m.ball, dead: m.dead, tint: m.tint, form: m.form, marks: m.marks };
   },
   clone(m) { return JSON.parse(JSON.stringify(m)); },
   // bst-similar species for randomizer

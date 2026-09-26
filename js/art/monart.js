@@ -253,8 +253,38 @@ G.monArt = (function () {
   }
   const liveCache = new Map();
   const FLOATY = new Set(['jellume', 'glimmer', 'snowlet', 'maskling', 'masquerail', 'cocoonet', 'nimbling', 'orrelume', 'wispurr', 'luminelle', 'aurorelle', 'chimelle', 'blotch']);
+  // one Echo's own colours: its born tint (a few degrees of hue, a touch of saturation) and, once it has a
+  // Tide Form, that form's palette (pulled toward a hue, or shifted round, and re-graded). Cached per look.
+  const tintCache = new Map();
+  function recolor(src, key, p) {
+    let cv = tintCache.get(key); if (cv) return cv;
+    cv = G.makeCanvas(src.width, src.height); const c = cv.getContext('2d'); c.drawImage(src, 0, 0);
+    const d = c.getImageData(0, 0, cv.width, cv.height), a = d.data, f = p.form;
+    for (let i = 0; i < a.length; i += 4) {
+      if (!a[i + 3]) continue;
+      const r = a[i] / 255, g = a[i + 1] / 255, b = a[i + 2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = mx - mn;
+      let h = l === 0 ? 0 : mx === r ? ((g - b) / l) % 6 : mx === g ? (b - r) / l + 2 : (r - g) / l + 4; h *= 60; if (h < 0) h += 360;
+      let s = mx ? l / mx : 0, v = mx;
+      h += p.h; s *= p.s;
+      if (f && s > .08) { if (f.toward !== undefined) { let dh = ((f.toward - h + 540) % 360) - 180; h += dh * f.k; } else h += f.shift; s *= f.s; v *= f.v; }
+      h = ((h % 360) + 360) % 360; s = Math.min(1, s); v = Math.min(1, v);
+      const C = v * s, X = C * (1 - Math.abs((h / 60) % 2 - 1)), m = v - C, k = Math.floor(h / 60);
+      const [R, G2, B] = k === 0 ? [C, X, 0] : k === 1 ? [X, C, 0] : k === 2 ? [0, C, X] : k === 3 ? [0, X, C] : k === 4 ? [X, 0, C] : [C, 0, X];
+      a[i] = (R + m) * 255; a[i + 1] = (G2 + m) * 255; a[i + 2] = (B + m) * 255;
+    }
+    c.putImageData(d, 0, 0);
+    if (tintCache.size > 400) tintCache.delete(tintCache.keys().next().value);
+    tintCache.set(key, cv); return cv;
+  }
   return {
     load, has: sp => has(sp, 'f'),
+    // a specific Echo's sprite: kind 'front' | 'back' | 'overworld' | 'icon'
+    of(m, kind, frame = 0, dir = 'down') {
+      const base = kind === 'back' ? this.back(m.sp, m.shiny, frame) : kind === 'overworld' ? this.overworld(m.sp, m.shiny, dir, frame) : kind === 'icon' ? this.icon(m.sp, m.shiny, frame) : this.front(m.sp, m.shiny, frame);
+      if (!G.tidemarks || !base) return base;
+      const p = G.tidemarks.palette(m); if (!p.form && Math.abs(p.h) < 1 && Math.abs(p.s - 1) < .02) return base;
+      return recolor(base, [m.sp, m.shiny ? 1 : 0, kind, frame, dir, p.h, p.s, m.form ? m.form.id + (m.form.arg || '') : ''].join('|'), p);
+    },
     front(sp, shiny, frame = 0) { return has(sp, 'f') ? posed(sp, 'f', shiny, frame % 4, 96, 96, 8) : render(sp, shiny, 'front', frame % 4, 96); },
     back(sp, shiny, frame = 0) { return has(sp, 'b') ? posed(sp, 'b', shiny, frame % 4, 156, 156, 0) : render(sp, shiny, 'back', frame % 4, 104); },
     icon(sp, shiny, frame = 0) {

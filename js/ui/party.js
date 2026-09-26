@@ -120,7 +120,7 @@ G.PartyScene = class {
       g.addColorStop(0, G.col.light(tc, .35) + ''); g.addColorStop(1, 'rgba(0,0,0,0)');
       U.c.globalAlpha = .55; U.c.fillStyle = g; U.c.fillRect(U.X(cx - 70), U.Y(cy - 70), 140 * G.gfx.S, 140 * G.gfx.S); U.c.globalAlpha = 1;
       const pe = ease.outBack(Math.min(1, (t - (this._selT || 0)) / 12));
-      const img = G.monArt.front(cur.sp, cur.shiny, Math.floor(t / 12) % 4);
+      const img = G.monArt.of(cur, 'front', Math.floor(t / 12) % 4);
       U.img(img, cx - 48 - (1 - pe) * 30, cy - 58 + Math.sin(t / 18) * 1.5, { alpha: (cur.dead ? .45 : 1) * Math.min(1, pe + .2) });
       const nx = 10 + (1 - pe) * -40;
       U.para(nx - 12, 142, 150, 17, 7, '#07060c');
@@ -195,6 +195,7 @@ G.SummaryScene = class {
     }
     if (I.pressed('a') && this.page === 2) { I.consume('a'); if (!this.moveMode) { this.moveMode = true; this.mi = 0; } else if (this.swapMove === undefined) { this.swapMove = this.mi; } else { const mv = this.m.moves; [mv[this.swapMove], mv[this.mi]] = [mv[this.mi], mv[this.swapMove]]; this.swapMove = undefined; G.audio && G.audio.sfx('swap'); } }
     if (I.pressed('b')) { I.consume('b'); if (this.moveMode) { this.moveMode = false; this.swapMove = undefined; return; } G.audio && G.audio.sfx('back'); G.pop(this); this.res(); }
+    if (G.tidemarks && G.tidemarks.cardKey) { G.tidemarks.cardKey = false; G.tidemarks.saveCard(this.m); }
   }
   draw(b) {
     const sp = G.SPECIES[this.m.sp];
@@ -211,7 +212,7 @@ G.SummaryScene = class {
     const cx = 68, cy = 96, g = U.c.createRadialGradient(U.X(cx), U.Y(cy), 0, U.X(cx), U.Y(cy), 56 * G.gfx.S);
     g.addColorStop(0, G.col.light(tc, .35)); g.addColorStop(1, 'rgba(0,0,0,0)');
     U.c.globalAlpha = .55; U.c.fillStyle = g; U.c.fillRect(U.X(cx - 70), U.Y(cy - 70), 140 * G.gfx.S, 140 * G.gfx.S); U.c.globalAlpha = 1;
-    U.img(G.monArt.front(m.sp, m.shiny, Math.floor(t / 14) % 4), cx - 48 - (1 - pe) * 30, cy - 56 + Math.sin(t / 20) * 1.5, { alpha: (m.dead ? .45 : 1) * Math.min(1, pe + .2) });
+    U.img(G.monArt.of(m, 'front', Math.floor(t / 14) % 4), cx - 48 - (1 - pe) * 30, cy - 56 + Math.sin(t / 20) * 1.5, { alpha: (m.dead ? .45 : 1) * Math.min(1, pe + .2) });
     // name plate
     const nx = 8 - (1 - pe) * 40;
     U.para(nx - 14, 14, 138, 30, 8, '#07060c'); U.para(nx - 14, 42, 138, 2, 0, '#ff3b4e');
@@ -249,6 +250,7 @@ G.SummaryScene = class {
     U.text(m.lvl >= 100 ? 'Max level' : `To next Lv  ${nxt.toLocaleString()}`, 8, 182, { size: 5.8, weight: 700, color: '#b8bccb' });
     U.bar(8, 192, 112, 3, G.mon.expProgress(m), '#4ab0f4', '#2a2c3a', { border: false });
     U.text('◀ ▶ pages   ▲ ▼ Echoes', 66, 208, { size: 5, color: 'rgba(255,255,255,.55)', align: 'center' });
+    if (G.tidemarks && !m.egg) { U.shape(G.W - 70, 202, 64, 11, 3, '#ff3b4e'); U.text('K · MON CARD', G.W - 38, 204, { size: 5.6, weight: 900, align: 'center', color: '#fff' }); U.hot(G.W - 70, 202, 64, 11, null, () => G.tidemarks.saveCard(m)); }
   }
   drawInfo(px, py, m, sp) {
     const U = G.ui; let y = py + 8;
@@ -262,9 +264,15 @@ G.SummaryScene = class {
     row('Met', m.met ? `${m.met.loc || 'Unknown'} at Lv ${m.met.lvl}` : 'A fateful encounter');
     row('Trait', G.mon.characteristic(m));
     row('Bond', m.bond >= 220 ? 'Unbreakable ♥♥♥' : m.bond >= 150 ? 'Close ♥♥' : m.bond >= 100 ? 'Friendly ♥' : 'Getting acquainted', '#e8487a');
-    U.text(G.ui.wrap(sp.dex, 218, 5.8).join(' '), px + 10, y + 2, { size: 5.8, color: '#4a5060' });
-    const lines = G.ui.wrap(sp.dex, 218, 5.8);
-    lines.forEach((l, k) => { });
+    // Tidemarks: chips for each mark earned, the Tide Form if it has one
+    U.text('Tidemarks', px + 10, y, { size: 6.4, weight: 800, color: '#6a7080' });
+    const mk = m.marks || [];
+    if (!mk.length) U.text(m.form ? 'Tide Form' : 'None yet. Earned by what it does, not luck.', px + 80, y, { size: 6, weight: 700, color: '#8a90a0' });
+    let cxp = px + 80;
+    for (const k of mk) { const lb = G.tidemarks.label(k), w = U.measure(lb, 5.8, 800) + 8, col = G.tidemarks.color(k); U.shape(cxp, y - 1, w, 9, 3, col); U.text(lb, cxp + 4, y, { size: 5.8, weight: 800, color: '#101018' }); cxp += w + 3; }
+    y += 12;
+    if (m.form) { U.text(`Tide Form: ${G.tidemarks.label(m.form)}. One of one.`, px + 10, y, { size: 6, weight: 800, color: '#b0287a' }); y += 10; }
+    U.text(G.ui.wrap(sp.dex, 218, 5.6).slice(0, 2).join(' '), px + 10, y + 1, { size: 5.6, color: '#4a5060' });
   }
   drawStats(px, py, m, sp) {
     const U = G.ui, st = G.mon.stats(m), nat = G.mon.natureOf(m);
@@ -353,8 +361,18 @@ G.SummaryScene.prototype.drawInfo = (function () {
     row('Met', m.met ? `${m.met.loc || 'Unknown'}, Lv ${m.met.lvl}` : 'A fateful encounter');
     row('Trait', G.mon.characteristic(m));
     row('Bond', m.bond >= 220 ? 'Unbreakable ♥♥♥' : m.bond >= 150 ? 'Close ♥♥' : m.bond >= 100 ? 'Friendly ♥' : 'Getting acquainted', '#e8487a');
+    // Tidemarks: a chip per mark earned, and the Tide Form if it has one
+    if (G.tidemarks) {
+      U.text('Tidemarks', px + 10, y, { size: 6.2, weight: 800, color: '#6a7080' });
+      const mk = m.marks || [];
+      if (!mk.length) U.text('None yet. Earned by what it does, not by luck.', px + 70, y, { size: 5.8, weight: 700, color: '#8a90a0' });
+      let cx = px + 70;
+      for (const k of mk) { const lb = G.tidemarks.label(k), w = U.measure(lb, 5.6, 800) + 8; U.shape(cx, y - 1, w, 9, 3, G.tidemarks.color(k)); U.text(lb, cx + 4, y, { size: 5.6, weight: 800, color: '#101018' }); cx += w + 3; }
+      y += 11.5;
+      if (m.form) { U.text(`Tide Form · ${G.tidemarks.label(m.form)}: no other looks like it.`, px + 10, y, { size: 5.8, weight: 800, color: '#b0287a' }); y += 10; }
+    }
     y += 3;
-    G.ui.wrap(sp.dex, 218, 5.8).forEach(l => { U.text(l, px + 10, y, { size: 5.8, color: '#4a5060' }); y += 8.5; });
+    G.ui.wrap(sp.dex, 218, 5.8).slice(0, m.form ? 2 : 3).forEach(l => { U.text(l, px + 10, y, { size: 5.8, color: '#4a5060' }); y += 8.5; });
   };
 })();
 G.openSummary = function (list, i, o) { return new Promise(res => G.push(new G.SummaryScene(list, i, res, o))); };

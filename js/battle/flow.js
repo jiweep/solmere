@@ -116,7 +116,7 @@ G.runBattle = async function (cfg) {
     const sides = [{ trainers: [player, ...(cfg.allies || [])] }, { trainers: cfg.foes }];
     const S = G.save.settings;
     const rules = { nuzlocke: S.nuzlocke, setMode: S.setMode || (S.nuzlocke && S.nuzRules.hardcore), noItems: S.noItems || (S.nuzlocke && S.nuzRules.hardcore), noCatch: cfg.noCatch, noCatchMsg: cfg.noCatchMsg };
-    const bt = new G.Battle({ format: cfg.format || 'single', wild: !!cfg.wild, sides, displays: [scene, ...(cfg.extraDisplays || [])], exp: cfg.exp !== false, rules, env: scene.env, weather: cfg.weather, night: G.clock.isNight(), godPlayer: G.save.settings.god && G.save.god.invincible, godCatch: G.save.settings.god && G.save.god.catch100, noRun: cfg.noRun });
+    const bt = new G.Battle({ format: cfg.format || 'single', wild: !!cfg.wild, sides, displays: [scene, ...(cfg.extraDisplays || [])], exp: cfg.exp !== false, rules, env: scene.env, weather: cfg.weather, night: G.clock.isNight(), godPlayer: G.save.settings.god && G.save.god.invincible, godCatch: G.save.settings.god && G.save.god.catch100, noRun: cfg.noRun, boss: !!cfg.boss });
     if (G.save.settings.god && G.save.god.ohko) bt.o.godOHKO = true;
     scene.bt = bt;
     G.save.stats.battles++;
@@ -130,6 +130,7 @@ G.runBattle = async function (cfg) {
     try { result = await bt.run(); }
     catch (e) { G.reportError(e); result = { outcome: 'draw', leveled: [], fainted: [] }; }
     if (G.clutch) await G.clutch.end(scene, result);
+    if (G.tidemarks && result.outcome === 'win') G.tidemarks.onWin(G.save.party, G.clock.isNight());
     await scene.wait(10);
     // victory music + money
     if (result.outcome === 'win' && !cfg.wild) {
@@ -260,6 +261,7 @@ G.postBattle = async function (r, cfg) {
   }
   // remote partner exp
   if (cfg.onExpLog && r.expLog) cfg.onExpLog(r.expLog);
+  if (G.tidemarks) await G.tidemarks.announce();
   // evolution
   for (const uid of r.leveled || []) {
     const m = G.save.party.find(x => x.uid === uid); if (!m || m.hp <= 0) continue;
@@ -460,7 +462,7 @@ G.evolveMon = async function (m, to, o = {}) {
       for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2 + this.t / 90; b.fillStyle = 'rgba(255,255,255,.04)'; b.beginPath(); b.moveTo(G.W / 2, G.H / 2 - 20); b.arc(G.W / 2, G.H / 2 - 20, 300, a, a + .12); b.fill(); }
       this.parts.draw(b);
       const cur = this.showNew ? to : from;
-      const img = G.monArt.front(cur, m.shiny, Math.floor(this.t / 12) % 4);
+      const img = G.monArt.of({ ...m, sp: cur }, 'front', Math.floor(this.t / 12) % 4);
       const x = G.W / 2 - 48, y = G.H / 2 - 84;
       if (this.stage === 1) {
         b.drawImage(G.pix.silhouette(img, '#ffffff'), x, y);
@@ -486,10 +488,13 @@ G.evolveMon = async function (m, to, o = {}) {
   sc.stage = 2;
   G.audio && G.audio.cry(to);
   G.mon.evolve(m, to);
+  const tf = G.tidemarks && !m.form && G.tidemarks.formFor(m);
+  if (tf) m.form = { id: tf.id, arg: tf.arg };
   G.dexMark(to, 'caught', m.shiny);
   G.save.stats.evolutions++;
   G.audio && G.audio.jingle('evolved');
   await G.say(`Congratulations! Your ${oldName} evolved into {b}${G.SPECIES[to].name}{w}!`);
+  if (tf) await G.say(`Its ${G.tidemarks.label(tf)} Tidemark shaped it as it changed. No other ${G.SPECIES[to].name} looks like this one: it's a {y}Tide Form{w}!`);
   const sp = G.SPECIES[to];
   if (sp.evoMove) await G.learnWithPrompt(m, sp.evoMove);
   for (const mv of G.mon.movesAt(to, m.lvl)) if (!G.mon.hasMove(m, mv)) await G.learnWithPrompt(m, mv);

@@ -1600,7 +1600,7 @@ G.W3 = (function () {
       place('e:' + e.id + ':' + e.x0id, img, e.px, e.py, swim && img ? -img.height * .5 + Math.sin(w.frame / 14 + e.x) : (e.hop || 0));
     }
     if (w.player) place('player', entImage(w, w.player), w.player.px, w.player.py, w.player.hop || 0);
-    const f = w.follower; if (f && !f.hidden) place('follower', G.monArt.overworld(f.mon.sp, f.mon.shiny, f.dir, f.animF || 0), f.px, f.py, f.hop || 0);
+    const f = w.follower; if (f && !f.hidden) place('follower', G.monArt.of(f.mon, 'overworld', f.animF || 0, f.dir), f.px, f.py, f.hop || 0);
     for (const [k, m] of E.sprites) if (!seen.has(k)) m.visible = false;
   }
   const entTint = T ? new T.Color(1, 1, 1) : null, entRim = T ? new T.Color() : null;

@@ -494,7 +494,7 @@ G.THROW_MULT = [1, 1.25, 1.6, 2.2];   // catch-rate multiplier by throw quality:
         if (this.sides[b.side].resUsed[b.owner]) continue;
         this.sides[b.side].resUsed[b.owner] = true;
         b.resonant = true; b.vol.resShield = true;
-        this.emit({ t: 'resonate', ref: b.ref(), type: b.types[0] });
+        this.emit({ t: 'resonate', ref: b.ref(), type: b.types[0] }); if (G.tidemarks) G.tidemarks.onResonate(this, b);
         this.say(`{0} is Resonating with ${tr.name || 'its Tamer'}! Its ${G.cap(b.types[0])} power surges!`, b);
       }
       // --- moves
@@ -817,7 +817,9 @@ G.THROW_MULT = [1, 1.25, 1.6, 2.2];   // catch-rate multiplier by throw quality:
       }
       dmg = Math.min(dmg, t.hp);
       this.emit({ t: 'hit', ref: t.ref(), eff: r.eff, crit: r.crit });
+      const hpBefore = t.hp;
       t.hp = t.hp - dmg;
+      if (G.tidemarks) G.tidemarks.onHit(this, b, t, m, r, hpBefore);
       this.emit({ t: 'hp', ref: t.ref(), hp: t.hp, max: t.maxhp });
       if (endured === 'sturdy') { this.popup(t); this.say('{0} endured the hit!', t); }
       if (endured === 'sash') { this.emit({ t: 'item', ref: t.ref(), item: 'gritsash' }); t.item = null; this.say('{0} hung on using its Grit Sash!', t); }

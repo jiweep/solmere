@@ -563,7 +563,7 @@ G.monImgFor = function (sc, s) {
   // pixel sprites breathe and sway through a cached idle loop; the vector fallback uses its 4 frames
   const lt = sc.t * (s.status === 'slp' || s.status === 'frz' ? .35 : 1) + s.slot * 37 + (mine ? 0 : 61);
   const live = G.monArt.live && G.monArt.live(s.sp, s.shiny, back, lt);
-  const img = live || (back ? G.monArt.back(s.sp, s.shiny, s.frame) : G.monArt.front(s.sp, s.shiny, s.frame));
+  const img = live || G.monArt.of(s, back ? 'back' : 'front', s.frame);
   if (!img) return null;
   let scale = (s.sc || 1) * (s.scale === undefined ? 1 : s.scale);
   // doubles: wide creatures (spread wings, long tails) shrink until they fit their half of the field
