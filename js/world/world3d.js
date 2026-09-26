@@ -21,8 +21,9 @@ G.W3 = (function () {
   const PIX = { k: 1, w: 2, h: 2, RW: 4, RH: 4, dist: 23.5, offX: 0, offY: 0 };
   const VIEW_UNITS = 19.3;     // world units across the view (sets the zoom; the grid picks the nearest whole scale)
   const UPIX = T ? { uRes: { value: new T.Vector2(4, 4) } } : null;
-  let camY = null, night = 0;
+  let camY = null, night = 0, roomGlow = 0;
   const SUN_OFF = [-10, 22, 6];
+  const SUN_IN = [-4, 26, 9];      // indoors: a high ceiling light, short soft shadows
   const _d = T ? new T.Vector3() : null, _r = T ? new T.Vector3() : null, _u = T ? new T.Vector3() : null, _p = T ? new T.Vector3() : null;
   let R = null, cv = null, scene, camera, sun, hemi, cache = new Map(), cur = null, ok = !!T;
 
@@ -178,6 +179,7 @@ G.W3 = (function () {
     const vdrop = (vx, vy) => (isWater(vx - 1, vy - 1) && isWater(vx, vy - 1) && isWater(vx - 1, vy) && isWater(vx, vy)) ? -.14 : 0;
     group.userData.vdrop = vdrop;
     const stairs = !!(map.def.town || map.def.env === 'city');
+    const room = map.type === 'indoor' ? wallInfo(map) : null;
     // chunks cover the map plus a border ring of trees/water
     for (let cy = Math.floor(-PADT / CT); cy <= Math.floor((H + PADT) / CT); cy++) for (let cx = Math.floor(-PADT / CT); cx <= Math.floor((W + PADT) / CT); cx++) {
       const ch = G.terrain.chunk(map, cx, cy);
@@ -207,6 +209,17 @@ G.W3 = (function () {
             }
             continue;
           }
+        }
+        // interiors: a run of wall cells stands up as the wall behind the floor below it, its painted
+        // tiles becoming the face (top row at the top); a run with no floor below becomes a flat wall top
+        if (room && inside && room.isWall(x, y)) {
+          const [y0, y1] = room.run(x, y), zb = y1 + 1, b = pos.length / 3;
+          const u0 = i / CT, u1 = (i + 1) / CT, v0 = 1 - j / CT, v1 = 1 - (j + 1) / CT;
+          if (zb < H) { const t = (zb - y) * WALL_K, bt = (zb - y - 1) * WALL_K; pos.push(x, t * WLc, zb - t * WLs, x + 1, t * WLc, zb - t * WLs, x, bt * WLc, zb - bt * WLs, x + 1, bt * WLc, zb - bt * WLs); }
+          else { const t = (y1 - y0 + 1) * WALL_K; pos.push(x, t, y, x + 1, t, y, x, t, y + 1, x + 1, t, y + 1); }
+          uv.push(u0, v0, u1, v0, u0, v1, u1, v1); col.push(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+          idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3);
+          continue;
         }
         let h = [0, 0, 0, 0];
         if (inside) { const k = (y * W + x) * 4; h = [hv.corner[k], hv.corner[k + 1], hv.corner[k + 2], hv.corner[k + 3]]; }
@@ -1341,8 +1354,8 @@ G.W3 = (function () {
   // ------------------------------------------------------------- lights
   // every lamp, lantern, crystal and lava cell gets an additive glow sprite (faded in by night, lava
   // always on); a small pool of point lights follows the nearest ones so they light the ground
-  const LIGHT_COL = { lamp: 0xffc47a, lantern: 0xffb060, crystal: 0x7ae0ff, lava: 0xff6a2a, screen: 0x7ab0ff };
-  const LIGHT_LIFT = { lamp: 2.29, lantern: .8, crystal: .7, lava: .15, screen: .8 };
+  const LIGHT_COL = { room: 0xffc890, lamp: 0xffc47a, lantern: 0xffb060, crystal: 0x7ae0ff, lava: 0xff6a2a, screen: 0x7ab0ff };
+  const LIGHT_LIFT = { room: 1, lamp: 2.29, lantern: .8, crystal: .7, lava: .15, screen: .8 };
   let glowTex = null;
   function glowTexture() {
     if (glowTex) return glowTex;
@@ -1365,15 +1378,178 @@ G.W3 = (function () {
   function updateLights(E, fx, fz) {
     if (!POOL.length) for (let i = 0; i < 6; i++) { const pl = new T.PointLight(0xffc47a, 0, 6, 1.6); scene.add(pl); POOL.push(pl); }
     const glows = E.group.userData.glows || [];
-    for (const g of glows) { const on = g.userData.l.kind === 'lava' ? .75 : night * .9; g.material.opacity = on * (.85 + Math.sin(G.realTime * 3 + g.position.x * 1.7) * .15); }
-    const near = glows.filter(g => g.userData.l.kind === 'lava' || night > .05).map(g => [g, (g.position.x - fx) ** 2 + (g.position.z - fz) ** 2]).sort((a, b) => a[1] - b[1]).slice(0, POOL.length);
+    const lit = l => l.kind === 'lava' ? .75 : l.kind === 'room' ? roomGlow : night * .9;
+    for (const g of glows) { const on = lit(g.userData.l) * (g.userData.l.kind === 'room' ? .55 : 1); g.material.opacity = on * (.85 + Math.sin(G.realTime * 3 + g.position.x * 1.7) * .15); }
+    const near = glows.filter(g => lit(g.userData.l) > .05).map(g => [g, (g.position.x - fx) ** 2 + (g.position.z - fz) ** 2]).sort((a, b) => a[1] - b[1]).slice(0, POOL.length);
     POOL.forEach((pl, i) => {
       const n = near[i];
       if (!n || n[1] > 400) { pl.intensity = 0; return; }
       const l = n[0].userData.l; pl.color.setHex(LIGHT_COL[l.kind] || 0xffc47a);
       pl.position.set(l.x, l.y + (LIGHT_LIFT[l.kind] || 1) * .8, l.z);
-      pl.intensity = (l.kind === 'lava' ? 1.2 : night * 2.2) * (.9 + Math.sin(G.realTime * 4 + i) * .1);
+      pl.intensity = (l.kind === 'lava' ? 1.2 : l.kind === 'room' ? roomGlow * 2.4 : night * 2.2) * (.9 + Math.sin(G.realTime * 4 + i) * .1);
     });
+  }
+
+  // ------------------------------------------------------------- interiors
+  // A room is a diorama: its wall rows stand up behind the floor (see buildTerrain), side walls close it
+  // in, a dark cap runs along every wall top and the floor slab shows a thick front lip. Tables and beds
+  // are solid models; window light falls in soft shafts and lamps glow warm, brighter after dark.
+  const WALL_K = 1;   // height of one wall row, in tiles
+  // walls lean back a little, like every standing sprite, so their painted pixels keep the floor's proportions on screen
+  const WALL_LEAN = .35, WLc = Math.cos(WALL_LEAN), WLs = Math.sin(WALL_LEAN);
+  function wallInfo(map) {
+    const H = map.h, isWall = (x, y) => { const c = map.cell(x, y); return !!(c && c.g === 'wall'); };
+    const run = (x, y) => { let y0 = y, y1 = y; while (y0 > 0 && isWall(x, y0 - 1)) y0--; while (y1 < H - 1 && isWall(x, y1 + 1)) y1++; return [y0, y1]; };
+    return { isWall, run };
+  }
+  let roomParts = null;
+  function roomMats() {
+    if (roomParts) return roomParts;
+    const plank = (w, h, pal, seed) => {   // pixel planks: grain streaks, dark seams, the odd knot
+      const cv = G.makeCanvas(w, h), c = cv.getContext('2d');
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const seam = y % 8 === 7, grain = Math.sin(x * .45 + Math.floor(y / 8) * 2.7 + Math.sin(x * .13 + y) * 2) > .6;
+        let k = seam ? 0 : y % 8 === 0 ? 3 : grain ? 1 : 2;
+        if (G.h2(x, y, seed) > .95) k = Math.max(0, k - 1);
+        c.fillStyle = pal[k]; c.fillRect(x, y, 1, 1);
+      }
+      return texPx(cv);
+    };
+    const WD = ['#4a2a18', '#7a4a2a', '#94603a', '#b07a4c'];
+    const cloth = G.makeCanvas(16, 16), cc = cloth.getContext('2d');   // lace-edged tablecloth
+    cc.fillStyle = '#f2f0f4'; cc.fillRect(0, 0, 16, 16); cc.fillStyle = '#d8d4e0';
+    for (let i = 0; i < 16; i += 2) { cc.fillRect(i, 0, 1, 1); cc.fillRect(i + 1, 15, 1, 1); cc.fillRect(0, i + 1, 1, 1); cc.fillRect(15, i, 1, 1); }
+    cc.fillStyle = '#e4e0ea'; cc.fillRect(2, 2, 12, 1); cc.fillRect(2, 13, 12, 1);
+    const quilt = G.makeCanvas(16, 16), qc = quilt.getContext('2d');   // patchwork quilt
+    const QB = ['#2e4e9e', '#3c66c0', '#5a86dc', '#243a7a'];
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { qc.fillStyle = QB[((x >> 2) + (y >> 2)) % 2 ? (x % 4 === 0 || y % 4 === 0 ? 3 : 1) : (x % 4 === 0 || y % 4 === 0 ? 3 : 2)]; qc.fillRect(x, y, 1, 1); }
+    const L = (o) => new T.MeshLambertMaterial(o);
+    roomParts = {
+      wood: L({ map: plank(32, 32, WD, 81) }), dark: L({ color: 0x3a2418 }), cloth: L({ map: texPx(cloth) }), quilt: L({ map: texPx(quilt) }),
+      sheet: L({ color: 0xeeeef4 }), cap: L({ color: 0x2a1c24 }), capHi: L({ color: 0x5a4252 }),
+    };
+    roomParts.quilt.map.wrapS = roomParts.quilt.map.wrapT = T.RepeatWrapping;
+    return roomParts;
+  }
+  const part = (g, geo, mat, x, y, z) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
+  // a table over a block of table cells: plank top with a lace runner, an apron and four turned legs
+  function tableModel(x0, y0, w, h) {
+    const P = roomMats(), g = new T.Group(), top = .52, cx = x0 + w / 2, cz = y0 + h / 2 + .15;
+    part(g, new T.BoxGeometry(w - .12, .07, h - .22), P.wood, cx, top, cz);
+    part(g, new T.BoxGeometry(Math.max(.4, w - .7), .075, h - .5), P.cloth, cx, top + .01, cz);
+    part(g, new T.BoxGeometry(w - .3, .12, h - .4), P.dark, cx, top - .09, cz);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) part(g, new T.BoxGeometry(.09, top - .05, .09), P.wood, cx + sx * (w / 2 - .22), (top - .05) / 2, cz + sz * (h / 2 - .27));
+    // a teapot and cups, for life
+    const pot = part(g, new T.SphereGeometry(.09, 8, 6), L2(0xd05a4a), cx - .15, top + .12, cz - .05); pot.scale.y = .8;
+    for (const [dx, dz] of [[.25, .1], [.1, -.2]]) part(g, new T.CylinderGeometry(.045, .035, .07, 8), L2(0xf4f4f8), cx + dx, top + .08, cz + dz);
+    return g;
+  }
+  const L2mats = {};
+  function L2(hex) { return L2mats[hex] || (L2mats[hex] = new T.MeshLambertMaterial({ color: hex })); }
+  // a bed along a run of bed cells (head to the north): frame, mattress, pillow, a quilt over the foot
+  function bedModel(x, y0, len) {
+    const P = roomMats(), g = new T.Group(), cx = x + .5, zc = y0 + len / 2 + .05;
+    part(g, new T.BoxGeometry(.92, .22, len - .08), P.wood, cx, .16, zc);
+    part(g, new T.BoxGeometry(.84, .14, len - .2), P.sheet, cx, .33, zc);
+    part(g, new T.BoxGeometry(.6, .1, .3), P.sheet, cx, .44, y0 + .32);
+    const q = part(g, new T.BoxGeometry(.9, .16, len * .62), P.quilt, cx, .35, y0 + len - len * .31 - .03);
+    q.material = P.quilt;
+    part(g, new T.BoxGeometry(.96, .72, .1), P.wood, cx, .36, y0 + .08);    // headboard
+    part(g, new T.BoxGeometry(.96, .38, .08), P.wood, cx, .19, y0 + len - .04);   // footboard
+    return g;
+  }
+  function buildRoom(map, hv, group) {
+    const W = map.w, H = map.h, { isWall, run } = wallInfo(map), P = roomMats();
+    const dark = (x, y) => { const c = map.cell(x, y); return !c || c.g === 'dark' || isWall(x, y); };
+    // back-wall caps, and the height and foot of the wall (for the side walls)
+    let foot = H, wallN = 2, plain = null;
+    for (let x = 0; x < W; x++) for (let y = 0; y < H;) {
+      if (!isWall(x, y)) { y++; continue; }
+      const [y0, y1] = run(x, y), n = y1 - y0 + 1;
+      if (y1 + 1 < H && !isWall(x, y1 + 1)) {
+        part(group, new T.BoxGeometry(1.001, .1, .24), P.cap, x + .5, n * WALL_K * WLc + .05, y1 + 1 - n * WALL_K * WLs - .12);
+        if (y1 + 1 < foot) { foot = y1 + 1; wallN = n; }
+        if (!plain && !map.cell(x, y0).wv) plain = [x, y0, n];
+      }
+      y = y1 + 1;
+    }
+    // side walls along each edge where the floor meets the map border: the plain wall's paint, repeated
+    if (foot < H) {
+      const src = plain || [0, foot - wallN, wallN], CT = G.terrain.CT, n = src[2];
+      const cv = G.makeCanvas(16, n * 16), c = cv.getContext('2d');
+      for (let k = 0; k < n; k++) {
+        const ty = src[1] + k, ch = G.terrain.chunk(map, Math.floor(src[0] / CT), Math.floor(ty / CT));
+        c.drawImage(ch.gnd, (src[0] - Math.floor(src[0] / CT) * CT) * 16, (ty - Math.floor(ty / CT) * CT) * 16, 16, 16, 0, k * 16, 16, 16);
+      }
+      c.fillStyle = 'rgba(20,10,20,.18)'; c.fillRect(0, 0, 16, n * 16);   // a touch darker than the lit back wall
+      const t = texPx(cv); t.wrapS = T.RepeatWrapping;
+      const hgt = n * WALL_K;
+      for (const [ex, dir] of [[0, 1], [W, -1]]) {
+        let z = foot;
+        while (z < H) {
+          if (dark(dir > 0 ? 0 : W - 1, z)) { z++; continue; }
+          let z1 = z; while (z1 < H && !dark(dir > 0 ? 0 : W - 1, z1)) z1++;
+          const L = z1 - z, tt = t.clone(); tt.needsUpdate = true;
+          // a quad from the wall's foot to the front; at the back its top follows the leaning back wall
+          const zt = z === foot ? z - hgt * WLs : z, yt = hgt * WLc, g = new T.BufferGeometry();
+          g.setAttribute('position', new T.Float32BufferAttribute([ex, yt, zt, ex, yt, z1, ex, 0, z, ex, 0, z1], 3));
+          g.setAttribute('uv', new T.Float32BufferAttribute([0, 1, z1 - zt, 1, 0, 0, z1 - z, 0], 2));
+          g.setIndex(dir > 0 ? [0, 1, 2, 1, 3, 2] : [0, 2, 1, 1, 2, 3]); g.computeVertexNormals();
+          const m = new T.Mesh(g, new T.MeshLambertMaterial({ map: tt })); m.receiveShadow = true; group.add(m);
+          part(group, new T.BoxGeometry(.24, .1, z1 - zt), P.cap, ex - dir * .12, yt + .05, (zt + z1) / 2);
+          z = z1;
+        }
+        
+      }
+    }
+    // the floor slab's front lip
+    part(group, new T.BoxGeometry(W + .24, .5, .14), P.cap, W / 2, -.25, H + .07);
+    part(group, new T.BoxGeometry(W + .24, .02, .14), P.capHi, W / 2, .005, H + .07);
+    // tables and beds
+    const seen = new Set();
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const c = map.cell(x, y); if (!c || seen.has(c)) continue;
+      if (c.o === 'table') {
+        let x1 = x, y1 = y; while (map.cell(x1 + 1, y) && map.cell(x1 + 1, y).o === 'table') x1++;
+        while (map.cell(x, y1 + 1) && map.cell(x, y1 + 1).o === 'table') y1++;
+        for (let yy = y; yy <= y1; yy++) for (let xx = x; xx <= x1; xx++) seen.add(map.cell(xx, yy));
+        group.add(tableModel(x, y, x1 - x + 1, y1 - y + 1));
+      } else if (c.o === 'bed') {
+        let y1 = y; while (map.cell(x, y1 + 1) && map.cell(x, y1 + 1).o === 'bed' && y1 - y < 1) y1++;
+        for (let yy = y; yy <= y1; yy++) seen.add(map.cell(x, yy));
+        group.add(bedModel(x, y, y1 - y + 1));
+      }
+    }
+    // window light: a slanted shaft from each window to a bright patch on the floor (strength set per frame)
+    const shafts = group.userData.shafts = [];
+    const D = map.decor || { windows: [], lamps: [] };
+    for (const w of D.windows) {
+      const [, y1] = run(w.x, w.y), zb0 = y1 + 1, hw = (zb0 - w.y - .45) * WALL_K, hy = hw * WLc, zb = zb0 - hw * WLs;
+      const geo = new T.BufferGeometry(), x = w.x + .5, len = 2.3;
+      geo.setAttribute('position', new T.Float32BufferAttribute([x - .32, hy, zb + .02, x + .32, hy, zb + .02, x + .55, .02, zb0 + len, x + 1.35, .02, zb0 + len], 3));
+      geo.setAttribute('uv', new T.Float32BufferAttribute([0, 1, 1, 1, 0, 0, 1, 0], 2)); geo.setIndex([0, 2, 1, 1, 2, 3]);
+      const m = new T.Mesh(geo, new T.MeshBasicMaterial({ map: shaftTexture(), transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, opacity: 0 }));
+      m.renderOrder = 3; group.add(m); shafts.push(m);
+      const pg = new T.PlaneGeometry(1, .9); pg.rotateX(-Math.PI / 2);
+      const pm = new T.Mesh(pg, new T.MeshBasicMaterial({ map: glowTexture(), transparent: true, depthWrite: false, blending: T.AdditiveBlending, opacity: 0 }));
+      pm.position.set(x + .85, .02, zb0 + len - .6); pm.renderOrder = 3; group.add(pm); shafts.push(pm);
+    }
+    // lamps and wall sconces join the light list
+    const lights = group.userData.lights || (group.userData.lights = []);
+    for (const l of D.lamps) {
+      if (l.kind === 'sconce') { const [, y1] = run(l.x, l.y), zb = y1 + 1, hs = (zb - l.y - .3) * WALL_K; lights.push({ x: l.x + .5, z: zb - hs * WLs + .1, y: hs * WLc - 1, kind: 'room', ground: false }); }
+      else lights.push({ x: l.x + .5, z: l.y + .6, y: (l.kind === 'floorlamp' ? .45 : -.3), kind: 'room', ground: false });
+    }
+  }
+  let shaftTex = null;
+  function shaftTexture() {
+    if (shaftTex) return shaftTex;
+    const c = G.makeCanvas(32, 64), x = c.getContext('2d');
+    for (let yy = 0; yy < 64; yy++) {
+      const v = yy / 63, a = Math.pow(1 - v, 1.4) * .9;   // bright at the window, gone by the floor
+      for (let xx = 0; xx < 32; xx++) { const u = Math.abs(xx / 31 - .5) * 2, e = Math.max(0, 1 - u * u); x.fillStyle = `rgba(255,255,255,${(a * e).toFixed(3)})`; x.fillRect(xx, yy, 1, 1); }
+    }
+    shaftTex = new T.CanvasTexture(c); shaftTex.colorSpace = T.SRGBColorSpace; return shaftTex;
   }
 
   // ------------------------------------------------------------- build / cache
@@ -1384,6 +1560,7 @@ G.W3 = (function () {
     buildProps(map, hv, group);
     buildBuildings(map, hv, group);
     buildRailings(map, hv, group);
+    if (map.type === 'indoor') buildRoom(map, hv, group);
     buildGlows(group);
     const dyn = new T.Group(); group.add(dyn);
     const entry = { map, group, hv, dyn, sprites: new Map() };
@@ -1437,6 +1614,14 @@ G.W3 = (function () {
     const cl = indoor ? 1 : .86 + .14 * Math.max(-1, Math.min(1, Math.sin(G.realTime * .13) * 1.6 + Math.sin(G.realTime * .047 + 1.3)));
     sun.intensity = (.35 + 1.45 * day) * cl; sun.color.set(dusk ? 0xffb070 : day > .5 ? 0xfff0d8 : 0x9ab0ff);
     hemi.intensity = .45 + .55 * day; hemi.color.set(day > .3 ? 0xdfeeff : 0x5a6aa8); hemi.groundColor.set(day > .3 ? 0x4a5a3a : 0x1a1e30);
+    if (indoor) {   // the time outside still reaches in: window shafts by day, lamps warmer after dark
+      const od = h >= 7 && h <= 17 ? 1 : h > 17 && h < 19.5 ? 1 - (h - 17) / 2.5 : h > 5 && h < 7 ? (h - 5) / 2 : 0;
+      roomGlow = .35 + .65 * (1 - od);
+      const sc = od > .3 ? (h > 16 ? 0xffc890 : 0xfff0c8) : 0x8aa8ff, sa = od > .3 ? .5 * od : .16;
+      for (const m of (cur && cur.group.userData.shafts) || []) { m.material.color.setHex(sc); m.material.opacity = sa * (.92 + .08 * Math.sin(G.realTime * .7 + m.id)); }
+      hemi.color.set(0xfff2e0); hemi.groundColor.set(0x6a4a3a); hemi.intensity = .88 + .1 * od;
+      sun.color.set(0xfff4e4); sun.intensity = 1.15 + .15 * od;
+    }
     const sky = indoor ? 0x08080e : dusk ? 0xe8a88a : day > .3 ? 0x9cc8f0 : 0x0a1030;
     // one Color and one Fog, updated in place: a new Fog object every frame makes three.js re-derive the
     // shader program of every fogged material every frame (string keys, garbage, GC hitches)
@@ -1505,7 +1690,7 @@ G.W3 = (function () {
     syncParticles(w, cur.hv);
     updateRays(w, fx, fy, fz);
     // shadow camera snapped to its own texel grid, so shadows don't crawl as the player moves
-    { const off = SUN_OFF, dir = _d.set(off[0], off[1], off[2]).normalize();
+    { const off = map.type === 'indoor' ? SUN_IN : SUN_OFF, dir = _d.set(off[0], off[1], off[2]).normalize();
       const rt = _r.set(0, 1, 0).cross(dir).normalize(), up = _u.copy(dir).cross(rt).normalize();
       const P = _p.set(fx, fy, fz), texel = 44 / 2048;
       const a = Math.round(P.dot(rt) / texel) * texel, b = Math.round(P.dot(up) / texel) * texel, c = P.dot(dir);
@@ -1558,6 +1743,6 @@ G.W3 = (function () {
     _v.set(px / 16, camY, py / 16).project(camera);
     return ndcToGame(_v);
   }
-  const active = (s) => ok && s && s.isWorld && G.settings.render3d && s.map && s.map.type === 'outdoor';
+  const active = (s) => ok && s && s.isWorld && G.settings.render3d && s.map && (s.map.type === 'outdoor' || s.map.type === 'indoor');
   return { _tu: () => TU, _rays: () => rays, _cur: () => cur, _bases: () => bases, chimneys: () => (cur && cur.group.userData.chimneys) || [], levels, active, render, hide, project, projectFlat, invalidate: id => { const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
 })();
