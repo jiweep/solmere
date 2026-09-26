@@ -34,6 +34,7 @@ G.input = (function () {
     consume(b) { pressedQ[b] = false; },
     consumeAll() { for (const b of BTN) pressedQ[b] = false; },
     setTextListener(fn) { textListener = fn; },
+    get typing() { return !!textListener; },
     dirHeld() {
       // most recently pressed held direction wins
       let best = null, bt = 1e9;

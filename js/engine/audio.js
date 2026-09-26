@@ -343,6 +343,8 @@ G.audio = (function () {
   }
   const cache = {};
   const A = {
+    // the game's mixed output as a MediaStream (for clip recording)
+    stream() { if (!ctx) return null; if (!A._dest) { A._dest = ctx.createMediaStreamDestination(); comp.connect(A._dest); } return A._dest.stream; },
     muted: typeof location !== 'undefined' && /[?&]mute\b/.test(location.search),
     silent: typeof location !== 'undefined' && /[?&]silent\b/.test(location.search),   // full engine, zero output
     forceVariant: null,   // 'day' | 'night' pins the arrangement (Music Room)

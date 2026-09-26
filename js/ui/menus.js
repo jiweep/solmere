@@ -123,6 +123,7 @@ G.openOptions = function (oo = {}) {
     { k: 'sfx', label: 'Sound Volume', vals: [0, .2, .4, .6, .8, 1], names: ['0', '2', '4', '6', '8', '10'] },
     { k: 'clock', label: 'Day/Night Clock', vals: ['accel', 'real'], names: ['Fast', 'Real time'] },
     { k: 'fill', label: 'Screen Scaling', vals: [false, true], names: ['Pixel-perfect', 'Fill window'] },
+    { k: 'clips', label: 'Clutch Clips', vals: [true, false], names: ['On', 'Off'] },
     { k: 'vectorUI', label: 'Menu Style', vals: [false, true], names: ['Pixel', 'Smooth'] },
   ];
   const val = o => o.get ? o.get() : S[o.k];

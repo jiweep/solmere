@@ -10,7 +10,7 @@ G.BattleScene = class {
     this.box.pages = []; this.t = 0; this.menu = null; this.shake = 0; this.flash = 0; this.flashCol = '#fff';
     this.weather = null; this.popups = []; this.overlays = []; this.intro = 1; this.trainers = []; this.cmdIndex = 0; this.moveIndex = 0;
     this.hudShow = { 0: 0, 1: 0 }; this.balls = null; this.resonateOn = false; this.screens = { 0: {}, 1: {} }; this.hazards = { 0: {}, 1: {} };
-    this.speed = () => (G.settings.battleSpeed || 1) * (G.input.isDown('b') || G.input.isDown('a') && this.fastAdvance ? 2 : 1);
+    this.speed = () => (G.settings.battleSpeed || 1) * (G.input.isDown('b') || G.input.isDown('a') && this.fastAdvance ? 2 : 1) * (this.slowT > 0 ? .3 : 1);   // slow-mo on clutch moments
     this.dim = 0; this.bgT = 0; this.ended = false;
   }
   fx25() { if (this._hd) return null; return { tilt: 0, hazeA: .1, bloomA: .2, key: 'rgba(255,225,180,.45)', fill: 'rgba(50,60,120,.4)' }; }
@@ -76,9 +76,9 @@ G.BattleScene = class {
         if (r) this.camFocus(this.slot(r), 1.07, 34);
         if (anims) await G.battleAnim(this, e); else await this.wait(6); return;
       }
-      case 'hit': return this.playHit(e);
-      case 'hp': return this.playHP(e);
-      case 'faint': return this.playFaint(e);
+      case 'hit': G.clutch && G.clutch.hit(this, e); return this.playHit(e);
+      case 'hp': { const s0 = this.slot(e.ref), from = s0 ? s0.dispHp : 0; if (s0) s0._hpBefore = from; await this.playHP(e); G.clutch && G.clutch.hp(this, e, from); return; }
+      case 'faint': G.clutch && G.clutch.faint(this, e); return this.playFaint(e);
       case 'status': { const s = this.slot(e.ref); if (s) s.status = e.status; if (e.status) { G.audio && G.audio.sfx('status_' + e.status); if (anims && s) await G.statusAnim(this, e.ref, e.status); } return; }
       case 'statusAnim': if (anims) await G.statusAnim(this, e.ref, e.status); return;
       case 'stat': return this.playStat(e);
@@ -88,7 +88,7 @@ G.BattleScene = class {
       case 'exp': return this.playExp(e);
       case 'levelup': return this.playLevelUp(e);
       case 'throw': return G.throwAnim(this, e);
-      case 'caught': { const s = this.slot(e.ref); if (s) s.visible = false; if (G.audio) { G.audio.stopMusic(); G.audio.jingle('caught'); } await this.wait(160); return; }
+      case 'caught': { const s = this.slot(e.ref); if (s) s.visible = false; G.clutch && G.clutch.caught(this, e.q, s); if (G.audio) { G.audio.stopMusic(); G.audio.jingle('caught'); } await this.wait(160); return; }
       case 'resonate': return this.playResonate(e);
       case 'screen': if (e.kind === 'none') this.screens[e.side] = {}; else this.screens[e.side][e.kind] = !e.off; if (!e.off && e.kind !== 'none') await this.wait(14); return;
       case 'hazard': if (e.kind === 'clear') this.hazards[e.side] = {}; else this.hazards[e.side][e.kind] = e.n; await this.wait(10); return;
@@ -272,7 +272,7 @@ G.BattleScene = class {
     c.translate(C.cx, C.cy); c.scale(z, z); c.translate(-C.cx + C.x * depth, -C.cy + C.y * depth);
   }
   update(top) {
-    this.t++; this.bgT++;
+    this.t++; this.bgT++; if (this.slowT > 0) this.slowT--;
     this.updateCam();
     this.parts.update(); this.fxp.update();
     for (const k in this.slots) { const s = this.slots[k]; if (this.t % 14 === 0) s.frame = (s.frame + 1) % 4; if (s.shield > 0) s.shield--; }
@@ -512,6 +512,7 @@ G.BattleScene = class {
     if (this.menu) this.menu.draw();
     else if (this.showBox && this.box.pages.length) this.box.draw(false);
     if (this.levelPanel) this.drawLevelPanel();
+    if (G.clutch) G.clutch.draw(this);
   }
   drawHUD(s, n) {
     // compact glass card: translucent slab, a colour edge, white type; the HP bar carries the colour

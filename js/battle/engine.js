@@ -608,7 +608,7 @@ G.THROW_MULT = [1, 1.25, 1.6, 2.2];   // catch-rate multiplier by throw quality:
         t.mon.ball = it.id;
         this.caught = { mon: t.mon, ball: it.id, by: b.owner };
         this.sides[1].slots[t.slot] = null; t.active = false;
-        this.emit({ t: 'caught', ref: t.ref() });
+        this.emit({ t: 'caught', ref: t.ref(), q });
         await this.flush();
         if (this.active(1).length === 0) this.end('caught');
       } else {

@@ -120,6 +120,7 @@ G.runBattle = async function (cfg) {
     if (G.save.settings.god && G.save.god.ohko) bt.o.godOHKO = true;
     scene.bt = bt;
     G.save.stats.battles++;
+    if (G.clutch && !cfg.noClips) G.clutch.begin(scene);
     // transition
     if (G.audio) G.audio.music(cfg.music || (cfg.wild ? 'wild' : 'trainer'));
     await G.battleTransition(cfg.wild ? 'wild' : cfg.boss ? 'boss' : 'trainer', cfg);
@@ -128,6 +129,7 @@ G.runBattle = async function (cfg) {
     let result;
     try { result = await bt.run(); }
     catch (e) { G.reportError(e); result = { outcome: 'draw', leveled: [], fainted: [] }; }
+    if (G.clutch) await G.clutch.end(scene, result);
     await scene.wait(10);
     // victory music + money
     if (result.outcome === 'win' && !cfg.wild) {
