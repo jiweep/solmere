@@ -79,17 +79,22 @@ G.touch = (function () {
     document.body.appendChild(root);
     // the handheld body (shown only when the phone is upright), laid around the game's screen
     const sh = document.createElement('div'); sh.id = 'shell';
-    sh.innerHTML = '<div class="bezel"><div class="led"></div><div class="ledl">POWER</div></div><div class="brand">SOLMERE</div><div class="grille"></div>';
+    sh.innerHTML = '<div class="bezel"><div class="led"></div></div><div class="brand">SOLMERE</div><div class="grille"></div>';
     document.body.insertBefore(sh, document.body.firstChild);
     const place = () => {
       const upright = T.shell(); document.documentElement.classList.toggle('shellon', upright);
+      if (!upright) for (const id of ['ff', 'sc', 'dim']) { const e = document.getElementById(id); if (e) { e.style.top = ''; e.style.left = ''; } }
       if (!upright || !G.gfx || !G.gfx.S) return;
       const d = window.devicePixelRatio || 1, x = G.gfx.ox / d, y = G.gfx.oy / d, w = G.W * G.gfx.S / d, h = G.H * G.gfx.S / d;
-      const bz = sh.querySelector('.bezel'), pad = 14, padB = 30;
+      // a slim bezel: the screen runs almost edge to edge
+      const bz = sh.querySelector('.bezel'), pad = 5, padB = 14;
       Object.assign(bz.style, { left: (x - pad) + 'px', top: (y - pad) + 'px', width: (w + pad * 2) + 'px', height: (h + pad + padB) + 'px' });
-      Object.assign(sh.querySelector('.led').style, { left: '7px', top: (h + pad + 10) + 'px' });
-      Object.assign(sh.querySelector('.ledl').style, { left: '19px', top: (h + pad + 10) + 'px' });
-      sh.querySelector('.brand').style.top = (y + h + padB + 10) + 'px';
+      Object.assign(sh.querySelector('.led').style, { left: '9px', top: (h + pad + 4) + 'px', width: '6px', height: '6px' });
+      const by = y + h + padB + 12; sh.querySelector('.brand').style.top = by + 'px';
+      // the fast-forward, showcase and 3D buttons live on the handheld's body, under the name, not above the screen
+      const bw = ['ff', 'sc', 'dim'].map(id => document.getElementById(id)).filter(Boolean);
+      let bx = window.innerWidth / 2 - bw.reduce((a, e) => a + e.offsetWidth + 8, -8) / 2;
+      for (const e of bw) { Object.assign(e.style, { top: (by + 34) + 'px', left: bx + 'px' }); bx += e.offsetWidth + 8; }
     };
     T.place = place;
     window.addEventListener('resize', () => requestAnimationFrame(place)); setInterval(place, 1000); requestAnimationFrame(place);

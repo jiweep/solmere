@@ -1673,7 +1673,8 @@ G.W3 = (function () {
     U3.uTime.value = G.realTime; U3.uWind.value = G.wind ? G.wind(w.frame) : 0;
     camY = camY === null || Math.abs(camY - fy) > 4 ? fy : camY + (fy - camY) * .12;
     { const S = G.gfx.S, VW = G.W * S, VH = G.H * S;
-      const k = Math.max(1, Math.round(VW / (VIEW_UNITS * 16))), w = Math.ceil(VW / k), h = Math.ceil(VH / k);
+      const k = Math.max(1, Math.round(VW / ((G.gfx.shell ? VIEW_UNITS * .8 : VIEW_UNITS) * 16))),   // an upright phone's small screen gets a closer camera
+        w = Math.ceil(VW / k), h = Math.ceil(VH / k);
       // indoors the camera stands three times further back with a lens a third as wide: the floor keeps its
       // pixel scale, but the side walls stand nearly straight instead of splaying into jagged diagonals
       const persp = map.type === 'indoor' ? 3 : 1;

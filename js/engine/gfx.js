@@ -55,8 +55,8 @@ G.gfx = {
     // phone held upright: the game is the screen of a handheld (touch.js draws the body), set in from the
     // edges with room for the bezel, near the top; the controls get the space below it
     if (mobile && ch > cw) {
-      S = (cw - 44 * dpr) / G.W; this.S = S;
-      this.ox = Math.floor((cw - G.W * S) / 2); this.oy = Math.floor(Math.max(62, 44 + (window.visualViewport ? 0 : 0)) * dpr);
+      S = (cw - 12 * dpr) / G.W; this.S = S;   // nearly edge to edge: a 16:9 screen on a narrow phone is width-bound
+      this.ox = Math.floor((cw - G.W * S) / 2); this.oy = Math.floor(14 * dpr);
     }
     this.shell = !!(mobile && ch > cw);
     if (G.touch && G.touch.place) requestAnimationFrame(G.touch.place);
