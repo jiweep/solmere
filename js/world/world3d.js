@@ -1047,21 +1047,23 @@ G.W3 = (function () {
       quad([gx0, Y0, zF, gx0, YR, zM, gx0, Y0, zB], [0, 0, .5, rv / wallH, 1, 0], mWall);
       quad([gx1, Y0, zF, gx1, Y0, zB, gx1, YR, zM], [0, 0, 1, 0, .5, rv / wallH], mWall);
       if (doorLeaf) addDoor(g, b, doorLeaf, DOOR[2], x0, baseY, zF, wallH, wallPx, facade.width, trimCol, rgbS);
-      // a real chimney where the art draws one (a stone-grey block at the top of the roof art); smoke rises from it
+      // chimney smoke rises from the chimney the roof art draws (a stone-grey block at the top of the roof art);
+      // no extra 3D chimney, so the house doesn't end up with two
       if (b.kind === 'house') {
         const d = roof.getContext('2d').getImageData(0, 0, roof.width, Math.max(1, Math.round(roof.height * .5))).data;
-        let sx = 0, n = 0;
+        let sx = 0, n = 0, top = 1e9;
         for (let i = 0; i < d.length; i += 4) {
           if (d[i + 3] < 200) continue;
           const r = d[i], gg = d[i + 1], bb = d[i + 2], sat = Math.max(r, gg, bb) - Math.min(r, gg, bb);
-          if (sat < 40 && Math.abs(r - roofAvg[0]) + Math.abs(gg - roofAvg[1]) + Math.abs(bb - roofAvg[2]) > 90) { sx += (i / 4) % roof.width; n++; }
+          if (sat < 40 && Math.abs(r - roofAvg[0]) + Math.abs(gg - roofAvg[1]) + Math.abs(bb - roofAvg[2]) > 90) { sx += (i / 4) % roof.width; n++; top = Math.min(top, Math.floor(i / 4 / roof.width)); }
         }
         if (n > 8) {
-          const cxw = x0 + .05 + (sx / n) / roof.width * (b.w - .1), cz = zM - .12, top = YR + Math.max(.3, crestPx / 16 * TANP);
-          const ch = new T.Mesh(new T.BoxGeometry(.42, top - Y0, .42), new T.MeshLambertMaterial({ color: 0x8a847c }));
-          ch.position.set(cxw, (top + Y0) / 2, cz); ch.castShadow = ch.receiveShadow = true; g.add(ch);
-          const capm = new T.Mesh(new T.BoxGeometry(.52, .1, .52), new T.MeshLambertMaterial({ color: 0x5e5850 })); capm.position.set(cxw, top + .05, cz); g.add(capm);
-          (group.userData.chimneys = group.userData.chimneys || []).push({ x: cxw, y: top + .12, z: cz });
+          const cxw = x0 + .05 + (sx / n) / roof.width * (b.w - .1);
+          // the art's chimney top: upright on the ridge if it's in the crest, otherwise on the front slope
+          let y, z;
+          if (top < crestPx) { y = YR + (crestPx - top) / 16 * TANP; z = zM; }
+          else { const f = Math.min(1, (top - crestPx) / Math.max(1, roofPx - crestPx) / Math.max(.01, vr)); y = YR - f * (YR - Y0); z = zM + f * (ZF - zM); }
+          (group.userData.chimneys = group.userData.chimneys || []).push({ x: cxw, y: y + .04, z });
         }
       }
     }
@@ -1580,6 +1582,9 @@ G.W3 = (function () {
     const set = sh[e.dir + (surf ? '_surf' : '')] || sh.down, fr = surf ? 0 : e.animFrame();
     return set[Math.min(fr, set.length - 1)];
   }
+  // every entity its own sprite (many have no id: signs, table props)
+  const ENT_KEYS = new WeakMap();
+  const entKey = e => { let k = ENT_KEYS.get(e); if (!k) { k = e.id ? 'e:' + e.id : 'e@' + e.kind + ':' + e.x + ',' + e.y; ENT_KEYS.set(e, k); } return k; };
   function syncEnts(w, E) {
     const seen = new Set(), H = E.hv;
     const place = (key, img, px, py, lift = 0) => {
@@ -1597,7 +1602,9 @@ G.W3 = (function () {
       // swimmers sink to the chest: the opaque water surface hides the rest
       const c = w.map.cell(e.x, e.y), swim = c && c.water && c.g !== 'bridge' && c.g !== 'bridgev';
       const img = entImage(w, e);
-      place('e:' + e.id + ':' + e.x0id, img, e.px, e.py, swim && img ? -img.height * .5 + Math.sin(w.frame / 14 + e.x) : (e.hop || 0));
+      const key = entKey(e);
+      place(key, img, e.px, e.py, swim && img ? -img.height * .5 + Math.sin(w.frame / 14 + e.x) : (e.hop || 0));
+      if (e.deco && img) { const m = E.sprites.get(key); if (m) { m.position.y += .56; m.userData.blob.visible = false; } }   // props on a table stand on its top
     }
     if (w.player) place('player', entImage(w, w.player), w.player.px, w.player.py, w.player.hop || 0);
     const f = w.follower; if (f && !f.hidden) place('follower', G.monArt.of(f.mon, 'overworld', f.animF || 0, f.dir), f.px, f.py, f.hop || 0);
@@ -1619,10 +1626,10 @@ G.W3 = (function () {
       roomGlow = .35 + .65 * (1 - od);
       const sc = od > .3 ? (h > 16 ? 0xffc890 : 0xfff0c8) : 0x8aa8ff, sa = od > .3 ? .5 * od : .16;
       for (const m of (cur && cur.group.userData.shafts) || []) { m.material.color.setHex(sc); m.material.opacity = sa * (.92 + .08 * Math.sin(G.realTime * .7 + m.id)); }
-      hemi.color.set(0xfff2e0); hemi.groundColor.set(0x6a4a3a); hemi.intensity = .88 + .1 * od;
-      sun.color.set(0xfff4e4); sun.intensity = 1.15 + .15 * od;
+      hemi.color.set(0xfff4e8); hemi.groundColor.set(0x7a6050); hemi.intensity = 1.08 + .1 * od;
+      sun.color.set(0xfff6ea); sun.intensity = 1.3 + .15 * od;
     }
-    const sky = indoor ? 0x08080e : dusk ? 0xe8a88a : day > .3 ? 0x9cc8f0 : 0x0a1030;
+    const sky = indoor ? 0x16121c : dusk ? 0xe8a88a : day > .3 ? 0x9cc8f0 : 0x0a1030;
     // one Color and one Fog, updated in place: a new Fog object every frame makes three.js re-derive the
     // shader program of every fogged material every frame (string keys, garbage, GC hitches)
     if (!scene.background || !scene.background.isColor) scene.background = new T.Color();
@@ -1667,9 +1674,13 @@ G.W3 = (function () {
     camY = camY === null || Math.abs(camY - fy) > 4 ? fy : camY + (fy - camY) * .12;
     { const S = G.gfx.S, VW = G.W * S, VH = G.H * S;
       const k = Math.max(1, Math.round(VW / (VIEW_UNITS * 16))), w = Math.ceil(VW / k), h = Math.ceil(VH / k);
-      if (k !== PIX.k || w !== PIX.w || h !== PIX.h) {
-        Object.assign(PIX, { k, w, h, RW: w + 2, RH: h + 2, dist: (h / 16) / 2 / Math.tan(13 * Math.PI / 180) });
-        camera.fov = 2 * Math.atan((PIX.RH / 16 / 2) / PIX.dist) * 180 / Math.PI; camera.aspect = PIX.RW / PIX.RH; camera.updateProjectionMatrix();
+      // indoors the camera stands three times further back with a lens a third as wide: the floor keeps its
+      // pixel scale, but the side walls stand nearly straight instead of splaying into jagged diagonals
+      const persp = map.type === 'indoor' ? 3 : 1;
+      if (k !== PIX.k || w !== PIX.w || h !== PIX.h || persp !== PIX.persp) {
+        Object.assign(PIX, { k, w, h, persp, RW: w + 2, RH: h + 2, dist: (h / 16) / 2 / Math.tan(13 * Math.PI / 180) * persp });
+        camera.fov = 2 * Math.atan((PIX.RH / 16 / 2) / PIX.dist) * 180 / Math.PI; camera.aspect = PIX.RW / PIX.RH;
+        camera.near = 8 * persp; camera.far = 140 + PIX.dist; camera.updateProjectionMatrix();
         UPIX.uRes.value.set(PIX.RW, PIX.RH);
       } }
     const dist = PIX.dist, cy = Math.sin(PITCH) * dist, cz = Math.cos(PITCH) * dist;

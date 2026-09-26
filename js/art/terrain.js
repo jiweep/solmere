@@ -121,7 +121,11 @@ G.terrain = (function () {
     const gnd = G.makeCanvas(CS, CS), gx = gnd.getContext('2d');
     const img = gx.createImageData(CS, CS), d = img.data;
     const foamA = new Uint8ClampedArray(CS * CS * 4), foamB = new Uint8ClampedArray(CS * CS * 4), wm = new Uint8ClampedArray(CS * CS * 4);
-    const GR = grassRamp(map);
+    // each cell is painted in its own map's palette (a town's beach grass stays beach grass when seen from the
+    // route next door), with a ragged noisy border where two maps with different palettes meet
+    const oneMap = cells.every(e => e.m === cells[0].m) ? cells[0].m : null;
+    const mapAt = (wx, wy) => oneMap || cellAtPx(wx + (G.vnoise(wx / 11, wy / 11, 31) - .5) * 22, wy + (G.vnoise(wx / 11, wy / 11, 32) - .5) * 22).m;
+    const grAt = (wx, wy) => grassRamp(mapAt(wx, wy));
     const MB = (x, y) => (x < -PAD || y < -PAD || x >= CS + PAD || y >= CS + PAD) ? M.STRUCT : mat[(y + PAD) * BW + x + PAD];
     for (let y = 0; y < CS; y++) for (let x = 0; x < CS; x++) {
       const p = (y + PAD) * BW + x + PAD, m = mat[p], wx = X0 + x, wy = Y0 + y, o = (y * CS + x) * 4;
@@ -139,7 +143,7 @@ G.terrain = (function () {
       const nMacro = G.fbm(wx / 56, wy / 56, 3, 2), nMid = G.vnoise(wx / 9, wy / 9, 5), nFine = G.h2(wx, wy, 7);
       switch (m) {
         case M.GRASS: case M.SNOW: case M.ASH: {
-          const RR = m === M.GRASS ? GR : m === M.SNOW ? RAMPS.snow : RAMPS.ash;
+          const RR = m === M.GRASS ? grAt(wx, wy) : m === M.SNOW ? RAMPS.snow : RAMPS.ash;
           const v = nMacro * .72 + nMid * .28;
           let k = v < .36 ? 3 : v < .6 ? 4 : 5;
           if (m === M.SNOW) k += 1;
@@ -170,7 +174,7 @@ G.terrain = (function () {
         }
         case M.PAVE: {
           // staggered cut stones, 8x8 with a half offset every other row
-          const RR = map.theme === 'ash' || map.theme === 'dusk' ? RAMPS.pavewarm : RAMPS.pave;
+          const th = mapAt(wx, wy).theme, RR = th === 'ash' || th === 'dusk' ? RAMPS.pavewarm : RAMPS.pave;
           const row = Math.floor(wy / 8), sx = wx + (row & 1) * 4, u = ((sx % 8) + 8) % 8, v = ((wy % 8) + 8) % 8;
           const sid = G.h2(Math.floor(sx / 8), row, 21);
           let k = 4 + (sid < .3 ? -1 : sid > .8 ? 1 : 0);
@@ -183,7 +187,7 @@ G.terrain = (function () {
           if (kerb === 1) k = ((wx + wy) % 12 === 0) ? 0 : 1; else if (kerb === 2) k = 6 - (nFine > .7 ? 1 : 0);
           if (raisedAbove) k = Math.max(0, k - (raisedAbove === 1 ? 3 : raisedAbove === 2 ? 2 : 1));
           col = RR[G.clamp(k, 0, 7)];
-          if (kerb && nFine > .86) { const q0 = [MB(x, y - 1), MB(x + 1, y), MB(x, y + 1), MB(x - 1, y)].find(q => q === M.GRASS || q === M.PATH || q === M.SAND); if (q0 === M.GRASS) col = GR[3]; else if (q0 === M.PATH) col = RAMPS.path[3]; else if (q0 === M.SAND) col = RAMPS.sand[4]; }
+          if (kerb && nFine > .86) { const q0 = [MB(x, y - 1), MB(x + 1, y), MB(x, y + 1), MB(x - 1, y)].find(q => q === M.GRASS || q === M.PATH || q === M.SAND); if (q0 === M.GRASS) col = grAt(wx, wy)[3]; else if (q0 === M.PATH) col = RAMPS.path[3]; else if (q0 === M.SAND) col = RAMPS.sand[4]; }
           break;
         }
         case M.WATER: {
@@ -213,6 +217,7 @@ G.terrain = (function () {
       const hsh = G.h2(gxx, gy, 99), hx = gxx * GS + Math.floor(G.h2(gxx, gy, 98) * GS), hy = gy * GS + Math.floor(G.h2(gxx, gy, 97) * GS);
       const x = hx - X0, y = hy - Y0, m = matAt(x, y);
       if (m === M.GRASS && hsh < .8 && safe(x, y, m)) {
+        const GR = grAt(hx, hy);
         const base = G.fbm(hx / 56, hy / 56, 3, 2) * .72 + G.vnoise(hx / 9, hy / 9, 5) * .28, k = base < .36 ? 3 : base < .6 ? 4 : 5;
         if (hsh < .5) {   // leafy tuft: two light blades over a dark base
           put(x - 1, y - 1, GR[k + 1]); put(x + 1, y - 1, GR[k + 1]); put(x, y - 2, GR[k + 2]);
@@ -220,7 +225,7 @@ G.terrain = (function () {
           put(x, y - 1, GR[k]);
         } else if (hsh < .7) {   // small 'v' blade mark
           put(x - 1, y - 1, GR[k - 1]); put(x + 1, y - 1, GR[k - 1]); put(x, y, GR[k - 2]); put(x - 1, y - 2, GR[k + 1]);
-        } else if (hsh < .745 && map.theme !== 'ash') {   // tiny wildflower
+        } else if (hsh < .745 && mapAt(hx, hy).theme !== 'ash') {   // tiny wildflower
           const fc = [[255, 255, 255], [255, 236, 120], [150, 200, 255], [255, 170, 200]][Math.floor(G.h2(gxx, gy, 96) * 4)];
           put(x, y - 1, fc); put(x - 1, y, fc); put(x + 1, y, fc); put(x, y + 1, fc); put(x, y, [255, 214, 90]); put(x, y + 2, GR[k - 2]);
         } else { put(x, y, GR[k + 2]); put(x + 1, y + 1, GR[k - 1]); }
@@ -245,10 +250,11 @@ G.terrain = (function () {
       if (!safe(x, y, m) || !safe(x + 2, y, m) || !safe(x - 2, y, m)) continue;
       const kind = Math.floor(G.h2(gxx, gy, 52) * 6);
       if (m === M.GRASS) {
+        const GR = grAt(hx, hy);
         const base = G.fbm(hx / 56, hy / 56, 3, 2) * .72 + G.vnoise(hx / 9, hy / 9, 5) * .28, k = base < .36 ? 3 : base < .6 ? 4 : 5;
         if (kind <= 1) {   // clover patch: a small darker clump of trefoils
           for (let i = 0; i < 5; i++) { const cx = x + ((i * 3) % 5) - 2, cy = y + Math.floor(i / 2) - 1; put(cx, cy, GR[k - 2]); put(cx + 1, cy, GR[k - 1]); put(cx, cy - 1, GR[k - 1]); put(cx + 1, cy - 1, GR[k + 1]); }
-        } else if (kind === 2 && map.theme !== 'beach') {   // mushrooms
+        } else if (kind === 2 && mapAt(hx, hy).theme !== 'beach') {   // mushrooms
           const cap = G.h2(gxx, gy, 51) > .5 ? [214, 64, 58] : [226, 186, 120];
           put(x, y, [236, 226, 204]); put(x, y + 1, GR[k - 2]); put(x - 1, y - 1, cap); put(x, y - 1, cap); put(x + 1, y - 1, [cap[0] * .7, cap[1] * .7, cap[2] * .7]); put(x, y - 2, [255, 240, 230]);
           put(x + 3, y + 1, [236, 226, 204]); put(x + 3, y, cap); put(x + 4, y, [cap[0] * .7, cap[1] * .7, cap[2] * .7]);

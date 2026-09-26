@@ -64,7 +64,7 @@
       conn: { n: { map: 'route1', off: 8 } },
       objs: [
         G.house(8, 4, 'home1f', 'red'), G.bld('house', 24, 4, 5, 4, { roof: 'green', door: 2, to: 'wrenhouse', tx: 5, ty: 6 }),
-        G.house(24, 15, 'bh_cafe', 'teal'),
+        G.house(24, 16, 'bh_cafe', 'teal'),
         G.bld('lab', 22, 24, 7, 4, { roof: 'teal', door: 3, to: 'lab', tx: 5, ty: 8 }),
         { type: 'sign', x: 16, y: 11, text: '{b}Brinehollow{w}\\n"Where the tide begins."' },
         { type: 'sign', x: 21, y: 27, text: '{c}HALE RESONANCE LAB{w}\\nProf. Marisol Hale — Visitors welcome (knock loudly, she\'s usually underwater)' },
@@ -96,10 +96,11 @@
     m.blob(5.5, 21, 3, 3.5, '"', { only: '.' }); m.blob(16, 5, 3, 2.6, '"', { only: '.' }); m.blob(17, 26, 2.5, 2.5, '"', { only: '.' });
     m.blob(17.5, 16.5, 2.8, 2.6, '~');
     m.rect(2, 29, 6, 1, 'v'); m.rect(15, 29, 5, 1, 'v');
-    m.rect(0, 14, 5, 5, '.'); // gate clearing
     m.rect(2, 3, 5, 5, '.'); m.frame(1, 8, 7, 5, 'F'); m.rect(2, 9, 5, 3, 'f'); m.put(4, 12, '.'); m.put(4, 8, '.');
     m.scatter('T', 8, 2, 13, 6, 18); m.scatter(',', 10, 2, 2, 18, 36);
     m.rect(7, 17, 2, 1, '.'); m.put(18, 6, '"');
+    // Victory Gate: a stone gatehouse on its own paved plaza off the main road, flanked by lamps and statues
+    m.rect(0, 13, 9, 6, '.'); m.rect(1, 17, 8, 2, '='); m.rect(7, 15, 2, 2, '='); m.rect(3, 13, 1, 1, '.'); m.put(0, 17, 'l'); m.put(7, 14, 'l'); m.put(0, 13, 'T');
     D({ id: 'route1', name: 'Route 1', subtitle: 'Brinehollow ↔ Fernwick', area: 'route1', music: 'route1', grid: m.done(),
       conn: { s: { map: 'brinehollow', off: -8 }, n: { map: 'fernwick', off: -11 } },
       enc: {
@@ -110,9 +111,9 @@
       },
       objs: [
         G.bld('house', 2, 3, 5, 4, { roof: 'brown', door: 2, to: 'hollis_house', tx: 5, ty: 6 }),
-        G.bld('lab', 0, 14, 4, 3, { roof: 'gray', door: 1, to: 'victorygate', tx: 5, ty: 6 }),
+        G.bld('gym', 1, 13, 6, 4, { roof: 'gray', accent: '#f4d040', door: 3, to: 'victorygate', tx: 5, ty: 6 }),
         { type: 'sign', x: 8, y: 36, text: '{b}ROUTE 1{w}\\n↑ Fernwick Town   ↓ Brinehollow' },
-        { type: 'sign', x: 4, y: 18, text: '{r}VICTORY GATE{w}\\nOnly Tamers with all six Warden badges may pass.' },
+        { type: 'sign', x: 6, y: 18, text: '{r}VICTORY GATE{w}\\nOnly Tamers with all six Warden badges may pass.' },
         { type: 'sign', x: 8, y: 13, text: 'Hollis Farm — Fresh berries & naps. "Please close the gate, Snoozle escapes!"' },
         { type: 'trainer', id: 'r1_kid_e', x: 15, y: 30, look: 'kid', dir: 'left', sight: 3, trainer: 'r1_kid' },
         { type: 'trainer', id: 'r1_lass_e', x: 7, y: 17, look: 'lass', dir: 'right', sight: 3, trainer: 'r1_lass' },
@@ -131,7 +132,7 @@
   D({ id: 'victorygate', name: 'Victory Gate', type: 'indoor', wall: 'stone', music: 'gate', floor: '#b8b0a0',
     grid: ['WWWWW:WWWWW', 'WWWWW:WWWWW', 'S....:....S', '.....:.....', 'K...........'.slice(0, 11), '.....:.....', '.....:.....', '.....M.....'],
     legend: { ':': { g: 'carpet' } }, carpet: 'red',
-    warps: [{ x: 5, y: 7, to: 'route1', tx: 1, ty: 17, dir: 'down' }, { x: 5, y: 0, to: 'victoryroad', tx: 5, ty: 30, dir: 'up' }],
+    warps: [{ x: 5, y: 7, to: 'route1', tx: 4, ty: 17, dir: 'down' }, { x: 5, y: 0, to: 'victoryroad', tx: 5, ty: 30, dir: 'up' }],
     objs: [{ type: 'npc', id: 'gateguard', x: 5, y: 2, look: 'officer', dir: 'down', script: 'gate_guard' }], spawn: [5, 6] });
 
   // ------------------------------------------------------------ FERNWICK -
