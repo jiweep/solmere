@@ -491,7 +491,9 @@ G.runPrologue = async function () {
     await rise;
     await cap('Every Echo in Solmere heard it. Every person who loved one felt it.', 160);
     await cap('Hidden in the song was a name.', 120);
-    await cap('Somebody has spent twelve years trying to answer it.', 160);
+    await cap('Somebody has spent twelve years trying to answer it.', 150);
+    await cap('Tonight, the Lodestar has begun to flicker again.', 140);
+    await cap('And in a little harbour town, your story is about to begin.', 170);
   } catch (e) { if (e !== SKIP) throw e; }
   await G.fadeOut(40, '#eaf6ff');
   G.pop(sc);
