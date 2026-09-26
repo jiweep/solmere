@@ -278,6 +278,39 @@ G.MenuScene = class {
   }
 };
 G.choose = function (items, o = {}) { return new Promise(res => G.push(new G.MenuScene(items, o, res))); };
+// A settings list in the same slab style as the menus, for the title screen's side column: each row shows its
+// value (◀ ▶ or A to change), an optional start row confirms, and the highlighted row's description sits in a
+// small panel underneath. o.rows() -> [{ label, name(), step(d), desc(), start }]
+G.SideList = class {
+  constructor(o, res) {
+    this.o = o; this.res = res; this.lowres = false;
+    this.menu = new G.ListMenu(this.items(), { x: o.x !== undefined ? o.x : 18, y: o.y !== undefined ? o.y : 80, w: o.w || 200, maxRows: o.maxRows || 8, rowH: 11.5, cancel: -1 });
+  }
+  items() { return this.o.rows().map(r => ({ label: r.label, right: r.start ? '' : '◀ ' + r.name() + ' ▶' })); }
+  update(top) {
+    if (!top) return;
+    const I = G.input, m = this.menu, rows = this.o.rows();
+    m.items = this.items(); if (m.i >= rows.length) m.i = rows.length - 1;
+    m.h = Math.min(rows.length, m.maxRows) * m.rowH + 8;
+    const r = rows[m.i];
+    if (I.pressed('a')) { I.consume('a'); G.audio && G.audio.sfx('select'); if (r.start) { G.pop(this); this.res(true); } else r.step(1); return; }
+    if (!r.start && I.repeat('left')) { r.step(-1); G.audio && G.audio.sfx('cursor'); }
+    if (!r.start && I.repeat('right')) { r.step(1); G.audio && G.audio.sfx('cursor'); }
+    const out = m.update(top);
+    if (out && out.cancel) { G.pop(this); this.res(null); }
+  }
+  drawUI() {
+    const U = G.ui, m = this.menu, o = this.o;
+    if (o.title) { const tw = U.measure(o.title, 7, 800) + 16; U.para(m.x + 2, m.y - 11, tw, 10, 4, '#07060c'); U.para(m.x, m.y - 12, tw, 10, 4, '#ff3b4e'); U.text(o.title, m.x + 8, m.y - 10.3, { size: 7, weight: 800, color: '#fff', shadow: false }); }
+    m.draw();
+    const r = o.rows()[m.i], d = r && r.desc && r.desc();
+    if (d) {
+      const lines = U.wrap(d, m.w - 14, 6).slice(0, 3), y = m.y + m.h + 4, h = lines.length * 8 + 6;
+      U.para(m.x + 2, y + 2, m.w, h, 4, 'rgba(0,0,0,.45)'); U.para(m.x, y, m.w, h, 4, '#0c0d16ee');
+      lines.forEach((l, k) => U.text(l, m.x + 8, y + 3.5 + k * 8, { size: 6, weight: 600, color: '#d8dce8', shadow: false }));
+    }
+  }
+};
 
 // --------------------------------------------------------- number picker --
 G.NumberScene = class {

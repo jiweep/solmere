@@ -3,7 +3,7 @@
 //  Title scene in real 3D, kept pixel art. One small three.js scene rendered at
 //  a pixel grid that divides the screen evenly, then scaled up with no
 //  smoothing:
-//  - the Tidelight is a model: a faceted octagonal tower with hand-pixelled
+//  - the lighthouse is a model on its own rock islet: a faceted octagonal tower with hand-pixelled
 //    textures (banded brickwork, plinth, door, windows), a gallery with a
 //    railing, a glazed lantern room, a cap with a vane, and a 3D beam sweeping
 //    round it;
@@ -24,7 +24,8 @@
   // art_src/build_title.py: 768x432 art pixels, horizon on row 161, every layer M columns wider each side
   const AW = 768, AH = 432, HZ = 161, M = 72, SUN = [537, 150];
   const D = { sky: 6000, fx: 5800, far: 3000, boat: 1400, mid: 575, breach: 140, rocks: 300 };
-  const LIGHT = [742, 294];     // where the Tidelight stands, on the right-hand rocks
+  const LIGHT = [682, 292];     // where the lighthouse's islet meets the water (art px)
+  const dAt = r => F * CAMH / Math.max(6, r - HZ);   // depth of the water seen at art row r
   let R = null, glc = null, failed = false, S3 = null, comp = null, cc = null, RW = 0, RH = 0, P = 1, lastT = -1;
   const K = () => ({ AW, HZ });
   function texOf(cv, o = {}) {
@@ -41,6 +42,57 @@
     const m = new T.Mesh(new T.PlaneGeometry(cw * s, ch * s), new T.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false, toneMapped: false, ...(o.mat || {}) }));
     m.position.set((c0 + cw / 2 - AW / 2) * s, CAMH + (HZ - (r0 + ch / 2)) * s, -d); m.renderOrder = order;
     return m;
+  }
+  // A foreground rock cluster as a curtain that stands where it meets the sea, so it can't slide over the
+  // water as the camera moves: in each column, the lowest row where the rock touches open water (its
+  // footing) sets its depth; rock above the footing stands upright at that depth, rock below it lies on
+  // the water plane like the sea itself. Seen from the starting camera it is exactly the painting.
+  function curtain(img, order) {
+    const W2 = img.width, H = img.height, cv = G.makeCanvas(W2, H), c = cv.getContext('2d'); c.drawImage(img, 0, 0);
+    const A = c.getImageData(0, 0, W2, H).data, al = (x, y) => x < 0 || x >= W2 ? 0 : A[(y * W2 + x) * 4 + 3];
+    const foot = new Float32Array(W2).fill(AH + 30);
+    for (let x = 0; x < W2; x++) for (let y = H - 1; y > HZ + 8; y--) {
+      if (al(x, y) < 128) continue;
+      let open = false; for (let k = 2; k <= 7 && !open; k++) open = al(x - k, y) < 20 || al(x + k, y) < 20;
+      if (open) { foot[x] = y; break; }
+    }
+    const mx = foot.map((_, x) => { let v = 0; for (let k = -10; k <= 10; k++) v = Math.max(v, foot[Math.min(W2 - 1, Math.max(0, x + k))]); return v; });
+    const sm = mx.map((_, x) => { let v = 0; for (let k = -16; k <= 16; k++) v += mx[Math.min(W2 - 1, Math.max(0, x + k))]; return v / 33; });
+    const ST = 6, nx = Math.ceil(W2 / ST) + 1, ny = Math.ceil(H / ST) + 1, pos = [], uv = [], idx = [];
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+      const X = Math.min(W2, i * ST), Y = Math.min(H, j * ST), f = sm[Math.min(W2 - 1, X)], d = Y > f ? dAt(Y) : dAt(f), k = d / F;
+      pos.push((X - M - AW / 2) * k, CAMH + (HZ - Y) * k, -d); uv.push(X / W2, 1 - Y / H);
+    }
+    for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) { const a = j * nx + i; idx.push(a, a + nx, a + 1, a + 1, a + nx, a + nx + 1); }
+    const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
+    const m = new T.Mesh(g, new T.MeshBasicMaterial({ map: texOf(img), transparent: true, alphaTest: .5, toneMapped: false }));
+    m.renderOrder = order; return m;
+  }
+  // the lighthouse's own islet: a craggy, flat-shaded rock with a wet dark foot and sunlit shoulders
+  function islet() {
+    const g = new T.CylinderGeometry(30, 78, 44, 13, 5); g.translate(0, 22, 0);
+    const p = g.attributes.position, col = [];
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), y = p.getY(i), z = p.getZ(i), a = Math.atan2(z, x), r = Math.hypot(x, z);
+      const n = 1 + .16 * Math.sin(a * 3 + 1.3) + .1 * Math.sin(a * 7 + y * .2) + .07 * Math.sin(a * 13 + 2);
+      if (r > .1) { p.setX(i, x * n); p.setZ(i, z * n); }
+      if (r > .1 && y > 2 && y < 43) { const q = 1 + .12 * Math.sin(y * .5 + a * 4); p.setX(i, p.getX(i) * q); p.setZ(i, p.getZ(i) * q); }   // ledges
+      if (y > 43) p.setY(i, y + Math.sin(a * 5) * 2 - 1);
+      const k = y / 44, wet = y < 6, h = G.h2(i, 3, 7);
+      col.push(...(wet ? [.45, .38, .46] : [.7 + .3 * k + h * .1, .66 + .3 * k + h * .08, .72 + .25 * k]));
+    }
+    g.setAttribute('color', new T.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
+    // wrapped in rock cut from the painting's own right-hand cluster, so it belongs with the rocks around it
+    const cut = canvas(96, 48, (c) => { c.drawImage(pics.rocks_r, M + 630, 372, 96, 48, 0, 0, 96, 48); });
+    const rt = texOf(cut, { nearest: true }); rt.wrapS = rt.wrapT = T.RepeatWrapping; rt.repeat.set(4, 1.2);
+    const rockM = new T.MeshLambertMaterial({ map: rt, vertexColors: true, flatShading: true, color: 0x9a8a92 });
+    const grp = new T.Group();
+    grp.add(new T.Mesh(g, rockM));
+    for (const [bx, bz, r] of [[-74, 20, 16], [66, 26, 13], [-30, 58, 10], [84, -8, 14], [18, 64, 8], [-96, -10, 11]]) {   // boulders at its foot
+      const b = new T.Mesh(new T.DodecahedronGeometry(r, 0), new T.MeshLambertMaterial({ map: rt, color: 0x6a5a62, flatShading: true }));
+      b.position.set(bx, r * .35, bz); b.rotation.set(bx, bz, r); grp.add(b);
+    }
+    return grp;
   }
   const px = (x, y, w, h, col, c) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
   const canvas = (w, h, fn) => { const cv = G.makeCanvas(w, h), c = cv.getContext('2d'); fn(c, w, h); return cv; };
@@ -217,20 +269,19 @@
     const orrGlow = new T.Mesh(orr.geometry, new T.MeshBasicMaterial({ transparent: true, depthTest: false, depthWrite: false, toneMapped: false, clippingPlanes: [water], blending: T.AdditiveBlending, opacity: .45 }));
     orrGlow.renderOrder = 7; orrGlow.visible = false; scene.add(orrGlow);
     scene.add(card(tx('mid'), -M, 0, W2, AH, D.mid, 8));
-    // the foreground (second pass): the rocks, and the Tidelight standing on the right-hand ones
-    fore.add(card(tx('rocks_l'), -M, 0, W2, AH, D.rocks, 0));
-    fore.add(card(tx('rocks_r'), -M, 0, W2, AH, D.rocks, 1));
-    const lh = lighthouse(), s = D.rocks / F;
-    lh.scale.setScalar(s); lh.position.set((LIGHT[0] - AW / 2) * s, CAMH + (HZ - LIGHT[1]) * s, -D.rocks + 3);
-    // everything goes through the transparent pass, which three sorts by renderOrder (the opaque pass would
-    // draw first, under the painted cut-outs)
-    lh.traverse(o => { if (o.isMesh && o.renderOrder < 30) { o.renderOrder = 20; o.material.transparent = true; } });
-    fore.add(lh);
+    // the foreground (second pass): the rocks, and the lighthouse on its islet
+    fore.add(curtain(pics.rocks_l, 0));
+    fore.add(curtain(pics.rocks_r, 1));
+    // the lighthouse on its islet, standing on the water exactly where the islet meets the sea
+    const DL = dAt(LIGHT[1]), s = DL / F, isle = islet(), lh = lighthouse();
+    const base = new T.Group(); base.scale.setScalar(s); base.position.set((LIGHT[0] - AW / 2) * s, 0, -DL);
+    base.add(isle); lh.position.y = 41; base.add(lh); fore.add(base);
+    base.traverse(o => { if (o.isMesh && o.renderOrder < 30) o.renderOrder = 20; });
     // dusk light: a violet sky, the low sun ahead-left raking the faces turned to it orange, a cool fill
     fore.add(new T.HemisphereLight(0xb090d0, 0x2a1a34, 1.15));
     const sun = new T.DirectionalLight(0xffa070, 3.4); sun.position.set(-.55, .2, -1); fore.add(sun);
     const fill = new T.DirectionalLight(0x7078d0, .75); fill.position.set(.5, .35, .9); fore.add(fill);
-    return { scene, fore, cam, fxCv, fxTex, skyM, boat, seaM, lh, orr, orrM, orrGlow };
+    return { scene, fore, cam, fxCv, fxTex, skyM, boat, seaM, lh, base, DL, orr, orrM, orrGlow };
   }
 
   function init() {
@@ -252,7 +303,7 @@
   function spawn(p) { parts.push(Object.assign({ t: 0, vx: 0, vy: 0, size: 1, a: 1 }, p)); }
   function sq(x, y, s, col, a) { cc.globalAlpha = a; cc.fillStyle = col; cc.fillRect(Math.round(x - s / 2), Math.round(y - s / 2), Math.max(1, Math.round(s)), Math.max(1, Math.round(s))); }
   // where surf bursts off the rocks (art px, on the rocks' plane), each with its own rhythm
-  const SURF = [[40, 300, 0], [118, 330, 1.3], [178, 350, 2.9], [236, 368, 4.1], [300, 404, 5.3], [560, 406, .7], [604, 386, 2.2], [652, 346, 3.6], [700, 344, 4.8]];
+  const SURF = [[40, 300, 0], [118, 330, 1.3], [178, 350, 2.9], [236, 368, 4.1], [300, 404, 5.3], [560, 406, .7], [604, 386, 2.2], [652, 346, 3.6], [700, 344, 4.8], [606, 300, 1.9], [760, 296, 4.4], [640, 310, 3.1]];
 
   // ------------------------------------------------------------- frame
   function frame(st) {
@@ -263,7 +314,9 @@
     if (w !== RW || h !== RH) { RW = w; RH = h; R.setSize(RW, RH, false); comp.width = RW; comp.height = RH; }
     // camera: craning down onto the scene as it fades in, then a slow drift left and right
     const intro = G.ease.outCubic(Math.min(1, t / 170));
-    const camX = Math.sin(t / 760) * 22 + Math.sin(t / 297) * 4, dy = (1 - intro) * 30 + 3 + Math.sin(t / 530) * 3;
+    // (small: the foreground rocks are only ~40-90 art px away, so a few units already slide them tens of
+    // pixels against a horizon that barely moves)
+    const camX = Math.sin(t / 760) * 4 + Math.sin(t / 297) * .8, dy = (1 - intro) * 12 + .7 + Math.sin(t / 530) * .6;
     S3.cam.position.set(camX, CAMH + dy, 0); S3.cam.updateMatrixWorld();
     const off = (d) => [-F * camX / d, F * dy / d];                 // where a thing at depth d appears to move, art px
     const fx = S3.fxCv.getContext('2d');
@@ -280,27 +333,39 @@
     // the lamp: two opposed beams turning, the halo swelling as the main one swings round toward you
     const lamp = st.lamp === undefined ? 1 : st.lamp, ud = S3.lh.userData, phi = t / 70;
     ud.beams.rotation.y = phi;
-    const toCam = new T.Vector3().subVectors(S3.cam.position, S3.lh.position).setY(0).normalize(), dir = new T.Vector3(Math.cos(phi), 0, -Math.sin(phi));
+    const toCam = new T.Vector3().subVectors(S3.cam.position, S3.base.position).setY(0).normalize(), dir = new T.Vector3(Math.cos(phi), 0, -Math.sin(phi));
     const toward = Math.max(0, dir.dot(toCam));
     for (const b of ud.beams.children) { b.visible = lamp > 0; b.material.uniforms.uA.value = .62 * lamp * b.userData.k * (1 - toward * .6); }
     ud.halo.scale.setScalar((22 + toward * 48) * (lamp > 0 ? 1 : 0) + .001); ud.halo.material.opacity = lamp;
     ud.glass.material.color.setScalar(.35 + .65 * lamp);
     ud.vane.rotation.y = Math.sin(t / 400) * .8 + .4;
-    // Orrelume breaching: rises nearly upright through the surface, hangs, slides back
+    // Orrelume: at the title it breaches like a whale, a dark shape and white water racing in under the
+    // surface, then a leap in a long arc to the left, the body turning to follow its flight, and a crash
+    // back in; in the prologue (glow) it rises nearly upright, hangs, and slides back
     const b = st.breach;
     S3.orr.visible = S3.orrGlow.visible = false;
     let bInfo = null;
     if (b) {
-      const img = G.monArt.front('orrelume', false, 0), sc = b.glow ? 1.7 : 1.25, dd = D.breach, s = dd / F;
+      const img = G.monArt.front('orrelume', false, 0), sc = b.glow ? 1.7 : 1.1, dd = D.breach, s = dd / F;
       if (S3.orrM.map !== S3._orrTex) { S3._orrTex = texOf(img, { nearest: true }); S3.orrM.map = S3.orrGlow.material.map = S3._orrTex; S3.orrM.needsUpdate = S3.orrGlow.material.needsUpdate = true; }
-      const x0 = b.glow ? 420 : 452, Hh = img.height * sc, p = b.p, rise = Math.pow(Math.sin(p * Math.PI), .6);
-      const yw = HZ + F * CAMH / dd;
-      const x = x0 + (p - .5) * 26, y = yw + Hh * .5 - rise * Hh * (b.glow ? .95 : .8);
-      S3.orr.scale.set(img.width * sc * s, img.height * sc * s, 1);
-      S3.orr.position.set((x - AW / 2) * s, CAMH + (HZ - y) * s, -dd); S3.orr.rotation.z = -((p - .5) * .5 + Math.sin(t / 20) * .02);
-      S3.orr.visible = true;
-      if (b.glow) { S3.orrGlow.visible = true; S3.orrGlow.position.copy(S3.orr.position); S3.orrGlow.scale.copy(S3.orr.scale); S3.orrGlow.rotation.copy(S3.orr.rotation); }
-      bInfo = { x, yw, w: img.width * sc * .45, rise, Hh, p, glow: b.glow };
+      const p = b.p, Hh = img.height * sc, yw = HZ + F * CAMH / dd;
+      S3.orr.scale.set(img.width * sc * s, Hh * s, 1);
+      if (b.glow) {
+        const x0 = 420, rise = Math.pow(Math.sin(p * Math.PI), .6), x = x0 + (p - .5) * 26, y = yw + Hh * .5 - rise * Hh * .95;
+        S3.orr.position.set((x - AW / 2) * s, CAMH + (HZ - y) * s, -dd); S3.orr.rotation.z = -((p - .5) * .5 + Math.sin(t / 20) * .02);
+        S3.orr.visible = S3.orrGlow.visible = true; S3.orrGlow.position.copy(S3.orr.position); S3.orrGlow.scale.copy(S3.orr.scale); S3.orrGlow.rotation.copy(S3.orr.rotation);
+        bInfo = { glow: true, x, yw, w: img.width * sc * .45, rise, Hh, p };
+      } else {
+        const A0 = .2, A1 = .66, u = (p - A0) / (A1 - A0), xs = 486, xe = 380, lift = Hh * .98;
+        const bi = bInfo = { glow: false, yw, xs, xe, u, Hh, p, w: img.width * sc * .4 };
+        if (u >= 0 && u <= 1) {
+          const x = xs + (xe - xs) * u, y = yw + Hh * .55 - lift * 4 * u * (1 - u);
+          const vx = xe - xs, vy = -lift * 4 * (1 - 2 * u);
+          let r = Math.atan2(vy, vx) + 3 * Math.PI / 4; r = Math.atan2(Math.sin(r), Math.cos(r));   // the sprite's head points up-left
+          S3.orr.position.set((x - AW / 2) * s, CAMH + (HZ - y) * s, -dd); S3.orr.rotation.z = -r;
+          S3.orr.visible = true; bi.x = x; bi.y = y;
+        }
+      }
     }
     // ---- pass 1: sky, islands, sea, headland
     R.render(S3.scene, S3.cam);
@@ -312,7 +377,7 @@
       if (t % 2 === 0) { const y = HZ + 4 + Math.pow(G.rand(), 1.6) * 250, sp = 8 + (y - HZ) * .45; spawn({ x: SUN[0] + (G.rand() - .5) * 2 * sp, y, life: 22, col: '#fff2c8', star: true, d: F * CAMH / (y - HZ) }); }
       for (const [sx, sy, ph] of SURF) {
         const k = (t / 90 + ph) % 6.2;
-        if (k < .5 && t % 2 === 0) for (let i = 0; i < 3; i++) spawn({ spray: true, x: sx + (G.rand() - .5) * 22, y: sy + G.rand() * 4, vx: (G.rand() - .5) * 1.4, vy: -1.2 - G.rand() * 2.4, ay: .08, life: 38, size: 1 + G.rand() * 1.6, col: G.rand() < .7 ? '#f4f0ff' : '#ffd6c8', d: D.rocks, top: true });
+        if (k < .5 && t % 2 === 0) for (let i = 0; i < 3; i++) spawn({ spray: true, x: sx + (G.rand() - .5) * 22, y: sy + G.rand() * 4, vx: (G.rand() - .5) * 1.4, vy: -1.2 - G.rand() * 2.4, ay: .08, life: 38, size: 1 + G.rand() * 1.6, col: G.rand() < .7 ? '#f4f0ff' : '#ffd6c8', d: dAt(sy), top: true });
       }
       for (let i = parts.length - 1; i >= 0; i--) {
         const p = parts[i]; p.t++;
@@ -335,25 +400,45 @@
       cc.fillRect(X, Y, 1, 1);
       for (let k = 1; k <= s; k++) { const lift = up ? Math.round(k * .8) : Math.round(k * .3); cc.fillRect(X - k, Y - lift, 1, 1); cc.fillRect(X + k, Y - lift, 1, 1); }
     }
-    // breach: churned water and rings on its plane
-    if (bInfo) {
+    // breach: the water it moves (white water, foam, rings, spray), drawn on its plane
+    if (bInfo && bInfo.glow) {
       const [ox, oy] = off(D.breach), B = bInfo, X = (B.x + ox) * kx, Y = (B.yw + oy) * ky;
       cc.globalAlpha = .35 + .25 * B.rise; cc.fillStyle = '#ebf4ff';
       const ew = B.w * (.8 + .3 * B.rise) * kx, eh = (3 + 2 * B.rise) * ky;
       for (let yy = -Math.ceil(eh); yy <= Math.ceil(eh); yy++) { const hw = Math.round(ew * Math.sqrt(Math.max(0, 1 - (yy / eh) ** 2))); cc.fillRect(Math.round(X - hw), Math.round(Y + yy), hw * 2, 1); }
-      for (let r = 0; r < 3; r++) {
-        const q = ((t / 55 + r / 3) % 1), rw = (B.w + q * 80) * kx, rh = (3 + q * 11) * ky; cc.globalAlpha = (1 - q) * .4 * (.4 + B.rise); cc.fillStyle = '#e6f0ff';
-        const nn = Math.round(rw * 2.4); for (let i = 0; i < nn; i++) { const a = i / nn * Math.PI * 2; cc.fillRect(Math.round(X + Math.cos(a) * rw), Math.round(Y + 2 * ky + Math.sin(a) * rh), 1, 1); }
+      if (t !== lastT && (B.p < .22 || B.p > .8) && t % 2 === 0) for (let i = 0; i < 5; i++) spawn({ spray: true, x: B.x + (G.rand() - .5) * B.w * 2, y: B.yw, vx: (G.rand() - .5) * 2, vy: -1.6 - G.rand() * 2.8, ay: .09, life: 44, size: 1 + G.rand() * 1.5, col: '#eef6ff', d: D.breach });
+      cc.globalCompositeOperation = 'lighter'; for (let i = 0; i < 5; i++) { cc.globalAlpha = .06 * B.rise; cc.fillStyle = '#78c8ff'; const r = (140 - i * 26) * kx; cc.beginPath(); cc.arc(X, (B.yw - 40 + oy) * ky, r, 0, Math.PI * 2); cc.fill(); } cc.globalCompositeOperation = 'source-over';
+    } else if (bInfo) {
+      const [ox, oy] = off(D.breach), B = bInfo, u = B.u, Y = (B.yw + oy) * ky;
+      const blob = (x, w, h, a, col) => { if (a <= .01) return; cc.globalAlpha = a; cc.fillStyle = col; const X = (x + ox) * kx, ew = w * kx, eh = h * ky;
+        for (let yy = -Math.ceil(eh); yy <= Math.ceil(eh); yy++) { const hw = Math.round(ew * Math.sqrt(Math.max(0, 1 - (yy / eh) ** 2))); cc.fillRect(Math.round(X - hw), Math.round(Y + yy), hw * 2, 1); } };
+      const ring = (x, q, a) => { if (a <= .01) return; const X = (x + ox) * kx, rw = (B.w * .6 + q * 90) * kx, rh = (2 + q * 10) * ky; cc.globalAlpha = a; cc.fillStyle = '#e6f0ff';
+        const nn = Math.round(rw * 2.4); for (let i = 0; i < nn; i++) { const g = i / nn * Math.PI * 2; cc.fillRect(Math.round(X + Math.cos(g) * rw), Math.round(Y + 1 + Math.sin(g) * rh), 1, 1); } };
+      if (u < 0) {   // the approach: a long dark shape under the surface, a bow wave of white water ahead of it
+        const q = 1 + u / (.2 / .46), x = B.xs + 70 * (1 - q);
+        blob(x + 18, B.w * 1.1, 4.5, .28 * q, '#0a1a3a'); blob(x - 4, B.w * .45 * q, 2.4, .5 * q, '#eef6ff');
+        if (t !== lastT && t % 3 === 0) spawn({ spray: true, x: x - 8 + (G.rand() - .5) * 10, y: B.yw, vx: -.4 - G.rand() * .6, vy: -.6 - G.rand() * .9, ay: .08, life: 22, size: 1, col: '#eef6ff', d: D.breach });
       }
+      const eA = u < 0 ? 0 : Math.max(0, 1 - u * 1.6), rA = u < 1 ? 0 : Math.max(0, 1 - (u - 1) * 1.3);
+      blob(B.xs, B.w * (1 + (1 - eA) * .6), 3.5, .55 * eA, '#eef6ff'); ring(B.xs, Math.min(1, Math.max(0, u) * 1.2), .4 * eA);
+      blob(B.xe, B.w * (1.2 + (1 - rA) * .8), 4.5, .6 * rA, '#eef6ff'); ring(B.xe, Math.min(1, Math.max(0, u - 1) * 1.1), .45 * rA);
       if (t !== lastT) {
-        if ((B.p < .22 || B.p > .8) && t % 2 === 0) for (let i = 0; i < 5; i++) spawn({ spray: true, x: B.x + (G.rand() - .5) * B.w * 2, y: B.yw, vx: (G.rand() - .5) * 2, vy: -1.6 - G.rand() * 2.8, ay: .09, life: 44, size: 1 + G.rand() * 1.5, col: '#eef6ff', d: D.breach });
-        if (B.rise > .3 && t % 2 === 0) spawn({ spray: true, x: B.x + (G.rand() - .5) * B.w * 1.6, y: B.yw - B.rise * B.Hh * .5 + G.rand() * B.rise * B.Hh * .4, vy: .6, ay: .14, life: 26, size: 1, col: '#d8ecff', d: D.breach });
+        const pu = S3._bu === undefined ? u : S3._bu; S3._bu = u;
+        const burst = (x, n, up) => { for (let i = 0; i < n; i++) spawn({ spray: true, x: x + (G.rand() - .5) * B.w * 1.6, y: B.yw, vx: (G.rand() - .5) * 2.6, vy: -up * (.5 + G.rand()), ay: .1, life: 50, size: 1 + G.rand() * 1.8, col: G.rand() < .8 ? '#f4f8ff' : '#bfe0ff', d: D.breach }); };
+        if (pu < 0 && u >= 0) burst(B.xs, 34, 4.2);
+        if (pu < 1 && u >= 1) burst(B.xe, 60, 5.4);
+        if (u > 0 && u < 1 && t % 2 === 0) spawn({ spray: true, x: B.x + (G.rand() - .5) * B.w, y: B.y + (G.rand() - .2) * B.Hh * .4, vx: (G.rand() - .5) * .6, vy: .3, ay: .12, life: 30, size: 1, col: '#d8ecff', d: D.breach });
+        if (u > 1 && u < 1.4 && t % 2 === 0) burst(B.xe, 2, 2.4);
       }
-      if (B.glow) { cc.globalCompositeOperation = 'lighter'; for (let i = 0; i < 5; i++) { cc.globalAlpha = .06 * B.rise; cc.fillStyle = '#78c8ff'; const r = (140 - i * 26) * kx; cc.beginPath(); cc.arc(X, (B.yw - 40 + oy) * ky, r, 0, Math.PI * 2); cc.fill(); } cc.globalCompositeOperation = 'source-over'; }
     }
-    // ---- pass 2: the rocks and the Tidelight
+    // ---- pass 2: the rocks and the lighthouse
     R.render(S3.fore, S3.cam);
     cc.globalAlpha = 1; cc.drawImage(glc, 0, 0);
+    // foam lapping round the islet's foot (the front half; the islet hides the rest)
+    { const [ox, oy] = off(S3.DL), cx = LIGHT[0] + ox, cy = LIGHT[1] + oy, rx = 92, ry = CAMH * 92 / S3.DL;
+      cc.fillStyle = '#eef4ff';
+      for (let i = 0; i < 40; i++) { const g = i / 40 * Math.PI, w = Math.sin(t / 26 + i * 1.7); if (w < .1) continue;
+        cc.globalAlpha = .35 + .35 * w; const r = 1 + .06 * Math.sin(t / 40 + i); cc.fillRect(Math.round((cx + Math.cos(g) * rx * r) * kx), Math.round((cy + Math.sin(g) * ry * r) * ky), Math.max(1, Math.round(2 * kx)), 1); } }
     // surf spray in front of the rocks
     for (const p of parts) if (p.top) { const [ox, oy] = off(p.d); sq((p.x + ox) * kx, (p.y + oy) * ky, p.size * kx, p.col, Math.min(1, (1 - p.t / p.life) * 2.2)); }
     // vignette (in stepped rings) and the fade in

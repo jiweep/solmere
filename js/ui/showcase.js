@@ -11,7 +11,7 @@ G.SHOWCASE = {
     ['Brinehollow (hometown)', 'brinehollow', 18, 9], ['Route 1', 'route1', 10, 30], ['Fernwick Town', 'fernwick', 21, 21], ['Route 2', 'route2', 10, 10],
     ['Whisperwood', 'whisperwood', 12, 14], ['Galvan Harbor', 'galvan', 22, 19], ['Route 3', 'route3', 10, 10], ['Glimmer Cave', 'glimmercave', 5, 5],
     ['Cindervale', 'cindervale', 21, 20], ['Route 4', 'route4', 10, 10], ['Duskmere', 'duskmere', 14, 12], ['Route 5', 'route5', 10, 10],
-    ['Frostpeak', 'frostpeak', 12, 12], ['Skyreach', 'skyreach', 15, 16], ['Route 6', 'route6', 10, 10], ['The Tidelight', 'tidelight', 12, 12],
+    ['Frostpeak', 'frostpeak', 12, 12], ['Skyreach', 'skyreach', 15, 16], ['Route 6', 'route6', 10, 10], ['The Lighthouse', 'tidelight', 12, 12],
     ['Victory Road', 'victoryroad', 5, 28], ['Conclave', 'conclave', 10, 10], ['Starfall Peak', 'starfall', 8, 8],
     ['Hale Lab (interior)', 'lab', 5, 8], ['Your house (interior)', 'home1f', 5, 5], ['Fernwick Gym', 'fernwick_gym', 7, 13],
   ],
@@ -129,7 +129,7 @@ G.TOUR = [
   { k: 'battle', env: 'grass', phase: 'day', mine: 'kindlet', foe: 'mossbun', moves: ['ember', 'vinewhip'], label: 'Wild battle · meadow' },
   { k: 'map', id: 'cindervale', x: 21, y: 20, hour: 16, label: 'Cindervale · lava channels and the hot spring' },
   { k: 'map', id: 'brinehollow', x: 14, y: 10, hour: 22, label: 'Night · lamps, fireflies, the sea' },
-  { k: 'map', id: 'tidelight', x: 12, y: 12, hour: 19, label: 'The Tidelight' },
+  { k: 'map', id: 'tidelight', x: 12, y: 12, hour: 19, label: 'The Lighthouse' },
   { k: 'map', id: 'home1f', x: 5, y: 5, hour: 12, label: 'Indoors · your house' },
   { k: 'battle', env: 'crystal', phase: 'day', mine: 'solarynx', foe: 'glimmer', moves: ['flamethrower', 'watergun'], label: 'Crystal cave battle' },
   { k: 'battle', env: 'league', phase: 'day', mine: 'galeclaw', foe: 'stormhound', trainer: 'sable', moves: ['thunderbolt', 'flamethrower'], label: 'Champion Sable · the League hall' },
@@ -160,6 +160,7 @@ G.runTour = async function () {
       sc.slots['0:0'] = mk(s.mine, 0); sc.slots['1:0'] = mk(s.foe, 1);
       if (s.trainer) { const T = G.TRAINERS[s.trainer]; sc.trainers = [{ side: 1, look: T && (T.look || T.sprite) || s.trainer, x: 292, y: 143, alpha: 1, off: 54, backed: true, name: T ? T.name : '' }]; }
       G.push(sc);
+      { const T = s.trainer && G.TRAINERS[s.trainer]; G.audio && G.audio.music(T ? (T.music || (T.boss ? 'gym' : 'trainer')) : s.env === 'crystal' || s.env === 'cave' ? 'wild' : 'wild'); }
       // moves go off on their own every few seconds, each side in turn
       let turn = 0;
       sc.tourTimer = setInterval(() => {

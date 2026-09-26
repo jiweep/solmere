@@ -1133,8 +1133,8 @@ G.WorldScene = class {
   // camera/lighting look for the 2.5D presenter, by place and time of day
   lookFX() {
     const m = this.map, d = m.def;
-    if (d.dark) return { tilt: .12, hazeA: 0, bloomA: .3, key: 'rgba(255,200,140,.35)', fill: 'rgba(10,10,30,.6)' };
-    if (m.type === 'indoor' || m.type === 'cave') return { tilt: .10, hazeA: 0, bloomA: .16, key: 'rgba(255,232,190,.45)', fill: 'rgba(40,40,90,.4)' };
+    if (d.dark) return { hazeA: 0, bloomA: .3, key: 'rgba(255,200,140,.35)', fill: 'rgba(10,10,30,.6)' };
+    if (m.type === 'indoor' || m.type === 'cave') return { hazeA: 0, bloomA: .16, key: 'rgba(255,232,190,.45)', fill: 'rgba(40,40,90,.4)' };
     const ph = G.clock.phase();
     if (ph === 'night') return { haze: 'rgba(40,60,130,', hazeA: .38, bloomA: .32, key: 'rgba(140,160,255,.35)', fill: 'rgba(10,15,50,.65)' };
     if (ph === 'dusk') return { haze: 'rgba(255,170,130,', hazeA: .34, bloomA: .26, key: 'rgba(255,160,90,.6)', fill: 'rgba(70,40,110,.5)' };

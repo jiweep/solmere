@@ -1,4 +1,4 @@
-# Solmere: Tidelight
+# Solmere
 
 An original monster-taming adventure in the style of the DS-era classics: six Wardens, a villainous
 Fellowship, a leviathan under a lighthouse, the Conclave and a postgame.

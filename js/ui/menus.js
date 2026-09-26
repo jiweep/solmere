@@ -102,7 +102,7 @@ G.openTrainerCard = function () {
   }));
 };
 // ------------------------------------------------------------- options --
-G.openOptions = function () {
+G.openOptions = function (oo = {}) {
   const S = G.settings, sv = G.save;
   const opts = [
     { k: 'render3d', label: '3D World (F3)', vals: [false, true], names: ['Off', 'On'] },
@@ -116,15 +116,21 @@ G.openOptions = function () {
     { k: 'expShare', label: 'EXP Share', vals: [true, false], names: ['On', 'Off'], save: true, get: () => sv.settings.expShare, apply: v => sv.settings.expShare = v },
     { k: 'hints', label: 'Effectiveness Hints', vals: [true, false], names: ['On', 'Off'] },
     { k: 'dmgPreview', label: 'Damage Preview', vals: [false, true], names: ['Off', 'On'] },
-    { k: 'autosave', label: 'Autosave', vals: [true, false], names: ['On (on map change)', 'Off'] },
+    { k: 'autosave', label: 'Autosave', vals: [true, false], names: ['On', 'Off'] },
     { k: 'autoRun', label: 'Always Run', vals: [false, true], names: ['Off', 'On'] },
     { k: 'follower', label: 'Walking Buddy', vals: [true, false], names: ['On', 'Off'], save: true, get: () => sv.follower, apply: v => { sv.follower = v; G.world.scene && G.world.scene.placeFollower(); } },
     { k: 'music', label: 'Music Volume', vals: [0, .2, .4, .6, .7, .8, 1], names: ['0', '2', '4', '6', '7', '8', '10'] },
     { k: 'sfx', label: 'Sound Volume', vals: [0, .2, .4, .6, .8, 1], names: ['0', '2', '4', '6', '8', '10'] },
-    { k: 'clock', label: 'Day/Night Clock', vals: ['accel', 'real'], names: ['Fast (48 min day)', 'Real time'] },
+    { k: 'clock', label: 'Day/Night Clock', vals: ['accel', 'real'], names: ['Fast', 'Real time'] },
     { k: 'fill', label: 'Screen Scaling', vals: [false, true], names: ['Pixel-perfect', 'Fill window'] },
     { k: 'vectorUI', label: 'Menu Style', vals: [false, true], names: ['Pixel', 'Smooth'] },
   ];
+  const val = o => o.get ? o.get() : S[o.k];
+  const setv = (o, v) => { if (o.apply) o.apply(v); else S[o.k] = v; if (o.k === 'music' || o.k === 'sfx') G.audio && G.audio.setVolumes(); if (o.k === 'fill') { G.gfx.fill = v; G.gfx.resize(); } G.persist.saveSettings(); };
+  if (oo.side) return new Promise(res => G.push(new G.SideList({ title: 'Options', y: 78, w: 200, maxRows: 9, rows: () => opts.map(o => ({
+    label: o.label, name: () => o.names[Math.max(0, o.vals.indexOf(val(o)))],
+    step: d => { const i = Math.max(0, o.vals.indexOf(val(o))); setv(o, o.vals[(i + d + o.vals.length) % o.vals.length]); },
+  })) }, () => res())));
   return new Promise(res => G.push({
     opaque: true, i: 0, t: 0, scroll: 0,
     val(o) { return o.get ? o.get() : S[o.k]; },

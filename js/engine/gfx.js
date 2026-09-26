@@ -68,7 +68,7 @@ G.gfx = {
   present25(o = {}) {
     const c = this.cx, S = this.S, W = G.W, H = G.H, buf = this.buf;
     c.imageSmoothingEnabled = false; this._persp = true;
-    const MAG = o.tilt === undefined ? .14 : o.tilt;
+    const MAG = o.tilt === undefined ? 0 : o.tilt;   // flat by default: the 2D view keeps its tiles square
     if (!this._rows || this._rowsKey !== MAG + '|' + S) {
       // destination y/height per source row so the stack fills the screen exactly
       const m = []; let tot = 0;

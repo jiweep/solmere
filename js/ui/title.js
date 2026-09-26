@@ -34,7 +34,7 @@ G.TitleScene = class {
       const id = items[k].id;
       if (id === 'cont') { const s = await G.pickSlot('Continue which journey?', true); if (s) { await G.startFromSave(G.persist.read(s)); return; } }
       if (id === 'new') { const ok = await G.newGameFlow(); if (ok) return; }
-      if (id === 'opts') { const prev = G.save; if (!G.save) G.save = G.newSave(); await G.openOptions(); if (!prev) G.save = null; }
+      if (id === 'opts') { const prev = G.save; if (!G.save) G.save = G.newSave(); await G.openOptions({ side: true }); if (!prev) G.save = null; }
       if (id === 'import') await G.importSave();
       if (id === 'help') await G.howToPlay();
       if (id === 'credits') await G.rollCredits(false);
@@ -53,30 +53,94 @@ G.TitleScene = class {
   }
   drawUI() {
     const U = G.ui, t = this.t, k = Math.min(1, t / 60);
-    const y = 26 - (1 - G.ease.outCubic(k)) * 30;
-    const c = U.c, S = G.gfx.S;
-    c.save(); c.globalAlpha = k;
-    U.font(38, 900); c.textAlign = 'center'; c.textBaseline = 'top';
-    // extruded depth: stacked copies stepping down-right, darkening
-    for (let d = 5; d >= 1; d--) { c.fillStyle = d > 3 ? '#0a0e22' : '#3a2448'; c.fillText('SOLMERE', U.X(G.W / 2 + d * .5), U.Y(y + d * .7)); }
-    c.lineJoin = 'round'; c.lineWidth = S * 2.4; c.strokeStyle = '#2a1830'; c.strokeText('SOLMERE', U.X(G.W / 2), U.Y(y));
-    // face: warm gradient with a light band sweeping across every few seconds
-    const sh = ((t % 300) / 300) * 1.6 - .3;
-    const g = c.createLinearGradient(U.X(G.W / 2 - 110), U.Y(y), U.X(G.W / 2 + 110), U.Y(y + 38));
-    g.addColorStop(0, '#ffe7a8'); g.addColorStop(Math.max(0, Math.min(1, sh - .06)), '#ffd27a'); g.addColorStop(Math.max(0, Math.min(1, sh)), '#fffdf4'); g.addColorStop(Math.max(0, Math.min(1, sh + .06)), '#ffc766'); g.addColorStop(1, '#f59a58');
-    c.fillStyle = g; c.fillText('SOLMERE', U.X(G.W / 2), U.Y(y));
-    c.restore();
-    U.text('— TIDELIGHT —', G.W / 2, y + 44, { size: 9, weight: 800, align: 'center', color: '#8af0e0', alpha: k, outline: 'rgba(0,0,0,.5)' });
+    G.drawLogo(G.W / 2, 14, t, { alpha: k, menu: this.stage === 'menu' });
     if (this.stage === 'press' && t > 40 && Math.floor(t / 30) % 2 === 0) U.text('Press any key or click', G.W / 2, 150, { size: 8, weight: 800, align: 'center', color: '#fff', outline: 'rgba(0,0,0,.6)' });
     // browsers hold sound until the first click or key press; say so rather than seeming silent
     if (G.audio && G.audio.suspended && G.audio.suspended()) U.text('♪ Sound starts with your first click or key press', G.W / 2, 162, { size: 5.5, weight: 700, align: 'center', color: 'rgba(255,255,255,.75)', outline: 'rgba(0,0,0,.5)' });
     U.text('v' + G.VERSION + '  ·  an original monster-taming adventure', G.W - 6, G.H - 9, { size: 4.8, align: 'right', color: 'rgba(255,255,255,.5)' });
   }
 };
+// ------------------------------------------------------------------ the wordmark
+// SOLMERE in hand-set pixel letters: chunky, slanted, a sunset gradient on the faces, a deep plum extrusion,
+// and the O is the setting sun, striped where it meets the sea. The letters drop in one by one, then bob
+// like buoys; a glint sweeps across now and then, and a wave rolls along underneath.
+G.LOGO_GLYPHS = {
+  S: ['..#######..', '.#########.', '####....###', '###........', '#####......', '.########..', '..########.', '......#####', '........###', '###....####', '.#########.', '..#######..'],
+  O: ['....####....', '..########..', '.##########.', '############', '############', '############', '............', '############', '............', '.##########.', '............', '....####....'],
+  L: ['###......', '###......', '###......', '###......', '###......', '###......', '###......', '###......', '###......', '###......', '#########', '#########'],
+  M: ['###.......###', '####.....####', '#####...#####', '######.######', '###.#####.###', '###..###..###', '###...#...###', '###.......###', '###.......###', '###.......###', '###.......###', '###.......###'],
+  E: ['##########', '##########', '###.......', '###.......', '###.......', '########..', '########..', '###.......', '###.......', '###.......', '##########', '##########'],
+  R: ['#########..', '##########.', '###....####', '###.....###', '###....####', '##########.', '#########..', '###...###..', '###....###.', '###.....###', '###.....###', '###.....###'],
+};
+G.drawLogo = function (cx, top, t, o = {}) {
+  const word = 'SOLMERE', GL = G.LOGO_GLYPHS, H = 12, GAP = 2, PAD = 6, EX = 2, SK = 4;
+  const widths = [...word].map(ch => GL[ch][0].length), W = widths.reduce((a, b) => a + b, 0) + GAP * (word.length - 1) + SK;
+  const CW = W + PAD * 2, CH = H + PAD * 2 + EX + 4;
+  const cv = G.drawLogo._cv || (G.drawLogo._cv = G.makeCanvas(CW, CH)), c = cv.getContext('2d');
+  const img = c.createImageData(CW, CH), D = img.data;
+  const mask = new Int8Array(CW * CH).fill(-1);   // letter index per pixel
+  let x0 = PAD;
+  [...word].forEach((ch, li) => {
+    const g = GL[ch], drop = Math.max(0, 1 - G.ease.outBack(Math.min(1, Math.max(0, (t - li * 6) / 26))));
+    const bob = Math.round(Math.sin(t / 26 - li * .8) * .9 - drop * 18);
+    for (let y = 0; y < H; y++) for (let x = 0; x < g[y].length; x++) if (g[y][x] === '#') {
+      const X = x0 + x + Math.floor((H - 1 - y) / 3), Y = PAD + y + bob;
+      if (X >= 0 && X < CW && Y >= 0 && Y < CH) mask[Y * CW + X] = li;
+    }
+    x0 += widths[li] + GAP;
+  });
+  const put = (i, r, g, b, a = 255) => { D[i * 4] = r; D[i * 4 + 1] = g; D[i * 4 + 2] = b; D[i * 4 + 3] = a; };
+  const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const FACE = ['#fffbe8', '#fff3c4', '#ffe79a', '#ffd878', '#ffc864', '#ffb456', '#ffa04e', '#ff8c4c', '#fb7a52', '#f06a5a', '#e25a66', '#cf4e72'].map(hex);
+  const SUNF = ['#fff8c0', '#ffee90', '#ffdc6a', '#ffc452', '#ffa848', '#ff8c4a', '#ff7452', '#ff6a5c', '#ff6068', '#ff5a74', '#f8527c', '#ee4e84'].map(hex);
+  const EXT = ['#7a2456', '#3e1036'].map(hex), OUT = hex('#1a0818');
+  const at = (x, y) => x < 0 || y < 0 || x >= CW || y >= CH ? -1 : mask[y * CW + x];
+  // extrusion (straight down, darkening), then the outline round letters and extrusion together
+  const solid = new Uint8Array(CW * CH);
+  for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) if (at(x, y) >= 0) for (let e = 0; e <= EX; e++) if (y + e < CH) solid[(y + e) * CW + x] = 1;
+  for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
+    const i = y * CW + x;
+    if (solid[i]) { if (at(x, y) < 0) { let e = 1; while (e <= EX && at(x, y - e) < 0) e++; const q = EXT[Math.min(EXT.length - 1, e - 1)]; put(i, ...q); } continue; }
+    let edge = false; for (let dy = -1; dy <= 1 && !edge; dy++) for (let dx = -1; dx <= 1 && !edge; dx++) if (x + dx >= 0 && y + dy >= 0 && x + dx < CW && y + dy < CH && solid[(y + dy) * CW + x + dx]) edge = true;
+    if (edge) put(i, ...OUT);
+  }
+  // faces: gradient by row, bright top edges, and a glint band sweeping across every few seconds
+  const gp = (t % 260) * .9 - 30;
+  for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
+    const li = at(x, y); if (li < 0) continue;
+    let row = 0; { let yy = y;   // row within its letter
+      while (yy > 0 && at(x, yy - 1) === li) yy--; row = y - yy; }
+    const ramp = word[li] === 'O' ? SUNF : FACE, q = ramp[Math.max(0, Math.min(11, row))].slice();
+    if (at(x, y - 1) !== li) { q[0] = 255; q[1] = 255; q[2] = Math.min(255, q[2] + 60); }
+    else if (at(x - 1, y) !== li && row < 8) { q[0] = Math.min(255, q[0] + 18); q[1] = Math.min(255, q[1] + 18); q[2] = Math.min(255, q[2] + 18); }
+    const gd = x + y * .6 - gp; if (gd > 0 && gd < 3.5) { q[0] = 255; q[1] = 255; q[2] = 248; }
+    put(y * CW + x, ...q);
+  }
+  c.putImageData(img, 0, 0);
+  // draw it: whole screen pixels per logo pixel, no smoothing
+  const U = G.ui, S = G.gfx.S, L = Math.max(1, Math.round(S * 2.25)) / S, ctx = U.c;
+  const lx = cx - CW * L / 2, ly = top;
+  ctx.save(); ctx.globalAlpha = o.alpha === undefined ? 1 : o.alpha; ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(cv, Math.round(U.X(lx)), Math.round(U.Y(ly)), Math.round(CW * L * S), Math.round(CH * L * S));
+  // the wave swash under the word: two rows of pixel water rolling left to right
+  const wy = ly + (PAD + H + EX + 3) * L, px = Math.round(L * S);
+  for (let x = 6; x < CW - 4; x++) {
+    const ph = (x - t * .35) / 3.2, h = Math.round(Math.sin(ph) * 1.2), crest = Math.sin(ph) > .75;
+    ctx.fillStyle = crest ? '#ffffff' : '#5ae8e0'; ctx.fillRect(Math.round(U.X(lx + x * L)), Math.round(U.Y(wy + h * L)), px, px);
+    ctx.fillStyle = '#1a6a8a'; ctx.fillRect(Math.round(U.X(lx + x * L)), Math.round(U.Y(wy + (h + 1) * L)), px, px);
+  }
+  ctx.restore();
+  // a sparkle or two winking on the letters
+  const sp = Math.floor(t / 40), k = (t % 40) / 40;
+  if (k < .5) { const sx = lx + ((sp * 37) % (CW - 20) + 10) * L, sy = ly + (PAD + 1 + (sp * 5) % 4) * L, a = Math.sin(k * 2 * Math.PI);
+    ctx.save(); ctx.globalAlpha = a * (o.alpha === undefined ? 1 : o.alpha); ctx.fillStyle = '#ffffff';
+    for (const [dx, dy, n] of [[0, 0, 1], [-1, 0, a > .6], [1, 0, a > .6], [0, -1, a > .6], [0, 1, a > .6], [-2, 0, a > .9], [2, 0, a > .9], [0, -2, a > .9], [0, 2, a > .9]]) if (n) ctx.fillRect(Math.round(U.X(sx + dx * L)), Math.round(U.Y(sy + dy * L)), px, px);
+    ctx.restore(); }
+};
 G.pickSlot = async function (title, mustExist) {
   const items = [1, 2, 3].map(s => { const S = G.persist.summary(s); return { label: S ? `${s}: ${S.name} · ${S.badges}★ · ${S.time} · ${S.loc}` : `${s}: — empty —`, disabled: mustExist && !S, slot: s }; });
   items.push({ label: 'Back' });
-  const k = await G.choose(items, { x: 60, y: 96, w: 264, title, cancel: 3 });
+  const k = await G.choose(items, { x: 18, y: 96, w: 212, title, cancel: 3 });
   if (k < 0 || k >= 3) return null;
   return items[k].slot;
 };
@@ -124,43 +188,21 @@ G.NewGameScene = class {
     ];
   }
   visible() { return this.rows.filter(r => !r.dep || this.v[r.dep]); }
-  update(top) {
-    this.t++; if (!top) return;
-    const I = G.input, R = this.visible(), n = R.length;
-    if (I.repeat('up')) { this.i = (this.i + n - 1) % n; G.audio && G.audio.sfx('cursor'); }
-    if (I.repeat('down')) { this.i = (this.i + 1) % n; G.audio && G.audio.sfx('cursor'); }
-    const r = R[Math.min(this.i, n - 1)];
-    if (r.start) { if (I.pressed('a')) { I.consume('a'); G.audio && G.audio.sfx('select'); G.pop(this); this.res(this.v); } }
-    else {
-      const vi = r.vals.indexOf(this.v[r.k]);
-      if (I.repeat('left')) { this.v[r.k] = r.vals[(vi + r.vals.length - 1) % r.vals.length]; G.audio && G.audio.sfx('cursor'); }
-      if (I.repeat('right') || I.pressed('a')) { I.consume('a'); this.v[r.k] = r.vals[(vi + 1) % r.vals.length]; G.audio && G.audio.sfx('cursor'); }
-    }
-    if (this.i >= this.visible().length) this.i = this.visible().length - 1;
-    if (I.pressed('b')) { I.consume('b'); G.pop(this); this.res(null); }
-  }
-  draw(b) { G.menuBG(b, '#1e9486', '#0e3a44', this.t / 60); }
-  drawUI() {
-    const U = G.ui, R = this.visible();
-    U.panel(16, 8, G.W - 32, 150, 'light', { r: 8 });
-    U.text('New Journey — Challenge Setup', G.W / 2, 12, { size: 8.4, weight: 900, align: 'center' });
-    R.forEach((r, k) => {
-      const y = 26 + k * 9.4, sel = k === this.i;
-      U.pick(22, y - 1.4, G.W - 44, 9.2, sel, () => { this.i = k; }, () => { this.i = k; G.input.tap(r.start ? 'a' : 'right'); });
-      if (sel) { U.shape(22, y - 1.4, G.W - 44, 9.2, 3, r.start ? 'rgba(42,168,106,.3)' : 'rgba(27,167,184,.18)'); }
-      U.text(r.label, 30, y, { size: 6.4, weight: r.start ? 900 : 700, color: r.start ? '#2a7a4a' : r.dep ? '#5a6070' : '#283040' });
-      if (!r.start) { const vi = r.vals.indexOf(this.v[r.k]); U.text('◀ ' + r.names[vi] + ' ▶', G.W - 30, y, { size: 6.4, weight: 800, align: 'right', color: sel ? '#1e9486' : '#4a5060' }); }
-    });
-    const r = R[this.i];
-    U.panel(16, 162, G.W - 32, 46, 'dark', { r: 8 });
-    const vi = r.start ? 0 : r.vals.indexOf(this.v[r.k]);
-    G.ui.wrap(r.desc[vi] || r.desc[0], G.W - 56, 6.6).slice(0, 4).forEach((l, k) => U.text(l, 26, 168 + k * 9.5, { size: 6.6, color: '#e8f0f8' }));
-  }
+};
+// the challenge setup, as a compact list at the side of the title (the sea stays in view)
+G.newGameSetup = function () {
+  const ng = new G.NewGameScene(null), v = ng.v;
+  const rows = () => ng.visible().map(r => r.start ? { label: '▶ Begin Journey', start: true, desc: () => r.desc[0] } : {
+    label: r.label.replace(/^  · /, '· '), name: () => r.names[Math.max(0, r.vals.indexOf(v[r.k]))],
+    step: d => { const i = r.vals.indexOf(v[r.k]); v[r.k] = r.vals[(i + d + r.vals.length) % r.vals.length]; },
+    desc: () => r.desc[Math.max(0, r.vals.indexOf(v[r.k]))] || r.desc[0],
+  });
+  return new Promise(res => G.push(new G.SideList({ title: 'New Journey', rows, y: 78, w: 196, maxRows: 7 }, ok => res(ok ? v : null))));
 };
 G.newGameFlow = async function () {
   const slot = await G.pickSlot('Save your journey in which slot?', false); if (!slot) return false;
   if (G.persist.exists(slot) && !await G.yesno('There\'s already a journey in that slot. Overwrite it forever?')) return false;
-  const v = await new Promise(res => G.push(new G.NewGameScene(res))); if (!v) return false;
+  const v = await G.newGameSetup(); if (!v) return false;
   const settings = {
     difficulty: v.difficulty, levelCap: v.levelCap, setMode: v.setMode || (v.nuzlocke && v.hardcore), noItems: v.nuzlocke && v.hardcore,
     nuzlocke: v.nuzlocke, nuzRules: { dupes: v.dupes, shiny: v.shinyc, hardcore: v.hardcore }, god: v.god,
@@ -199,7 +241,7 @@ G.howToPlay = async function () {
   ]);
 };
 G.rollCredits = async function (ending) {
-  const lines = ['SOLMERE: TIDELIGHT', '', 'A monster-taming adventure', '', '— Design, Story, Code, Art & Music —', 'Built with care, one pixel at a time', '', '— Starring —', ...G.DEX.map(id => G.SPECIES[id].name), '', '— Special Thanks —', 'Every Tamer who ever talked to their follower', 'Nuzlocke veterans everywhere', 'You, for playing', '', ending ? 'Thank you for playing!' : ''];
+  const lines = ['SOLMERE', '', 'A monster-taming adventure', '', '— Design, Story, Code, Art & Music —', 'Built with care, one pixel at a time', '', '— Starring —', ...G.DEX.map(id => G.SPECIES[id].name), '', '— Special Thanks —', 'Every Tamer who ever talked to their follower', 'Nuzlocke veterans everywhere', 'You, for playing', '', ending ? 'Thank you for playing!' : ''];
   G.audio && G.audio.music(ending ? 'credits' : 'title');
   await new Promise(res => G.push({
     opaque: true, t: 0,
