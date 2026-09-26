@@ -430,6 +430,7 @@ G.WorldScene = class {
   }
   checkTrainers() {
     const p = this.player;
+    if (G.net && G.net.guestTogether && G.net.guestTogether()) return false;   // together: trainers challenge the host
     for (const e of this.ents) {
       if (e.kind !== 'trainer' || e.defeated || !e.sight || this.busy) continue;
       const [dx, dy] = G.DIRS[e.dir];

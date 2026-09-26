@@ -3,6 +3,10 @@
 //  Link play (co-op over LAN/server). Host-authoritative battles: whoever
 //  starts a battle runs the engine; the partner streams events & sends actions.
 // ============================================================================
+G.loadScript = src => new Promise((res, rej) => {
+  if (document.querySelector(`script[data-src="${src}"]`)) { res(); return; }
+  const el = document.createElement('script'); el.src = src; el.dataset.src = src; el.onload = () => res(); el.onerror = rej; document.head.appendChild(el);
+});
 G.PartnerEnt = class extends G.Ent {
   constructor(o) { super({ ...o, kind: 'partner' }); this.tx0 = o.x; this.ty0 = o.y; this.visible = true; }
   setTarget(p) {
@@ -24,31 +28,135 @@ G.net = (function () {
   const N = {
     ws: null, connected: false, room: null, myId: null, partner: null, team: false, pending: {}, inbox: [], lastPos: '', lastSend: 0, guestScene: null, chain: Promise.resolve(),
     url() { return (location.protocol === 'https:' ? 'wss://' : 'ws://') + (N.hostOverride || location.host) + '/ws'; },
-    send(m) { if (N.ws && N.ws.readyState === 1) N.ws.send(JSON.stringify(m)); },
-    connect(room) {
+    tx: null,
+    send(m) { if (N.tx) N.tx.send(JSON.stringify(m)); },
+    // how to reach the other player: the game's own server when the page came from one (node server.js on a
+    // LAN), otherwise a public message relay over secure WebSockets, which works from any network or phone
+    async connect(room) {
+      N.room = room;
+      let local = false;
+      if (!/[?&]relay/.test(location.search)) try { const r = await fetch('net-info', { cache: 'no-store' }); local = r.ok && /json/.test(r.headers.get('content-type') || ''); } catch (e) { }
+      return local || N.hostOverride ? N.connectWS(room) : N.connectRelay(room);
+    },
+    connectWS(room) {
       return new Promise((res) => {
-        try { N.ws = new WebSocket(N.url()); } catch (e) { res(false); return; }
+        let ws; try { ws = new WebSocket(N.url()); } catch (e) { res(false); return; }
+        N.tx = { send: s => { if (ws.readyState === 1) ws.send(s); }, close: () => ws.close() };
         const timer = setTimeout(() => res(false), 4000);
-        N.ws.onopen = () => { N.send({ t: 'join', room, name: G.save.name }); };
-        N.ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch (e) { return; } N.onMsg(m, res, timer); };
-        N.ws.onclose = () => { if (N.connected) G.toast('Link disconnected.'); N.connected = false; N.dropPartner(); };
-        N.ws.onerror = () => { clearTimeout(timer); res(false); };
+        ws.onopen = () => { N.send({ t: 'join', room, name: G.save.name }); };
+        ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch (e) { return; } N.onMsg(m, res, timer); };
+        ws.onclose = () => { if (N.connected) G.toast('Link disconnected.'); N.connected = false; N.dropPartner(); };
+        ws.onerror = () => { clearTimeout(timer); res(false); };
       });
     },
-    disconnect() { if (N.ws) N.ws.close(); N.connected = false; N.dropPartner(); },
+    RELAYS: ['wss://broker.hivemq.com:8884/mqtt', 'wss://broker.emqx.io:8084/mqtt'],
+    async connectRelay(room) {
+      try { await G.loadScript('js/vendor/mqtt.min.js'); } catch (e) { return 'Could not load the link library. Check your connection.'; }
+      for (const url of N.RELAYS) { const r = await N.tryRelay(url, room); if (r !== false) return r; }
+      return false;
+    },
+    tryRelay(url, room) {
+      return new Promise(res => {
+        const topic = 'solmere/v2/' + room.toLowerCase(), cid = 'c' + Math.floor(Math.random() * 1e9).toString(36);
+        let done = false, partner = null;
+        const finish = v => { if (!done) { done = true; clearTimeout(timer); res(v); } };
+        let cl;
+        const timer = setTimeout(() => { try { cl && cl.end(true); } catch (e) { } finish(false); }, 9000);
+        try {
+          cl = mqtt.connect(url, { clientId: 'solmere_' + cid, clean: true, connectTimeout: 8000, reconnectPeriod: 3000, keepalive: 30,
+            will: { topic, payload: JSON.stringify({ cid, t: 'bye' }), qos: 0, retain: false } });
+        } catch (e) { finish(false); return; }
+        const pub = o => { try { cl.publish(topic, JSON.stringify({ cid, ...o })); } catch (e) { } };
+        N.tx = { send: s => pub({ d: s, to: partner && partner.id }), close: () => { pub({ t: 'bye' }); try { cl.end(); } catch (e) { } } };
+        cl.on('connect', () => {
+          if (done) { pub({ t: 'hello', name: G.save.name }); return; }   // reconnected after a drop: say hello again
+          cl.subscribe(topic, err => {
+            if (err) { finish(false); return; }
+            pub({ t: 'hello', name: G.save.name });
+            // anyone already in the room answers within a moment; if nobody does, we're the host
+            setTimeout(() => { if (!done) N.onMsg({ t: 'joined', id: cid, room, peers: partner ? [partner] : [], host: !partner }, finish, null); }, 1600);
+          });
+        });
+        cl.on('message', (tp, buf) => {
+          let m; try { m = JSON.parse(buf.toString()); } catch (e) { return; }
+          if (m.cid === cid || (m.to && m.to !== cid)) return;
+          if (m.t === 'hello' || m.t === 'here') {
+            if (partner && partner.id !== m.cid) { if (m.t === 'hello') pub({ t: 'full', to: m.cid }); return; }
+            const isNew = !partner; partner = { id: m.cid, name: m.name };
+            if (m.t === 'hello') pub({ t: 'here', name: G.save.name, to: m.cid });
+            if (isNew && done && N.connected) N.onMsg({ t: 'peer_joined', id: m.cid, name: m.name });
+            return;
+          }
+          if (m.t === 'full') { finish('That room already has two players.'); try { cl.end(true); } catch (e) { } return; }
+          if (m.t === 'bye') { if (partner && m.cid === partner.id) { partner = null; if (N.connected) N.onMsg({ t: 'peer_left' }); } return; }
+          if (m.d && partner && m.cid === partner.id) { let x; try { x = JSON.parse(m.d); } catch (e) { return; } x.from = m.cid; N.onMsg(x); }
+        });
+        cl.on('error', () => { if (!done) { try { cl.end(true); } catch (e) { } finish(false); } });
+      });
+    },
+    disconnect() { if (N.tx) N.tx.close(); N.tx = null; N.connected = false; N.endTogether(); N.dropPartner(); },
     dropPartner() {
       N.partner = null; N.team = false;
       if (G.world.scene) G.world.scene.partner = null;
       for (const k in N.pending) { const p = N.pending[k]; delete N.pending[k]; p.fallback(); }
     },
     onMsg(m, res, timer) {
-      if (m.t === 'joined') { clearTimeout(timer); N.connected = true; N.myId = m.id; N.room = m.room; if (m.peers.length) N.setPartner(m.peers[0]); res(true); N.sendPos(true); return; }
+      if (m.t === 'joined') { clearTimeout(timer); N.connected = true; N.myId = m.id; N.room = m.room; N.isHost = !!m.host; if (m.peers.length) N.setPartner(m.peers[0]); res(true); N.sendPos(true); return; }
       if (m.t === 'join_fail') { clearTimeout(timer); res(m.reason); return; }
-      if (m.t === 'peer_joined') { N.setPartner(m); G.toast(`${m.name} joined the link!`, { col: 'teal' }); G.audio && G.audio.sfx('quest'); N.sendPos(true); return; }
-      if (m.t === 'peer_left') { G.toast(`${N.partner ? N.partner.name : 'Partner'} left.`); N.dropPartner(); return; }
+      if (m.t === 'peer_joined') { N.setPartner(m); G.toast(`${m.name} joined your world!`, { col: 'teal' }); G.audio && G.audio.sfx('quest'); N.sendPos(true); if (N.together && N.isHost) { N.team = true; N.sendWorld(true); } return; }
+      if (m.t === 'peer_left') { G.toast(`${N.partner ? N.partner.name : 'Partner'} left.`); if (N.together && !N.isHost) N.endTogether(); N.dropPartner(); return; }
       N.inbox.push(m);
     },
     setPartner(p) { N.partner = { id: p.id, name: p.name, state: 'free', pos: null }; },
+    // ------------------------------------------------ Together: one shared adventure in the host's world
+    // The host's story (flags, badges, beaten trainers, quests) is the world both players live in; the guest
+    // keeps their own team, bag and money, follows the host between maps, sees the host's cutscene dialogue,
+    // and fights beside them in 2-vs-2. Story progress made together is saved into the guest's game too.
+    together: false, isHost: false, own: null, localFlags: {}, sayQ: [], lastHostMap: null, pendingPull: null, lastWorld: '',
+    guestTogether() { return N.connected && N.together && !N.isHost; },
+    worldState() { const s = G.save; return { flags: s.flags, badges: s.badges, trainers: s.trainers, quests: s.quests, visited: s.visited, hostName: s.name }; },
+    sendWorld(force) { const st = N.worldState(), key = JSON.stringify(st); if (!force && key === N.lastWorld) return; N.lastWorld = key; N.send({ t: 'world', ...st }); },
+    startTogether() {
+      N.together = true; N.team = true; N.sayQ = []; N.lastHostMap = null;
+      if (N.isHost) { N.sendWorld(true); return; }
+      const s = G.save; N.own = JSON.parse(JSON.stringify({ flags: s.flags, badges: s.badges, trainers: s.trainers, quests: s.quests || {} })); N.localFlags = {};
+      N.send({ t: 'world_req' });
+    },
+    applyWorld(m) {
+      const s = G.save; if (!s) return;
+      s.flags = Object.assign({}, m.flags, N.localFlags); s.badges = m.badges.slice(); s.trainers = Object.assign({}, m.trainers);
+      s.quests = m.quests || s.quests; s.visited = Object.assign({}, s.visited, m.visited); N.hostName = m.hostName;
+      if (N.freshTamer) { N.freshTamer = false; N.equipFresh(m.badges.length); }
+      const w = G.world.scene; if (w && w.busy === 0 && w.map) w.spawnEnts();
+    },
+    // a brand-new Tamer joining a friend partway through: bring their partner up to the friend's stage
+    equipFresh(badges) {
+      const lv = Math.max(5, Math.min(60, 6 + badges * 7)), m = G.save.party[0];
+      if (m && m.lvl < lv) { G.mon.setLevel(m, lv); G.mon.healFull(m); }
+      G.bag.add('orb', 5 + badges * 2); G.bag.add('potion', 3); if (badges >= 2) G.bag.add('superpotion', 3); if (badges >= 1) G.bag.add('greatorb', 3);
+    },
+    endTogether() {
+      if (!N.together) return;
+      N.together = false; N.team = false; N.sayQ = []; N.pendingPull = null;
+      if (!N.isHost && N.own && G.save) { N.mergeOwn(); N.own = null; G.persist.write(); }
+    },
+    // the guest's saved game keeps everything: its own story so far plus what was done together
+    mergeOwn() {
+      const s = G.save, o = N.own; if (!o) return;
+      s.flags = Object.assign({}, o.flags, s.flags); s.badges = [...new Set([...o.badges, ...s.badges])];
+      s.trainers = Object.assign({}, o.trainers, s.trainers);
+      for (const k in o.quests) if (!s.quests[k]) s.quests[k] = o.quests[k];
+    },
+    pullTo(m) {
+      const w = G.world.scene; if (!w || !m) return;
+      if (w.busy > 0 || G.top() !== w || w.player.moving) { N.pendingPull = m; return; }
+      N.pendingPull = null;
+      G.run(async () => {
+        w.busy++;
+        try { await G.fadeOut(10); w.enterMap(m.map, m.x, m.y, m.dir, { noScript: true, noBanner: false }); await G.fadeIn(10); }
+        finally { w.busy--; }
+      });
+    },
     sendPos(force) {
       if (!N.connected || !G.world.scene || !G.world.scene.player) return;
       const w = G.world.scene, p = w.player;
@@ -62,6 +170,15 @@ G.net = (function () {
     tick() {
       if (!N.connected) return;
       if (G.frame % 20 === 0) N.sendPos();
+      if (N.together) {
+        const w = G.world.scene, free = w && w.busy === 0 && G.top() === w;
+        if (N.isHost && N.partner && G.frame % 45 === 0) N.sendWorld(false);
+        if (!N.isHost && N.pendingPull && free) N.pullTo(N.pendingPull);
+        else if (!N.isHost && N.sayQ.length && free) {
+          const q = N.sayQ.splice(0);
+          G.run(async () => { w.busy++; try { for (const l of q) await G.say(l.text, { speaker: l.speaker }); } finally { w.busy--; } });
+        }
+      }
       while (N.inbox.length) { const m = N.inbox.shift(); try { N.handle(m); } catch (e) { G.reportError(e); } }
     },
     handle(m) {
@@ -73,9 +190,14 @@ G.net = (function () {
           if (w) {
             if (m.map === w.map.id) { if (!w.partner) w.partner = new G.PartnerEnt({ id: 'partner', x: m.x, y: m.y, dir: m.dir, look: m.look }); w.partner.setTarget(m); }
             else if (w.partner) w.partner.map = m.map;
+            // together: when the host changes map, the guest comes along
+            if (N.guestTogether() && m.map !== N.lastHostMap) { N.lastHostMap = m.map; if (m.map !== w.map.id) N.pullTo(m); }
           }
           break;
         }
+        case 'world_req': if (N.isHost) { N.together = true; N.team = true; N.sendWorld(true); N.sendPos(true); } break;
+        case 'world': if (!N.isHost) N.applyWorld(m); break;
+        case 'say': if (N.guestTogether()) N.sayQ.push(m); break;
         case 'emote': if (w && w.partner) { w.partner.emote = m.kind; w.partner.emoteT = 0; w.partner.emoteLife = 70; } G.audio && G.audio.sfx('exclaim'); break;
         case 'team_req': G.run(async () => { const ok = w && w.busy === 0 && G.top() === w ? await G.yesno(`${N.partner.name} wants to team up! Your battles will become 2-vs-2 co-op battles while you\'re on the same map. Accept?`) : false; N.send({ t: 'team_resp', ok }); if (ok) { N.team = true; G.toast('Teamed up!', { col: 'teal' }); } }); break;
         case 'team_resp': if (m.ok) { N.team = true; G.toast(`Teamed up with ${N.partner.name}!`, { col: 'teal' }); } else G.toast(`${N.partner.name} declined.`); break;
@@ -173,33 +295,80 @@ G.net = (function () {
     },
     shareTrainerWin(ids) { if (N.connected && N.team) N.send({ t: 'tw', ids }); },
     // ---------------------------------------------------------- menus
+    newCode() { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; let c = ''; for (let i = 0; i < 4; i++) c += A[Math.floor(Math.random() * A.length)]; return c; },
+    // open a room in your own world and wait for a friend
+    async hostRoom() {
+      const code = N.newCode(); G.toast('Opening a room...');
+      const ok = await N.connect(code);
+      if (ok !== true) { await G.say(typeof ok === 'string' ? ok : 'Could not reach the link service. Check your internet connection and try again.'); return false; }
+      N.startTogether();
+      await G.say(`Your room code is {y}${code}{w}.\\pAsk your friend to choose Play Together, then Join, and enter ${code}. They'll appear beside you, and you'll adventure together.`);
+      return true;
+    },
+    // join a friend's room: your team comes with you into their world
+    async joinRoom(code) {
+      code = (code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (!code) return false;
+      G.toast('Connecting...');
+      const ok = await N.connect(code);
+      if (ok !== true) { await G.say(typeof ok === 'string' ? ok : 'Could not reach the link service. Check your internet connection and try again.'); return false; }
+      if (N.isHost || !N.partner) { N.disconnect(); await G.say(`Nobody is hosting room ${code} right now. Check the code with your friend.`); return false; }
+      N.startTogether(); G.toast(`Joined ${N.partner.name}'s world!`, { col: 'teal' });
+      return true;
+    },
+    // the title screen's Play Together
+    async titleFlow() {
+      const k = await G.ask('Play Together: explore Solmere with a friend, in the same world. The host\'s story leads; you each bring your own team and fight side by side.', ['Host: open my world', 'Join a friend', 'How it works', 'Back']);
+      if (k === 2) { await G.say(['One player hosts: they continue their saved journey and get a four-letter room code.', 'The other joins with that code, bringing a saved team or starting as a new Tamer. They appear beside the host and follow them from place to place.', 'The host\'s story leads. Both of you see the cutscenes, and when either of you battles near the other, you fight together, two against two.', 'Story progress made together is saved in both games. Works on phones and computers, over any internet connection.'].join('\\p')); return false; }
+      if (k === 0) {
+        const sl = await G.pickSlot('Host which journey?', true); if (!sl) return false;
+        await G.startFromSave(G.persist.read(sl));
+        await N.hostRoom(); return true;
+      }
+      if (k !== 1) return false;
+      const code = await G.askName({ title: 'Room code?', start: '', max: 4, def: '', allowCancel: true }); if (!code) return false;
+      const hasSave = [1, 2, 3].some(sl => G.persist.summary(sl));
+      let save = null;
+      const pick = hasSave ? await G.ask('Who will you play as?', ['A saved Tamer and team', 'A new Tamer', 'Back']) : 1;
+      if (pick === 2 || pick < 0) return false;
+      if (pick === 0) { const sl = await G.pickSlot('Bring which team?', true); if (!sl) return false; save = G.repairSave(G.persist.read(sl)); }
+      else {
+        const name = await G.askName({ title: 'Your name?', start: '', max: 10, def: 'Robin', allowCancel: true }); if (!name) return false;
+        const look = await G.pickLook();
+        const st = await G.ask('Choose your partner Echo.', ['Budling (Grass)', 'Kindlet (Fire)', 'Sealet (Water)']);
+        const sp = ['budling', 'kindlet', 'sealet'][Math.max(0, st)];
+        const free = [1, 2, 3].find(sl => !G.persist.summary(sl)) || 3;
+        save = G.repairSave(G.newSave({ slot: free, name, look }));
+        save.party = [G.mon.create(sp, 5, { ot: name })]; save.party[0].bond = 120; save.vars.starter = sp; save.vars.tips = false;
+        for (const it of ['journal', 'dex']) save.bag[it] = 1;
+        N.freshTamer = true;
+      }
+      G.save = save;
+      const ok = await N.joinRoom(code);
+      if (!ok) { G.save = null; N.freshTamer = false; return false; }
+      await G.startFromSave(G.save);
+      return true;
+    },
     async openLinkMenu() {
-      if (!location.protocol.startsWith('http') && !N.hostOverride) { await G.say('Link play needs the game server. Run "node server.js" in the game folder (or double-click Play.command), then open the address it prints.'); return; }
       while (true) {
         if (!N.connected) {
-          const k = await G.ask('Link Play: explore with a friend, team up in 2-vs-2 battles, trade, and battle each other over your network.', ['Join room SOLMERE', 'Join a custom room', 'Help', 'Back']);
-          if (k === 0 || k === 1) {
-            let room = 'SOLMERE';
-            if (k === 1) { room = await G.askName({ title: 'Room code?', start: '', max: 8, def: 'SOLMERE', allowCancel: true }); if (!room) continue; }
-            G.toast('Connecting...');
-            const ok = await N.connect(room.toUpperCase());
-            if (ok === true) { G.toast(`Joined room ${N.room}!`, { col: 'teal' }); await G.say(N.partner ? `${N.partner.name} is here! Walk up to them and press Z to team up, trade, or battle.` : `Room ${N.room} is open. Waiting for a friend to join... They should open this game from their computer at the address the server printed, then choose Link ▸ Join the same room.`); }
-            else await G.say(typeof ok === 'string' ? ok : 'Could not connect to the link server.');
-            continue;
+          const k = await G.ask('Play Together: share your world with a friend (or join theirs). Works on phones and computers over the internet.', ['Host: open my world', 'Join a friend', 'Back']);
+          if (k === 0) { await N.hostRoom(); return; }
+          if (k === 1) {
+            const code = await G.askName({ title: 'Room code?', start: '', max: 4, def: '', allowCancel: true }); if (!code) continue;
+            await N.joinRoom(code); return;
           }
-          if (k === 2) { await G.say(['How to link up:\\n1) On one computer, run the server: open Terminal in the game folder and type  node server.js  (or double-click Play.command).', '2) The server prints two addresses. Play on this machine at localhost. Your friend opens the LAN address (like http://192.168.1.20:8080) on their computer.', '3) Both of you choose Menu ▸ Link ▸ Join room. Then walk up to each other!', 'Each of you keeps your own save and story. When teamed up on the same map, every wild or trainer battle becomes a co-op double battle, and beaten trainers count for both of you.']); continue; }
           return;
         }
         const pn = N.partner ? N.partner.name : null;
-        const opts = [N.team ? 'Leave team' : 'Team up', 'Link Battle (PvP)', 'Trade', 'Wave hello', 'Disconnect', 'Back'];
-        const k = await G.ask(pn ? `Linked with ${pn} in room ${N.room}.${N.partner.pos ? ' (' + (G.MAPDEFS[N.partner.pos.map] || {}).name + ')' : ''}` : `In room ${N.room}. Waiting for a friend...`, opts);
-        if (k === 5 || k < 0) return;
-        if (k === 4) { N.disconnect(); G.toast('Disconnected.'); return; }
-        if (!pn) { await G.say('Nobody else is here yet.'); continue; }
-        if (k === 0) { if (N.team) { N.team = false; N.send({ t: 'team_end' }); G.toast('Left the team.'); } else { N.send({ t: 'team_req' }); G.toast('Team-up request sent.'); } return; }
-        if (k === 1) { await N.hostPvP(); return; }
-        if (k === 2) { await N.tradeFlow(true); return; }
-        if (k === 3) { N.send({ t: 'emote', kind: 'heart' }); const p = G.world.scene.player; p.emote = 'heart'; p.emoteT = 0; p.emoteLife = 60; return; }
+        const opts = ['Link Battle (PvP)', 'Trade', 'Wave hello', 'Leave room', 'Back'];
+        const k = await G.ask(pn ? `Playing together with ${pn} (room ${N.room}).` : `Room ${N.room} is open. Waiting for a friend to join...`, opts);
+        if (k === 4 || k < 0) return;
+        if (k === 3) { N.disconnect(); G.toast('Left the room.'); return; }
+        if (!pn) { await G.say('Nobody else is here yet. Share your room code: ' + N.room + '.'); continue; }
+        if (k === 0) { await N.hostPvP(); return; }
+        if (k === 1) { await N.tradeFlow(true); return; }
+        if (k === 2) { N.send({ t: 'emote', kind: 'heart' }); const p = G.world.scene.player; p.emote = 'heart'; p.emoteT = 0; p.emoteLife = 60; return; }
       }
     },
     async interactPartner() {
@@ -268,13 +437,55 @@ G.net = (function () {
   };
   return N;
 })();
-// route co-op trainer battles through the host flow when teamed up
+// route co-op trainer battles (and, together, story battles) through the host flow when teamed up
 (function () {
   const orig = G.runBattle;
   G.runBattle = async function (cfg) {
-    if (!cfg.wild && cfg.coopTrainer && !cfg.allies && G.net && G.net.coopAvailable() && !cfg._coop) {
+    if (!cfg.wild && cfg.coopTrainer && !(cfg.allies && cfg.allies.length) && G.net && G.net.coopAvailable() && !cfg._coop) {
       return G.net.hostCoopBattle({ ...cfg, _coop: true });
     }
     return orig(cfg);
+  };
+})();
+
+// ---------------------------------------------------------------- Together hooks
+(function () {
+  const N = G.net;
+  // the host's cutscene dialogue (and the choices they make) appear on the guest's screen too
+  const say0 = G.say;
+  G.say = function (text, o = {}) {
+    const w = G.world.scene;
+    if (N.together && N.isHost && N.partner && N.scriptDepth > 0 && !(G.top() instanceof G.BattleScene) && o.speaker !== 'Tamer\'s Guide') N.send({ t: 'say', text: Array.isArray(text) ? text.join('\\p') : String(text), speaker: o.speaker || null });
+    return say0.apply(this, arguments);
+  };
+  const ask0 = G.ask;
+  G.ask = async function (q, opts, o = {}) {
+    const k = await ask0.apply(this, arguments);
+    const w = G.world.scene;
+    if (N.together && N.isHost && N.partner && N.scriptDepth > 0 && opts && opts[k] !== undefined) N.send({ t: 'say', text: `${q}\\p{c}${G.save.name}: "${opts[k]}"{w}`, speaker: o.speaker || null });
+    return k;
+  };
+  // the guest's story follows the host: story scripts, cutscene triggers and trainer sightings run on the
+  // host's side; shops, healing and plain chatter still work for the guest
+  const SAFE = new Set(['nurse', 'haven_board', 'haven_tips', 'haven_chat', 'mart_clerk', 'mart_chat', 'mart_special', 'sky_special', 'league_shop', 'gym_guide', 'bh_fisher', 'lab_aide', 'wren_mom', 'mom',
+    'berry_lady', 'dowsing_man', 'nickname_rater', 'ev_trainer', 'move_tutor', 'mint_lady', 'name_rater_cinder', 'iv_judge', 'hidden_power_guy', 'fortune_teller', 'prorod_guy', 'spire_exchange', 'kiko', 'tl_hale', 'old_salt_marv', 'bike_shop', 'vsrecorder_npc', 'tl_grunt']);
+  const run0 = G.runScript;
+  G.runScript = async function (sc, ctx = {}) {
+    if (N.guestTogether() && typeof sc === 'string' && !SAFE.has(sc)) {
+      if (ctx.ent && ctx.ent.kind === 'npc') await G.say(`(${N.hostName || (N.partner && N.partner.name) || 'Your friend'} leads the story here. Stay close and watch together!)`);
+      return;
+    }
+    N.scriptDepth = (N.scriptDepth || 0) + 1;
+    try { return await run0.apply(this, arguments); } finally { N.scriptDepth--; }
+  };
+  const set0 = G.setFlag;
+  G.setFlag = function (n, v = true) { if (N.guestTogether()) N.localFlags[n] = v; return set0.apply(this, arguments); };
+  // the guest's save keeps both stories: its own and the one played together
+  const write0 = G.persist.write.bind(G.persist);
+  G.persist.write = function (slot) {
+    if (!N.guestTogether() || !N.own) return write0(slot);
+    const s = G.save, keep = { flags: s.flags, badges: s.badges, trainers: s.trainers, quests: s.quests };
+    s.quests = Object.assign({}, s.quests); N.mergeOwn();
+    try { return write0(slot); } finally { Object.assign(s, keep); }
   };
 })();

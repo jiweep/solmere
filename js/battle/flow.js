@@ -436,7 +436,7 @@ G.storyBattle = async function (id, o = {}) {
   const foes = [G.makeTrainerCfg(id)];
   if (o.withTrainer) foes.push(G.makeTrainerCfg(o.withTrainer));
   const allies = o.ally ? [{ ...G.makeTrainerCfg(o.ally), isPartner: true }] : [];
-  const r = await G.runBattle({ foes, allies, format: (o.double || foes.length > 1 || allies.length) ? 'double' : 'single', music: o.music || T.music, victory: T.victory, boss: T.boss, env: o.env || T.env, weather: T.weather, noRun: true, canLose: o.canLose, partnerName: o.ally ? G.TRAINERS[o.ally].name : null });
+  const r = await G.runBattle({ foes, allies, coopTrainer: id, format: (o.double || foes.length > 1 || allies.length) ? 'double' : 'single', music: o.music || T.music, victory: T.victory, boss: T.boss, env: o.env || T.env, weather: T.weather, noRun: true, canLose: o.canLose, partnerName: o.ally ? G.TRAINERS[o.ally].name : null });
   const won = r && r.outcome === 'win';
   if (won) { G.save.trainers[id] = { badges: G.save.badges.length, t: Date.now() }; if (o.withTrainer) G.save.trainers[o.withTrainer] = { badges: G.save.badges.length }; if (G.net) G.net.shareTrainerWin([id]); }
   return won;

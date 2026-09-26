@@ -19,7 +19,7 @@ G.openPauseMenu = async function () {
       items.push({ id: 'guide', label: 'Guide', icon: 'book', col: '#2aa86a' });
       items.push({ id: 'save', label: 'Save', icon: 'book', col: '#1ba7b8' });
       items.push({ id: 'options', label: 'Options', icon: 'gem', col: '#9b5de5' });
-      if (location.protocol.startsWith('http')) items.push({ id: 'link', label: 'Link (Co-op)', icon: 'cord', col: '#2bb3a3' });
+      if (location.protocol.startsWith('http')) items.push({ id: 'link', label: G.net && G.net.connected ? 'Together ●' : 'Play Together', icon: 'cord', col: '#2bb3a3' });
       if (G.save.settings.god) items.push({ id: 'debug', label: 'God Mode', icon: 'charm', col: '#f2d23b' });
       items.push({ id: 'close', label: 'Close' });
       const r = await new Promise(res => G.push(new G.PauseScene(items, Math.min(start, items.length - 1), res)));

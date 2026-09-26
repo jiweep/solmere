@@ -29,6 +29,7 @@ G.TitleScene = class {
       if (has) items.push({ id: 'cont', label: 'Continue' });
       const tb = G.dailyTide && G.dailyTide.best();
       items.push({ id: 'new', label: 'New Game' });
+      if (location.protocol.startsWith('http')) items.push({ id: 'coop', label: 'Play Together' });
       if (G.dailyTide) items.push({ id: 'tide', label: 'Daily Tide', right: tb ? tb.marks.slice(0, 14) : '#' + G.dailyTide.dayNo() });
       items.push({ id: 'showcase', label: 'Showcase' }, { id: 'opts', label: 'Options' }, { id: 'music', label: 'Music Room' }, { id: 'import', label: 'Import Save File' }, { id: 'help', label: 'How to Play' }, { id: 'credits', label: 'Credits' });
       // menu on the left, clear of the sea where Orrelume breaches
@@ -37,6 +38,7 @@ G.TitleScene = class {
       const id = items[k].id;
       if (id === 'cont') { const s = await G.pickSlot('Continue which journey?', true); if (s) { await G.startFromSave(G.persist.read(s)); return; } }
       if (id === 'new') { const ok = await G.newGameFlow(); if (ok) return; }
+      if (id === 'coop') { const ok = await G.net.titleFlow(); if (ok) return; }
       if (id === 'opts') { const prev = G.save; if (!G.save) G.save = G.newSave(); await G.openOptions({ side: true }); if (!prev) G.save = null; }
       if (id === 'import') await G.importSave();
       if (id === 'help') await G.howToPlay();
@@ -235,14 +237,14 @@ G.startFromSave = async function (data) {
 };
 G.howToPlay = async function () {
   await G.say([
-    'Welcome to Solmere! You\'re a brand-new Tamer. Six Warden badges, the Conclave, then the Champion. Easy. (It is not easy.)',
-    'Wild Echoes roam the grass, water and caves. Bump into one to battle it. Wear it down, then throw an Orb. Much weaker ones you already own get Swept, and chained sweeps pay bonus EXP.',
-    'Tamers who spot you will battle you. Win for money and EXP. Lose and you\'ll wake up at a Haven, poorer and wiser.',
-    'The deep stuff is all here: natures, IVs & EVs (Summary ▸ Stats), abilities, held items, weather, hazards, doubles, and the physical/special split.',
-    'Resonance: once per battle, press R in the Fight menu to let an Echo Resonate. Its main type hits much harder, and a shield blunts the first super-effective hit.',
-    'No HMs (key items clear obstacles), a free move relearner (Party ▸ Moves), Always Run, and Turbo on Tab.',
-    'Co-op: run the included server and choose Link in the menu to explore, trade and battle with a friend.',
-    'Press H in the overworld for controls any time. Go be legendary.',
+    'Welcome to Solmere! You are a new Tamer. Earn six Warden badges, face the Conclave, and challenge the Champion.',
+    'Wild Echoes roam the grass, water and caves. Walk into one to battle it. Weaken it, then throw an Orb. Much weaker ones you already own are Swept past, and a chain of sweeps earns bonus EXP.',
+    'Tamers who spot you will challenge you. Win for money and EXP. If your whole team faints, you\'ll wake at the last Haven you visited.',
+    'There\'s depth for those who want it: natures, hidden potential (Summary ▸ Stats), abilities, held items, weather, hazards and double battles.',
+    'Resonance: once per battle, press R in the Fight menu to let an Echo Resonate. Moves of its main type hit much harder, and a shield softens the first super-effective hit.',
+    'Key items clear obstacles, the Party menu relearns moves, and Tab speeds everything up.',
+    'Play Together: one player hosts and shares a room code, the other joins, and you explore the same world and battle side by side. It works on phones and computers.',
+    'Press H in the overworld to see the controls at any time. Good luck, Tamer.',
   ]);
 };
 G.rollCredits = async function (ending) {
