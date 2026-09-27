@@ -283,6 +283,9 @@ G.W3 = (function () {
     const rock = rockTexture(map.def.cliffStyle || (map.def.town ? 'stone' : 'rock'));
     const pos = [], uv = [], idx = [];
     const face = (x0, z0, x1, z1, yTop0, yTop1, yBot) => {
+      // a hair longer at both ends and deeper at the foot, so it overlaps its neighbours (steps, the next face)
+      // instead of leaving pixel-wide cracks at the joints
+      { const L0 = Math.hypot(x1 - x0, z1 - z0) || 1, ex = (x1 - x0) / L0 * .03, ez = (z1 - z0) / L0 * .03; x0 -= ex; z0 -= ez; x1 += ex; z1 += ez; yBot -= .06; }
       const b = pos.length / 3, hgt = Math.max(yTop0, yTop1) - yBot;
       pos.push(x0, yTop0, z0, x1, yTop1, z1, x0, yBot, z0, x1, yBot, z1);
       const L = Math.hypot(x1 - x0, z1 - z0);
@@ -977,7 +980,7 @@ G.W3 = (function () {
       const img = bi.img, ax = bi.atlas ? G.bldAlign(b) : 0;
       const baseY = hv.at(b.x + b.w / 2, Math.min(map.h - .01, b.y + b.h - .5));
       const x0 = b.x + ax / 16, x1 = x0 + b.w, zF = b.y + b.h;
-      const g = new T.Group(); group.add(g); bgroups.push(g);
+      const g = new T.Group(); g.name = 'building ' + b.kind + ' at ' + b.x + ',' + b.y; group.add(g); bgroups.push(g);
       if (b.kind === 'lighthouse') { g.add(latheLandmark(img, x0 + b.w / 2, baseY, zF - img.width / 32)); continue; }
       if (b.kind === 'tower') { g.add(stackLandmark(img, x0, baseY, zF, Math.min(b.h - .2, 1.5))); continue; }
       const f = WALL[b.kind] || .45, wallPx = Math.round(img.height * f), roofPx = img.height - wallPx;
@@ -1014,7 +1017,7 @@ G.W3 = (function () {
         sc.fillStyle = `rgb(${col[0] * .58 | 0},${col[1] * .58 | 0},${col[2] * .58 | 0})`; for (let y = 3; y < 16; y += 4) sc.fillRect(0, y, 16, 1);
         sc.fillStyle = `rgb(${Math.min(255, col[0] * 1.02) | 0},${Math.min(255, col[1] * 1.02) | 0},${Math.min(255, col[2] * 1.02) | 0})`; for (let y = 0; y < 16; y += 4) sc.fillRect(0, y, 16, 1);
       }
-      const rt = tex(rside); rt.wrapS = rt.wrapT = T.RepeatWrapping; const mRoofEnd = new T.MeshLambertMaterial({ map: rt, emissive: 0xffffff }); mRoofEnd.emissiveMap = mRoofEnd.map; SIDES.add(mRoofEnd);
+      const rt = tex(rside); rt.wrapS = rt.wrapT = T.RepeatWrapping; const mRoofEnd = new T.MeshLambertMaterial({ map: rt, emissive: 0xffffff, side: T.DoubleSide });   // two-sided: the eave's underside shows at the ends mRoofEnd.emissiveMap = mRoofEnd.map; mRoofEnd.name = 'roof end'; SIDES.add(mRoofEnd);
       // walls stand taller than the art draws them (a house is two to three people tall), the facade
       // stretched to fit; the art's transparent margins are filled with its own colours so no face is holey
       const wallH = wallPx / 16 * TANP, depth = zF - zB;
@@ -1030,17 +1033,20 @@ G.W3 = (function () {
         doorLeaf.fx = fx; doorLeaf.fy = fy;
       }
       const mFac = new T.MeshLambertMaterial({ map: tex(solid(facade, rgbS(wallCol, .9))) });
-      const mSide = new T.MeshLambertMaterial({ map: tex(side), emissive: 0xffffff, emissiveIntensity: .0 }); mSide.emissiveMap = mSide.map; SIDES.add(mSide);
+      const mSide = new T.MeshLambertMaterial({ map: tex(side), emissive: 0xffffff, emissiveIntensity: .0 }); mSide.emissiveMap = mSide.map; mFac.name = 'facade'; mSide.name = 'side'; SIDES.add(mSide);
       // the roof is cut along the art's own outline (no filled corners above the roofline)
-      const roofT = tex(roof), mRoof = new T.MeshLambertMaterial({ map: roofT, side: T.DoubleSide, alphaTest: .5 });
+      const roofT = tex(roof), mRoof = new T.MeshLambertMaterial({ map: roofT, side: T.DoubleSide, alphaTest: .5 }); mRoof.name = 'roof';
       mRoof.userData = { depth: new T.MeshDepthMaterial({ depthPacking: T.RGBADepthPacking, map: roofT, alphaTest: .5 }) };
       const wt2 = tex(wside); wt2.wrapS = T.RepeatWrapping; wt2.repeat.set(Math.max(1, Math.round(depth)), 1);
-      const mWall = new T.MeshLambertMaterial({ map: wt2, emissive: 0xffffff }); mWall.emissiveMap = wt2; SIDES.add(mWall);
+      const mWall = new T.MeshLambertMaterial({ map: wt2, emissive: 0xffffff }); mWall.emissiveMap = wt2; mWall.name = 'side wall'; SIDES.add(mWall);
       const body = new T.Mesh(new T.BoxGeometry(b.w - .1, wallH, depth), [mWall, mWall, FLAT_ROOF.has(b.kind) ? mSide : mRoofEnd, mSide, mFac, mSide]);
       body.position.set(x0 + b.w / 2, baseY + wallH / 2, zB + depth / 2); body.castShadow = body.receiveShadow = true; g.add(body);
       if (FLAT_ROOF.has(b.kind)) {
         // modern flat roof: a shallow slab carrying the roof art on top, with a lit parapet edge
-        const slab = new T.Mesh(new T.BoxGeometry(b.w + .06, .14, depth + .06), [mSide, mSide, mRoof, mSide, mSide, mSide]);
+        // (its top is the roof art with the transparent margin filled in: a cut-out edge left the slab hollow
+        // round the rim, and the ground behind showed through)
+        const mSlab = new T.MeshLambertMaterial({ map: tex(solid(roof, rgbS(roofAvg, 1))) }); mSlab.name = 'roof';
+        const slab = new T.Mesh(new T.BoxGeometry(b.w + .06, .14, depth + .06), [mSide, mSide, mSlab, mSide, mSide, mSide]);
         slab.position.set(x0 + b.w / 2, baseY + wallH + .07, zB + depth / 2); slab.castShadow = slab.receiveShadow = true; g.add(slab);
         if (doorLeaf) addDoor(g, b, doorLeaf, DOOR[2], x0, baseY, zF, wallH, wallPx, facade.width, trimCol, rgbS);
         continue;
@@ -1052,9 +1058,9 @@ G.W3 = (function () {
       const sp = Math.sin(PITCH_CAM), cp = Math.cos(PITCH_CAM), half = depth / 2, R = Math.max(.3, half * TANP * 1.04);
       const ov = .16, X0 = x0 + .05 - ov, X1 = x1 - .05 + ov, Y0 = baseY + wallH, YR = Y0 + R, zM = zB + half, ZF = zF + ov, ZB = zB - ov;
       const hF = half * sp + R * cp, hB = Math.max(0, half * sp - R * cp), vr = (roofPx - crestPx) / roofPx * hF / (hF + hB);
-      const quad = (P, U, mat, shadow = true) => {
+      const quad = (P, U, mat, shadow = true, flip = false) => {
         const g2 = new T.BufferGeometry(); g2.setAttribute('position', new T.Float32BufferAttribute(P, 3)); g2.setAttribute('uv', new T.Float32BufferAttribute(U, 2));
-        g2.setIndex(P.length === 12 ? [0, 2, 1, 1, 2, 3] : [0, 1, 2]); g2.computeVertexNormals();
+        g2.setIndex(P.length === 12 ? (flip ? [0, 1, 2, 1, 3, 2] : [0, 2, 1, 1, 2, 3]) : [0, 1, 2]); g2.computeVertexNormals();
         const m = new T.Mesh(g2, mat); m.castShadow = shadow; m.receiveShadow = true; if (mat.userData && mat.userData.depth) m.customDepthMaterial = mat.userData.depth; g.add(m); return m;
       };
       const dropF = ov * R / half, dropB = ov * R / half;   // eaves continue the slope past the walls
@@ -1066,8 +1072,9 @@ G.W3 = (function () {
       }
       // gable ends: wall-coloured triangles closing the roof at both sides
       const gx0 = x0 + .05, gx1 = x1 - .05, rv = R;
-      quad([gx0, Y0, zF, gx0, YR, zM, gx0, Y0, zB], [0, 0, .5, rv / wallH, 1, 0], mWall);
-      quad([gx1, Y0, zF, gx1, Y0, zB, gx1, YR, zM], [0, 0, 1, 0, .5, rv / wallH], mWall);
+      // (tucked a little down into the wall and a hair outside its face, so the joint can't open a pixel crack)
+      quad([gx0 - .004, Y0 - .06, zF, gx0 - .004, YR, zM, gx0 - .004, Y0 - .06, zB], [0, 0, .5, rv / wallH, 1, 0], mWall);
+      quad([gx1 + .004, Y0 - .06, zF, gx1 + .004, Y0 - .06, zB, gx1 + .004, YR, zM], [0, 0, 1, 0, .5, rv / wallH], mWall);
       if (doorLeaf) addDoor(g, b, doorLeaf, DOOR[2], x0, baseY, zF, wallH, wallPx, facade.width, trimCol, rgbS);
       // chimney smoke rises from the chimney the roof art draws (a stone-grey block at the top of the roof art);
       // no extra 3D chimney, so the house doesn't end up with two
@@ -1194,8 +1201,10 @@ G.W3 = (function () {
     const box = (x0, y0, z0, x1, y1, z1) => {
       const b = pos.length / 3;
       pos.push(x0, y0, z0, x1, y0, z0, x1, y1, z0, x0, y1, z0, x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1);
-      idx.push(b, b + 1, b + 2, b, b + 2, b + 3, b + 5, b + 4, b + 7, b + 5, b + 7, b + 6, b + 4, b, b + 3, b + 4, b + 3, b + 7,
-               b + 1, b + 5, b + 6, b + 1, b + 6, b + 2, b + 3, b + 2, b + 6, b + 3, b + 6, b + 7);
+      // every face wound to face outward (they were inside out: the game culled the outsides and drew the
+      // far inner faces, so rails were lit from the wrong side and looked flat black)
+      idx.push(b, b + 2, b + 1, b, b + 3, b + 2, b + 5, b + 7, b + 4, b + 5, b + 6, b + 7, b + 4, b + 3, b, b + 4, b + 7, b + 3,
+               b + 1, b + 6, b + 5, b + 1, b + 2, b + 6, b + 3, b + 6, b + 2, b + 3, b + 7, b + 6);
     };
     // a rail between two points (sloped rails for stairs): a chain of short boxes
     const rail = (xa, ya, za, xb, yb, zb, r) => {
@@ -1575,12 +1584,14 @@ G.W3 = (function () {
   // several frames; build() runs whatever is left in one go.
   function* buildSteps(map) {
     const group = new T.Group(), hv = levels(map); yield;
-    yield* buildTerrain(map, hv, group);
-    buildProps(map, hv, group); yield;
-    yield* buildBuildings(map, hv, group); yield;
-    buildRailings(map, hv, group);
-    if (map.type === 'indoor') buildRoom(map, hv, group);
-    buildGlows(group);
+    // each piece is labelled with what built it (the inspection view's pick reports it)
+    const tag = name => { for (const o of group.children) if (!o.name) o.name = name; };
+    yield* buildTerrain(map, hv, group); tag('terrain');
+    buildProps(map, hv, group); tag('prop'); yield;
+    yield* buildBuildings(map, hv, group); tag('building'); yield;
+    buildRailings(map, hv, group); tag('railing');
+    if (map.type === 'indoor') { buildRoom(map, hv, group); tag('room'); }
+    buildGlows(group); tag('glow');
     const dyn = new T.Group(); group.add(dyn);
     return { map, group, hv, dyn, sprites: new Map() };
   }
@@ -1778,10 +1789,83 @@ G.W3 = (function () {
     renderReflection();
     // the lighter profile redraws the sun's shadows every other frame (the scene is mostly still)
     if (G.gfx.lowPower()) { R.shadowMap.autoUpdate = false; if ((shadowTick = (shadowTick + 1) % 2) === 0) R.shadowMap.needsUpdate = true; } else R.shadowMap.autoUpdate = true;
-    R.render(scene, camera);
+    if (DBG) debugRender(w); else R.render(scene, camera);
     prewarm(w);
     return true;
   }
+  // ------------------------------------------------------------- inspection view
+  // G.W3.debug('faces'), or ?look3d in the URL: made for catching small misalignments by eye and by script
+  // (tools/look3d.js, tools/lookscan.py). Every mesh gets a flat colour of its own, shaded per face, so two
+  // pieces that should meet show a hard colour edge; a one-sided face seen from behind (the game culls it, so
+  // it's a hole) is magenta, the back of a two-sided one just darker; anything the camera sees straight through (a crack, a missing wall, a hole in the ground) is pure green; each character's
+  // tile centre is a red square on the ground. Glows, rays, particles and shadows' blobs are hidden.
+  let DBG = typeof location !== 'undefined' && /[?&]look3d\b/.test(location.search) ? 'faces' : null;
+  const DBG_PAL = [0xd8583a, 0xe8a030, 0xd8d040, 0x3aa8a8, 0x4a88e0, 0x6a58c8, 0x9a6a40, 0x8a8a96, 0xe08aa0, 0x2a6a8a, 0xb0c060, 0x5a4a3a];
+  const DBG_VS = 'varying vec3 vW; varying vec2 vUv; void main() { vUv = uv; vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }';
+  const DBG_FS = 'uniform vec3 uCol; uniform sampler2D uMap; uniform float uHasMap; uniform float uAT; uniform float uTwo; uniform float uBack; varying vec3 vW; varying vec2 vUv;' +
+    'void main() { if (uHasMap > .5 && texture2D(uMap, vUv).a < uAT) discard;' +
+    ' if (uBack > .5) { gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0); return; }' +
+    ' vec3 n = normalize(cross(dFdx(vW), dFdy(vW))); float l = .5 + .5 * abs(dot(n, normalize(vec3(.35, .8, .5))));' +
+    ' gl_FragColor = vec4(uCol * l * (gl_FrontFacing ? 1.0 : .55), 1.0); }';
+  const dbgHash = str => { let h = 7; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0; return h; };
+  // pass 1 (back = false): the scene as the game culls it, flat colours. Pass 2 (back = true): only the backs of
+  // one-sided faces, magenta, drawn where they are nearer than what pass 1 left (pushed back a hair so a face
+  // level with a visible one doesn't count): exactly the places where the game shows something through a hole
+  function dbgMat(src, o, k, back) {
+    const cache = o.userData._dbg || (o.userData._dbg = []), ck = k * 2 + (back ? 1 : 0);
+    if (cache[ck] !== undefined) return cache[ck];
+    const two = src.side === T.DoubleSide;
+    if (back && two) return (cache[ck] = null);
+    const hasMap = !!(src.map && (src.alphaTest > 0 || src.transparent));
+    const m = new T.ShaderMaterial({ vertexShader: DBG_VS, fragmentShader: DBG_FS, side: back ? T.BackSide : src.side,
+      uniforms: { uCol: { value: new T.Color(DBG_PAL[(dbgHash(o.uuid) + k) % DBG_PAL.length]) }, uMap: { value: hasMap ? src.map : null }, uHasMap: { value: hasMap ? 1 : 0 }, uAT: { value: Math.max(.5, src.alphaTest || 0) }, uTwo: { value: two ? 1 : 0 }, uBack: { value: back ? 1 : 0 } } });
+    if (back) { m.depthWrite = false; m.polygonOffset = true; m.polygonOffsetFactor = 2; m.polygonOffsetUnits = 8; }
+    return (cache[ck] = m);
+  }
+  let dbgMarks = null;
+  function debugRender(w) {
+    const swapped = [], hidden = [];
+    const bg = scene.background, fog = scene.fog;
+    scene.background = new T.Color(0x00ff00); scene.fog = null;
+    scene.traverse(o => {
+      if (!o.visible) return;
+      if (o.isPoints || o.isSprite || o.isLine) { hidden.push(o); return; }
+      if (!o.isMesh || !o.material) return;
+      if (o.userData.ent) return;   // characters keep their own look
+      const ms = Array.isArray(o.material) ? o.material : [o.material];
+      if (ms.every(m => m.transparent || m.blending === T.AdditiveBlending)) { hidden.push(o); return; }
+      swapped.push([o, o.material, ms]);
+      o.material = Array.isArray(o.material) ? ms.map((m, k) => dbgMat(m, o, k, false)) : dbgMat(o.material, o, 0, false);
+    });
+    for (const o of hidden) o.visible = false;
+    // red squares: the centre of the tile each character stands on
+    if (!dbgMarks) { dbgMarks = new T.Group(); dbgMarks.renderOrder = 999; }
+    scene.add(dbgMarks);
+    while (dbgMarks.children.length) dbgMarks.remove(dbgMarks.children[0]);
+    const mk = (px, py) => {
+      const fx = px / 16 + .5, fz = py / 16 + .5, gy = cur.hv.at(G.clamp(fx, 0, cur.map.w - .01), G.clamp(fz, 0, cur.map.h - .01));
+      const q = new T.Mesh(DBG_QUAD || (DBG_QUAD = new T.PlaneGeometry(.22, .22).rotateX(-Math.PI / 2)), DBG_RED || (DBG_RED = new T.MeshBasicMaterial({ color: 0xff0000, depthTest: false })));
+      q.position.set(fx, gy + .02, fz); q.renderOrder = 999; dbgMarks.add(q);
+    };
+    for (const e of w.ents) if (e.visible && !e.hidden && (e.look || e.monSprite)) mk(e.px, e.py);
+    if (w.player) mk(w.player.px, w.player.py);
+    if (w.follower && !w.follower.hidden) mk(w.follower.px, w.follower.py);
+    R.render(scene, camera);
+    // pass 2: backs of one-sided faces over the depth pass 1 left (characters and markers already drawn)
+    scene.remove(dbgMarks);
+    const off = [];
+    scene.traverse(o => { if (o.visible && (o.isMesh || o.isPoints || o.isSprite) && !swapped.some(s => s[0] === o)) { off.push(o); } });
+    for (const o of off) o.visible = false;
+    for (const [o, , ms] of swapped) { const bm = ms.map((m, k) => dbgMat(m, o, k, true)); if (bm.every(m => !m)) { o.visible = false; off.push(o); } else o.material = Array.isArray(o.material) ? bm.map(m => m || DBG_NONE || (DBG_NONE = new T.MeshBasicMaterial({ visible: false }))) : bm[0]; }
+    const ac = R.autoClear; R.autoClear = false; scene.background = null;
+    R.render(scene, camera);
+    R.autoClear = ac;
+    for (const o of off) o.visible = true;
+    for (const [o, m] of swapped) o.material = m;
+    for (const o of hidden) o.visible = true;
+    scene.background = bg; scene.fog = fog;
+  }
+  let DBG_QUAD = null, DBG_RED = null, DBG_NONE = null;
   const _plane = T ? new T.Plane(new T.Vector3(0, 1, 0), 0) : null, _tgt = T ? new T.Vector3() : null;
   const BIAS = T ? new T.Matrix4().set(.5, 0, 0, .5, 0, .5, 0, .5, 0, 0, .5, .5, 0, 0, 0, 1) : null;
   let shadowTick = 0;
@@ -1822,5 +1906,22 @@ G.W3 = (function () {
     return ndcToGame(_v);
   }
   const active = (s) => ok && s && s.isWorld && G.settings.render3d && s.map && (s.map.type === 'outdoor' || s.map.type === 'indoor');
-  return { _warm: () => warm && { id: warm.id, i: warm.i, n: warm.list.length, texs: warm.texs && warm.texs.length, done: warm.done }, _tu: () => TU, _rays: () => rays, _cur: () => cur, _bases: () => bases, chimneys: () => (cur && cur.group.userData.chimneys) || [], levels, active, render, hide, project, projectFlat, invalidate: id => { building.delete(id); const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
+  // what the camera sees at a page position: each object along the ray, nearest first, with whether its
+  // back is showing and the name of what built it (the inspection tools use this to label spots)
+  function pick(clientX, clientY) {
+    if (!cur || !cv) return [];
+    const r = cv.getBoundingClientRect(), ndc = new T.Vector2((clientX - r.left) / r.width * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
+    const rc = new T.Raycaster(); rc.setFromCamera(ndc, camera);
+    // the ray must also hit the backs of one-sided faces (normally skipped): those are what the magenta shows
+    const sides = []; cur.group.traverse(o => { if (o.isMesh) for (const m of [].concat(o.material)) if (m && m.side !== T.DoubleSide) { sides.push([m, m.side]); m.side = T.DoubleSide; } });
+    const label = o => { const parts = []; for (let p = o; p && p !== cur.group; p = p.parent) if (p.name) parts.push(p.name); return parts.join(' / ') || o.type; };
+    const hits = rc.intersectObject(cur.group, true); for (const [m, sd] of sides) m.side = sd;
+    return hits.filter(h => h.object.visible && h.object.isMesh).slice(0, 4).map(h => {
+      const m = Array.isArray(h.object.material) ? h.object.material[h.face ? h.face.materialIndex : 0] : h.object.material;
+      const n = h.face ? h.face.normal.clone().transformDirection(h.object.matrixWorld) : null;
+      return { what: label(h.object) + (m && m.name ? ' [' + m.name + ']' : '') + (n ? ' n=' + [n.x, n.y, n.z].map(v => v.toFixed(1)).join(',') : ''), back: !!(n && n.dot(rc.ray.direction) > 0), side: m && m.side === T.DoubleSide ? 'two-sided' : 'one-sided', dist: +h.distance.toFixed(2),
+        at: [+h.point.x.toFixed(2), +h.point.y.toFixed(2), +h.point.z.toFixed(2)] };
+    });
+  }
+  return { debug: mode => { DBG = mode || null; return DBG; }, pick, _warm: () => warm && { id: warm.id, i: warm.i, n: warm.list.length, texs: warm.texs && warm.texs.length, done: warm.done }, _tu: () => TU, _rays: () => rays, _cur: () => cur, _bases: () => bases, chimneys: () => (cur && cur.group.userData.chimneys) || [], levels, active, render, hide, project, projectFlat, invalidate: id => { building.delete(id); const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
 })();

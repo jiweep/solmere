@@ -181,7 +181,9 @@ G.chars = (function () {
         // the sheets keep the standing pose first and the two strides after it (guessing the stance from
         // the pixels picked a stride for most characters, so they stood mid-step and walked on one leg)
         // side views align on the head; front/back views on the whole body, so both strides swing evenly
-        const key = side ? 'head' : 'mass';
+        let key = side ? 'head' : 'mass';
+        // unless that leaves the head swaying more than a pixel: then hold the head still instead
+        if (!side) { const hs = M.map(m => m.head + Math.round(M[0].mass - m.mass)); if (Math.max(...hs) - Math.min(...hs) > 1) key = 'head'; }
         const hx = M[0][key];
         F = F.map((f, k) => shift(f, Math.round(hx - M[k][key])));
       } catch (e) { /* keep sheet order */ }
