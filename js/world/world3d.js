@@ -1650,6 +1650,8 @@ G.W3 = (function () {
       if (e.deco && img) { const m = E.sprites.get(key); if (m) { m.position.y += .56; m.userData.blob.visible = false; } }   // props on a table stand on its top
     }
     if (w.player) place('player', entImage(w, w.player), w.player.px, w.player.py, w.player.hop || 0);
+    // the other player in co-op (on this map)
+    const pt = w.partner; if (pt && pt.visible && pt.map === w.map.id) place('partner', entImage(w, pt), pt.px, pt.py, pt.hop || 0);
     const f = w.follower; if (f && !f.hidden) place('follower', G.monArt.of(f.mon, 'overworld', f.animF || 0, f.dir), f.px, f.py, f.hop || 0);
     for (const [k, m] of E.sprites) if (!seen.has(k)) m.visible = false;
   }
@@ -1850,6 +1852,7 @@ G.W3 = (function () {
     for (const e of w.ents) if (e.visible && !e.hidden && (e.look || e.monSprite)) mk(e.px, e.py);
     if (w.player) mk(w.player.px, w.player.py);
     if (w.follower && !w.follower.hidden) mk(w.follower.px, w.follower.py);
+    if (w.partner && w.partner.visible && w.partner.map === w.map.id) mk(w.partner.px, w.partner.py);
     R.render(scene, camera);
     // pass 2: backs of one-sided faces over the depth pass 1 left (characters and markers already drawn)
     scene.remove(dbgMarks);

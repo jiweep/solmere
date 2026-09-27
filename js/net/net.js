@@ -153,7 +153,21 @@ G.net = (function () {
       N.pendingPull = null;
       G.run(async () => {
         w.busy++;
-        try { await G.fadeOut(10); w.enterMap(m.map, m.x, m.y, m.dir, { noScript: true, noBanner: false }); await G.fadeIn(10); }
+        try {
+          await G.fadeOut(10);
+          w.enterMap(m.map, m.x, m.y, m.dir, { noScript: true, noBanner: false });
+          // arrive beside the host, not on their tile (standing on it, the two players looked like one): behind
+          // them if there's room, else to a side, else in front; never on a door or other warp
+          const back = G.OPP[m.dir] || 'down', order = [back, ...['left', 'right', 'up', 'down'].filter(d => d !== back && d !== m.dir), m.dir];
+          const warp = (x, y) => (w.map.warps || []).some(wp => wp.x === x && wp.y === y);
+          for (const d of order) {
+            const [dx, dy] = G.DIRS[d], x = m.x + dx, y = m.y + dy;
+            if (x < 0 || y < 0 || x >= w.map.w || y >= w.map.h || warp(x, y) || w.blocked(x, y, w.player, true)) continue;
+            const p = w.player; p.x = p.nx = x; p.y = p.ny = y; p.px = x * 16; p.py = y * 16; p.dir = m.dir; w.placeFollower(); w.snapCamera(); break;
+          }
+          N.sendPos(true);
+          await G.fadeIn(10);
+        }
         finally { w.busy--; }
       });
     },
