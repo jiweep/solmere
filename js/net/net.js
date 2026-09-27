@@ -117,7 +117,7 @@ G.net = (function () {
     worldState() { const s = G.save; return { flags: s.flags, badges: s.badges, trainers: s.trainers, quests: s.quests, visited: s.visited, hostName: s.name }; },
     sendWorld(force) { const st = N.worldState(), key = JSON.stringify(st); if (!force && key === N.lastWorld) return; N.lastWorld = key; N.send({ t: 'world', ...st }); },
     startTogether() {
-      N.together = true; N.team = true; N.sayQ = []; N.lastHostMap = null; N.lastHostWarp = null;
+      N.together = true; N.team = true; N.sayQ = []; N.lastHostMap = null;
       if (N.isHost) { N.sendWorld(true); return; }
       const s = G.save; N.own = JSON.parse(JSON.stringify({ flags: s.flags, badges: s.badges, trainers: s.trainers, quests: s.quests || {} })); N.localFlags = {};
       N.send({ t: 'world_req' });
@@ -178,7 +178,7 @@ G.net = (function () {
       const w = G.world.scene, p = w.player;
       const busy = w.busy > 0 || G.top() !== w;
       const lead = G.party.lead();
-      const pos = { t: 'pos', map: w.map.id, x: p.tx, y: p.ty, dir: p.dir, speed: p.speed || 1, surf: w.surfing, look: G.LOOKS[G.save.look], name: G.save.name, state: busy ? 'busy' : 'free', wn: w.warpN || 0, lead: lead ? { sp: lead.sp, lvl: lead.lvl } : null, badges: G.save.badges.length };
+      const pos = { t: 'pos', map: w.map.id, x: p.tx, y: p.ty, dir: p.dir, speed: p.speed || 1, surf: w.surfing, look: G.LOOKS[G.save.look], name: G.save.name, state: busy ? 'busy' : 'free', lead: lead ? { sp: lead.sp, lvl: lead.lvl } : null, badges: G.save.badges.length };
       const key = JSON.stringify([pos.map, pos.x, pos.y, pos.dir, pos.state]);
       if (!force && key === N.lastPos && G.realTime - N.lastSend < 2) return;
       N.lastPos = key; N.lastSend = G.realTime; N.send(pos);
@@ -206,12 +206,9 @@ G.net = (function () {
           if (w) {
             if (m.map === w.map.id) { if (!w.partner) w.partner = new G.PartnerEnt({ id: 'partner', x: m.x, y: m.y, dir: m.dir, look: m.look }); w.partner.setTarget(m); }
             else if (w.partner) w.partner.map = m.map;
-            // together: both players roam freely; when the host goes through a door (or flies, or is sent to a
-            // Haven) the guest is brought to them. Walking across a map border doesn't pull anyone.
-            if (N.guestTogether() && (N.lastHostMap === null || m.wn !== N.lastHostWarp)) {
-              const first = N.lastHostMap === null; N.lastHostMap = m.map; N.lastHostWarp = m.wn;
-              if (m.map !== w.map.id || first) N.pullTo(m);
-            }
+            // together: both players roam freely. The guest lands beside the host once, on joining; after that
+            // either can jump to the other from the Play Together menu ("Go to ...")
+            if (N.guestTogether() && N.lastHostMap === null) { N.lastHostMap = m.map; N.pullTo(m); }
           }
           break;
         }
@@ -381,9 +378,11 @@ G.net = (function () {
           return;
         }
         const pn = N.partner ? N.partner.name : null;
-        const opts = ['Link Battle (PvP)', 'Trade', 'Wave hello', 'Leave room', 'Back'];
+        const far = N.partner && N.partner.pos && N.partner.pos.map;
+        const opts = ['Link Battle (PvP)', 'Trade', 'Wave hello', 'Leave room', 'Back'].concat(far ? [`Go to ${pn}`] : []);
         const k = await G.ask(pn ? `Playing together with ${pn} (room ${N.room}).` : `Room ${N.room} is open. Waiting for a friend to join...`, opts);
         if (k === 4 || k < 0) return;
+        if (k === 5) { N.pullTo(N.partner.pos); return; }   // appear beside them, wherever they are
         if (k === 3) { N.disconnect(); G.toast('Left the room.'); return; }
         if (!pn) { await G.say('Nobody else is here yet. Share your room code: ' + N.room + '.'); continue; }
         if (k === 0) { await N.hostPvP(); return; }
