@@ -178,13 +178,12 @@ G.chars = (function () {
         const full = M.reduce((bi, m, k) => m.n > M[bi].n ? k : bi, 0);
         F = F.map((f, k) => M[k].n < M[full].n * .4 ? F[full] : f); M = F.map(metrics);
         const side = d === 'left' || d === 'right';
-        // standing pose: narrowest stance from the side, feet most level from the front/back
-        const si = M.reduce((bi, m, k) => (side ? m.feet < M[bi].feet : m.level < M[bi].level) ? k : bi, 0);
-        const order = [si, ...[0, 1, 2].filter(k => k !== si)];
+        // the sheets keep the standing pose first and the two strides after it (guessing the stance from
+        // the pixels picked a stride for most characters, so they stood mid-step and walked on one leg)
         // side views align on the head; front/back views on the whole body, so both strides swing evenly
-        const key = d === 'left' || d === 'right' ? 'head' : 'mass';
-        const hx = M[si][key];
-        F = order.map(k => shift(F[k], Math.round(hx - M[k][key])));
+        const key = side ? 'head' : 'mass';
+        const hx = M[0][key];
+        F = F.map((f, k) => shift(f, Math.round(hx - M[k][key])));
       } catch (e) { /* keep sheet order */ }
       S[d] = F;
       // surfing: upper body only, from the standing frame
@@ -219,82 +218,21 @@ G.chars = (function () {
       c.drawImage(spr, Math.round(48 - idle.width / 2 + (k === 'a' ? (idle.width - spr.width) / 2 : 0)), 88 - spr.height);
       cv.atlas = true; cache.set(key, cv); return cv;
     }
-    const W = 72, H = 88;
-    const cv = G.pix.make(W, H, (c) => {
-      const sh = (col, t) => G.col.dark(col, t), lt = (col, t) => G.col.light(col, t);
-      const skin = a.skin || SKIN[1], hair = a.hair || HAIR[1], top = a.top || '#e84a4a', bot = a.bottom || '#3a4a6a';
-      const grad = (x0, y0, x1, y1, col) => { const g = c.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, lt(col, .18)); g.addColorStop(1, sh(col, .18)); return g; };
-      const blob = (pts, col) => { c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); c.closePath(); c.fillStyle = col; c.fill(); };
-      const ell = (x, y, rx, ry, col, rot = 0) => { c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2); c.fillStyle = col; c.fill(); };
-      const cx = 36;
-      // legs
-      if (a.dress) blob([[cx - 13, 50], [cx + 13, 50], [cx + 17, 78], [cx - 17, 78]], grad(cx - 15, 50, cx + 15, 78, top));
-      else {
-        blob([[cx - 11, 54], [cx - 1, 54], [cx - 2, 82], [cx - 10, 82]], grad(cx - 11, 54, cx, 82, bot));
-        blob([[cx + 1, 54], [cx + 11, 54], [cx + 10, 82], [cx + 2, 82]], grad(cx, 54, cx + 11, 82, sh(bot, .08)));
-      }
-      ell(cx - 7, 84, 6, 3, a.shoes || '#2a2a30'); ell(cx + 7, 84, 6, 3, a.shoes || '#2a2a30');
-      // torso
-      if (a.coat) blob([[cx - 16, 30], [cx + 16, 30], [cx + 19, 70], [cx - 19, 70]], grad(cx - 18, 30, cx + 18, 70, a.coat));
-      blob([[cx - 14, 30], [cx + 14, 30], [cx + 13, 58], [cx - 13, 58]], grad(cx - 14, 30, cx + 14, 58, top));
-      if (a.coat) { blob([[cx - 16, 30], [cx - 7, 30], [cx - 9, 70], [cx - 19, 70]], grad(cx - 18, 30, cx - 8, 70, a.coat)); blob([[cx + 7, 30], [cx + 16, 30], [cx + 19, 70], [cx + 9, 70]], grad(cx + 8, 30, cx + 18, 70, sh(a.coat, .06))); }
-      if (a.stripe) { c.fillStyle = a.acc || '#fff'; c.fillRect(cx - 14, 42, 28, 3); }
-      if (a.emblem) { c.fillStyle = a.acc || '#fff'; c.beginPath(); c.arc(cx, 40, 4, 0, Math.PI * 2); c.fill(); c.fillStyle = top; c.fillRect(cx - 1, 37, 2, 6); }
-      if (a.belt) { c.fillStyle = a.belt; c.fillRect(cx - 13, 54, 26, 3); }
-      if (a.scarf) { blob([[cx - 11, 27], [cx + 11, 27], [cx + 12, 34], [cx - 12, 34]], a.scarf); blob([[cx + 4, 32], [cx + 11, 32], [cx + 14, 50], [cx + 7, 50]], sh(a.scarf, .1)); }
-      // arms by pose
-      const arm = (x0, y0, x1, y1, col) => { c.lineCap = 'round'; c.strokeStyle = col; c.lineWidth = 8; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke(); };
-      const sleeve = a.coat || top;
-      if (pose === 'point') { arm(cx - 13, 34, cx - 17, 56, sh(sleeve, .1)); ell(cx - 17, 58, 4, 4, skin); arm(cx + 13, 34, cx + 30, 26, sleeve); ell(cx + 32, 25, 4.5, 4, skin); }
-      else if (pose === 'hip') { arm(cx - 13, 34, cx - 21, 46, sh(sleeve, .1)); arm(cx - 21, 46, cx - 13, 54, sh(sleeve, .1)); ell(cx - 13, 54, 4, 4, skin); arm(cx + 13, 34, cx + 21, 46, sleeve); arm(cx + 21, 46, cx + 13, 54, sleeve); ell(cx + 13, 54, 4, 4, skin); }
-      else if (pose === 'cross') { arm(cx - 13, 34, cx + 8, 46, sh(sleeve, .1)); arm(cx + 13, 34, cx - 8, 44, sleeve); ell(cx + 9, 46, 3.5, 3.5, skin); ell(cx - 9, 44, 3.5, 3.5, skin); }
-      else if (pose === 'throw') { arm(cx - 13, 34, cx - 26, 22, sh(sleeve, .1)); ell(cx - 27, 20, 5, 5, '#e8484a'); arm(cx + 13, 34, cx + 17, 56, sleeve); ell(cx + 17, 58, 4, 4, skin); }
-      else { arm(cx - 13, 34, cx - 17, 57, sh(sleeve, .1)); ell(cx - 17, 59, 4, 4, skin); arm(cx + 13, 34, cx + 17, 57, sleeve); ell(cx + 17, 59, 4, 4, skin); }
-      // neck + head
-      c.fillStyle = sh(skin, .1); c.fillRect(cx - 4, 22, 8, 9);
-      const style = a.hairStyle || 'short';
-      if (style === 'long' || style === 'pony' && back) blob([[cx - 14, 8], [cx + 14, 8], [cx + 15, 38], [cx - 15, 38]], sh(hair, .1));
-      if (style === 'pony' && !back) blob([[cx + 10, 6], [cx + 20, 10], [cx + 22, 30], [cx + 14, 26]], sh(hair, .1));
-      ell(cx, 14, 11.5, 12.5, back ? hair : skin);
-      if (!back) {
-        // hair cap
-        c.beginPath(); c.ellipse(cx, 11, 12.5, 11, 0, Math.PI * .95, Math.PI * 2.05); c.fillStyle = hair; c.fill();
-        if (style === 'spiky') for (let i = -2; i <= 2; i++) blob([[cx + i * 5 - 4, 6], [cx + i * 5 + 1, -3 + Math.abs(i)], [cx + i * 5 + 4, 6]], hair);
-        if (style === 'long' || style === 'bob') { blob([[cx - 12, 8], [cx - 7, 8], [cx - 8, style === 'bob' ? 24 : 32], [cx - 14, style === 'bob' ? 24 : 32]], hair); blob([[cx + 7, 8], [cx + 12, 8], [cx + 14, style === 'bob' ? 24 : 32], [cx + 8, style === 'bob' ? 24 : 32]], hair); }
-        if (style === 'bun') ell(cx, -1, 6, 5, hair);
-        if (style === 'mohawk') blob([[cx - 3, 4], [cx, -6], [cx + 3, 4]], hair);
-        if (style === 'bald') { c.beginPath(); c.ellipse(cx, 11, 12.5, 11, 0, Math.PI, Math.PI * 2); c.fillStyle = skin; c.fill(); }
-        // fringe
-        blob([[cx - 11, 8], [cx + 11, 8], [cx + 9, 13], [cx + 4, 10], [cx, 13], [cx - 5, 10], [cx - 10, 13]], hair);
-        // face
-        c.fillStyle = '#1e1a24';
-        c.fillRect(cx - 7, 15, 3, 4); c.fillRect(cx + 4, 15, 3, 4);
-        c.fillStyle = '#ffffff'; c.fillRect(cx - 7, 15, 1, 1); c.fillRect(cx + 4, 15, 1, 1);
-        c.fillStyle = sh(skin, .35); c.fillRect(cx - 2, 23, 4, 1);
-        if (a.blush) { c.fillStyle = 'rgba(255,120,140,.5)'; c.fillRect(cx - 10, 20, 3, 2); c.fillRect(cx + 7, 20, 3, 2); }
-        if (a.glasses) { c.strokeStyle = '#2a2a34'; c.lineWidth = 1.2; c.strokeRect(cx - 9, 14, 6, 5); c.strokeRect(cx + 3, 14, 6, 5); c.beginPath(); c.moveTo(cx - 3, 16); c.lineTo(cx + 3, 16); c.stroke(); }
-        if (a.beard) blob([[cx - 9, 19], [cx + 9, 19], [cx + 6, 27], [cx, 29], [cx - 6, 27]], a.beard);
-      } else {
-        if (style === 'pony') blob([[cx - 3, 18], [cx + 3, 18], [cx + 4, 34], [cx - 4, 34]], sh(hair, .15));
-      }
-      // hats
-      if (a.hat) {
-        const hs = a.hatStyle || 'cap';
-        if (hs === 'cap') { c.beginPath(); c.ellipse(cx, 6, 12.5, 7, 0, Math.PI, Math.PI * 2); c.fillStyle = a.hat; c.fill(); if (!back) blob([[cx - 12, 6], [cx + 16, 6], [cx + 18, 9], [cx - 10, 9]], sh(a.hat, .25)); if (a.hatMark) { c.fillStyle = a.hatMark; c.fillRect(cx - 3, 0, 6, 4); } }
-        else if (hs === 'beanie') { c.beginPath(); c.ellipse(cx, 8, 13, 10, 0, Math.PI, Math.PI * 2); c.fillStyle = a.hat; c.fill(); c.fillStyle = sh(a.hat, .2); c.fillRect(cx - 13, 6, 26, 4); ell(cx, -3, 3.5, 3.5, '#ffffff'); }
-        else if (hs === 'wide') { ell(cx, 5, 20, 4, sh(a.hat, .15)); c.beginPath(); c.ellipse(cx, 4, 10, 8, 0, Math.PI, Math.PI * 2); c.fillStyle = a.hat; c.fill(); }
-        else if (hs === 'visor') { c.beginPath(); c.ellipse(cx, 7, 12.5, 9, 0, Math.PI, Math.PI * 2); c.fillStyle = a.hat; c.fill(); if (!back) { c.fillStyle = 'rgba(58,208,232,.9)'; c.fillRect(cx - 10, 12, 20, 6); c.fillStyle = 'rgba(255,255,255,.7)'; c.fillRect(cx - 8, 13, 6, 2); } }
-        else if (hs === 'hood') { c.beginPath(); c.ellipse(cx, 11, 15, 15, 0, Math.PI * .85, Math.PI * 2.15); c.fillStyle = a.hat; c.fill(); }
-        else if (hs === 'band') { c.fillStyle = a.hat; c.fillRect(cx - 12, 6, 24, 3); }
-      }
-      if (a.prop === 'staff') { c.strokeStyle = '#7a5030'; c.lineWidth = 3; c.beginPath(); c.moveTo(cx + 24, 14); c.lineTo(cx + 22, 86); c.stroke(); ell(cx + 24, 12, 5, 5, a.propCol || '#a8f0ff'); }
-      if (a.prop === 'hammer') { c.strokeStyle = '#7a5030'; c.lineWidth = 3; c.beginPath(); c.moveTo(cx + 22, 30); c.lineTo(cx + 28, 70); c.stroke(); c.fillStyle = '#6a6e78'; c.fillRect(cx + 16, 22, 16, 10); }
-      if (a.prop === 'book') { c.fillStyle = a.propCol || '#6a4ab0'; c.fillRect(cx - 24, 44, 12, 15); c.fillStyle = '#f0e8d0'; c.fillRect(cx - 23, 45, 2, 13); }
-      if (a.prop === 'bag') { c.fillStyle = a.propCol || '#a86a3a'; c.fillRect(cx + 12, 38, 10, 14); }
-      if (a.prop === 'rod') { c.strokeStyle = '#8a5a34'; c.lineWidth = 2; c.beginPath(); c.moveTo(cx + 18, 60); c.lineTo(cx + 34, 2); c.stroke(); }
-      if (a.prop === 'clipboard') { c.fillStyle = '#c89058'; c.fillRect(cx - 26, 40, 12, 16); c.fillStyle = '#ffffff'; c.fillRect(cx - 25, 42, 10, 12); }
-      if (a.cape) { c.globalCompositeOperation = 'destination-over'; blob([[cx - 16, 28], [cx + 16, 28], [cx + 24, 84], [cx - 24, 84]], a.cape); c.globalCompositeOperation = 'source-over'; }
-    }, { posterize: 0 });
+    // no painted art yet (the mother, the nurse, townsfolk): a clean placeholder, a slate silhouette with a
+    // hint of their hair and clothes, until their portraits are drawn (prompts: art_src, group J)
+    const W = 72, H = 88, cv = G.makeCanvas(W, H), c = cv.getContext('2d');
+    const mix = (col, k) => { const A = G.col.parse(col), B = [52, 58, 88]; return `rgb(${B.map((b, i) => Math.round(b + (A[i] - b) * k)).join(",")})`; };
+    const body = () => { c.beginPath(); c.moveTo(9, 88); c.bezierCurveTo(9, 50, 18, 38, 36, 38); c.bezierCurveTo(54, 38, 63, 50, 63, 88); c.closePath(); };
+    const head = () => { c.beginPath(); c.ellipse(36, 22, 11, 12.5, 0, 0, Math.PI * 2); };
+    c.fillStyle = '#343a58'; body(); c.fill(); c.fillRect(31, 30, 10, 10); head(); c.fill();
+    c.save(); body(); c.clip(); c.fillStyle = mix(a.top || '#8090b0', .5); c.fillRect(0, 0, W, H); c.restore();
+    c.save(); head(); c.clip(); c.fillStyle = mix(a.hair || '#5a4a40', .6); c.fillRect(0, 0, W, 19); c.restore();
+    // a rim of light from the upper left
+    c.strokeStyle = 'rgba(190,200,240,.5)'; c.lineWidth = 1.5; c.beginPath(); c.ellipse(36, 22, 10.5, 12, 0, Math.PI * .95, Math.PI * 1.6); c.stroke();
+    c.beginPath(); c.moveTo(10.5, 70); c.bezierCurveTo(10.5, 50, 19, 39.5, 31, 39); c.stroke();
+    // hard pixel edges, like the rest of the art
+    const d = c.getImageData(0, 0, W, H); for (let i = 3; i < d.data.length; i += 4) d.data[i] = d.data[i] > 110 ? 255 : 0; c.putImageData(d, 0, 0);
+    cv.placeholder = true;
     cache.set(key, cv);
     return cv;
   }

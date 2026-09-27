@@ -30,7 +30,11 @@ G.MONO = '"SF Mono", Menlo, Consolas, monospace';
 G.makeCanvas = function (w, h) {
   if (typeof OffscreenCanvas !== 'undefined' && G.useOffscreen) return new OffscreenCanvas(w, h);
   if (typeof document === 'undefined') return null;
-  const c = document.createElement('canvas'); c.width = w; c.height = h; return c;
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  // small art canvases (sprites, tiles, building art) live in main memory: reading their pixels back, or
+  // copying one into another that is read, then never waits for the GPU to finish its frame (a hitch)
+  if (w * h <= 65536) { const gc = c.getContext.bind(c); c.getContext = (t, o) => gc(t, t === '2d' ? Object.assign({ willReadFrequently: true }, o) : o); }
+  return c;
 };
 
 G.gfx = {
@@ -47,6 +51,14 @@ G.gfx = {
   lowPower() { const q = G.settings && G.settings.graphics; return q === 'low' || (q !== 'high' && !!(G.touch && G.touch.on)); },
   // the main canvas's pixel density: phones' 3x screens are drawn at 2x in the lighter profile
   pr() { const d = window.devicePixelRatio || 1; return this.lowPower() ? Math.min(d, 2) : d; },
+  // the display's safe-area insets in CSS pixels (notch, island, home indicator), read from a probe element
+  safe() {
+    if (typeof document === 'undefined' || !document.body) return { t: 0, r: 0, b: 0, l: 0 };
+    let p = this._safeProbe;
+    if (!p) { p = this._safeProbe = document.createElement('div'); p.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)'; document.body.appendChild(p); }
+    const cs = getComputedStyle(p), v = k => parseFloat(cs[k]) || 0;
+    return { t: v('paddingTop'), r: v('paddingRight'), b: v('paddingBottom'), l: v('paddingLeft') };
+  },
   resize() {
     const dpr = this.pr();
     const cw = Math.floor(window.innerWidth * dpr), ch = Math.floor(window.innerHeight * dpr);
@@ -59,11 +71,13 @@ G.gfx = {
     // phone held upright: the game is the screen of a handheld (touch.js draws the body), set in from the
     // edges with room for the bezel, near the top; the controls get the space below it
     if (mobile && ch > cw) {
-      S = (cw - 12 * dpr) / G.W; this.S = S;   // nearly edge to edge: a 16:9 screen on a narrow phone is width-bound
-      this.ox = Math.floor((cw - G.W * S) / 2); this.oy = Math.floor(14 * dpr);
+      // set in far enough that the bezel clears the display's rounded corners and the notch or island
+      const sa = this.safe(), side = Math.max(13, Math.max(sa.l, sa.r) + 9), top = Math.max(sa.t + 10, sa.t ? 0 : 24);
+      S = (cw - 2 * side * dpr) / G.W; this.S = S;   // nearly edge to edge: a 16:9 screen on a narrow phone is width-bound
+      this.ox = Math.floor((cw - G.W * S) / 2); this.oy = Math.floor(top * dpr);
       // a second, lower screen under the game (like the DS): dialogue and battle text are drawn there, much
       // larger than the game screen could hold them. Left out when the phone is too short to fit it.
-      const cssTop = 14 + G.W * S / dpr * G.H / G.W + 14, cssH = Math.min(200, window.innerHeight - cssTop - 250);
+      const cssTop = top + G.W * S / dpr * G.H / G.W + 14, cssH = Math.min(200, window.innerHeight - cssTop - 250 - sa.b);
       if (cssH >= 96) {
         const x = this.ox, y = Math.round(cssTop * dpr), w = G.W * S, h = Math.round(cssH * dpr);
         const k = Math.min(1.6, h / (72 * S));   // enough room for a name tag and three lines of text

@@ -165,7 +165,7 @@ G.W3 = (function () {
   }
 
   // ------------------------------------------------------------- terrain mesh
-  function buildTerrain(map, hv, group) {
+  function* buildTerrain(map, hv, group) {
     const CT = G.terrain.CT, W = map.w, H = map.h, PADT = 14;
     // water sits a little lower than land. A vertex drops only when all four cells around it are water,
     // so shores slope down instead of leaving a crack; cells past the edge come from the connected map
@@ -240,6 +240,7 @@ G.W3 = (function () {
       g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); g.setAttribute('color', new T.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
       const mesh = new T.Mesh(g, new T.MeshLambertMaterial({ map: t, vertexColors: true }));
       mesh.receiveShadow = true; group.add(mesh);
+      yield;
     }
     // water shimmer: a scrolling layer of pixel glints and wave dashes over every water cell
     { const wp = [], wu = [], wi = [], ws = [];
@@ -423,8 +424,11 @@ G.W3 = (function () {
   // pixel art reads exactly as drawn
   const PITCH = .95;   // radians the camera looks down from horizontal (steep, like the DS games)
   const PITCH_CAM = PITCH;
+  // billboards drawing the same art share one texture (a route's flowers and fences were hundreds of uploads)
+  const BB_TEX = new WeakMap(), SHARED = new WeakSet();
+  const bbTex = img => { let t = BB_TEX.get(img); if (!t) { t = tex(img); BB_TEX.set(img, t); SHARED.add(t); } return t; };
   function billboard(img, opts = {}) {
-    const t = tex(img);
+    const t = bbTex(img);
     const mat = new T.MeshLambertMaterial({ map: t, alphaTest: .5, alphaToCoverage: true, transparent: false, side: T.DoubleSide });
     const g = new T.PlaneGeometry(img.width / 16, img.height / 16); g.translate(0, img.height / 32, 0);
     const m = new T.Mesh(g, mat);
@@ -465,7 +469,8 @@ G.W3 = (function () {
   let FOG = null;
   // one texture per sprite frame, shared and kept: switching walk frames only rebinds, no re-upload
   const ENT_TEX = new WeakMap();
-  const entTex = img => { let t = ENT_TEX.get(img); if (!t) { t = texPx(img); ENT_TEX.set(img, t); } return t; };
+  const ENT_SET = new WeakSet();
+  const entTex = img => { let t = ENT_TEX.get(img); if (!t) { t = texPx(img); ENT_TEX.set(img, t); ENT_SET.add(t); } return t; };
   let blobMat = null, blobGeo = null;
   function blob() {
     if (!blobMat) {
@@ -519,14 +524,14 @@ G.W3 = (function () {
 
   function setBillboardImage(m, img) {
     if (m.userData.img === img) return;
-    const ent = m.userData.ent, t = ent ? entTex(img) : tex(img);
+    const ent = m.userData.ent, t = ent ? entTex(img) : bbTex(img);
     if (ent) { m.userData.u.uTexel.value.set(1 / img.width, 1 / img.height); m.userData.u.uOdd.value = img.width & 1 ? .5 : 0; }
     // swapping one map for another is a uniform change; only a map appearing or vanishing needs a recompile
     const had = !!m.material.map;
     m.material.map = t; if (!had) m.material.needsUpdate = true;
     m.customDepthMaterial.map = t;
     if (m.userData.w !== img.width || m.userData.h !== img.height) { m.geometry.dispose(); if (ent) m.geometry = entGeo(img); else { m.geometry = new T.PlaneGeometry(img.width / 16, img.height / 16); m.geometry.translate(0, img.height / 32, 0); } m.userData.w = img.width; m.userData.h = img.height; }
-    if (m.userData.tex && !ent) m.userData.tex.dispose(); m.userData.tex = t; m.userData.img = img;
+    m.userData.tex = t; m.userData.img = img;
   }
 
   // ------------------------------------------------------------- props
@@ -933,12 +938,41 @@ G.W3 = (function () {
     mat.customProgramCacheKey = () => 'occ' + (mat.map ? 1 : 0) + (mat.vertexColors ? 1 : 0) + (mat.alphaTest ? 1 : 0) + (mat.emissiveMap ? 1 : 0);
     return mat;
   }
-  function buildBuildings(map, hv, group) {
+  // what the 3D house needs to know about its art (the roofline, wall and trim colours, the chimney), read
+  // once per building design: many houses share one, and each pixel read-back can stall on the GPU
+  const BLD_INFO = new WeakMap();
+  function bldInfo(img, roofPx, wallPx) {
+    let A = BLD_INFO.get(img); if (A && A.roofPx === roofPx) return A;
+    const W = img.width, cv = G.makeCanvas(W, img.height), cx = cv.getContext('2d', { willReadFrequently: true });
+    cx.drawImage(img, 0, 0); const all = cx.getImageData(0, 0, W, img.height).data, at = (x, y) => (y * W + x) * 4;
+    let crestPx = 0;
+    for (let y = 0; y < roofPx; y++) { let n = 0; for (let x = 0; x < W; x++) if (all[at(x, y) + 3] > 128) n++; if (n > W * .55) { crestPx = y; break; } }
+    let wallCol = [200, 190, 170], trimCol = [110, 80, 60]; {
+      const bins = new Map();
+      for (let i = at(0, roofPx); i < at(0, roofPx + wallPx); i += 8) if (all[i + 3] > 200) { const k = (all[i] >> 4) << 8 | (all[i + 1] >> 4) << 4 | (all[i + 2] >> 4); bins.set(k, (bins.get(k) || 0) + 1); }
+      const ranked = [...bins.entries()].sort((a, b) => b[1] - a[1]), unb = k => [((k >> 8) & 15) * 16 + 8, ((k >> 4) & 15) * 16 + 8, (k & 15) * 16 + 8];
+      const lum = c => c[0] * .3 + c[1] * .59 + c[2] * .11;
+      const light = ranked.map(r => unb(r[0])).filter(c => lum(c) > 90); if (light.length) wallCol = light[0];
+      const dark = ranked.map(r => unb(r[0])).filter(c => lum(c) < 90 && lum(c) > 25); if (dark.length) trimCol = dark[0];
+    }
+    let r = 0, gg = 0, bb = 0, roofN = 0;
+    for (let i = 0; i < at(0, roofPx); i += 16) if (all[i + 3] > 200) { r += all[i]; gg += all[i + 1]; bb += all[i + 2]; roofN++; }
+    const roofAvg = roofN ? [r / roofN, gg / roofN, bb / roofN] : [150, 70, 60];
+    const chim = { sx: 0, n: 0, top: 1e9 };
+    for (let i = 0; i < at(0, Math.max(1, Math.round(roofPx * .5))); i += 4) {
+      if (all[i + 3] < 200) continue;
+      const R = all[i], Gc = all[i + 1], B = all[i + 2], sat = Math.max(R, Gc, B) - Math.min(R, Gc, B);
+      if (sat < 40 && Math.abs(R - roofAvg[0]) + Math.abs(Gc - roofAvg[1]) + Math.abs(B - roofAvg[2]) > 90) { chim.sx += (i / 4) % W; chim.n++; chim.top = Math.min(chim.top, Math.floor(i / 4 / W)); }
+    }
+    A = { roofPx, crestPx, wallCol, trimCol, roofAvg, roofN, chim }; BLD_INFO.set(img, A); return A;
+  }
+  function* buildBuildings(map, hv, group) {
     const list = map.buildings.map(b => b);
     for (const cn of map.conns) { const nm = cn.map; if (nm) for (const b of nm.buildings) list.push({ ...b, x: b.x + cn.ox, y: b.y + cn.oy }); }
     const done = new Set(), bgroups = [];
     const occludeGroup = g => g.traverse(o => { if (!o.isMesh) return; for (const m of (Array.isArray(o.material) ? o.material : [o.material])) if (m && !done.has(m) && !m.isShaderMaterial) { done.add(m); occluder(m); } });
     for (const b of list) {
+      yield;
       const bi = G.tiles.building(b.kind, b.w, b.h, { roof: b.roof, door: b.door, accent: b.accent, label: b.label });
       const img = bi.img, ax = bi.atlas ? G.bldAlign(b) : 0;
       const baseY = hv.at(b.x + b.w / 2, Math.min(map.h - .01, b.y + b.h - .5));
@@ -954,23 +988,13 @@ G.W3 = (function () {
       const TANP = Math.tan(PITCH_CAM);
       // the drawn roofline: the first art row (from the top) that the roof covers across most of its width;
       // rows above it (a chimney, peaks, a sign) stand on the ridge as a thin cut-out crest
-      let crestPx = 0; {
-        const d = img.getContext ? img.getContext('2d').getImageData(0, 0, img.width, roofPx).data : null;
-        if (d) for (let y = 0; y < roofPx; y++) { let n = 0; for (let x = 0; x < img.width; x++) if (d[(y * img.width + x) * 4 + 3] > 128) n++; if (n > img.width * .55) { crestPx = y; break; } }
-      }
+      const A = bldInfo(img, roofPx, wallPx), crestPx = A.crestPx;
       const zB = zF - Math.max(1, Math.min(b.h - .12, (roofPx - crestPx) / 16));
       const facade = G.makeCanvas(img.width, wallPx); facade.getContext('2d').drawImage(img, 0, roofPx, img.width, wallPx, 0, 0, img.width, wallPx);
       const roof = G.makeCanvas(img.width, roofPx); roof.getContext('2d').drawImage(img, 0, 0, img.width, roofPx, 0, 0, img.width, roofPx);
       // side walls: the facade's typical wall colour (the most common light tone, not the average of
       // doors and trim), dressed per tile with siding, a corner post, a small window and a stone plinth
-      let wallCol = [200, 190, 170], trimCol = [110, 80, 60]; {
-        const d = facade.getContext('2d').getImageData(0, 0, facade.width, facade.height).data, bins = new Map();
-        for (let i = 0; i < d.length; i += 8) if (d[i + 3] > 200) { const k = (d[i] >> 4) << 8 | (d[i + 1] >> 4) << 4 | (d[i + 2] >> 4); bins.set(k, (bins.get(k) || 0) + 1); }
-        const ranked = [...bins.entries()].sort((a, b) => b[1] - a[1]), unb = k => [((k >> 8) & 15) * 16 + 8, ((k >> 4) & 15) * 16 + 8, (k & 15) * 16 + 8];
-        const lum = c => c[0] * .3 + c[1] * .59 + c[2] * .11;
-        const light = ranked.map(r => unb(r[0])).filter(c => lum(c) > 90); if (light.length) wallCol = light[0];
-        const dark = ranked.map(r => unb(r[0])).filter(c => lum(c) < 90 && lum(c) > 25); if (dark.length) trimCol = dark[0];
-      }
+      const { wallCol, trimCol, roofAvg } = A;
       const rgbS = (c, k) => `rgb(${Math.min(255, c[0] * k) | 0},${Math.min(255, c[1] * k) | 0},${Math.min(255, c[2] * k) | 0})`;
       const side = G.makeCanvas(8, 16); { const sc = side.getContext('2d'); sc.fillStyle = rgbS(wallCol, .8); sc.fillRect(0, 0, 8, 16); sc.fillStyle = rgbS(trimCol, .8); sc.fillRect(0, 13, 8, 3); }
       const wside = G.makeCanvas(16, 32); {
@@ -985,9 +1009,7 @@ G.W3 = (function () {
       }
       // roof ends: the roof's own average colour, darker, with shingle courses, so the sloped ends read as roof
       const rside = G.makeCanvas(16, 16); {
-        let r = 0, gg = 0, bb = 0, n = 0; const d = roof.getContext('2d').getImageData(0, 0, roof.width, roof.height).data;
-        for (let i = 0; i < d.length; i += 16) if (d[i + 3] > 200) { r += d[i]; gg += d[i + 1]; bb += d[i + 2]; n++; }
-        const sc = rside.getContext('2d'), col = n ? [r / n, gg / n, bb / n] : [150, 60, 50];
+        const sc = rside.getContext('2d'), col = A.roofN ? roofAvg : [150, 60, 50];
         sc.fillStyle = `rgb(${col[0] * .78 | 0},${col[1] * .78 | 0},${col[2] * .78 | 0})`; sc.fillRect(0, 0, 16, 16);
         sc.fillStyle = `rgb(${col[0] * .58 | 0},${col[1] * .58 | 0},${col[2] * .58 | 0})`; for (let y = 3; y < 16; y += 4) sc.fillRect(0, y, 16, 1);
         sc.fillStyle = `rgb(${Math.min(255, col[0] * 1.02) | 0},${Math.min(255, col[1] * 1.02) | 0},${Math.min(255, col[2] * 1.02) | 0})`; for (let y = 0; y < 16; y += 4) sc.fillRect(0, y, 16, 1);
@@ -997,7 +1019,6 @@ G.W3 = (function () {
       // stretched to fit; the art's transparent margins are filled with its own colours so no face is holey
       const wallH = wallPx / 16 * TANP, depth = zF - zB;
       const solid = (cv, col) => { const o = G.makeCanvas(cv.width, cv.height), c2 = o.getContext('2d'); c2.fillStyle = col; c2.fillRect(0, 0, o.width, o.height); c2.drawImage(cv, 0, 0); return o; };
-      const roofAvg = (() => { let r = 0, gg = 0, bb = 0, n = 0; const d = roof.getContext('2d').getImageData(0, 0, roof.width, roof.height).data; for (let i = 0; i < d.length; i += 16) if (d[i + 3] > 200) { r += d[i]; gg += d[i + 1]; bb += d[i + 2]; n++; } return n ? [r / n, gg / n, bb / n] : [150, 70, 60]; })();
       const DOOR = { house: [14, 20, 'swing'], haven: [22, 18, 'slide'], mart: [22, 18, 'slide'], gym: [20, 22, 'swing2'], lab: [18, 16, 'slide'], tower: [16, 18, 'slide'] }[b.kind];
       let doorLeaf = null;
       if (DOOR && b.door !== undefined) {
@@ -1051,13 +1072,7 @@ G.W3 = (function () {
       // chimney smoke rises from the chimney the roof art draws (a stone-grey block at the top of the roof art);
       // no extra 3D chimney, so the house doesn't end up with two
       if (b.kind === 'house') {
-        const d = roof.getContext('2d').getImageData(0, 0, roof.width, Math.max(1, Math.round(roof.height * .5))).data;
-        let sx = 0, n = 0, top = 1e9;
-        for (let i = 0; i < d.length; i += 4) {
-          if (d[i + 3] < 200) continue;
-          const r = d[i], gg = d[i + 1], bb = d[i + 2], sat = Math.max(r, gg, bb) - Math.min(r, gg, bb);
-          if (sat < 40 && Math.abs(r - roofAvg[0]) + Math.abs(gg - roofAvg[1]) + Math.abs(bb - roofAvg[2]) > 90) { sx += (i / 4) % roof.width; n++; top = Math.min(top, Math.floor(i / 4 / roof.width)); }
-        }
+        const { sx, n, top } = A.chim;
         if (n > 8) {
           const cxw = x0 + .05 + (sx / n) / roof.width * (b.w - .1);
           // the art's chimney top: upright on the ridge if it's in the crest, otherwise on the front slope
@@ -1556,22 +1571,38 @@ G.W3 = (function () {
   }
 
   // ------------------------------------------------------------- build / cache
-  function build(map) {
-    if (cache.has(map.id)) return cache.get(map.id);
-    const group = new T.Group(), hv = levels(map);
-    buildTerrain(map, hv, group);
-    buildProps(map, hv, group);
-    buildBuildings(map, hv, group);
+  // A map's scene is built in steps (a terrain chunk, a building...), so the prewarm can spread it over
+  // several frames; build() runs whatever is left in one go.
+  function* buildSteps(map) {
+    const group = new T.Group(), hv = levels(map); yield;
+    yield* buildTerrain(map, hv, group);
+    buildProps(map, hv, group); yield;
+    yield* buildBuildings(map, hv, group); yield;
     buildRailings(map, hv, group);
     if (map.type === 'indoor') buildRoom(map, hv, group);
     buildGlows(group);
     const dyn = new T.Group(); group.add(dyn);
-    const entry = { map, group, hv, dyn, sprites: new Map() };
-    cache.set(map.id, entry);
-    if (cache.size > 4) { const k = cache.keys().next().value; if (k !== map.id) { dispose(cache.get(k).group); cache.delete(k); } }
-    return entry;
+    return { map, group, hv, dyn, sprites: new Map() };
   }
-  function dispose(obj) { obj.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { SIDES.delete(m); ENT_MATS.delete(m); if (m.map) m.map.dispose(); m.dispose(); }); }); }
+  const building = new Map();
+  // the most recently used maps stay built (the one on screen is never evicted); stepping out of a house
+  // back into town must not rebuild the town
+  const CACHE_N = 6;
+  function buildSome(map, budget) {
+    const hit = cache.get(map.id);
+    if (hit) { cache.delete(map.id); cache.set(map.id, hit); return hit; }
+    let it = building.get(map.id); if (!it) building.set(map.id, it = buildSteps(map));
+    const t0 = performance.now();
+    for (;;) {
+      const r = it.next();
+      if (r.done) { building.delete(map.id); cache.set(map.id, r.value); break; }
+      if (performance.now() - t0 > budget) return null;
+    }
+    for (const k of [...cache.keys()]) { if (cache.size <= CACHE_N) break; if (k === map.id || (cur && cur.map.id === k)) continue; dispose(cache.get(k).group); cache.delete(k); }
+    return cache.get(map.id);
+  }
+  const build = map => buildSome(map, Infinity);
+  function dispose(obj) { obj.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { SIDES.delete(m); ENT_MATS.delete(m); if (m.map && !SHARED.has(m.map) && !ENT_SET.has(m.map)) m.map.dispose(); m.dispose(); }); }); }
 
   // ------------------------------------------------------------- per-frame
   function entImage(w, e) {
@@ -1665,7 +1696,8 @@ G.W3 = (function () {
     while (warm.i < warm.list.length && performance.now() - t0 < budget) { const [cx, cy] = warm.list[warm.i++]; G.terrain.chunk(warm.map, cx, cy); }
     if (warm.i < warm.list.length || performance.now() - t0 > Math.max(2, budget - 3)) return;
     if (!warm.texs) {
-      const e = build(warm.map), texs = new Set();
+      const e = buildSome(warm.map, Math.max(1, budget - (performance.now() - t0))); if (!e) return;
+      const texs = new Set();
       e.group.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; for (const mt of ms) for (const k of ['map', 'emissiveMap']) if (mt[k]) texs.add(mt[k]); });
       warm.texs = [...texs]; return;
     }
@@ -1790,5 +1822,5 @@ G.W3 = (function () {
     return ndcToGame(_v);
   }
   const active = (s) => ok && s && s.isWorld && G.settings.render3d && s.map && (s.map.type === 'outdoor' || s.map.type === 'indoor');
-  return { _warm: () => warm && { id: warm.id, i: warm.i, n: warm.list.length, texs: warm.texs && warm.texs.length, done: warm.done }, _tu: () => TU, _rays: () => rays, _cur: () => cur, _bases: () => bases, chimneys: () => (cur && cur.group.userData.chimneys) || [], levels, active, render, hide, project, projectFlat, invalidate: id => { const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
+  return { _warm: () => warm && { id: warm.id, i: warm.i, n: warm.list.length, texs: warm.texs && warm.texs.length, done: warm.done }, _tu: () => TU, _rays: () => rays, _cur: () => cur, _bases: () => bases, chimneys: () => (cur && cur.group.userData.chimneys) || [], levels, active, render, hide, project, projectFlat, invalidate: id => { building.delete(id); const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
 })();

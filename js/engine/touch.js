@@ -46,7 +46,7 @@ G.touch = (function () {
   html.shellon #shell { display: block; }
   html.shellon, html.shellon body { background: transparent; }
   #shell::before { content: ''; position: absolute; inset: 0; background: linear-gradient(115deg, rgba(255,255,255,.14) 0 18%, rgba(255,255,255,0) 32%); }
-  #shell .bezel { position: absolute; border-radius: 12px 12px 42px 12px; background: linear-gradient(#3a3c52, #232432);
+  #shell .bezel { position: absolute; border-radius: 12px 12px 24px 12px;   /* the corner must still wrap the lower screen (5px side, 12px bottom margin) */ background: linear-gradient(#3a3c52, #232432);
     box-shadow: 0 2px 0 rgba(255,255,255,.22), 0 -1px 0 rgba(0,0,0,.4), inset 0 3px 10px rgba(0,0,0,.55); }
   #shell .led { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: #ff5a6a; box-shadow: 0 0 9px #ff5a6a; }
   #shell .ledl { position: absolute; font: 700 8px/1 "SolPix7", sans-serif; color: rgba(255,255,255,.5); letter-spacing: .1em; }
@@ -99,7 +99,7 @@ G.touch = (function () {
       let bx = window.innerWidth / 2 - bw.reduce((a, e) => a + e.offsetWidth + 8, -8) / 2;
       for (const e of bw) { Object.assign(e.style, { top: rowY + 'px', left: bx + 'px' }); bx += e.offsetWidth + 8; }
       // the controls fill whatever height is left, so they never cover the screens
-      const top0 = rowY + 40, H = window.innerHeight - top0 - 12, W = window.innerWidth;
+      const top0 = rowY + 40, H = window.innerHeight - top0 - Math.max(16, G.gfx.safe().b + 6), W = window.innerWidth;   // clear of the home indicator
       const pill = Math.min(36, H * .14), padS = Math.max(96, Math.min(170, H - pill - 24, W * .44)), btn = Math.max(52, Math.min(78, padS * .46));
       const mid = top0 + (H - pill - 14) / 2;
       const put = (id, o) => { const e = root.querySelector(id); if (e) Object.assign(e.style, { bottom: 'auto', right: 'auto', ...o }); };

@@ -355,7 +355,11 @@ G.audio = (function () {
     unlock() {
       if (A.muted) return;   // index.html?mute : silent test runs
       if (!ctx) setup();
-      if (ctx && ctx.state === 'suspended') { const p = ctx.resume(); if (p && p.catch) p.catch(() => { }); }
+      if (ctx && ctx.state !== 'running') {
+        const p = ctx.resume(); if (p && p.catch) p.catch(() => { });
+        // older iOS also wants a sound started inside the gesture itself: one silent sample
+        try { const s = ctx.createBufferSource(); s.buffer = ctx.createBuffer(1, 1, 22050); s.connect(ctx.destination); s.start(0); } catch (e) { }
+      }
     },
     suspended: () => !A.muted && (!ctx || ctx.state !== 'running'),
     setVolumes() {

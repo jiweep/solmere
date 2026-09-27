@@ -57,7 +57,9 @@ G.input = (function () {
     });
     window.addEventListener('keyup', e => { const b = keymap[e.code]; if (b) { kbState[b] = false; e.preventDefault(); } });
     window.addEventListener('blur', () => { for (const k in kbState) kbState[k] = false; });
-    for (const ev of ['mousedown', 'pointerdown', 'touchstart']) window.addEventListener(ev, () => G.audio && G.audio.unlock(), { passive: true });
+    // phones only let sound start from the end of a tap (touchend / pointerup / click), not its start: without
+    // those, the first tap was lost and the music began on the second
+    for (const ev of ['mousedown', 'pointerdown', 'touchstart', 'touchend', 'pointerup', 'click']) window.addEventListener(ev, () => G.audio && G.audio.unlock(), { passive: true });
     // ---- mouse: position in game units; clicks drive UI hotspots, or confirm/back as a fallback
     const toGame = e => {
       const cv = G.gfx && G.gfx.canvas; if (!cv) return null;

@@ -37,12 +37,9 @@ G.Ent = class {
   animFrame() {
     if (!this.moving) return 0;
     const t = this.prog / (this.jump ? this.jump.d * 16 : 16);
-    // DS cycle: each tile shows one stride (alternating feet) framed by the standing pose;
-    // running and biking hold the stride longer so the legs read as a quicker gait
-    // walking: stand, stride, stand each tile (BW). Running and cycling hold one stride for the whole tile and
-    // alternate feet tile by tile, without flashing the standing frame between strides (that doubled the
-    // leg flicker at run speed)
-    if (this.speed >= 2) return this.stepN % 2 ? 1 : 2;
+    // walking: stand, stride, stand each tile, the stride switching feet tile by tile. Running and cycling
+    // lead with the stride and pass through the standing pose, so the cycle reads left, pass, right, pass
+    if (this.speed >= 2) return t < .6 ? (this.stepN % 2 ? 1 : 2) : 0;
     return t > .22 && t < .72 ? (this.stepN % 2 ? 1 : 2) : 0;
   }
 };
@@ -133,6 +130,8 @@ G.WorldScene = class {
     if (this.blocked(fx, fy, null, true)) { fx = p.x; fy = p.y; }
     this.follower = new G.Ent({ id: 'follower', x: fx, y: fy, dir: p.dir, kind: 'follower', mon: lead });
     this.follower.hidden = fx === p.x && fy === p.y;
+    // its eight sprites (four ways, two steps) are made now, behind the fade, not the first time it turns
+    if (G.monArt) for (const d of ['down', 'left', 'right', 'up']) for (let k = 0; k < 2; k++) G.monArt.of(lead, 'overworld', k, d);
   }
   snapCamera() { const t = this.camTarget(); this.cam.x = t.x; this.cam.y = t.y; }
   camTarget() {
