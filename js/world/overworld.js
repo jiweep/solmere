@@ -76,6 +76,9 @@ G.WorldScene = class {
   // ---------------------------------------------------------- map loading
   enterMap(id, x, y, dir, o = {}) {
     const prev = this.map;
+    // counts every jump to a new place (doors, flying, a Haven respawn); walking over a map border doesn't.
+    // In Play Together the guest is brought along when the host's count changes (see net.js)
+    this.warpN = (this.warpN || 0) + 1;
     const m = G.maps.get(id);
     this.map = m;
     if (G.audio && G.audio.ambience) G.audio.ambience(this.ambienceFor(m));

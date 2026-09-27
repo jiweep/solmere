@@ -117,7 +117,7 @@ G.net = (function () {
     worldState() { const s = G.save; return { flags: s.flags, badges: s.badges, trainers: s.trainers, quests: s.quests, visited: s.visited, hostName: s.name }; },
     sendWorld(force) { const st = N.worldState(), key = JSON.stringify(st); if (!force && key === N.lastWorld) return; N.lastWorld = key; N.send({ t: 'world', ...st }); },
     startTogether() {
-      N.together = true; N.team = true; N.sayQ = []; N.lastHostMap = null;
+      N.together = true; N.team = true; N.sayQ = []; N.lastHostMap = null; N.lastHostWarp = null;
       if (N.isHost) { N.sendWorld(true); return; }
       const s = G.save; N.own = JSON.parse(JSON.stringify({ flags: s.flags, badges: s.badges, trainers: s.trainers, quests: s.quests || {} })); N.localFlags = {};
       N.send({ t: 'world_req' });
@@ -151,6 +151,8 @@ G.net = (function () {
       const w = G.world.scene; if (!w || !m) return;
       if (w.busy > 0 || G.top() !== w || w.player.moving) { N.pendingPull = m; return; }
       N.pendingPull = null;
+      // a pull that waited (a battle, a conversation) goes to where the host is now, if still on that map
+      const h = N.partner && N.partner.pos; if (h && h.map === m.map) m = h;
       G.run(async () => {
         w.busy++;
         try {
@@ -176,7 +178,7 @@ G.net = (function () {
       const w = G.world.scene, p = w.player;
       const busy = w.busy > 0 || G.top() !== w;
       const lead = G.party.lead();
-      const pos = { t: 'pos', map: w.map.id, x: p.tx, y: p.ty, dir: p.dir, speed: p.speed || 1, surf: w.surfing, look: G.LOOKS[G.save.look], name: G.save.name, state: busy ? 'busy' : 'free', lead: lead ? { sp: lead.sp, lvl: lead.lvl } : null, badges: G.save.badges.length };
+      const pos = { t: 'pos', map: w.map.id, x: p.tx, y: p.ty, dir: p.dir, speed: p.speed || 1, surf: w.surfing, look: G.LOOKS[G.save.look], name: G.save.name, state: busy ? 'busy' : 'free', wn: w.warpN || 0, lead: lead ? { sp: lead.sp, lvl: lead.lvl } : null, badges: G.save.badges.length };
       const key = JSON.stringify([pos.map, pos.x, pos.y, pos.dir, pos.state]);
       if (!force && key === N.lastPos && G.realTime - N.lastSend < 2) return;
       N.lastPos = key; N.lastSend = G.realTime; N.send(pos);
@@ -204,8 +206,12 @@ G.net = (function () {
           if (w) {
             if (m.map === w.map.id) { if (!w.partner) w.partner = new G.PartnerEnt({ id: 'partner', x: m.x, y: m.y, dir: m.dir, look: m.look }); w.partner.setTarget(m); }
             else if (w.partner) w.partner.map = m.map;
-            // together: when the host changes map, the guest comes along
-            if (N.guestTogether() && m.map !== N.lastHostMap) { N.lastHostMap = m.map; if (m.map !== w.map.id) N.pullTo(m); }
+            // together: both players roam freely; when the host goes through a door (or flies, or is sent to a
+            // Haven) the guest is brought to them. Walking across a map border doesn't pull anyone.
+            if (N.guestTogether() && (N.lastHostMap === null || m.wn !== N.lastHostWarp)) {
+              const first = N.lastHostMap === null; N.lastHostMap = m.map; N.lastHostWarp = m.wn;
+              if (m.map !== w.map.id || first) N.pullTo(m);
+            }
           }
           break;
         }
