@@ -15,10 +15,20 @@ const report = (tag, team, id) => { const T = G.TRAINERS[id], lv = T.party.map(p
 const r1 = ['pipwing', 'nibbit', 'mossbun', 'grubbit'];
 for (const [style, wildN, sweepN] of [['light (4 wild fights, 4 sweeps)', 4, 4], ['typical (8 wild, 8 sweeps)', 8, 8], ['thorough (14 wild, 12 sweeps)', 14, 12]]) {
   const team = [G.mon.create('kindlet', 5)];
+  const ev = () => team.forEach((m, i) => { const e = (G.SPECIES[m.sp].evo || []).find(x => x.lvl && m.lvl >= x.lvl); if (e) { const o = G.mon.create(e.to, m.lvl); o.exp = m.exp; team[i] = o; } });
   gain(team, 'sealet', 4, true);                                  // rival 1
   team.push(G.mon.create('pipwing', 3));                          // the first catch on Route 1
   beat(team, 'r1_kid'); beat(team, 'r1_lass'); beat(team, 'r1_bug'); beat(team, 'r1_boy');
   wild(team, r1, [3, 6], wildN); wild(team, r1, [3, 6], sweepN, .5);
+  team.push(G.mon.create('emberjay', 10));                        // Tamer Mira's gift
   beat(team, 'fg_1'); beat(team, 'fg_2');
   report(style + ' at gym 1', team, 'juniper');
+  beat(team, 'juniper'); ev();
+  for (const id of ['r2_bug', 'r2_hiker', 'r2_lass', 'r2_twins', 'r2_kid']) beat(team, id);
+  wild(team, ['pipwing', 'mossbun', 'grubbit', 'beetlet', 'stingle', 'nibbit'], [6, 9], wildN); wild(team, ['beetlet'], [6, 9], sweepN, .5); ev();
+  for (const id of ['ww_bug', 'ww_ranger', 'ww_mystic', 'ww_grunt1', 'ww_grunt2']) beat(team, id);
+  wild(team, ['grubbit', 'beetlet', 'shroomie', 'stingle', 'digmole', 'glimmer'], [8, 12], wildN); wild(team, ['shroomie'], [8, 12], sweepN, .5); ev();
+  for (const id of ['gv_sailor', 'gv_worker', 'gg_1', 'gg_2', 'gg_3']) beat(team, id); ev();
+  report(style + ' at gym 2', team, 'ione');
+  console.log('   team: ' + team.map(m => m.sp + ' ' + m.lvl).join(', '));
 }
