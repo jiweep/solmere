@@ -61,34 +61,28 @@
     await G.fadeIn(30);
     await G.tween(bd.show, { hale: 1 }, 30);
     const say = (t) => G.say(t, { speaker: HALE });
-    await say(`Hello there! Welcome to Solmere. My name is Marisol Hale, though most people here just call me the Professor.`);
-    await say(`I study Resonance: the bond that grows between people and the creatures we call Echoes. When a Tamer and an Echo truly trust each other, you can almost hear it.`);
+    // Short on purpose: the prologue already told the legend, and the world will show the rest. Only what the
+    // player needs to start (who they are, who their friend is, where to go) and one warm first look at an Echo.
+    await say(`Hello there! Welcome to Solmere. I'm Marisol Hale, though most people just call me the Professor.`);
     G.audio && G.audio.cry('glimmer');
     await G.tween(bd.show, { mon: 1 }, 24);
-    await say(`This is Glimmer. It glows when it trusts someone... and look at that. It's glowing at you already.`);
-    await say(`Solmere is a ring of towns around a great inland sea, the Mere. At its heart stands the Lodestar, the oldest lighthouse in the world.`);
-    await say(`Legend says something vast sleeps beneath it, and that its song is where every Echo came from. I've spent my life trying to learn whether that's true.`);
-    await say(`But that's enough about me. Tell me about yourself.`);
+    await say(`This is Glimmer. Creatures like it are called Echoes, and when one trusts you, it glows. ...Look at that. It's glowing at you already.`);
+    await say(`Now, tell me about yourself.`);
     await G.tween(bd.show, { hale: 0, mon: 0 }, 16);
     G.save.look = await G.pickLook();
     if (G.world.scene) G.world.scene.player = null;
     await G.tween(bd.show, { player: 1 }, 20);
     const name = await G.askName({ title: 'What\'s your name?', start: '', max: 10, def: ['Alex', 'Robin', 'Kai', 'Sky'][['player_a', 'player_b', 'player_c', 'player_d'].indexOf(G.save.look)] || 'Alex', icon: () => G.chars.sheet(G.LOOKS[G.save.look]).down[Math.floor(G.realTime * 4) % 3] });
     G.save.name = name;
-    await say(`${name}. It suits you.`);
-    const k = await choose(`How are you feeling about today, ${name}?`, ['Excited. I\'ve waited years for this.', 'Ready for anything.', 'A little nervous, honestly.'], HALE);
-    await say([`Good. Hold on to that feeling. The road ahead will test it, and it will carry you further than you think.`, `That's the spirit! Just remember that brave and careful can travel together.`, `That's all right. Everyone is, the first time. Being nervous only means you care.`][k]);
-    const exp = await G.ask(`Tell me, ${name}, have you ever travelled with Echoes before?`, ['No, this is all new to me.', 'Yes, I know the basics.'], { speaker: HALE });
+    const exp = await G.ask(`${name}. It suits you. Tell me, have you ever travelled with Echoes before?`, ['No, this is all new to me.', 'Yes, I know the basics.'], { speaker: HALE });
     G.save.vars.tips = exp === 0;
-    await say(exp === 0 ? `Then I'll make sure you're never left guessing. Whenever something new comes up, a short tip will explain it. You can reread them all from the Guide in your menu.` : `Wonderful. Then I won't bore you with the basics. If you ever want a refresher, the Guide in your menu has every tip.`);
+    await say(exp === 0 ? `Then I'll make sure you're never left guessing. Whenever something new comes up, a short tip will explain it.` : `Wonderful. Then I won't bore you with the basics. If you ever want a reminder, the Guide in your menu has them all.`);
     await G.tween(bd.show, { player: 0, wren: 1 }, 20);
-    await say(`And this is your neighbour and best friend. The two of you have been inseparable since you could walk. What was their name again?`);
     const rn = await G.askName({ title: 'Your best friend\'s name?', start: 'Wren', max: 10, def: 'Wren', icon: () => G.chars.sheet(G.LOOKS.wren).down[Math.floor(G.realTime * 4) % 3] });
     G.save.rival = rn;
-    await say(`${rn}, of course! Loud, brave, and never still for a second. You two have been counting down to this day for years.`);
+    await say(`And ${rn}, your best friend next door: loud, brave, and never still for a second. Today, you each receive your first partner Echo.`);
     await G.tween(bd.show, { wren: 0, hale: 1 }, 20);
-    await say(`Today, you each receive your first partner Echo. Come and find me at my lab, down on the Brinehollow pier.`);
-    await say(`One more thing. Out there, the bond is everything. Look after your partner, and it will look after you.`);
+    await say(`Come and find me at my lab, down on the Brinehollow pier. I'll be waiting!`);
     await G.fadeOut(40);
     G.pop(bd);
     G.setFlag('intro_done');
@@ -98,8 +92,9 @@
     G.defineRivals();
     G.persist.write();
     await G.fadeIn(30);
-    await G.say('Morning light, and gulls calling over the harbour. Today is the day.' + (G.save.vars.tips ? '' : '\\p{k}(X or Esc opens the menu. H shows the controls.){w}'));
-    await G.tutorial.show('controls'); await G.tutorial.show('menu');
+    await G.say('Morning light, and gulls calling over the harbour. Today is the day.');
+    // the controls as a hint over the world, not a box to read before you can move: it fades after a few steps
+    { const p0 = w.player.stepN; G.tutorial.setNudge(G.tutorial.controlsText(), () => w.player.stepN - p0 >= 6); if (G.save.vars.tipsSeen) G.save.vars.tipsSeen.controls = 1; else G.save.vars.tipsSeen = { controls: 1 }; }
   };
   // ------------------------------------------------------------- HOME
   SC.mom = async (S) => {
@@ -109,10 +104,12 @@
       await S.say(`Here, take this. It's a Tamer's Journal. It keeps track of where you're headed and what you've promised people, in case you forget.`, MOM);
       await S.give('journal');
       S.quest('main1', 'lab');
-      const k = await choose('Mom looks at you for a long moment.', ['I\'ll make you proud.', 'I\'ll be back before you know it.', 'Don\'t worry about me.'], MOM);
+      const k = await choose('Mom looks at you for a long moment.', ['I\'ll make you proud.', 'I\'ll be back before you know it.', 'Don\'t worry about me.']);
       await S.say([`You already have. Now go on, before I get teary in front of the whole kitchen.`, `I'll hold you to that. There will always be a warm bed for you here.`, `Worrying is my job. Yours is to go and have an adventure.`][k], MOM);
-      await S.say(`The lab is down on the pier, past the market. If you're in a hurry, hold Shift to run. Off you go.`, MOM);
-      S.set('mom_talk'); return;
+      await S.say(`The lab is down on the pier, past the market. Off you go.`, MOM);
+      S.set('mom_talk');
+      await G.tutorial.show('menu');   // right when there's something in the menu worth opening
+      return;
     }
     const b = G.save.badges.length;
     if (G.flag('champion')) { await S.say(`The Champion of Solmere, sitting at my kitchen table. I'm so proud of you. Now eat your soup before it goes cold.`, MOM); await S.heal(); return; }
@@ -182,7 +179,7 @@
     if (!ok) return;
     G.setVar('starter', sp);
     G.defineRivals();
-    await S.giveMon(sp, 5, { starter: true, bond: 120, ball: 'orb', text: `${starterName(shown)} looks up at you, and something in you feels it look.` });
+    await S.giveMon(sp, 5, { starter: true, bond: 120, ball: 'orb', text: `${starterName(shown)} looks up at you, and doesn't look away.` });
     S.set('got_starter');
     S.w.spawnEnts();
     await G.tutorial.show('partner');
@@ -196,7 +193,7 @@
     const won = await G.storyBattle('rival1', { canLose: true });
     S.set('rival1_done');
     await S.say(won ? `I lost?! ...That was a warm-up. Next time, ${P()}, I'll win for real.` : `I won! Our first battle, and I won! Don't worry, ${P()}. You'll get me next time.`, WREN());
-    await S.say('What a match! Both of you did well. Let me look after your Echoes.', HALE);
+    await S.say('What a match! And did you see how they listened to you? That bond has a name: Resonance. It only grows from here. Now, let me look after your Echoes.', HALE);
     await S.heal();
     await S.say(`Could I ask a favour? Warden Juniper in Fernwick, north along Route 1, is waiting on my research notes. Would you take them to her?`, HALE);
     await S.give('parcel');
@@ -346,7 +343,8 @@
     await S.badge(o.badge);
     S.set(o.flag);
     G.tutorial.queue('badge');
-    if (o.tm) { await S.say(o.tmText, o.name); await S.give(o.tm); }
+    // {tm} is the disc's in-game name ("SD19 Grand Drain"), so the line always matches what you receive
+    if (o.tm) { await S.say(o.tmText.replace('{tm}', G.ITEMS[o.tm].name), o.name); await S.give(o.tm); }
     if (o.extra) await o.extra();
     for (const t of o.gymTrainers || []) G.save.trainers[t] = G.save.trainers[t] || { badges: G.save.badges.length };
     G.persist.write();
@@ -366,7 +364,7 @@
     const won = await G.storyBattle('juniper');
     if (!won) return;
     await S.say('...My, my. It has been a long time since I lost. You have earned this: the Bloom Badge.', N);
-    await wardenWin(S, { badge: 'bloom', flag: 'badge1', name: N, tm: 'tm19', tmText: 'And this is TM19, Giga Drain. It drains the foe\'s health to restore your own.', gymTrainers: ['fg_1', 'fg_2'] });
+    await wardenWin(S, { badge: 'bloom', flag: 'badge1', name: N, tm: 'tm19', tmText: 'And this is {tm}. It drains the foe\'s health to restore your own.', gymTrainers: ['fg_1', 'fg_2'] });
     await S.say('May I ask a favour? Strangers in grey coats have been seen at the Heartroot Shrine, deep in Whisperwood, east along Route 2. Would you find out what they want? I\'ll let the guard know you may pass.', N);
     S.quest('main1', 'done'); S.quest('main2', 'go');
   };
@@ -451,7 +449,7 @@
     await S.say('I\'m Ione. I keep the harbour\'s lights burning, every lamp and every beacon. Let\'s see if you can keep up with the current!', N);
     const won = await G.storyBattle('ione'); if (!won) return;
     await S.say('Well done! You didn\'t just keep up, you outpaced me. The Current Badge is yours.', N);
-    await wardenWin(S, { badge: 'current', flag: 'badge2', name: N, tm: 'tm34', tmText: 'And TM34, Volt Dash. Strike, then switch out in the same move.', gymTrainers: ['gg_1', 'gg_2', 'gg_3'] });
+    await wardenWin(S, { badge: 'current', flag: 'badge2', name: N, tm: 'tm34', tmText: 'And {tm}. Strike, then switch out in the same move.', gymTrainers: ['gg_1', 'gg_2', 'gg_3'] });
     await S.say('Can I be honest with you? Crane Dynamics built half the machines in this city. But those new Fellows... their Echoes look strained, like they\'re being pushed too hard. Something isn\'t right.', N);
     await S.say('Head east along Route 3. Glimmer Cave will take you through to Cindervale. Good luck.', N);
     S.quest('main3', 'done'); S.quest('main4', 'go');
@@ -643,7 +641,7 @@
     await S.say('Heat reveals the flaws in metal, and battle reveals the flaws in a bond! Let\'s see what you\'re made of!', N);
     const won = await G.storyBattle('brann'); if (!won) return;
     await S.say('HAAA! There\'s real fire in you! The Forge Badge is yours!', N);
-    await wardenWin(S, { badge: 'forge', flag: 'badge3', name: N, tm: 'tm35', tmText: 'And TM35, Flamethrower! As reliable as a good hammer!', gymTrainers: ['cg_1', 'cg_2', 'cg_3'],
+    await wardenWin(S, { badge: 'forge', flag: 'badge3', name: N, tm: 'tm35', tmText: 'And {tm}! As reliable as a good hammer!', gymTrainers: ['cg_1', 'cg_2', 'cg_3'],
       extra: async () => { await S.say('And take this, my old Wing Whistle! Blow it, and the Sky Taxi will fly you to any town you\'ve visited. Use it from the Map!', N); await S.give('wingwhistle'); } });
     await S.say('Word from Duskmere: the Hollow is heading for the Ruins of Echo, after some kind of key! Take Route 4, south. Hurry!', N);
     S.quest('main4', 'done'); S.quest('main5', 'go');
@@ -681,7 +679,7 @@
     await S.say('My Echoes are the whispers of those who loved too much to leave. Let us see if your bond can shine through them.', N);
     const won = await G.storyBattle('mireille'); if (!won) return;
     await S.say('The candle flickers... and still it burns. As do you. The Veil Badge is yours.', N);
-    await wardenWin(S, { badge: 'veil', flag: 'badge4', name: N, tm: 'tm58', tmText: 'And TM58, Wisp Flame. A ghostly burn that weakens the foe\'s physical attacks.', gymTrainers: ['dg_1', 'dg_2', 'dg_3'] });
+    await wardenWin(S, { badge: 'veil', flag: 'badge4', name: N, tm: 'tm58', tmText: 'And {tm}. A ghostly burn that weakens the foe\'s physical attacks.', gymTrainers: ['dg_1', 'dg_2', 'dg_3'] });
     await S.say('Professor Hale arrived while we fought. She waits on the pier. She has a story you need to hear, one she has kept for twelve years.', N);
   };
   SC.dusk_hale = async (S) => {
@@ -792,7 +790,7 @@
     await S.say('Balance, speed, and nerves of ice! Let\'s see you keep your footing!', N);
     const won = await G.storyBattle('sigrid'); if (!won) return;
     await S.say('Incredible! Like the first clear morning after a blizzard! The Rime Badge is yours!', N);
-    await wardenWin(S, { badge: 'rime', flag: 'badge5', name: N, tm: 'tm14', tmText: 'And TM14, Blizzard! In the snow, it never misses.', gymTrainers: ['ig_1', 'ig_2'] });
+    await wardenWin(S, { badge: 'rime', flag: 'badge5', name: N, tm: 'tm14', tmText: 'And {tm}! In the snow, it never misses.', gymTrainers: ['ig_1', 'ig_2'] });
     await S.say(`My father, Halvard, will want to meet you. He's by the frozen pond. And ${R()}... they headed for Skyreach. They wouldn't say a word to anyone. That worried me more than anything.`, N);
     S.quest('main6', 'done'); S.quest('main7', 'go');
   };
@@ -869,7 +867,7 @@
     await S.say('Now. Let\'s see if you can weather my storm.', N);
     const won = await G.storyBattle('kaelen'); if (!won) return;
     await S.say('The storm has passed. The dragons respect you, and so do I. The Wyrm Badge is yours.', N);
-    await wardenWin(S, { badge: 'wyrm', flag: 'badge6', name: N, tm: 'tm50', tmText: 'TM50: Dragon Pulse. A dragon\'s roar, given shape.', gymTrainers: ['sg_1', 'sg_2', 'sg_3'] });
+    await wardenWin(S, { badge: 'wyrm', flag: 'badge6', name: N, tm: 'tm50', tmText: 'And {tm}. A dragon\'s roar, given shape.', gymTrainers: ['sg_1', 'sg_2', 'sg_3'] });
     await S.say('Six badges. The Conclave will call for you soon. But first, the Lodestar. Surf north from the harbour.', N);
     S.quest('main7', 'done'); S.quest('main8', 'go');
   };
@@ -882,7 +880,7 @@
   };
   SC.hidden_power_guy = async (S) => {
     S.facePlayer('skh2');
-    if (!G.flag('got_tm20')) { await S.say('In my day, we made decoys out of straw to fool our opponents. This TM works far better. Decoy!', 'Old Strategist'); await S.give('tm20'); S.set('got_tm20'); return; }
+    if (!G.flag('got_tm20')) { await S.say('In my day, we made decoys out of straw to fool our opponents. This Skill Disc works far better. Decoy!', 'Old Strategist'); await S.give('tm20'); S.set('got_tm20'); return; }
     await S.say('A Decoy blocks status moves and takes hits in your Echo\'s place. Pair it with a move that raises your stats.', 'Old Strategist');
   };
   // ------------------------------------------------------------- THE LODESTAR

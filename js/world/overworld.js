@@ -221,6 +221,7 @@ G.WorldScene = class {
       if (v <= 0) { G.save.flags.race_active = false; G.toast(`${G.save.rival || 'Wren'} got to Fernwick first!`); G.audio && G.audio.sfx('buzz'); }
     }
     if (G.net) G.net.tick();
+    if (G.tutorial) G.tutorial.tickIdle(this, top);
     this.tickAutosave(top);
   }
   control() {

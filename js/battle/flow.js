@@ -271,12 +271,14 @@ G.postBattle = async function (r, cfg) {
   if (w) w.placeFollower();
 };
 G.blackout = async function (cfg) {
-  const lost = Math.min(G.save.money, Math.floor(G.save.money / 2));
+  // losing already sends you back to the last Haven; the money it costs is a small sting (a tenth), not a
+  // second punishment on top (it used to be half)
+  const lost = Math.min(G.save.money, Math.floor(G.save.money / 10));
   if (G.save.lastHeal && G.save.lastHeal.back) G.save.returnTo = G.save.lastHeal.back;
   if (G.flag('league_entered') && !G.flag('hof_pending')) for (const f of ['e1_done', 'e2_done', 'e3_done', 'e4_done', 'league_entered', 'elite4_done']) G.setFlag(f, false);
   G.save.money -= lost;
   G.fade.a = 1;
-  await G.say(`You have no more Echoes that can fight!\\pYou panicked and dropped $${lost.toLocaleString()}...\\p...\\p... ... ...\\pYou scurried to a Haven, protecting your exhausted Echoes from further harm...`, { box: { style: 'dark' } });
+  await G.say(`You have no more Echoes that can fight!\\pYou hurried back to a Haven with your exhausted team${lost ? `, dropping $${lost.toLocaleString()} on the way` : ''}.`, { box: { style: 'dark' } });
   G.party.healAll();
   const h = G.save.lastHeal;
   const w = G.world.scene;

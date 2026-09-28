@@ -4,6 +4,13 @@
 // ============================================================================
 G.SCRIPTS = {};
 G.QUESTS = {};
+// the step to show as "Next": the main story's first, else the newest side quest's
+G.currentGoal = function () {
+  const q = (G.save && G.save.quests) || {}, ids = Object.keys(q).filter(id => G.QUESTS[id] && q[id].step !== 'done');
+  const id = ids.find(i => G.QUESTS[i].main) || ids[ids.length - 1]; if (!id) return null;
+  const Q = G.QUESTS[id], st = Q.steps && Q.steps[q[id].step];
+  return st || Q.desc || null;
+};
 G.runScript = async function (s, ctx = {}) {
   const fn = typeof s === 'function' ? s : G.SCRIPTS[s];
   if (!fn) { console.warn('Missing script', s); return; }

@@ -47,6 +47,35 @@ G.tutorial = (() => {
       for (let k = 0; k < pages.length; k++) await sc.message(`${k === 0 ? '{c}' + title + ':{w} ' : ''}${pages[k]}`, { press: true });
     },
     async battleFlush(sc) { while (q.length && on()) await this.battle(sc, q[0]); },
+    // a nudge: a one-line hint over the world that never stops play (no box to dismiss), shown while you're
+    // free to move and gone once `done()` says you've got it. The first steps use one for the controls
+    nudge: null,
+    setNudge(text, done) { this.nudge = { text, done, t: 0, out: 0 }; },
+    // stood still for a while with a goal and nothing happening: a soft reminder of where to go next
+    idle: 0, lastGoal: null, lastGoalT: -1e9,
+    tickIdle(w, top) {
+      const p = w.player, free = top && !w.busy && p && !p.moving;
+      this.idle = free ? this.idle + 1 : 0;
+      const goal = G.currentGoal && G.currentGoal();
+      if (!goal || this.nudge || G.gfx.lower) return;   // upright phones show it on the lower screen already
+      const wait = 60 * (on() ? 15 : 30), again = goal !== this.lastGoal || G.realTime - this.lastGoalT > 180;
+      if (this.idle > wait && again) {
+        this.lastGoal = goal; this.lastGoalT = G.realTime; const s0 = p.stepN;
+        this.setNudge('Next: ' + goal, () => p.stepN - s0 >= 3);
+      }
+    },
+    controlsText() { return G.touch && G.touch.on ? 'D-pad: walk   A: talk   B: hold to run   START: menu' : 'Arrow keys: walk   Z: talk   X: menu   Shift: run'; },
+    drawNudge() {
+      const n = this.nudge; if (!n) return;
+      const w = G.world && G.world.scene; if (!w || G.top() !== w) return;
+      n.t++; if (n.out || (n.done && n.done())) n.out++;
+      if (n.out > 30) { this.nudge = null; return; }
+      const U = G.ui, a = Math.min(1, n.t / 20) * (1 - n.out / 30), bob = Math.sin(n.t / 20) * .6;
+      const lines = U.wrap(n.text, G.W - 60, 6.8, 800), tw = Math.max(...lines.map(l => U.measure(l, 6.8, 800))) + 20, h = 6 + lines.length * 9;
+      const x = (G.W - tw) / 2, y = G.H - 12 - h + bob;
+      U.panel(x, y, tw, h, 'glass', { r: 7, alpha: a * .92, noShadow: true });
+      lines.forEach((l, k) => U.text(l, G.W / 2, y + 3.2 + k * 9, { size: 6.8, weight: 800, color: '#fff', align: 'center', alpha: a }));
+    },
     // the Guide: every tip, readable again at any time
     async guide() {
       while (true) {

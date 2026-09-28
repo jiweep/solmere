@@ -146,6 +146,12 @@ G.renderScenes = function (start) {
         U.text('Lv' + m.lvl, x + cw - 4, y, { size: 6, color: '#9fb0c8', align: 'right', shadow: false });
         U.bar(x, y + 9, cw - 4, 3, f, U.hpColor(f));
       });
+      // where to go next (the Journal's current step), at the foot of the screen
+      const goal = G.currentGoal && G.currentGoal();
+      if (goal) {
+        const lines = U.wrap(goal, W - 16, 6.4).slice(0, 3), y0 = L.H - 8 - lines.length * 8.6;
+        if (y0 > 22 + rows * 16) { U.text('NEXT', 8, y0 - 9, { size: 5.6, weight: 900, color: '#ffd166', shadow: false }); lines.forEach((l, k) => U.text(l, 8, y0 + k * 8.6, { size: 6.4, color: '#cfd8e8', shadow: false })); }
+      }
     }); } catch (e) { }
   } else G.lowerDraws = [];
   // fade
@@ -162,6 +168,7 @@ G.drawOverlays = function () {
     const top = G.top(), w = G.world && G.world.scene;
     if (!w || top === w || top instanceof G.DialogScene) G.drawAreaSign(G.banner);
   }
+  if (G.tutorial) G.tutorial.drawNudge();
   // toasts
   // toasts stack down from the top-right so they never cover the dialogue box
   let ty = G.net && G.net.connected ? 30 : 18;
