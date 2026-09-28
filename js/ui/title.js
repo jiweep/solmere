@@ -31,6 +31,7 @@ G.TitleScene = class {
       items.push({ id: 'new', label: 'New Game' });
       if (location.protocol.startsWith('http')) items.push({ id: 'coop', label: 'Play Together' });
       if (G.dailyTide) items.push({ id: 'tide', label: 'Daily Tide', right: tb ? tb.marks.slice(0, 14) : '#' + G.dailyTide.dayNo() });
+      if (G.quickBattle) items.push({ id: 'quick', label: 'Quick Battle' });
       items.push({ id: 'showcase', label: 'Showcase' }, { id: 'opts', label: 'Options' }, { id: 'music', label: 'Music Room' }, { id: 'import', label: 'Import Save File' }, { id: 'help', label: 'How to Play' }, { id: 'credits', label: 'Credits' });
       // menu on the left, clear of the sea where Orrelume breaches
       const k = await G.choose(items, { x: 18, y: 88, w: 118, cancel: -1 });
@@ -45,6 +46,7 @@ G.TitleScene = class {
       if (id === 'credits') await G.rollCredits(false);
       if (id === 'showcase') { await G.runTour(); return; }
       if (id === 'tide') { await G.dailyTide.start(); G.audio && G.audio.music('title'); }
+      if (id === 'quick') { await G.quickBattle.start(); G.audio && G.audio.music('title'); }
       if (id === 'music') { await G.musicRoom(); G.audio && G.audio.music('title'); }
     }
   }

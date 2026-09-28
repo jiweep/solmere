@@ -165,4 +165,19 @@ G.mon = {
   clone(m) { return JSON.parse(JSON.stringify(m)); },
   // bst-similar species for randomizer
   isLegend(id) { return !!G.SPECIES[id].legend; },
+  // a sensible moveset for a built or bot team: the strongest attack of each type it can know by its
+  // level (its own types count extra), one status move, then the next strongest attacks
+  bestMoves(m) {
+    const sp = G.SPECIES[m.sp], known = new Set(), lines = [sp];
+    for (const id in G.SPECIES) for (const e of (G.SPECIES[id].evo || [])) if (e.to === m.sp) lines.push(G.SPECIES[id]);
+    for (let i = 1; i < lines.length; i++) for (const id in G.SPECIES) for (const e of (G.SPECIES[id].evo || [])) if (e.to === lines[i].id && !lines.includes(G.SPECIES[id])) lines.push(G.SPECIES[id]);
+    for (const S of lines) for (const [lv, mv] of (S.learn || [])) if (lv <= m.lvl && G.MOVES[mv]) known.add(mv);
+    for (const x of m.moves) known.add(x.id);
+    const all = [...known].map(id => ({ id, M: G.MOVES[id] })), score = x => x.M.pow * (sp.types.includes(x.M.type) ? 1.5 : 1) * (x.M.acc === true ? 1 : (x.M.acc || 100) / 100);
+    const atk = all.filter(x => x.M.pow > 1).sort((a, b) => score(b) - score(a)), pick = [], types = new Set();
+    for (const x of atk) if (!types.has(x.M.type) && pick.length < 3) { pick.push(x.id); types.add(x.M.type); }
+    const st = all.find(x => !x.M.pow || x.M.pow <= 1); if (st) pick.push(st.id);
+    for (const x of atk) if (pick.length < 4 && !pick.includes(x.id)) pick.push(x.id);
+    return pick.slice(0, 4);
+  },
 };
