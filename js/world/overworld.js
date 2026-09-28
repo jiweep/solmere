@@ -1020,7 +1020,7 @@ G.WorldScene = class {
       const img = G.tiles.prop('sign', 0).img; b.drawImage(img, e.px - ox, e.py - oy - 2); return;
     }
     if (e.monSprite) {
-      const im = G.monArt.overworld(e.monSprite, !!e.shiny, e.dir, Math.floor(this.frame / 16) % 2);
+      const im = e.mon && e.mon.anomaly ? G.monArt.of(e.mon, 'overworld', Math.floor(this.frame / 16) % 2, e.dir) : G.monArt.overworld(e.monSprite, !!e.shiny, e.dir, Math.floor(this.frame / 16) % 2);
       b.fillStyle = 'rgba(0,0,0,.25)'; b.beginPath(); b.ellipse(e.px - ox + 8, e.py - oy + 14.5, 5, 1.8, 0, 0, Math.PI * 2); b.fill();
       b.drawImage(im, Math.round(e.px - ox + 8 - im.width / 2), Math.round(e.py - oy + 16 - im.height - (e.hop || 0)));
       const gc = e.kind === 'wild' && this.cellAt(e.tx, e.ty);

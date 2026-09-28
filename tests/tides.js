@@ -54,6 +54,11 @@ const { chromium } = require('playwright');
       const edge = mm.tidalCells.filter(t => Object.keys(mm.def.conn || {}).some(d => (d === 'n' && t.y < 3) || (d === 's' && t.y > mm.h - 4) || (d === 'w' && t.x < 3) || (d === 'e' && t.x > mm.w - 4)));
       ok(!edge.length, `${id}: no flats within 3 tiles of a connected edge`);
     }
+    // Tidetouched: only from the flats' table, a pearl palette, carried into battle
+    const a = G.makeWild('clawdle', 5, { anomaly: true });
+    ok(a.anomaly === 'tidetouched' && G.tidemarks.palette(a).pearl, 'Tidetouched Echoes get the pearl palette');
+    const tt = G.makeWild('crustank', 8, { anomaly: true }); G.save.party.push(tt);
+    ok(JSON.stringify(G.save).includes('"anomaly":"tidetouched"'), 'saved with the Echo');
     return out;
   });
   console.log(r.join('\n')); if (errs.length) console.log('ERRORS', errs);

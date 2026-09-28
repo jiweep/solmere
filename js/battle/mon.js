@@ -160,7 +160,7 @@ G.mon = {
   hasMove(m, id) { return m.moves.some(x => x.id === id); },
   // compact display info (for battle scene/network)
   info(m) {
-    return { uid: m.uid, sp: m.sp, name: G.mon.name(m), lvl: m.lvl, gender: m.gender, shiny: m.shiny, hp: m.hp, maxhp: G.mon.maxHP(m), status: m.status, ball: m.ball, dead: m.dead, tint: m.tint, form: m.form, marks: m.marks };
+    return { uid: m.uid, sp: m.sp, name: G.mon.name(m), lvl: m.lvl, gender: m.gender, shiny: m.shiny, hp: m.hp, maxhp: G.mon.maxHP(m), status: m.status, ball: m.ball, dead: m.dead, tint: m.tint, form: m.form, marks: m.marks, anomaly: m.anomaly };
   },
   clone(m) { return JSON.parse(JSON.stringify(m)); },
   // bst-similar species for randomizer

@@ -53,6 +53,7 @@ G.makeWild = function (sp, lvl, o = {}) {
   if (o.comboMult) shinyMult *= o.comboMult;
   const m = G.mon.create(sp, lvl, { shinyMult, perfectIVs: o.echo ? 3 : o.legend ? 3 : 0, hidden: o.echo ? G.chance(.4) : false, shiny: o.shiny });
   if (o.moves) m.moves = o.moves.map(id => G.mon.newMove(id));
+  if (o.anomaly) m.anomaly = 'tidetouched';   // found only on the low-tide flats (story/tides.js)
   return m;
 };
 G.encounterTable = function (map, table) {
@@ -336,7 +337,7 @@ G.startWild = async function (table, o = {}) {
     let second = null;
     const coop = G.net && G.net.coopAvailable && G.net.coopAvailable();
     if (coop && !o.species) second = G.rollEncounter(w.map, table || 'grass');
-    const m = o.mon || G.makeWild(enc.sp, enc.lvl, { echo: o.echo, shiny: o.shiny, noRandom: o.noRandom, legend: o.legend, moves: o.moves });
+    const m = o.mon || G.makeWild(enc.sp, enc.lvl, { echo: o.echo, shiny: o.shiny, noRandom: o.noRandom, legend: o.legend, moves: o.moves, anomaly: table === 'tide' && G.chance(1 / 16) });
     if (o.hidden) m.abil = 2;
     const foes = [m]; if (second) foes.push(G.makeWild(second.sp, second.lvl));
     G.dexMark(m.sp, 'seen'); if (second) G.dexMark(foes[1].sp, 'seen');

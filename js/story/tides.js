@@ -121,7 +121,7 @@ G.tide = {
   if (old) { delete old.text; old.script = 'bh_tides'; }
   G.SCRIPTS.bh_tides = async (S) => {
     const N = 'Old Tobin';
-    if (G.tide.low()) await S.say('Tide\'s out! See the flats past the rocks? Walk out and have a look. The sea leaves things behind.\\pMy father found a page of the old Lodestar keeper\'s log out there once. Never did find the rest.', N);
+    if (G.tide.low()) await S.say('Tide\'s out! See the flats past the rocks? Walk out and have a look. The sea leaves things behind.\\pMy father found a page of the old Lodestar keeper\'s log out there once. Never did find the rest.\pAnd now and then, something on the flats shimmers like the inside of a shell. Tidetouched, we call those. Lucky, if you see one.', N);
     else await S.say('Every spring the Lodestar glows brighter. Last year, it flickered. Old folk like me notice these things.\\pThe tide goes out twice a day, from two o\'clock to five. When it does, the flats past those rocks open up. Worth a look.', N);
   };
 

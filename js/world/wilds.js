@@ -48,7 +48,7 @@ G.wilds = (() => {
     if (t === 'grass' && E.rare && G.rand() < [.07, .12, .18, .25][tier]) enc = { sp: G.pick(E.rare.list)[0], lvl: enc.lvl + 2 };   // the odd rare one, a little tougher
     const L = lead();
     if (G.save.repel > 0 && L && enc.lvl < L.lvl) return;
-    const mon = G.makeWild(enc.sp, enc.lvl, { comboMult: [1, 2, 4, 8][tier] });
+    const mon = G.makeWild(enc.sp, enc.lvl, { comboMult: [1, 2, 4, 8][tier], anomaly: t === 'tide' && G.rand() < 1 / 16 });
     const weak = L && L.lvl - mon.lvl >= SWEEP_GAP, r = G.rand();
     const mood = weak ? 'shy' : r < .16 ? 'bold' : r < .4 ? 'curious' : 'calm';
     const e = new G.Ent({ id: 'wild' + (++w._wildN || (w._wildN = 1)), x, y, dir: G.pick(['up', 'down', 'left', 'right']), kind: 'wild', monSprite: mon.sp, shiny: mon.shiny, mon, table: t, mood, life: G.randInt(60 * 35, 60 * 70) });
@@ -90,6 +90,7 @@ G.wilds = (() => {
     if (!on() || !w.map.def.enc || w.map.type === 'indoor') { if (list(w).length) w.ents = w.ents.filter(e => e.kind !== 'wild'); return; }
     const p = w.player; if (!p) return;
     for (const e of list(w)) {
+      if (e.mon && e.mon.anomaly && w.frame % 14 === 0) w.fx.add({ x: e.px + 8 + (G.rand() - .5) * 14, y: e.py + 2 + (G.rand() - .5) * 10, vy: -.3, life: 34, type: 'star', size: 2, color: G.pick(['#bff8ff', '#ffd0f0', '#fff0b0']), blend: 'lighter', vr: .1, glow: true });
       if (e.shiny && w.frame % 18 === 0) w.fx.add({ x: e.px + 8 + (G.rand() - .5) * 14, y: e.py + 2 + (G.rand() - .5) * 10, vy: -.25, life: 30, type: 'star', size: 2.2, color: '#fff6a0', blend: 'lighter', vr: .1, glow: true });
       if (w.busy || !top) continue;
       e.life--;
@@ -104,7 +105,7 @@ G.wilds = (() => {
     if (w.battling || e.engaged) return; e.engaged = true;
     const L = lead(), m = e.mon;
     const known = G.save.dex && G.save.dex.caught && G.save.dex.caught[m.sp];
-    const sweep = how !== 'talk' && L && L.lvl - m.lvl >= SWEEP_GAP && known && !m.shiny;
+    const sweep = how !== 'talk' && L && L.lvl - m.lvl >= SWEEP_GAP && known && !m.shiny && !m.anomaly;
     w.ents = w.ents.filter(x => x !== e);
     if (sweep) { G.run(() => doSweep(w, e, L)); return; }
     G.run(() => G.startWild(e.table === 'surf' ? 'surf' : e.table, { mon: m }));

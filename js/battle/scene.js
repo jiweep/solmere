@@ -143,8 +143,8 @@ G.BattleScene = class {
       s.scale = 1; s.flash = 1;
       G.audio && G.audio.cry(e.mon.sp);
       await G.tween(s, { flash: 0 }, 24, G.ease.linear);
-      if (e.mon.shiny) await G.shinyAnim(this, s);
-      await this.message(`A wild ${e.mon.name} appeared!`, { wait: 40 });
+      if (e.mon.shiny || e.mon.anomaly) await G.shinyAnim(this, s);
+      await this.message(e.mon.anomaly ? `A wild {c}Tidetouched{w} ${e.mon.name} appeared! It shimmers like the Mere at low tide.` : `A wild ${e.mon.name} appeared!`, { wait: 40 });
       return;
     }
     const tr = e.trainer;
@@ -167,7 +167,7 @@ G.BattleScene = class {
     await G.tween(s, { scale: 1 }, 12, G.ease.outBack);
     G.audio && G.audio.cry(e.mon.sp);
     await G.tween(s, { flash: 0 }, 14, G.ease.linear);
-    if (e.mon.shiny) await G.shinyAnim(this, s);
+    if (e.mon.shiny || e.mon.anomaly) await G.shinyAnim(this, s);
     await this.wait(18);
   }
   async playWithdraw(e) {
@@ -562,7 +562,8 @@ G.monImgFor = function (sc, s) {
   const mine = s.side === sc.persp, back = !!(s.back || mine);
   // pixel sprites breathe and sway through a cached idle loop; the vector fallback uses its 4 frames
   const lt = sc.t * (s.status === 'slp' || s.status === 'frz' ? .35 : 1) + s.slot * 37 + (mine ? 0 : 61);
-  const live = G.monArt.live && G.monArt.live(s.sp, s.shiny, back, lt);
+  let live = G.monArt.live && G.monArt.live(s.sp, s.shiny, back, lt);
+  if (live && s.anomaly) live = G.monArt.pearl(live, [s.sp, s.shiny ? 1 : 0, back ? 'b' : 'f', Math.floor(lt / 4) & 31].join('|'));
   const img = live || G.monArt.of(s, back ? 'back' : 'front', s.frame);
   if (!img) return null;
   let scale = (s.sc || 1) * (s.scale === undefined ? 1 : s.scale);

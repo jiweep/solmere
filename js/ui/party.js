@@ -143,7 +143,7 @@ G.PartyScene = class {
       if (!sel) U.para(x, y + h - 1.5, w, 1.5, .5, col);
       const txt = sel ? '#07060c' : '#fff', sub = sel ? '#5a5560' : 'rgba(255,255,255,.65)';
       const bob = sel ? Math.sin(t / 6) * 1.2 - 1 : 0;
-      U.img(G.monArt.icon(m.sp, m.shiny, sel ? Math.floor(t / 10) % 2 : 0), x + 6, y - 9 + bob, { alpha: dead ? .45 : 1 });
+      U.img(m.anomaly ? G.monArt.of(m, 'icon', sel ? Math.floor(t / 10) % 2 : 0) : G.monArt.icon(m.sp, m.shiny, sel ? Math.floor(t / 10) % 2 : 0), x + 6, y - 9 + bob, { alpha: dead ? .45 : 1 });
       U.text(G.mon.name(m), x + 44, y + 3, { size: 8, weight: 800, color: txt, shadow: sel ? false : undefined });
       if (m.gender) U.text(m.gender === 'm' ? '♂' : '♀', x + 46 + U.measure(G.mon.name(m), 8, 800), y + 3, { size: 7, weight: 800, color: m.gender === 'm' ? '#3a8ae8' : '#e8508a', shadow: false });
       U.text('Lv ' + m.lvl, x + w - 6, y + 3.5, { size: 6.4, weight: 800, color: sub, align: 'right', shadow: false });
@@ -153,6 +153,7 @@ G.PartyScene = class {
       G.statusBadge(dead ? 'dead' : fnt ? 'fnt' : m.status, x + 136, y + 13.2);
       if (m.item) U.img(G.itemIconFor(m.item), x + 30, y + 12, { scale: .5 });
       if (m.shiny) U.text('★', x + 8, y + 14, { size: 6, color: '#ffd23a', weight: 800 });
+      if (m.anomaly) U.text('◆', x + (m.shiny ? 15 : 8), y + 14, { size: 6, color: '#9ff0ff', weight: 800 });
       let tag = null;
       if (this.o.mode === 'select' && this.o.label) tag = this.o.label(m);
       else if (this.o.mode === 'battle' && (this.o.activeUids || []).includes(m.uid)) tag = 'IN BATTLE';
@@ -221,6 +222,7 @@ G.SummaryScene = class {
     U.text('Lv' + m.lvl, nx + 118, 17.5, { size: 7, weight: 800, align: 'right', color: '#ffd23a' });
     U.typeBadge(sp.types[0], nx + 1, 30, 32, 8.5); if (sp.types[1]) U.typeBadge(sp.types[1], nx + 36, 30, 32, 8.5);
     if (m.shiny) U.text('★', nx + 96, 30, { size: 7, color: '#ffd23a', weight: 800 });
+    if (m.anomaly) U.text('◆ Tidetouched', nx + 1, 40, { size: 5.6, color: '#9ff0ff', weight: 800 });
     U.img(G.itemIconFor(G.ITEMS[m.ball] ? m.ball : 'orb'), nx + 110, 27, { scale: .7 });
     if (m.dead) { U.para(4, 150, 124, 14, 5, '#07060c'); U.text('Fallen — rests in memory', 66, 153.5, { size: 6, color: '#ccd', align: 'center' }); }
     // tabs: skewed slabs, the open page juts up in red

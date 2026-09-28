@@ -1619,7 +1619,7 @@ G.W3 = (function () {
   function entImage(w, e) {
     if (e.kind === 'item') { if (e.hidden) return null; return G.orbArt('orb', 14); }
     if (e.kind === 'sign') { if (e.invisible && !e.deco) return null; if (e.deco) { const [k, col] = e.deco.split(':'); return k === 'orbball' ? G.orbArt('orb', 12, col) : null; } return G.tiles.atlas && G.tiles.atlas('sign'); }
-    if (e.monSprite) return G.monArt.overworld(e.monSprite, !!e.shiny, e.dir, Math.floor(w.frame / 16) % 2);
+    if (e.monSprite) return e.mon && e.mon.anomaly ? G.monArt.of(e.mon, 'overworld', Math.floor(w.frame / 16) % 2, e.dir) : G.monArt.overworld(e.monSprite, !!e.shiny, e.dir, Math.floor(w.frame / 16) % 2);
     if (!e.look) return null;
     const sh = G.chars.sheet(e.look), surf = e === w.player && w.surfing;
     const set = sh[e.dir + (surf ? '_surf' : '')] || sh.down, fr = surf ? 0 : e.animFrame();

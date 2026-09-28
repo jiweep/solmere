@@ -259,7 +259,7 @@ G.monArt = (function () {
   function recolor(src, key, p) {
     let cv = tintCache.get(key); if (cv) return cv;
     cv = G.makeCanvas(src.width, src.height); const c = cv.getContext('2d'); c.drawImage(src, 0, 0);
-    const d = c.getImageData(0, 0, cv.width, cv.height), a = d.data, f = p.form;
+    const d = c.getImageData(0, 0, cv.width, cv.height), a = d.data, f = p.form, W = cv.width, H = cv.height;
     for (let i = 0; i < a.length; i += 4) {
       if (!a[i + 3]) continue;
       const r = a[i] / 255, g = a[i + 1] / 255, b = a[i + 2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = mx - mn;
@@ -267,6 +267,8 @@ G.monArt = (function () {
       let s = mx ? l / mx : 0, v = mx;
       h += p.h; s *= p.s;
       if (f && s > .08) { if (f.toward !== undefined) { let dh = ((f.toward - h + 540) % 360) - 180; h += dh * f.k; } else h += f.shift; s *= f.s; v *= f.v; }
+      // Tidetouched: a pearl sheen, the hue sweeping cyan to rose to gold down the body, soft and bright
+      if (p.pearl) { const px = (i >> 2) % W, py = (i >> 2) / W | 0, to = (180 + py / H * 240 + px / W * 50) % 360; h += (((to - h + 540) % 360) - 180) * .6; s = s * .55 + .14; v = Math.min(1, v * .78 + .26); }
       h = ((h % 360) + 360) % 360; s = Math.min(1, s); v = Math.min(1, v);
       const C = v * s, X = C * (1 - Math.abs((h / 60) % 2 - 1)), m = v - C, k = Math.floor(h / 60);
       const [R, G2, B] = k === 0 ? [C, X, 0] : k === 1 ? [X, C, 0] : k === 2 ? [0, C, X] : k === 3 ? [0, X, C] : k === 4 ? [X, 0, C] : [C, 0, X];
@@ -282,8 +284,11 @@ G.monArt = (function () {
     of(m, kind, frame = 0, dir = 'down') {
       const base = kind === 'back' ? this.back(m.sp, m.shiny, frame) : kind === 'overworld' ? this.overworld(m.sp, m.shiny, dir, frame) : kind === 'icon' ? this.icon(m.sp, m.shiny, frame) : this.front(m.sp, m.shiny, frame);
       if (!G.tidemarks || !base) return base;
-      const p = G.tidemarks.palette(m); if (!p.form && Math.abs(p.h) < 1 && Math.abs(p.s - 1) < .02) return base;
-      return recolor(base, [m.sp, m.shiny ? 1 : 0, kind, frame, dir, p.h, p.s, m.form ? m.form.id + (m.form.arg || '') : ''].join('|'), p);
+      const p = G.tidemarks.palette(m); if (!p.form && !p.pearl && Math.abs(p.h) < 1 && Math.abs(p.s - 1) < .02) return base;
+      return recolor(base, [m.sp, m.shiny ? 1 : 0, kind, frame, dir, p.h, p.s, m.form ? m.form.id + (m.form.arg || '') : '', p.pearl ? 'P' : ''].join('|'), p);
+    },
+    // the pearl sheen over any finished frame (battle idle loops, which skip per-Echo tints)
+    pearl(src, key) { return recolor(src, 'pearl|' + key, { h: 0, s: 1, pearl: true });
     },
     front(sp, shiny, frame = 0) { return has(sp, 'f') ? posed(sp, 'f', shiny, frame % 4, 96, 96, 8) : render(sp, shiny, 'front', frame % 4, 96); },
     back(sp, shiny, frame = 0) { return has(sp, 'b') ? posed(sp, 'b', shiny, frame % 4, 156, 156, 0) : render(sp, shiny, 'back', frame % 4, 104); },

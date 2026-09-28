@@ -83,7 +83,7 @@ G.tidemarks = (() => {
       const T = (txt, x, y, px, col, font = 'SolPix14') => { c.font = px + 'px ' + font; c.fillStyle = '#07060c'; c.fillText(txt, x + 2, y + 2); c.fillStyle = col; c.fillText(txt, x, y); };
       c.textBaseline = 'top';
       T(G.mon.name(m), 350, 26, 28, '#ffffff');
-      T(`${sp.name} · Lv ${m.lvl}${m.shiny ? ' · ★ SHINY' : ''}`, 352, 64, 14, '#ffe070', 'SolPix11');
+      T(`${sp.name} · Lv ${m.lvl}${m.shiny ? ' · ★ SHINY' : ''}${m.anomaly ? ' · TIDETOUCHED' : ''}`, 352, 64, 14, '#ffe070', 'SolPix11');
       T(`Tamer ${m.ot || (G.save && G.save.name) || '?'}`, 352, 84, 14, '#b8c8e0', 'SolPix11');
       let y = 116;
       const marks = m.marks || [];
@@ -108,7 +108,7 @@ G.tidemarks = (() => {
     },
     palette(m) {
       const t = tint(m), f = m.form && MARKS[m.form.id] ? MARKS[m.form.id].pal(m.form.arg) : null;
-      return { h: t.h, s: t.s, form: f };
+      return { h: t.h, s: t.s, form: f, pearl: m.anomaly === 'tidetouched' };
     },
   };
   return api;
