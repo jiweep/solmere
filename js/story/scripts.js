@@ -1107,7 +1107,8 @@
       const [cls, look] = G.pick(classes), boss = n === 6;
       const tid = 'spire_tmp';
       G.TRAINERS[tid] = { cls: boss ? 'Spire Master' : cls, name: boss ? 'Aurel' : G.pick(names), look: boss ? 'wanderer' : look, ai: boss ? 4 : 3, money: 0, boss, resonate: boss, music: boss ? 'champion' : 'spire_battle', noRematch: true, env: 'league',
-        party: G.shuffle(pool.slice()).slice(0, 3).map(s => ({ sp: s, lvl: 50, item: G.pick(['leftovers', 'lifegem', 'sunberry', 'lumenberry', 'expertbelt', 'focuslens', 'powerband', null]) })) };
+        party: G.shuffle(pool.slice()).slice(0, 3).map(s => ({ sp: s, lvl: 50, moves: G.mon.bestMoves(G.mon.create(s, 50)), item: G.pick(['leftovers', 'lifegem', 'sunberry', 'lumenberry', 'expertbelt', 'focuslens', 'powerband', ...(sp.streak >= 7 ? [] : [null])]) })) };
+      if (sp.streak >= 7) G.TRAINERS[tid].ai = 4;   // past the first seven, every Spire Tamer plays its best
       await S.say(`Battle ${n + 1} of 7${boss ? ' — the Spire Master!' : ''}`, N);
       for (const m of team) G.mon.healFull(m);
       const r = await G.runBattle({ foes: [G.makeTrainerCfg(tid)], format: 'single', music: G.TRAINERS[tid].music, boss, env: 'league', playerParty: team, exp: false, noMoney: true, noPost: true, canLose: true, noRun: true });
