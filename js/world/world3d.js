@@ -1780,7 +1780,7 @@ G.W3 = (function () {
       // not beside it, not in front of it, never in a doorway
       const onDoor = (map.warps || []).some(wp => (wp.x === p.x && wp.y === p.y) || (p.moving && wp.x === p.nx && wp.y === p.ny));
       const px = p.px / 16 + .5, py = p.py / 16 + .5;
-      const behind = !onDoor && (map.buildings || []).some(b => px > b.x + .15 && px < b.x + b.w - .15 && py < b.y + b.h - .6 && py > b.y - 2.5);
+      const behind = !onDoor && !G.noSeeThrough && (map.buildings || []).some(b => px > b.x + .15 && px < b.x + b.w - .15 && py < b.y + b.h - .6 && py > b.y - 2.5);
       TU.uOccOn.value += ((behind ? 1 : 0) - TU.uOccOn.value) * .3; }
     syncParticles(w, cur.hv);
     updateRays(w, fx, fy, fz);

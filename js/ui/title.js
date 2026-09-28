@@ -227,6 +227,7 @@ G.newGameFlow = async function () {
 G.startFromSave = async function (data) {
   if (!data) return;
   G.save = G.repairSave(data);
+  if (G.defineRivals) G.defineRivals();   // the rival's teams and the Champion depend on your starter
   if (data.settingsGlobal) Object.assign(G.settings, data.settingsGlobal);
   await G.fadeOut(20);
   const t = G.findScene(G.TitleScene); if (t) G.pop(t);
@@ -450,6 +451,9 @@ G.jumpToChapter = async function (ch) {
     for (const [sp, lv] of ch.party || [['kindlet', 5]]) { const m = G.mon.create(sp, lv, { perfectIVs: 3 }); m.ot = G.save.name; m.otId = G.save.otId; G.save.party.push(m); }
   } else for (const m of G.save.party) { if (m.lvl < ch.lvl) { G.mon.setLevel(m, ch.lvl); m.hp = G.mon.maxHP(m); } }
   for (const t of ch.visited || []) G.save.visited[t] = true;
+  // the main quest this chapter sits in (earlier ones done), so the Journal and "Next" say where to go
+  { const k = G.CHAPTERS.indexOf(ch), cur = ['main1', 'main1', 'main2', 'main3', 'main4', 'main4', 'main5', 'main6', 'main7', 'main8', 'main9', null][k];
+    if (k >= 0) { G.save.quests = {}; for (let i = 1; i <= 9; i++) { const id = 'main' + i; if (id === cur) { G.save.quests[id] = { step: k <= 1 ? 'parcel' : 'go' }; break; } G.save.quests[id] = { step: 'done' }; } } }
   G.save.money = Math.max(G.save.money, ch.money || 3000);
   G.party.healAll();
   G.maps.reset();

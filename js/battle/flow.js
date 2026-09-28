@@ -82,6 +82,9 @@ G.nuzCanCatch = function (map, mon) {
 };
 // ------------------------------------------------------------ controllers
 G.makeTrainerCfg = function (id, o = {}) {
+  // the rival's teams and the Champion are built from your starter (G.defineRivals); a game loaded from a save,
+  // joined in co-op or jumped to a chapter must build them too, so build them now if they're missing
+  if (!G.TRAINERS[id] && G.defineRivals && G.save) G.defineRivals();
   const T = G.TRAINERS[id]; if (!T) throw new Error('Unknown trainer ' + id);
   const D = G.diff();
   const party = T.party.map(p => G.buildTrainerMon(p, T));
@@ -456,8 +459,7 @@ G.nemesisLine = function (T, stars) {
 };
 // run a scripted trainer battle (story), returns true on win
 G.storyBattle = async function (id, o = {}) {
-  const T = G.TRAINERS[id];
-  const foes = [G.makeTrainerCfg(id)];
+  const foes = [G.makeTrainerCfg(id)], T = G.TRAINERS[id];   // build first: it defines the rival's teams if missing
   if (o.withTrainer) foes.push(G.makeTrainerCfg(o.withTrainer));
   const allies = o.ally ? [{ ...G.makeTrainerCfg(o.ally), isPartner: true }] : [];
   if (T.boss && (G.save.nemesis || {})[id] && !o.canLose) await G.say(G.nemesisLine(T, G.save.nemesis[id]), { speaker: T.name });

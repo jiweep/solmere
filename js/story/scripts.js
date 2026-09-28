@@ -436,6 +436,8 @@
     const wr = S.spawn({ id: 'gv_wren', x: 20, y: 11, look: 'wren', dir: 'right' });
     const c1 = S.spawn({ id: 'gv_c1', x: 24, y: 11, look: 'worker', dir: 'left' });
     const c2 = S.spawn({ id: 'gv_c2', x: 21, y: 12, look: 'woman', dir: 'up' });
+    // the trigger spans the whole street: from far along it, look over at the fountain for the speech
+    const far = Math.abs(S.p.x - 22) > 6; if (far) await S.camera.pan((22 - S.p.x) * 16, (11 - S.p.y) * 16, 30);
     await S.say('A crowd has filled the fountain square. A woman in a white coat steps up onto the fountain\'s edge, and the square falls quiet.');
     crane.dir = 'down';
     const N = 'Director Crane';
@@ -446,6 +448,7 @@
     await S.say('The crowd erupts in applause. But Director Crane isn\'t looking at them. Her eyes are on the far middle of the Mere.');
     await S.move('gv_crane', 'ddd', 1); S.remove('gv_crane');
     S.remove('gv_c1'); S.remove('gv_c2');
+    if (far) await S.camera.reset(20);
     S.remove('gv_wren'); await S.approach('gv_wren', 'wren');
     await S.say(`${P()}! Did you hear that? The Fellowship! Fellows are the best Tamers in Solmere. Everyone knows their names.`, WREN());
     const k = await choose(`${R()}'s eyes are shining.`, ['Just be careful, all right?', 'I\'ll race you to the top.', 'Forcing a bond seems wrong.'], WREN());
@@ -1202,7 +1205,7 @@
   ];
   G.MAPDEFS.route2.objs.forEach(o => { if (o.id === 'r2_i3') o.item = 'tm11'; });
   G.MAPDEFS.lh1.warps[1].cond = 'lh_grey_done';
-  G.MAPDEFS.lh1.objs.push({ type: 'trigger', x: 10, y: 3, w: 1, h: 1, script: 'lh_grey', cond: '!lh_grey_done' });
+  G.MAPDEFS.lh1.objs.push({ type: 'trigger', x: 0, y: 3, w: 13, h: 1, script: 'lh_grey', cond: '!lh_grey_done' });   // the whole row: the stairs can't be reached round her
   G.MAPDEFS.lh2.objs.push({ type: 'trigger', x: 2, y: 3, w: 2, h: 1, script: 'lh_lark', cond: '!lh_lark_done' });
   G.MAPDEFS.hof.warps = [{ x: 6, y: 8, to: 'conclave', tx: 9, ty: 13, dir: 'down', cond: 'hof_done' }];
   G.MAPDEFS.champ.objs.push({ type: 'npc', id: 'sable_npc2', x: 5, y: 2, look: 'sable', dir: 'down', script: 'champion_rematch', cond: ['champion_scene_done', 'hof_done'] });

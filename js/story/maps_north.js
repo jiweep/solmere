@@ -58,7 +58,7 @@
         { type: 'npc', id: 'gv_quay', x: 30, y: 5, look: 'gentleman', dir: 'up', move: 'look', text: 'The ferries used to run out to the Lodestar. Nobody\'s gone out there in twelve years. Nobody talks about why.' },
         { type: 'trainer', id: 'gv_sailor_e', x: 23, y: 3, look: 'sailor', dir: 'down', sight: 1, trainer: 'gv_sailor' },
         { type: 'trainer', id: 'gv_worker_e', x: 42, y: 24, look: 'worker', dir: 'left', sight: 3, trainer: 'gv_worker' },
-        { type: 'trigger', x: 14, y: 13, w: 18, h: 2, script: 'crane_speech', cond: '!crane_speech' },
+        { type: 'trigger', x: 1, y: 13, w: 44, h: 2, script: 'crane_speech', cond: '!crane_speech' },
         { type: 'item', id: 'gv_h1', x: 44, y: 6, item: 'magnet', hidden: true },
         { type: 'item', id: 'gv_i1', x: 40, y: 10, item: 'xspeed', qty: 2 },
       ], spawn: [22, 19] });
@@ -185,7 +185,7 @@
         { type: 'item', id: 'gc_trap', x: 14, y: 3, item: 'nugget', monTrap: 'coffret', lvl: 19 },
         { type: 'item', id: 'gc_h1', x: 18, y: 20, item: 'stardust', hidden: true },
         { type: 'item', id: 'gc_h2', x: 30, y: 12, item: 'rarecandy', hidden: true },
-        { type: 'trigger', x: 32, y: 12, w: 1, h: 7, script: 'lark1', cond: '!lark1_done' },
+        { type: 'trigger', x: 32, y: 9, w: 1, h: 10, script: 'lark1', cond: '!lark1_done' },
       ], spawn: [2, 15] });
   })();
   // ----------------------------------------------------------- CINDERVALE

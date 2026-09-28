@@ -77,7 +77,7 @@
       { type: 'trainer', id: 'ru_g2', x: 13, y: 11, look: 'grunt_f', dir: 'left', sight: 2, trainer: 'ru_grunt2', cond: '!ruins_done' },
       { type: 'trainer', id: 'ru_g3', x: 10, y: 6, look: 'grunt', dir: 'right', sight: 2, trainer: 'ru_grunt3', cond: '!ruins_done' },
       { type: 'npc', id: 'ru_grey', x: 11, y: 2, look: 'grey', dir: 'up', script: 'grey1', cond: '!ruins_done' },
-      { type: 'trigger', x: 11, y: 4, w: 2, h: 1, script: 'grey1', cond: '!ruins_done' },
+      { type: 'trigger', x: 6, y: 4, w: 12, h: 1, script: 'grey1', cond: '!ruins_done' },
       { type: 'sign', x: 12, y: 1, invisible: true, text: 'An empty stone cradle, shaped for a key. Wave patterns are carved all around it. Ancient script reads: "The sea gate opens for the song."' },
       { type: 'sign', x: 8, y: 5, invisible: true, text: 'A worn gravestone: "Here rests Aurel, first Tamer to hear the Lodestar sing."' },
       { type: 'item', id: 'ru_i1', x: 5, y: 9, item: 'duskstone' },
@@ -140,7 +140,7 @@
         { type: 'trainer', id: 'r5_c', x: 22, y: 26, look: 'lady', dir: 'left', sight: 2, trainer: 'r5_couple' },
         { type: 'trainer', id: 'r5_a', x: 6, y: 30, look: 'ace', dir: 'right', sight: 3, trainer: 'r5_ace' },
         { type: 'npc', id: 'r5_scale', x: 22, y: 13, look: 'girl', dir: 'down', script: 'glowing_scale' },
-        { type: 'trigger', x: 12, y: 38, w: 4, h: 1, script: 'rival3', cond: ['badge4', '!rival3_done'] },
+        { type: 'trigger', x: 3, y: 38, w: 24, h: 1, script: 'rival3', cond: ['badge4', '!rival3_done'] },
         { type: 'sign', x: 17, y: 37, text: '{c}ROUTE 5{w}\\n↑ Duskmere (by water)   ↓ Frostpeak Village' },
         { type: 'item', id: 'r5_i1', x: 8, y: 8, item: 'tm42' },
         { type: 'item', id: 'r5_i2', x: 20, y: 12, item: 'netorb', qty: 3 },
@@ -448,6 +448,6 @@
     warps: [{ x: 6, y: 10, to: 'lh2', tx: 2, ty: 3, dir: 'down' }],
     objs: [
       { type: 'npc', id: 'top_crane', x: 6, y: 4, look: 'crane', dir: 'up', script: 'top_crane', cond: '!tidelight_done' },
-      { type: 'trigger', x: 4, y: 7, w: 5, h: 1, script: 'top_crane', cond: '!tidelight_done' },
+      { type: 'trigger', x: 1, y: 8, w: 11, h: 1, script: 'top_crane', cond: '!tidelight_done' },
     ], spawn: [6, 9] });
 })();

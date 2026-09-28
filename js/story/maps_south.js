@@ -291,7 +291,7 @@
         { type: 'npc', id: 'ww_g1', x: 14, y: 26, look: 'grunt', dir: 'up', script: 'wood_grunts', cond: '!wood_done' },
         { type: 'npc', id: 'ww_g2', x: 18, y: 26, look: 'grunt_f', dir: 'up', script: 'wood_grunts', cond: '!wood_done' },
         { type: 'npc', id: 'ww_ash', x: 16, y: 29, look: 'ranger', dir: 'up', script: 'ranger_ash', name: 'Ranger Ash' },
-        { type: 'trigger', x: 13, y: 25, w: 7, h: 1, script: 'wood_grunts', cond: '!wood_done' },
+        { type: 'trigger', x: 6, y: 25, w: 13, h: 1, script: 'wood_grunts', cond: '!wood_done' },
         { type: 'sign', x: 5, y: 8, text: '{g}WHISPERWOOD{w}\\n"Speak softly. The trees are listening."' },
         { type: 'sign', x: 18, y: 27, text: 'Heartroot Shrine. A crystal the size of a fist glows in a cradle of roots. Something has been pried out of it.' },
         { type: 'item', id: 'ww_i1', x: 10, y: 27, item: 'awakening', qty: 2 },
