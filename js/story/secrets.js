@@ -32,6 +32,8 @@
       stop: 'Route 3 runs along the sea cliffs, and the wild Echoes out there are fierce. Only Tamers with Warden Ione\'s badge may pass.', talk: 'Warden Ione\'s gym is right here in the harbour. Earn the Current Badge, then Route 3 is open to you.', who: 'Harbour Guard' },
     { map: 'cindervale', cond: '!badge3', npc: { id: 'cv_gate', x: 19, y: 33, look: 'hiker', dir: 'right' }, row: { x: 20, y: 33, w: 4, h: 1 }, back: 'down',
       stop: 'Rockslides on Route 4 again! Brann says nobody goes south without the Forge Badge. Prove yourself at his gym first.', talk: 'Warden Brann\'s forge is the big building in town. His badge, then Route 4.', who: 'Lookout' },
+    { map: 'skyreach', cond: '!badge6', npc: { id: 'sk_gate', x: 13, y: 4, look: 'sailor', dir: 'down' }, row: { x: 0, y: 3, w: 34, h: 1 }, back: 'up',
+      stop: 'Warden Kaelen has closed the harbour. The Mere around the Lodestar is wild tonight, and nobody sails for it without his Wyrm Badge.', talk: 'The Skyreach Gym is up the hill. Show Kaelen you can handle the Mere, and the harbour is yours.', who: 'Harbour Master' },
   ];
   for (const g of GATES) {
     const d = G.MAPDEFS[g.map]; if (!d) continue; d.objs = d.objs || [];

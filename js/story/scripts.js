@@ -1007,7 +1007,8 @@
   SC.elite_room_enter = async (S) => { G.toast('Save before battling? Open the menu with X.'); };
   SC.elite_battle = async (S, ctx) => {
     const e = ctx.ent, id = G.flag('champion') ? G.eliteRematch(e.elite) : e.elite, T = G.TRAINERS[id];
-    if (G.flag(e.flag)) { await S.say('Go on. The next chamber is waiting.', T.name); return; }
+    // already beaten (e.g. saved and reloaded here): the room is sealed, so they must step out of the doorway again
+    if (G.flag(e.flag)) { await S.say('Go on. The next chamber is waiting.', T.name); if (e.x === 5 && e.y === 2) { await S.move(e.id, 'l', 1); S.face(e.id, 'right'); } return; }
     S.facePlayer(e.id);
     await S.say(T.intro, T.name);
     const won = await G.storyBattle(id); if (!won) return;

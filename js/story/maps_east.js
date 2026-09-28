@@ -173,7 +173,7 @@
         G.bld('gym', 18, 2, 8, 5, { roof: 'blue', accent: '#8ad8f8', door: 4, to: 'frost_gym', tx: 7, ty: 15 }),
         G.house(3, 12, 'frost_house1', 'snow'), G.house(3, 19, 'frost_house2', 'brown'),
         { type: 'sign', x: 16, y: 11, text: '{c}FROSTPEAK VILLAGE{w}\\n"Warm hearts, cold toes."' },
-        { type: 'sign', x: 17, y: 7, text: '{c}FROSTPEAK GYM{w} — Warden: Sigrid' },
+        { type: 'sign', x: 16, y: 6, text: '{c}FROSTPEAK GYM{w} — Warden: Sigrid' },
         { type: 'sign', x: 25, y: 13, text: '→ Mt. Glacia Pass · Skyreach City beyond' },
         { type: 'sign', x: 2, y: 13, text: '← Starfall Peak. {r}DANGER{w}: Champions only.' },
         { type: 'npc', id: 'fp_sguard', x: 2, y: 12, look: 'ranger', dir: 'down', script: 'starfall_guard', cond: '!champion' },
