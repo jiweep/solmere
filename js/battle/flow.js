@@ -129,7 +129,12 @@ G.runBattle = async function (cfg) {
     let result;
     try { result = await bt.run(); }
     catch (e) { G.reportError(e); result = { outcome: 'draw', leveled: [], fainted: [] }; }
-    if (G.clutch) await G.clutch.end(scene, result);
+    // nemeses: a Tamer who beat you remembers it; beating them back is a moment
+    const nem = G.save.nemesis || (G.save.nemesis = {}), foeIds = cfg.wild || cfg.playerParty || cfg.noPost ? [] : cfg.foes.map(f => f.trainerId).filter(id => id && G.TRAINERS[id]);   // not in the Spire or the Daily Tide
+    const avenged = result.outcome === 'win' ? foeIds.filter(id => nem[id]) : [];
+    if (result.outcome === 'lose' && !cfg.canLose) for (const id of foeIds) nem[id] = (nem[id] || 0) + 1;
+    if (G.clutch && avenged.length) await G.clutch.revenge(scene, G.TRAINERS[avenged[0]].name);
+    else if (G.clutch) await G.clutch.end(scene, result);
     if (G.tidemarks && result.outcome === 'win') G.tidemarks.onWin(G.save.party, G.clock.isNight());
     await scene.wait(10);
     // victory music + money
@@ -142,7 +147,14 @@ G.runBattle = async function (cfg) {
       const last = cfg.foes.flatMap(f => f.party).reduce((a, m) => Math.max(a, m.lvl), 1);
       let prize = cfg.foes.reduce((a, f) => a + ((G.TRAINERS[f.trainerId] || {}).money || 40) * last, 0);
       if (G.save.party.some(m => m.item === 'amuletcoin')) prize *= 2;
-      if (prize > 0 && !cfg.noMoney) { G.save.money += prize; G.save.stats.earned += prize; await scene.message(`You got $${prize.toLocaleString()} for winning!`, { press: true }); }
+      if (avenged.length) prize *= 2;
+      if (prize > 0 && !cfg.noMoney) { G.save.money += prize; G.save.stats.earned += prize; await scene.message(`You got $${prize.toLocaleString()} for winning!${avenged.length ? ' Revenge pays double.' : ''}`, { press: true }); }
+      if (avenged.length) {
+        const b = G.save.badges.length, [it, n] = b < 2 ? ['greatorb', 2] : b < 4 ? ['superpotion', 2] : b < 6 ? ['ultraorb', 2] : ['rarecandy', 1];
+        G.bag.add(it, n); for (const id of avenged) delete nem[id];
+        G.save.stats.revenges = (G.save.stats.revenges || 0) + 1;
+        await scene.message(`${G.TRAINERS[avenged[0]].name} hands you ${n > 1 ? n + ' ' : 'a '}${G.ITEMS[it].name}${n > 1 ? 's' : ''}. "Fair's fair. You earned it."`, { press: true });
+      }
     } else if (result.outcome === 'win' && cfg.wild) { G.audio && G.audio.music('victory_wild'); await scene.wait(40); }
     await G.fadeOut(16);
     G.pop(scene);
@@ -414,7 +426,9 @@ G.trainerBattleFromEnt = async function (e, rematch) {
   const T = G.TRAINERS[e.trainer]; if (!T) return;
   const w = G.world.scene;
   if (!G.save.party.some(m => m.hp > 0 && !m.dead)) { await G.say('You have no Echoes that can fight!'); return; }
-  if (T.intro && !rematch) await G.say(T.intro, { speaker: T.name });
+  const stars = (G.save.nemesis || {})[e.trainer];
+  if (stars && !rematch) await G.say(G.nemesisLine(T, stars), { speaker: T.name });
+  else if (T.intro && !rematch) await G.say(T.intro, { speaker: T.name });
   else if (rematch) await G.say(T.rematchIntro || 'Here we go again!', { speaker: T.name });
   // double with partner trainer?
   const foes = [G.makeTrainerCfg(e.trainer)];
@@ -432,12 +446,20 @@ G.trainerBattleFromEnt = async function (e, rematch) {
   }
   return r;
 };
+// what a Tamer who beat you says when you come back (warm, never mean: STORY_BIBLE.md)
+G.nemesisLine = function (T, stars) {
+  if (T.boss) return stars > 1 ? 'Back again, and again. Good. The ones who keep coming back are the ones who win in the end.' : 'You came back. Most people don\'t. That already tells me something. Show me the rest.';
+  const L = stars > 1 ? ['Again? You really don\'t give up, do you? I like that. Come on, then!', 'Round three... or is it four? I\'ve lost count. You haven\'t, I bet.']
+    : ['Oh, it\'s you! I\'ve told everyone about our last battle. Ready to change the ending?', 'You\'re back! Good. I was hoping you\'d come back.', 'I remember you! Let\'s see what you\'ve learned since last time.'];
+  return L[G.hash(T.name) % L.length];
+};
 // run a scripted trainer battle (story), returns true on win
 G.storyBattle = async function (id, o = {}) {
   const T = G.TRAINERS[id];
   const foes = [G.makeTrainerCfg(id)];
   if (o.withTrainer) foes.push(G.makeTrainerCfg(o.withTrainer));
   const allies = o.ally ? [{ ...G.makeTrainerCfg(o.ally), isPartner: true }] : [];
+  if (T.boss && (G.save.nemesis || {})[id] && !o.canLose) await G.say(G.nemesisLine(T, G.save.nemesis[id]), { speaker: T.name });
   const r = await G.runBattle({ foes, allies, coopTrainer: id, format: (o.double || foes.length > 1 || allies.length) ? 'double' : 'single', music: o.music || T.music, victory: T.victory, boss: T.boss, env: o.env || T.env, weather: T.weather, noRun: true, canLose: o.canLose, partnerName: o.ally ? G.TRAINERS[o.ally].name : null });
   const won = r && r.outcome === 'win';
   if (won) { G.save.trainers[id] = { badges: G.save.badges.length, t: Date.now() }; if (o.withTrainer) G.save.trainers[o.withTrainer] = { badges: G.save.badges.length }; if (G.net) G.net.shareTrainerWin([id]); }

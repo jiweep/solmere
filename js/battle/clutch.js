@@ -102,7 +102,9 @@ G.clutch = (() => {
       }
       end();
     },
-    hit(scene, e) { lastHit[e.ref.s + ':' + e.ref.i] = { crit: !!e.crit, eff: e.eff || 1 }; },
+    // beating a Tamer who beat you before
+    revenge(scene, name) { sc = scene; moment('REVENGE!', `${name} goes down at last`, '#ff5a5a'); return new Promise(r => setTimeout(() => { end(); r(); }, 2600)); },
+        hit(scene, e) { lastHit[e.ref.s + ':' + e.ref.i] = { crit: !!e.crit, eff: e.eff || 1 }; },
     hp(scene, e, from) {
       const s = scene.slot(e.ref); if (!s || e.heal || e.silent) return;
       if (mine(s) && e.hp > 0 && e.hp / e.max <= .08 && from / e.max >= .3) moment('LAST STAND!', `${s.name || 'It'} hung on with ${e.hp} HP`);
