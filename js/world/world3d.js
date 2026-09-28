@@ -857,7 +857,13 @@ G.W3 = (function () {
     if (!lampParts) {
       const iron = new T.MeshLambertMaterial({ color: 0x23262e }), stone = new T.MeshLambertMaterial({ color: 0x8a8478 }), stoneD = new T.MeshLambertMaterial({ color: 0x5e5a52 });
       const glass = new T.MeshLambertMaterial({ color: 0xfff0c0, emissive: 0xffc870, emissiveIntensity: .2 }); LAMP_GLASS.add(glass);
-      lampParts = { iron, stone, stoneD, glass };
+      // the stone lantern in pixel texture: dressed stone blocks, and a paper window in a timber frame
+      const px = (w, h, f) => { const cv = G.makeCanvas(w, h), c = cv.getContext('2d'); for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) { c.fillStyle = f(xx, yy); c.fillRect(xx, yy, 1, 1); } return texPx(cv); };
+      const stoneC = ['#5a5650', '#7a756c', '#948e82', '#a8a294'];
+      const stoneTex = px(8, 8, (xx, yy) => { const joint = yy === 3 || yy === 7 || ((yy < 4 ? xx === 3 : xx === 7)); let k = joint ? 0 : yy === 0 || yy === 4 ? 3 : 2; if (!joint && G.h2(xx, yy, 83) > .8) k--; return stoneC[k]; });
+      const paperTex = px(8, 8, (xx, yy) => xx === 0 || xx === 7 || yy === 0 || yy === 7 ? '#3a2616' : xx === 3 || xx === 4 || yy === 4 ? '#6a4426' : (xx + yy) % 5 === 0 ? '#ffe2a8' : '#fff4d0');
+      const stoneT = new T.MeshLambertMaterial({ map: stoneTex }), paper = new T.MeshLambertMaterial({ map: paperTex, emissiveMap: paperTex, emissive: 0xffc870, emissiveIntensity: .35 }); LAMP_GLASS.add(paper);
+      lampParts = { iron, stone, stoneD, glass, stoneT, paper };
     }
     const g = new T.Group(), L = lampParts, add = (geo, mat, px, py, pz) => { const m = new T.Mesh(geo, mat); m.position.set(px, py, pz); m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
     if (kind === 'lamp') {
@@ -869,13 +875,14 @@ G.W3 = (function () {
       add(new T.ConeGeometry(.26, .22, 4), L.iron, 0, 3.16, 0).rotation.y = Math.PI / 4;
       add(new T.SphereGeometry(.04, 6, 4), L.iron, 0, 3.3, 0);
     } else {
-      add(new T.BoxGeometry(.5, .22, .5), L.stoneD, 0, .11, 0);
-      add(new T.BoxGeometry(.2, .55, .2), L.stone, 0, .5, 0);
+      add(new T.BoxGeometry(.5, .22, .5), L.stoneT, 0, .11, 0);
+      add(new T.BoxGeometry(.2, .55, .2), L.stoneT, 0, .5, 0);
       add(new T.BoxGeometry(.42, .08, .42), L.stoneD, 0, .81, 0);
-      add(new T.BoxGeometry(.3, .3, .3), L.glass, 0, 1.0, 0);
-      add(new T.ConeGeometry(.36, .26, 4), L.stone, 0, 1.28, 0).rotation.y = Math.PI / 4;
+      add(new T.BoxGeometry(.3, .3, .3), L.paper, 0, 1.0, 0);
+      add(new T.ConeGeometry(.36, .26, 4), L.stoneD, 0, 1.28, 0).rotation.y = Math.PI / 4;
+      add(new T.SphereGeometry(.05, 6, 4), L.stoneD, 0, 1.44, 0);
     }
-    g.position.set(x, y, z); g.scale.setScalar(LAMP_SC);
+    g.position.set(x, y, z); g.scale.setScalar(kind === 'lamp' ? LAMP_SC : 1.25);
     return g;
   }
 
@@ -1017,7 +1024,8 @@ G.W3 = (function () {
         sc.fillStyle = `rgb(${col[0] * .58 | 0},${col[1] * .58 | 0},${col[2] * .58 | 0})`; for (let y = 3; y < 16; y += 4) sc.fillRect(0, y, 16, 1);
         sc.fillStyle = `rgb(${Math.min(255, col[0] * 1.02) | 0},${Math.min(255, col[1] * 1.02) | 0},${Math.min(255, col[2] * 1.02) | 0})`; for (let y = 0; y < 16; y += 4) sc.fillRect(0, y, 16, 1);
       }
-      const rt = tex(rside); rt.wrapS = rt.wrapT = T.RepeatWrapping; const mRoofEnd = new T.MeshLambertMaterial({ map: rt, emissive: 0xffffff, side: T.DoubleSide });   // two-sided: the eave's underside shows at the ends mRoofEnd.emissiveMap = mRoofEnd.map; mRoofEnd.name = 'roof end'; SIDES.add(mRoofEnd);
+      const rt = tex(rside); rt.wrapS = rt.wrapT = T.RepeatWrapping; const mRoofEnd = new T.MeshLambertMaterial({ map: rt, emissive: 0xffffff, side: T.DoubleSide });   // two-sided: the eave's underside shows at the ends
+      mRoofEnd.emissiveMap = mRoofEnd.map; mRoofEnd.name = 'roof end'; SIDES.add(mRoofEnd);
       // walls stand taller than the art draws them (a house is two to three people tall), the facade
       // stretched to fit; the art's transparent margins are filled with its own colours so no face is holey
       const wallH = wallPx / 16 * TANP, depth = zF - zB;

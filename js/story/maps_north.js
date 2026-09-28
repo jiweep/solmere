@@ -208,7 +208,7 @@
     m.rect(2, 17, 18, 2, ':'); m.rect(20, 14, 4, 22, ':'); m.rect(24, 14, 15, 1, ':'); m.rect(38, 14, 2, 1, ':');
     m.rect(27, 19, 12, 4, '='); m.put(32, 20, 'S'); m.put(27, 19, 'l'); m.put(38, 19, 'l'); m.put(27, 22, 'j'); m.put(38, 22, 'j');
     m.put(27, 16, 'p'); m.put(30, 16, 'p'); m.put(33, 16, 'p'); m.put(36, 16, 'Q'); m.put(37, 16, 'O');
-    m.rect(3, 24, 38, 1, ':'); m.put(18, 15, 'j'); m.put(25, 16, 'l'); m.put(10, 15, 'R');
+    m.rect(3, 24, 38, 1, ':'); m.put(18, 15, 'j'); m.put(25, 16, 'l'); m.put(10, 15, 'R'); m.put(19, 21, 'j'); m.put(24, 21, 'j');   // lanterns pace the main street
     // second wall: the main stair and a west stair
     m.rect(2, 25, 40, 2, '#'); m.rect(20, 25, 4, 2, '='); m.rect(8, 25, 2, 2, ':');
     // valley floor: the hot spring
