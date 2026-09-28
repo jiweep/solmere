@@ -124,7 +124,7 @@ G.wilds = (() => {
       if (pm.hp <= 0 || pm.egg || pm.dead) continue;
       const part = pm === L; if (!part && !G.save.settings.expShare) continue;
       let exp = (sp.exp * Lv / 5) * Math.pow((2 * Lv + 10) / (Lv + pm.lvl + 10), 2.5) + 1;
-      exp = Math.max(1, Math.floor(exp * (part ? .5 : .25) * (1 + .25 * Math.min(8, ch.n - 1)) * (pm.item === 'luckyegg' ? 1.5 : 1)));
+      exp = Math.max(1, Math.floor(exp * (part ? .5 : .375) * (1 + .25 * Math.min(8, ch.n - 1)) * (pm.item === 'luckyegg' ? 1.5 : 1)));
       const cap = G.save.settings.levelCap === 'hard' && G.levelCapNow ? G.levelCapNow() : 100;
       if (pm.lvl >= cap) continue;
       const ups = G.mon.addExp(pm, exp, cap); gains.push([pm, exp, ups]);

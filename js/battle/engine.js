@@ -998,7 +998,7 @@ G.THROW_MULT = [1, 1.25, 1.6, 2.2];   // catch-rate multiplier by throw quality:
           if (!part && !tr.expShare) continue;
           const Lp = m.lvl;
           let exp = (bexp * L / 5) * Math.pow((2 * L + 10) / (L + Lp + 10), 2.5) + 1;
-          exp *= trainerMult * (part ? 1 : .5) * (m.item === 'luckyegg' ? 1.5 : 1) * (tr.expMult || 1);
+          exp *= trainerMult * (part ? 1 : .75) * (m.item === 'luckyegg' ? 1.5 : 1) * (tr.expMult || 1);
           if (m.ot && tr.otId && m.otId !== tr.otId) exp *= 1.5;
           exp = Math.max(1, Math.floor(exp));
           const cap = tr.levelCap || 100;

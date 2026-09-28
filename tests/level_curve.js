@@ -8,7 +8,7 @@ G.TRAINERS = {}; G.rivalOf = { budling: 'kindlet', kindlet: 'sealet', sealet: 'b
 new Function('G', require('fs').readFileSync(require('path').join(__dirname, '../js/story/trainers.js'), 'utf8'))(G);
 // engine.js awardExp: the Echo that fought gets it all, the rest half (EXP Share); sweeps give half and a quarter
 const gainOne = (m, sp, L, trainer, k) => { const b = G.SPECIES[sp].exp; let e = (b * L / 5) * Math.pow((2 * L + 10) / (L + m.lvl + 10), 2.5) + 1; e *= (trainer ? 1.5 : 1) * k; G.mon.addExp(m, Math.max(1, Math.floor(e))); };
-const gain = (team, sp, L, trainer, k = 1) => team.forEach((m, i) => gainOne(m, sp, L, trainer, (i === 0 ? 1 : .5) * k));
+const gain = (team, sp, L, trainer, k = 1) => team.forEach((m, i) => gainOne(m, sp, L, trainer, (i === 0 ? 1 : .75) * k));
 const beat = (team, id) => { for (const p of G.TRAINERS[id].party) gain(team, p.sp, p.lvl, true); };
 const wild = (team, list, lv, n, k = 1) => { for (let i = 0; i < n; i++) gain(team, list[i % list.length], Math.round(lv[0] + (lv[1] - lv[0]) * ((i * 7) % 5) / 4), false, k); };
 const report = (tag, team, id) => { const T = G.TRAINERS[id], lv = T.party.map(p => p.lvl), ace = Math.max(...lv); console.log(`${tag.padEnd(36)} team L${team.map(m => m.lvl).join('/')}   ${T.name}: ${lv.join('/')}   lead vs ace: ${team[0].lvl - ace >= 0 ? '+' : ''}${team[0].lvl - ace}`); };

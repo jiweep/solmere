@@ -38,11 +38,11 @@ async function fight(team, foeCfg, ai, o = {}) {
       const who = ai === 3 ? 'competent' : 'novice  ';
       console.log(`  ${who} rival1  L5 vs L4 :`, await fight(() => [[s, 5]], () => rivalCfg(s, 4, [[r, 4, [r === 'kindlet' ? 'scratch' : 'tackle', r === 'budling' ? 'growl' : 'tailwhip']]]), ai));
       console.log(`  ${who} Juniper L14+14+11:`, await fight(() => [[line(s, 14), 14], ['gustling', 14], ['nibbit', 11]], () => foe('juniper'), ai, { items: { potion: 3 } }));
-      console.log(`  ${who} Juniper natural 13+11+9:`, await fight(() => [[line(s, 13), 13], ['emberjay', 11], ['pipwing', 9]], () => foe('juniper'), ai, { items: { potion: 2 } }));   // tests/level_curve.js's levels, with Mira's Emberjay
-      console.log(`  ${who} Juniper no Emberjay 13+9:`, await fight(() => [[line(s, 13), 13], ['pipwing', 9]], () => foe('juniper'), ai, { items: { potion: 2 } }));
+      console.log(`  ${who} Juniper natural 13+11+10:`, await fight(() => [[line(s, 13), 13], ['emberjay', 11], ['pipwing', 10]], () => foe('juniper'), ai, { items: { potion: 2 } }));   // tests/level_curve.js's levels, with Mira's Emberjay
+      console.log(`  ${who} Juniper no Emberjay 13+10:`, await fight(() => [[line(s, 13), 13], ['pipwing', 10]], () => foe('juniper'), ai, { items: { potion: 2 } }));
       console.log(`  ${who} Juniper L12+11    :`, await fight(() => [[line(s, 12), 12], ['pipwing', 11]], () => foe('juniper'), ai, { items: { potion: 2 } }));
-      console.log(`  ${who} Ione natural 22+17+17:`, await fight(() => [[line(s, 22), 22], ['gustling', 17], ['emberjay', 17]], () => foe('ione'), ai, { items: { superpotion: 2 }, resonance: true }));   // tests/level_curve.js
-      console.log(`  ${who} Ione natural+Digmole 22+17+16:`, await fight(() => [[line(s, 22), 22], ['gustling', 17], ['digmole', 16]], () => foe('ione'), ai, { items: { superpotion: 2 }, resonance: true }));   // a Ground type from Whisperwood
+      console.log(`  ${who} Ione natural 22+19+19:`, await fight(() => [[line(s, 22), 22], ['gustling', 19], ['emberjay', 19]], () => foe('ione'), ai, { items: { superpotion: 2 }, resonance: true }));   // tests/level_curve.js
+      console.log(`  ${who} Ione natural+Digmole 22+19+18:`, await fight(() => [[line(s, 22), 22], ['gustling', 19], ['digmole', 18]], () => foe('ione'), ai, { items: { superpotion: 2 }, resonance: true }));   // a Ground type from Whisperwood
       console.log(`  ${who} Ione    L20+18+18:`, await fight(() => [[line(s, 20), 20], ['gustling', 18], ['digmole', 18]], () => foe('ione'), ai, { items: { superpotion: 2 }, resonance: true }));
       console.log(`  ${who} Ione    L18+16+15:`, await fight(() => [[line(s, 18), 18], ['gustling', 16], ['digmole', 15]], () => foe('ione'), ai, { items: { superpotion: 2 }, resonance: true }));
       console.log(`  ${who} rival2  L25+23+22:`, await fight(() => [[line(s, 25), 25], ['gustling', 23], ['digmole', 22]], () => rivalCfg(s, 22, [['gustling', 20], ['voltpup', 20], [line(r, 22), 22]]), ai, { items: { superpotion: 2 }, resonance: true }));
