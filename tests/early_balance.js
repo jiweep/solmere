@@ -38,6 +38,8 @@ async function fight(team, foeCfg, ai, o = {}) {
       const who = ai === 3 ? 'competent' : 'novice  ';
       console.log(`  ${who} rival1  L5 vs L4 :`, await fight(() => [[s, 5]], () => rivalCfg(s, 4, [[r, 4, [r === 'kindlet' ? 'scratch' : 'tackle', r === 'budling' ? 'growl' : 'tailwhip']]]), ai));
       console.log(`  ${who} Juniper L14+14+11:`, await fight(() => [[line(s, 14), 14], ['gustling', 14], ['nibbit', 11]], () => foe('juniper'), ai, { items: { potion: 3 } }));
+      console.log(`  ${who} Juniper natural 13+11+9:`, await fight(() => [[line(s, 13), 13], ['emberjay', 11], ['pipwing', 9]], () => foe('juniper'), ai, { items: { potion: 2 } }));   // tests/level_curve.js's levels, with Mira's Emberjay
+      console.log(`  ${who} Juniper no Emberjay 13+9:`, await fight(() => [[line(s, 13), 13], ['pipwing', 9]], () => foe('juniper'), ai, { items: { potion: 2 } }));
       console.log(`  ${who} Juniper L12+11    :`, await fight(() => [[line(s, 12), 12], ['pipwing', 11]], () => foe('juniper'), ai, { items: { potion: 2 } }));
       console.log(`  ${who} Ione    L20+18+18:`, await fight(() => [[line(s, 20), 20], ['gustling', 18], ['digmole', 18]], () => foe('ione'), ai, { items: { superpotion: 2 }, resonance: true }));
       console.log(`  ${who} Ione    L18+16+15:`, await fight(() => [[line(s, 18), 18], ['gustling', 16], ['digmole', 15]], () => foe('ione'), ai, { items: { superpotion: 2 }, resonance: true }));

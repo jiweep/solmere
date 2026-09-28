@@ -104,8 +104,8 @@
     D({ id: 'route1', name: 'Route 1', subtitle: 'Brinehollow ↔ Fernwick', area: 'route1', music: 'route1', grid: m.done(),
       conn: { s: { map: 'brinehollow', off: -8 }, n: { map: 'fernwick', off: -11 } },
       enc: {
-        grass: { lv: [2, 4], list: [['pipwing', 35], ['nibbit', 35], ['mossbun', 22], ['grubbit', 8]] },
-        night: { lv: [2, 4], list: [['nibbit', 45], ['oddowl', 20], ['pipwing', 15], ['grubbit', 10], ['rascoon', 10]] },
+        grass: { lv: [3, 6], list: [['pipwing', 35], ['nibbit', 35], ['mossbun', 22], ['grubbit', 8]] },
+        night: { lv: [3, 6], list: [['nibbit', 45], ['oddowl', 20], ['pipwing', 15], ['grubbit', 10], ['rascoon', 10]] },
         rare: { list: [['shiftail', 1], ['glimmer', 1]] },
         surf: { lv: [5, 10], list: [['flopfin', 70], ['lillipad', 30]] }, fish: { lv: [3, 8], list: [['flopfin', 100]] },
       },
@@ -117,6 +117,9 @@
         { type: 'sign', x: 8, y: 13, text: 'Hollis Farm — Fresh berries. "Please close the gate, or Snoozle wanders off!"' },
         { type: 'trainer', id: 'r1_kid_e', x: 15, y: 30, look: 'kid', dir: 'left', sight: 3, trainer: 'r1_kid' },
         { type: 'trainer', id: 'r1_lass_e', x: 7, y: 17, look: 'lass', dir: 'right', sight: 3, trainer: 'r1_lass' },
+        // the northern half: a step up (Lv 6-7) between the first trainers (Lv 3-4) and the gym's (Lv 9-10)
+        { type: 'trainer', id: 'r1_bug_e', x: 19, y: 10, look: 'bugmaniac', dir: 'left', sight: 4, trainer: 'r1_bug' },
+        { type: 'trainer', id: 'r1_boy_e', x: 7, y: 5, look: 'boy', dir: 'right', sight: 4, trainer: 'r1_boy' },
         { type: 'trigger', x: 9, y: 37, w: 4, h: 1, script: 'route1_tutorial', cond: ['got_starter', '!route1_tut'] },
         { type: 'npc', id: 'r1_man', x: 14, y: 12, look: 'man', dir: 'down', move: 'wander', radius: 2, text: 'Wild Echoes live in the tall grass. Walk into one to battle it. Weaken it, then throw an Orb. Sleeping Echoes are easier to catch.' },
         { type: 'npc', id: 'snoozle_lost', x: 17, y: 4, monSprite: 'snoozle', dir: 'down', script: 'lostcub_found', cond: ['lostcub_active', '!lostcub_done'] },
@@ -166,6 +169,7 @@
     D({ id: 'fernwick', name: 'Fernwick Town', subtitle: 'Petals on every breeze', town: 'fernwick', area: 'fernwick', music: 'fernwick', weather: 'petals', grid: m.done(),
       conn: { s: { map: 'route1', off: 11 }, e: { map: 'route2', off: 14 } },
       objs: [
+        { type: 'npc', id: 'ember_mira', x: 20, y: 8, look: 'ace_f', dir: 'right', script: 'ember_gift' },
         { type: 'trigger', x: 20, y: 35, w: 4, h: 1, script: 'race_finish', cond: ['route1_tut', '!race_done'] },
         G.haven(5, 14), G.mart(34, 14), G.bld('gym', 18, 2, 8, 5, { roof: 'green', accent: '#6ccc52', door: 4, to: 'fernwick_gym', tx: 7, ty: 13 }),
         G.house(5, 20, 'fern_house1', 'orange'), G.house(34, 20, 'fern_house2', 'purple'), G.house(9, 20, 'fern_house3', 'blue'),

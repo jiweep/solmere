@@ -135,7 +135,7 @@
       conn: { w: { map: 'galvan', off: -3 } },
       warps: [{ x: 44, y: 13, to: 'glimmercave', tx: 2, ty: 15, dir: 'right', kind: 'cave' }],
       enc: {
-        grass: { lv: [14, 17], list: [['clawdle', 18], ['gustling', 16], ['digmole', 18], ['zipsquee', 16], ['lillipad', 14], ['pipwing', 10], ['stingle', 8]] },
+        grass: { lv: [14, 17], list: [['clawdle', 17], ['gustling', 15], ['digmole', 17], ['zipsquee', 15], ['lillipad', 13], ['pipwing', 9], ['stingle', 8], ['voltpup', 6]] },
         night: { lv: [14, 17], list: [['rascoon', 25], ['duskbat', 20], ['digmole', 18], ['oddowl', 17], ['zipsquee', 12], ['jellume', 8]] },
         rare: { list: [['shiftail', 2], ['armadrill', 1], ['snoozle', 1]] },
         surf: { lv: [16, 20], list: [['jellume', 35], ['clawdle', 30], ['flopfin', 25], ['lillipad', 10]] },

@@ -71,7 +71,7 @@
       '##########.MM.##########',
       '########################'],
     warps: [{ x: 11, y: 20, to: 'duskmere', tx: 26, ty: 4, dir: 'down', kind: 'cave' }, { x: 12, y: 20, to: 'duskmere', tx: 26, ty: 4, dir: 'down', kind: 'cave' }],
-    enc: { cave: { lv: [26, 30], list: [['maskling', 25], ['wispurr', 25], ['duskbat', 20], ['coffret', 12], ['gearling', 10], ['snoozle', 8]] } },
+    enc: { cave: { lv: [26, 30], list: [['maskling', 22], ['wispurr', 22], ['duskbat', 18], ['blotch', 14], ['coffret', 11], ['gearling', 7], ['snoozle', 6]] } },
     objs: [
       { type: 'trainer', id: 'ru_g1', x: 10, y: 16, look: 'grunt', dir: 'right', sight: 2, trainer: 'ru_grunt1', cond: '!ruins_done' },
       { type: 'trainer', id: 'ru_g2', x: 13, y: 11, look: 'grunt_f', dir: 'left', sight: 2, trainer: 'ru_grunt2', cond: '!ruins_done' },

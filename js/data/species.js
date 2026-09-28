@@ -19,7 +19,7 @@ G.DEX = [];
   const L = (...pairs) => { const out = []; for (let i = 0; i < pairs.length; i += 2) out.push([pairs[i], pairs[i + 1]]); return out; };
 
   // ================================================================ STARTERS
-  const budL = L(1, 'tackle', 1, 'growl', 4, 'vinewhip', 7, 'leechseed', 10, 'absorb', 13, 'razorleaf', 16, 'charmleaf', 19, 'sleeppowder', 22, 'megadrain', 25, 'seedbomb', 28, 'photosynth', 32, 'energyball', 36, 'gigadrain', 40, 'verdantbloom', 44, 'calmmind', 48, 'moonblast', 52, 'leafstorm');
+  const budL = L(1, 'tackle', 1, 'growl', 4, 'vinewhip', 7, 'quickstrike', 10, 'leechseed', 13, 'razorleaf', 14, 'absorb', 16, 'charmleaf', 19, 'sleeppowder', 22, 'megadrain', 25, 'seedbomb', 28, 'photosynth', 32, 'energyball', 36, 'gigadrain', 40, 'verdantbloom', 44, 'calmmind', 48, 'moonblast', 52, 'leafstorm');
   S('budling', 'Budling', ['grass'], [48, 50, 52, 52, 58, 50], ['overgrowth', null, 'naturalcure'], { growth: 'mslow', gender: .875, learn: budL, evo: [{ to: 'fawnbloom', lvl: 16 }], tmx: ['normal', 'ground', 'fairy'], h: .5, w: 7.2, cat: 'Sprout Fawn', color: 'green',
     dex: 'A shy fawn with a sapling growing from its brow. It naps in sunbeams, and the bud opens a little more each warm afternoon.' });
   S('fawnbloom', 'Fawnbloom', ['grass'], [63, 64, 67, 70, 74, 67], ['overgrowth', null, 'naturalcure'], { stage: 2, growth: 'mslow', gender: .875, learn: budL, evo: [{ to: 'sylvantler', lvl: 36 }], tmx: ['normal', 'ground', 'fairy'], h: 1.0, w: 28, cat: 'Blossom Deer', color: 'green',

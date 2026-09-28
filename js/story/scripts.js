@@ -186,8 +186,8 @@
     const rsp = G.rivalOf[sp];
     await S.say(`Then I choose ${starterName(rsp)}! It has the type advantage. Told you!`, WREN());
     await S.say(`${R()} received ${starterName(G.randomizeSpecies(rsp, 'starter'))}!`);
-    await S.say(`And this is for you both: an Echodex. It records every Echo you meet and catch. I built it myself. Mostly!`, HALE);
-    await S.give('dex');
+    await S.say(`And these are for you both: an Echodex, which records every Echo you meet and catch, and an EXP Share, so every Echo on your team grows, even the ones waiting their turn.`, HALE);
+    await S.give('dex'); await S.give('expshare');
     await S.say(`${P()}, let's battle! Right now! Our very first one!`, WREN());
     await S.say('Here in the lab? ...Oh, very well. Just mind the equipment.', HALE);
     const won = await G.storyBattle('rival1', { canLose: true });
@@ -325,6 +325,19 @@
     const m = G.party.lead(); if (!m) return;
     await S.say(`Ah, ${G.mon.name(m)}! ${m.nick ? 'What a fine name. You can tell it was chosen with care.' : 'No nickname yet? You can give it one from the Party menu. A name makes a partner feel like family.'}`, 'Name Enthusiast');
   };
+  // Before the first gym: a Tamer offers an Emberjay (Fire/Flying, strong against Grass), so every starter has a
+  // fair way into Juniper's Grass gym (Budling mirrors it, Sealet is weak to it). Measured with the gym-1 bots:
+  // with it, disadvantaged starters win about 60-80%; without, almost never (tests/early_balance.js).
+  SC.ember_gift = async (S) => {
+    const N = 'Tamer Mira'; S.facePlayer('ember_mira');
+    if (G.flag('got_ember')) { await S.say('How\'s my Emberjay doing? It never did like standing still. Sounds like it found the right Tamer.', N); return; }
+    await S.say('Off to see Juniper? Her Grass team sends a lot of new Tamers home early.', N);
+    await S.say('This Emberjay has pecked at that gym door every morning for a week. I think it wants a real challenge. Fire and Flying both beat Grass.', N);
+    if (!await G.yesno('Will you take Emberjay along?')) { await S.say('The offer stands, if you change your mind.', N); return; }
+    await S.giveMon('emberjay', 10, { ball: 'orb', text: 'Emberjay ruffles its feathers and hops onto your shoulder.' });
+    S.set('got_ember');
+    await S.say('Look after it. And give Juniper my regards!', N);
+  };
   SC.gym_guide = async (S, ctx) => {
     const id = S.w.map.id;
     const info = {
@@ -404,8 +417,8 @@
     await S.say('I think you\'re ready for this. A Resonance Band.', HALE);
     await S.give('resonanceband');
     await S.say('Once per battle, an Echo that trusts you can {c}Resonate{w}. Moves of its main type hit far harder, and a Resonant Shield softens the first super-effective hit it takes.\\pIn battle, open FIGHT and press R. Save it for the moment that matters.', HALE);
-    await S.say('And this EXP Share, so your whole team grows stronger together, even the Echoes that don\'t battle.', HALE);
-    await S.give('expshare');
+    await S.say('And these EXP Candies. If an Echo ever falls behind the rest of your team, one of these will help it catch up.', HALE);
+    await S.give('expcandy', 3);
     await S.say('Crane Dynamics tools in the hands of the Hollow... I don\'t like it. Galvan Harbor is to the north. Warden Ione may know something.', HALE);
     await S.fadeOut(10); S.remove('wwhale'); await S.fadeIn(10);
     S.set('wood_done'); S.quest('main2', 'done'); S.quest('main3', 'go');
