@@ -83,6 +83,7 @@ G.WorldScene = class {
     if (m.type === 'outdoor') { G.save.lastOutdoor = { map: id, x, y }; if (m.def.town) G.save.visited[m.def.town] = true; }
     if (!this.player) this.player = new G.Ent({ id: 'player', x, y, dir: dir || 'down', look: G.LOOKS[G.save.look] || G.LOOKS.player_a, kind: 'player' });
     const p = this.player; p.x = x; p.y = y; p.px = x * 16; p.py = y * 16; p.moving = false; p.jump = null; p.hop = 0; if (dir) p.dir = dir;
+    if (G.tide) G.tide.refresh(this, 'enter');
     this.spawnEnts();
     { const pc = m.cell(x, y); this.surfing = !!(pc && pc.water); }
     this.placeFollower();
@@ -114,6 +115,7 @@ G.WorldScene = class {
       if (o.type === 'building' || o.type === 'trigger' || o.type === 'warp') continue;
       if (!G.checkCond(o.cond)) continue;
       if (o.type === 'item' && G.save.items[m.id + ':' + o.id]) continue;
+      if (o.tidal) { const c = m.cell(o.x, o.y); if (c && c.water) continue; }   // washed up on the flats: only there at low tide
       const e = new G.Ent({ ...o, kind: o.type, look: o.look ? (typeof o.look === 'string' ? G.LOOKS[o.look] : o.look) : null });
       if (o.type === 'trainer' && G.save.trainers[o.trainer]) e.defeated = true;
       if (o.type === 'item') e.hidden = !!o.hidden;
@@ -312,6 +314,7 @@ G.WorldScene = class {
         this.map = r.map; p.x = r.x; p.y = r.y; p.px = p.x * 16; p.py = p.y * 16;
         if (f) { f.x -= ox; f.y -= oy; f.px -= ox * 16; f.py -= oy * 16; if (f.moving) { f.nx -= ox; f.ny -= oy; } }
         for (const pt of this.footprints) { pt.x -= ox; pt.y -= oy; }
+        if (G.tide) G.tide.refresh(this, 'cross');
         this.spawnEnts();
         G.save.pos = { map: r.map.id, x: p.x, y: p.y, dir: p.dir };
         if (r.map.type === 'outdoor') { G.save.lastOutdoor = { map: r.map.id, x: p.x, y: p.y }; if (r.map.def.town) G.save.visited[r.map.def.town] = true; }
@@ -420,6 +423,7 @@ G.WorldScene = class {
     if (this.surfing && c.water && enc.surf) table = 'surf';
     else if (c.enc === 'grass' && enc.grass) table = 'grass';
     else if (c.enc === 'cave' && enc.cave) table = 'cave';
+    else if (c.tidal && !c.water && enc.tide) table = 'tide';
     if (!table) return false;
     this.stepsSinceEnc++;
     const rate = (table === 'grass' ? .1 : table === 'cave' ? .075 : .085) * (c.rare ? 1.4 : 1) * (G.party.lead() && G.mon.ability(G.party.lead()) === 'illuminate' ? 1.5 : 1);
@@ -619,6 +623,7 @@ G.WorldScene = class {
     }
   }
   async pickItem(e) {
+    if (e.page) { G.save.items[this.map.id + ':' + e.id] = true; this.ents = this.ents.filter(x => x !== e); await G.tide.readPage(e.page); return; }
     const it = G.ITEMS[e.item]; if (!it) return;
     G.save.items[this.map.id + ':' + e.id] = true;
     this.ents = this.ents.filter(x => x !== e);

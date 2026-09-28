@@ -18,6 +18,7 @@ G.LEGENDS = {
     'c': { g: 'cave' }, 'D': { g: 'dark', solid: true }, 'q': { g: 'pave', solid: true }, 'u': { o: 'bench', solid: true }, 'y': { o: 'flowerpot', solid: true },
     'o': { o: 'fountain', solid: true }, 'z': { o: 'snowman', solid: true }, 'e': { o: 'tent', solid: true }, 'p': { o: 'stall', solid: true }, 'Q': { o: 'crate', solid: true }, 'O': { o: 'barrel', solid: true },
     'S': { o: 'statue', solid: true }, 'A': { o: 'boat', solid: true, gnd: 'water' }, 'H': { g: 'tall', enc: 'grass', rare: true },
+    '%': { g: 'water', water: true, enc: 'surf', tidal: true },   // tidal flats: sea at high tide, sand at low (G.tide)
   },
   indoor: {
     '.': { g: 'wood' }, ',': { g: 'tilefloor' }, '_': { g: 'carpet' }, 'W': { g: 'wall', solid: true }, 'w': { g: 'wall', wv: 1, solid: true }, 'p': { g: 'wall', wv: 2, solid: true }, 'c': { g: 'wall', wv: 3, solid: true },
@@ -49,7 +50,7 @@ G.WorldMap = class {
     for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
       const ch = rows[y][x] || (this.type === 'indoor' ? '#' : this.type === 'cave' ? '#' : 'T');
       const e = L[ch] || L['.'];
-      const cell = { ch, g: e.g || e.gnd || this.ground, o: e.o || null, solid: !!e.solid, enc: e.enc === undefined ? null : e.enc, water: !!e.water, ledge: e.ledge || null, ice: !!e.ice, light: e.light || null, cut: !!e.cut, smash: !!e.smash, push: !!e.push, pc: !!e.pc, counter: !!e.counter, rare: !!e.rare, wv: e.wv || 0, wstyle: e.wstyle || null, solidIf: e.solidIf || null, sw: e.sw || null, v: G.hash(this.id + x + ',' + y) % 4, x, y };
+      const cell = { ch, g: e.g || e.gnd || this.ground, o: e.o || null, solid: !!e.solid, enc: e.enc === undefined ? null : e.enc, water: !!e.water, ledge: e.ledge || null, ice: !!e.ice, light: e.light || null, cut: !!e.cut, smash: !!e.smash, push: !!e.push, pc: !!e.pc, counter: !!e.counter, rare: !!e.rare, wv: e.wv || 0, wstyle: e.wstyle || null, solidIf: e.solidIf || null, sw: e.sw || null, tidal: !!e.tidal, v: G.hash(this.id + x + ',' + y) % 4, x, y };
       if (e.gnd) cell.g = e.gnd;
       if (cell.o && !e.g) cell.g = e.gnd || this.ground;
       if (ch === 'x' && !e.g) cell.g = this.ground;
@@ -69,6 +70,7 @@ G.WorldMap = class {
         if (best) c.g = best;
       }
     }
+    this.tidalCells = this.cells.filter(c => c.tidal); this.tideLow = false;
     this.objs = (def.objs || []).map(o => ({ ...o }));
     this.buildings = this.objs.filter(o => o.type === 'building');
     this.warps = (def.warps || []).map(w => ({ ...w }));
@@ -152,6 +154,7 @@ G.maps = {
     }
     // resolve neighbour maps lazily (avoid infinite recursion)
     for (const cn of m.conns) { Object.defineProperty(cn, 'map', { get: () => this.loaded[cn.id] || this.getShallow(cn.id), configurable: true }); }
+    if (G.tide) G.tide.set(m, G.tide.low());
     m.computeMasks();
     return m;
   },

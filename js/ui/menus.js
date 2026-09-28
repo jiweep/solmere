@@ -71,6 +71,7 @@ G.PauseScene = class {
     const lead = G.party.lead();
     U.panel(6, 6, 150, 30, 'glass', { r: 6 });
     U.text(G.world.scene.map.name, 12, 9, { size: 7, color: '#fff', weight: 800 });
+    if (G.tide) U.text(G.tide.low() ? 'Low tide' : G.settings.clock === 'real' || G.save.vars.forceHour !== undefined ? 'High tide' : `Tide out in ${Math.max(1, Math.round(G.tide.turnIn() * 2))}m`, 151, 10, { size: 5.2, weight: 800, color: G.tide.low() ? '#7fe0d0' : '#9fb0c8', align: 'right' });
     U.text(`${G.clock.label()}  ·  $${G.save.money.toLocaleString()}  ·  ${G.save.badges.length} badges`, 12, 20, { size: 5.8, color: '#cde' });
     if (G.save.repel > 0) U.text(`Repel: ${G.save.repel} steps`, 12, 28, { size: 5, color: '#9fe8b0' });
     if (G.save.settings.nuzlocke) { U.panel(6, 40, 150, 14, 'red', { r: 5 }); U.text(`NUZLOCKE · ${G.save.graveyard.length} fallen · ${Object.keys(G.save.nuz.enc).length} areas`, 81, 43, { size: 5.4, color: '#fff', weight: 800, align: 'center' }); }
@@ -185,7 +186,9 @@ G.openQuests = function () {
   const list = [...active, ...done];
   return new Promise(res => G.push({
     opaque: true, i: 0, t: 0,
-    update(top) { this.t++; if (!top) return; const I = G.input, n = Math.max(1, list.length); if (I.repeat('up')) this.i = (this.i + n - 1) % n; if (I.repeat('down')) this.i = (this.i + 1) % n; if (I.pressed('b') || I.pressed('a')) { I.consume('b'); I.consume('a'); G.pop(this); res(); } },
+    update(top) { this.t++; if (!top) return; const I = G.input, n = Math.max(1, list.length); if (I.repeat('up')) this.i = (this.i + n - 1) % n; if (I.repeat('down')) this.i = (this.i + 1) % n; const Q = G.QUESTS[list[this.i]];
+      if (I.pressed('a') && Q && Q.open) { I.consume('a'); this.busy = true; G.run(async () => { await Q.open(); this.busy = false; }); return; }
+      if (I.pressed('b') || I.pressed('a')) { I.consume('b'); I.consume('a'); G.pop(this); res(); } },
     draw(b) { G.menuBG(b, '#b0892a', '#4a3410', this.t / 60); },
     drawUI() {
       const U = G.ui;
@@ -204,7 +207,7 @@ G.openQuests = function () {
         const Q = G.QUESTS[id], st = G.save.quests[id].step;
         U.para(166, 24, 214, 14, 5, '#07060c'); U.text(Q.name, 178, 26.5, { size: 8, weight: 800, color: '#fff' });
         U.text(Q.main ? 'Main story' : 'Side quest' + (Q.giver ? ' · from ' + Q.giver : ''), 178, 41, { size: 5.6, color: '#8a7550' });
-        const txt = st === 'done' ? (Q.doneText || 'Completed!') : (Q.steps && Q.steps[st]) || Q.desc;
+        const txt = st === 'done' ? (Q.doneText || 'Completed!') + (Q.open ? '\n\nPress A to read the pages.' : '') : Q.live ? Q.live() : (Q.steps && Q.steps[st]) || Q.desc;
         G.ui.wrap(txt, 190, 6.4).slice(0, 13).forEach((l, k) => U.text(l, 178, 52 + k * 10, { size: 6.4, color: '#5a4a30' }));
         if (Q.reward && st !== 'done') U.text('Reward: ' + Q.reward, 178, 194, { size: 6, color: '#2a7a4a', weight: 800 });
       }

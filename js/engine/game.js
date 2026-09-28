@@ -138,6 +138,7 @@ G.renderScenes = function (start) {
       const U = G.ui, W = L.W, h = G.clock && G.clock.hourF ? G.clock.hourF() : 12, hh = Math.floor(h), mm = Math.floor((h - hh) * 60);
       U.text(w.map.name || '', 8, 6, { size: 8.4, weight: 800, color: '#f2f4f8', shadow: false });
       U.text(`${((hh + 11) % 12) + 1}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'}`, W - 8, 6, { size: 7, weight: 700, color: '#9fb0c8', align: 'right', shadow: false });
+      if (G.tide && G.tide.low()) U.text('Low tide', W - 8, 15, { size: 5.8, weight: 800, color: '#7fe0d0', align: 'right', shadow: false });
       const party = G.save.party.filter(m => !m.egg).slice(0, 6), cw = (W - 20) / 2, rows = Math.max(1, Math.min(3, Math.floor((L.H - 22) / 16)));
       party.forEach((m, i) => {
         const col = Math.floor(i / rows), row = i % rows; if (col > 1) return;

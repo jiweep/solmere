@@ -20,6 +20,7 @@ G.tutorial = (() => {
     faint: ['Fainting', 'When an Echo faints, choose another to send out. If all of your Echoes faint, you\'ll hurry back to the last place you rested.\\pVisit a Tamer Haven to heal your team for free, or use a Potion from your Bag.'],
     haven: ['Tamer Havens', 'Every town has a Tamer Haven. Talk to the nurse inside to heal your whole team for free.\\pThe Mart sells Orbs, Potions and other supplies.'],
     badge: ['Badges', 'Each Warden badge marks how far you\'ve come. Earn six, and the road to the Conclave will open.\\pYour Journal in the menu always shows your next goal.'],
+    tide: ['Tides', 'Twice a day, from 2 to 5 o\'clock, the Mere pulls back. Tidal flats rise out of the sea by some shores, with things washed up on them and Echoes that only come out on the flats.\\pThe menu shows when the tide will next go out.'],
     sweep: ['Sweeping', 'You swept past a weak wild Echo without a battle. Sweep several in a row to build a chain for bonus experience.'],
   };
   const ORDER = Object.keys(TIPS);

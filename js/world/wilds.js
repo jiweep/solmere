@@ -15,6 +15,7 @@ G.wilds = (() => {
   function tableAt(w, x, y) {
     const c = w.cellAt(x, y), enc = w.map.def.enc; if (!c || !enc) return null;
     if (c.water && c.g !== 'bridge' && c.g !== 'bridgev') return enc.surf ? 'surf' : null;
+    if (c.tidal) return enc.tide ? 'tide' : null;   // the flats at low tide
     if (c.enc === 'grass' && enc.grass) return 'grass';
     if (c.enc === 'cave' && enc.cave) return 'cave';
     return null;
@@ -54,7 +55,7 @@ G.wilds = (() => {
     e.wanderT = G.randInt(20, 90);
     w.ents.push(e);
     // it pops up out of the grass (or the water) with a rustle
-    const col = t === 'surf' ? '#bfe6ff' : t === 'cave' ? '#a89a8a' : '#6ab84a';
+    const col = t === 'surf' ? '#bfe6ff' : t === 'tide' ? '#e8dcb0' : t === 'cave' ? '#a89a8a' : '#6ab84a';
     for (let i = 0; i < 6; i++) w.fx.add({ x: x * 16 + 8 + (G.rand() - .5) * 8, y: y * 16 + 6, vx: (G.rand() - .5) * 1.2, vy: -1 - G.rand(), ay: .08, life: 24, type: t === 'grass' ? 'leaf' : 'circle', size: 1.4, rot: G.rand() * 6, vr: .2, color: col });
     if (dist(e, p) < 9) G.audio && G.audio.sfx('rustle');
   }

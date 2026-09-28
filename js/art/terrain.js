@@ -164,6 +164,17 @@ G.terrain = (function () {
           if (raisedAbove) k = Math.max(0, k - (raisedAbove === 1 ? 3 : raisedAbove === 2 ? 2 : 1));
           if (MB(x, y - 1) === M.PAVE || MB(x - 1, y) === M.PAVE || MB(x + 1, y) === M.PAVE || MB(x, y + 1) === M.PAVE) k = Math.max(1, k - 1);
           col = RR[k];
+          // tidal flats at low tide: wet, darker sand (ragged edge) with little pools left by the sea
+          if (m === M.SAND) {
+            const tc = cellAtPx(wx + (G.vnoise(wx / 6, wy / 6, 43) - .5) * 12, wy + (G.vnoise(wx / 6, wy / 6, 44) - .5) * 12).c;
+            if (tc && tc.tidal) {
+              col = RR[Math.max(1, k - 2)];
+              // puddles: soft, sky-tinted blobs with a darker rim, a few per flat
+              const pool = G.vnoise(wx / 10, wy / 7, 41) * .8 + G.vnoise(wx / 4, wy / 4, 42) * .2;
+              if (pool > .76) { const wc = RAMPS.water[6], sc = RR[Math.max(1, k - 2)], f = pool > .8 ? .55 : .35; col = [sc[0] + (wc[0] - sc[0]) * f | 0, sc[1] + (wc[1] - sc[1]) * f | 0, sc[2] + (wc[2] - sc[2]) * f | 0]; }
+              else if (pool > .74) col = RR[Math.max(0, k - 3)];
+            }
+          }
           break;
         }
         case M.ICE: {
