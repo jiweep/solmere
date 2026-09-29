@@ -142,11 +142,14 @@ G.chars = (function () {
   function hasBattle(a, k) { return !!(a && a.id && TA.img && G.TRAINER_ATLAS.rects[a.id] && G.TRAINER_ATLAS.rects[a.id][k]); }
   function battleSprite(a, k) {
     if (!hasBattle(a, k)) return null;
-    const key = 'tb|' + a.id + '|' + k;
+    const key = 'tb|' + a.id + '|' + k + (a.shadow ? '|shadow' : '');
     if (!cache.has(key)) {
       const [x, y, w, h] = G.TRAINER_ATLAS.rects[a.id][k];
       const cv = G.makeCanvas(w, h), c = cv.getContext('2d'); c.imageSmoothingEnabled = false;
-      c.drawImage(TA.img, x, y, w, h, 0, 0, w, h); cache.set(key, cv);
+      c.drawImage(TA.img, x, y, w, h, 0, 0, w, h);
+      // a look with shadow: true is a figure in the dark: the shape and a pale coat, no face
+      if (a.shadow) { const d = c.getImageData(0, 0, w, h), p = d.data; for (let i = 0; i < p.length; i += 4) { const l = (p[i] * .3 + p[i + 1] * .59 + p[i + 2] * .11) / 255, v = l > .9 ? 58 : 14 + l * 10; p[i] = v * .8; p[i + 1] = v * .85; p[i + 2] = v * 1.25; } c.putImageData(d, 0, 0); }
+      cache.set(key, cv);
     }
     return cache.get(key);
   }

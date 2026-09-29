@@ -80,7 +80,9 @@ G.defMap({
 });
 // ------------------------------------------------------------- quests ----
 Object.assign(G.QUESTS, {
-  main1: { name: 'A Sunlit Start', main: true, desc: 'Visit Professor Hale\'s lab on the Brinehollow pier.', steps: { lab: 'Visit Professor Hale\'s lab on the Brinehollow pier.', parcel: 'Deliver the Lab Parcel to Warden Juniper in Fernwick Town, north along Route 1.', badge1: 'Challenge Warden Juniper at the Fernwick Gym!' }, doneText: 'You earned your first badge!' },
+  // the first hour's Journal holds what people told you, in their words, not orders (docs/GRAVITY_PLAN.md)
+  main1: { name: 'A Sunlit Start', main: true, desc: 'Mom: "The lab is down on the pier, past the market."', steps: { lab: 'Mom: "The lab is down on the pier, past the market. Off you go."', parcel: 'Prof. Hale: "Warden Juniper in Fernwick, north along Route 1, is waiting on my notes. She runs Fernwick\'s gym, too."', badge1: 'Juniper: "Show me what you\'ve been growing, dear."', lost: 'Juniper: "A garden only thrives if you are patient, and stubborn, and you never give up."' }, doneText: 'You earned your first badge!' },
+  side_emberjay: { name: 'The Emberjay', giver: 'Tamer Mira', desc: 'Mira: "Mornings it pecks at Juniper\'s gym door. At night it roosts in the lone tree at the far end of the Sunken Garden, down by the hedge."', doneText: 'The Emberjay from the gym door travels with you now.' },
   main2: { name: 'Whispers in the Wood', main: true, desc: 'Juniper asked you to check on the Heartroot Shrine deep in Whisperwood, east along Route 2.', doneText: 'You drove off the Hollow and received the Resonance Band.' },
   main3: { name: 'The Harbor City', main: true, desc: 'Head north-east to Galvan Harbor and challenge Warden Ione.', doneText: 'Galvan\'s Current Badge is yours.' },
   main4: { name: 'Crystals in the Dark', main: true, desc: 'Travel east along Route 3 and through Glimmer Cave to reach Cindervale.', doneText: 'You made it through Glimmer Cave and earned the Forge Badge.' },

@@ -466,13 +466,15 @@ G.jumpToChapter = async function (ch) {
 // ace. It teaches Fight and moves at the most exciting moment of the story, then rewinds. Nothing from it
 // stays: its own party, no exp or money, and the Echodex and records put back as they were.
 G.coldOpenBattle = async function () {
-  if (!G.TRAINERS.prologue_crane) G.TRAINERS.prologue_crane = { cls: 'Director', name: 'Vesper Crane', look: 'crane', ai: 1, money: 0, boss: true, noRematch: true, music: 'crane_battle', env: 'lighthouse',
-    party: [{ sp: 'stormhound', lvl: 44, moves: ['thunderfang', 'crunch', 'voltdash', 'growl'] }], intro: '', defeat: 'You don\'t understand what you\'re stopping.' };
+  // the foe is a shadow in a Crane coat: no name, no face, and a line that means nothing until the Lodestar
+  // (docs/GRAVITY_PLAN.md: the first minute used to show the villain, her motive and the finale)
+  if (!G.TRAINERS.prologue_crane) G.TRAINERS.prologue_crane = { cls: '', name: '???', look: Object.assign({}, G.LOOKS.crane, { shadow: true }), ai: 1, money: 0, boss: true, noRematch: true, music: 'crane_battle', env: 'lighthouse',
+    party: [{ sp: 'stormhound', lvl: 44, moves: ['thunderfang', 'crunch', 'voltdash', 'growl'] }], intro: '', defeat: 'Not tonight. Not after all this time.' };
   const keep = ['dex', 'stats', 'trainers', 'money', 'nemesis', 'name', 'look'].map(k => [k, JSON.stringify(G.save[k])]);
   G.save.name = G.save.name || '???';
   const lumi = G.mon.create('luminelle', 55); lumi.bond = 255; lumi.moves = ['moonblast', 'psychic', 'playrough', 'calmmind'].map(x => G.mon.newMove(x));
   try {
-    await G.say('Twelve years, I have waited for this song. I will not let a child take it from me now.', { speaker: 'Vesper Crane' });
+    await G.say('Step away from the lamp. You have no idea what\'s listening.', { speaker: '???' });
     await G.runBattle({ foes: [G.makeTrainerCfg('prologue_crane')], playerParty: [lumi], format: 'single', music: 'crane_battle', boss: true, env: 'lighthouse', noRun: true, canLose: true, hidePlayer: true, exp: false, noMoney: true, noClips: true, noPost: true });
   } catch (e) { G.reportError(e); }
   for (const [k, v] of keep) G.save[k] = v === undefined ? undefined : JSON.parse(v);
@@ -504,15 +506,15 @@ G.runPrologue = async function () {
   const cap = async (text, hold = 170) => { sc.caption = text; for (let i = 0; i <= 20; i++) { sc.capA = i / 20; await wait(1); } await wait(hold); for (let i = 20; i >= 0; i--) { sc.capA = i / 20; await wait(1); } };
   try {
     await G.fadeIn(50);
-    await cap('Twelve years ago, two scientists tried to record a song.', 130);
+    await cap('For three hundred years, the Lodestar has lit the Mere.', 130);
     for (let i = 0; i <= 60; i++) { sc.night = i / 60; await wait(1); }
-    await cap('Then the Lodestar went dark.', 40);
+    await cap('Twelve years ago, for one night, it went dark.', 40);
     for (let i = 0; i < 70; i++) { sc.lampLevel = i > 55 ? 0 : (G.rand() < .45 ? 0 : .4 + G.rand() * .6); await wait(1); }
     sc.lampLevel = 0; await wait(40);
     const rise = (async () => { for (let i = 0; i <= 260; i++) { sc.breachK = .2 + .3 * i / 260; if (i === 110) { G.audio && G.audio.cry('orrelume'); } await wait(1); } })();
     await cap('And from the black water, something rose... and sang.', 140);
     await rise;
-    await cap('Hidden in the song was a name. Somebody has spent twelve years trying to answer it.', 170);
+    await cap('Nobody in Brinehollow talks about that night.', 150);
     // the cold open: hands on the controls at the story's peak, months ahead, then the rewind
     await cap('Some months from now...', 90);
   } catch (e) { if (e !== SKIP) throw e; }

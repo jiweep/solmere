@@ -12,14 +12,18 @@
 
   // ------------------------------------------------------------ ROUTE 1
   T('r1_kid', 'Kid', 'Timmy', 'kid', [['nibbit', 3]], { intro: 'My Nibbit can chew through anything! Want to see?', defeat: 'Aww. My Nibbit tried its best.', after: 'Nibbit\'s teeth never stop growing, so it chews on sticks all day.' });
-  T('r1_lass', 'Lass', 'Poppy', 'lass', [['pipwing', 3], ['mossbun', 4]], { intro: 'Is that your first Echo? Mine too! Let\'s battle!', defeat: 'You\'re good! Were you really just starting out?', after: 'Hold Shift to run. It makes walking the routes so much quicker!' });
+  T('r1_lass', 'Lass', 'Poppy', 'lass', [['pipwing', 3], ['mossbun', 4]], { intro: 'Is that your first Echo? Mine too! Let\'s battle!', defeat: 'You\'re good! Were you really just starting out?', after: 'My Pipwing keeps diving at the reeds on the far side of the pond. There must be something shiny in there.' });
   T('r1_bug', 'Bug Maniac', 'Pip', 'bugmaniac', [['grubbit', 6], ['grubbit', 7]], { intro: 'Shh! You\'ll scare the bugs! ...Oh, you want to battle? Even better!', defeat: 'My Grubbits! They were so brave.', after: 'Grubbit are slow now, but wait until they evolve. Everything is worth a second look.' });
-  T('r1_boy', 'Youngster', 'Ned', 'boy', [['nibbit', 6], ['pipwing', 7]], { intro: 'I\'ve been training up here all week. You don\'t stand a chance!', defeat: 'All week... for this?', after: 'The gym in Fernwick is all Grass types. Fire and Flying moves are your friends.' });
+  T('r1_boy', 'Youngster', 'Ned', 'boy', [['nibbit', 6], ['pipwing', 7]], { intro: 'I\'ve been training up here all week. You don\'t stand a chance!', defeat: 'All week... for this?', after: 'I went to Juniper with just my Nibbit. She was very kind about it, and I lost anyway.' });
   // ------------------------------------------------------- FERNWICK GYM
-  T('fg_1', 'Gardener', 'Rosa', 'farmer', [['mossbun', 9], ['shroomie', 10]], { intro: 'Every flower in this gym was planted by hand. Mind where you step!', defeat: 'My petals... wilted.', after: 'Fire, Flying, Bug, Poison and Ice moves all work well against Grass.' }, gymO());
+  T('fg_1', 'Gardener', 'Rosa', 'farmer', [['mossbun', 9], ['shroomie', 10]], { intro: 'Every flower in this gym was planted by hand. Mind where you step!', defeat: 'My petals... wilted.', after: 'The Warden\'s garden takes before it gives. Watch what her first Echo does before it ever attacks.' }, gymO());
   T('fg_2', 'Gardener', 'Tobin', 'farmer', [['shroomie', 10], ['mossbun', 10]], { intro: 'Warden Juniper is the kindest person in Fernwick. And the toughest!', defeat: 'You\'re the real thing.', after: 'Leech Seed drains a little health every turn. It adds up fast!' }, gymO());
-  T('juniper', 'Warden', 'Juniper', 'juniper', [['mossbun', 11, { moves: ['vinewhip', 'quickstrike', 'tailwhip', 'absorb'] }], ['shroomie', 12, { moves: ['megadrain', 'stunspore', 'poisonsting', 'absorb'] }], ['fawnbloom', 13, { item: 'oranberry', moves: ['vinewhip', 'charmleaf', 'growl', 'absorb'] }]],
-    { intro: '', defeat: 'Oh my. You and your partners bloom together beautifully.' }, leader({ items: { superpotion: 1 } }));
+  // Juniper has a plan, not levels: Shroomie opens with Stun Spore and Leech Seed and drains from behind them,
+  // and Fawnbloom carries Mud Shot for the Fire starter everyone brings (the Emberjay flies over it).
+  // Measured by tests/attention.js: a team that just walked the road wins about half the time, one that
+  // listened (Route 1's Tamers, the Emberjay at its roost) wins comfortably, one that skipped everything loses.
+  T('juniper', 'Warden', 'Juniper', 'juniper', [['mossbun', 9, { moves: ['vinewhip', 'quickstrike', 'tailwhip', 'absorb'] }], ['shroomie', 9, { moves: ['stunspore', 'leechseed', 'megadrain', 'poisonsting'] }], ['fawnbloom', 11, { item: 'oranberry', moves: ['vinewhip', 'charmleaf', 'mudshot', 'growl'] }]],
+    { intro: '', defeat: 'Oh my. You and your partners bloom together beautifully.', retry: 'You came back. Good. Did you watch what my garden did before it ever struck? ...Then show me.' }, leader({ items: { superpotion: 1 } }));
   // ------------------------------------------------------------ ROUTE 2
   T('r2_bug', 'Bug Maniac', 'Wes', 'bugmaniac', [['grubbit', 7], ['grubbit', 7], ['cocoonet', 8]], { intro: 'Behold my army of future Aurorymoths!', defeat: 'My army still has some growing to do.', after: 'Grubbit evolves quickly: at level 7, then again at 10.' });
   T('r2_hiker', 'Hiker', 'Dale', 'hiker', [['pebblin', 9], ['pebblin', 10]], { intro: 'HAH! Rocks! Nothing is as steady as a good rock!', defeat: 'I\'ve been ground down!', after: 'Pebblin love to sunbathe on warm stones.' });

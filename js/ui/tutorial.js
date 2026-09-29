@@ -8,10 +8,10 @@
 G.tutorial = (() => {
   const TIPS = {
     controls: ['Getting around', 'Walk with the arrow keys or WASD. Press Z (or Enter) to talk, read and confirm, and X (or Esc) to go back.\\pHold Shift to run. Press H at any time to see every control.'],
-    menu: ['The menu', 'Press X to open the menu. From there you can check your Party, open your Bag, read the Echodex and your Journal, and save your game.\\pYour Journal always shows where to go next.'],
+    menu: ['The menu', 'Press X to open the menu. From there you can check your Party, open your Bag, read the Echodex and your Journal, and save your game.\\pYour Journal keeps what people have told you, in their own words.'],
     partner: ['Your partner', 'Your Echo travels in your Party and walks along behind you. Choose Party in the menu to see its moves and stats.\\pYou can carry up to six Echoes at once.'],
     battle: ['Battles', 'Choose FIGHT, then one of your Echo\'s moves. The bars show each Echo\'s health (HP). An Echo whose HP reaches zero faints.\\pWinning earns your Echoes experience. As they level up they grow stronger and learn new moves.'],
-    types: ['Types', 'Every Echo and every move has a type, and some types are strong against others. Water beats Fire, Fire beats Grass, and Grass beats Water.\\pA super-effective move deals double damage; a not-very-effective one deals half. The FIGHT menu shows a hint for each move.'],
+    types: ['Types', 'Every Echo and every move has a type, and some types are strong against others. Water beats Fire, Fire beats Grass, and Grass beats Water.\\pA super-effective move deals double damage; a not-very-effective one deals half. On Easy, the FIGHT menu marks how well each move will land; anyone can switch those hints on in Options.'],
     wild: ['Wild Echoes', 'Wild Echoes roam the tall grass. Walk into one to battle it. Shy ones may run from you, and bold ones may come straight for you.\\pIf one is much weaker than your lead and you already own its kind, you\'ll simply Sweep past it.'],
     catching: ['Catching', 'To catch a wild Echo, weaken it first, then choose BAG and throw an Orb. The lower its HP, the better your chances. Sleeping or paralysed Echoes are easier still.'],
     throw: ['Throwing an Orb', 'A ring shrinks around the Echo. Press Z as it passes over the gold circle. The better your timing, the better your chances: Nice, Great, or Perfect!\\pGreat or Perfect catches in a row build a Catch Combo, which draws rarer Echoes to you.'],
@@ -19,7 +19,7 @@ G.tutorial = (() => {
     trainer: ['Tamer battles', 'You can\'t run from a battle against another Tamer. Defeat all of their Echoes to win, and earn prize money.\\pTamers who catch sight of you will walk over to challenge you.'],
     faint: ['Fainting', 'When an Echo faints, choose another to send out. If all of your Echoes faint, you\'ll hurry back to the last place you rested.\\pVisit a Tamer Haven to heal your team for free, or use a Potion from your Bag.'],
     haven: ['Tamer Havens', 'Every town has a Tamer Haven. Talk to the nurse inside to heal your whole team for free.\\pThe Mart sells Orbs, Potions and other supplies.'],
-    badge: ['Badges', 'Each Warden badge marks how far you\'ve come. Earn six, and the road to the Conclave will open.\\pYour Journal in the menu always shows your next goal.'],
+    badge: ['Badges', 'Each Warden badge marks how far you\'ve come. Earn six, and the road to the Conclave will open.\\pIf you lose the thread, your Journal holds what people told you.'],
     tide: ['Tides', 'Twice a day, from 2 to 5 o\'clock, the Mere pulls back. Tidal flats rise out of the sea by some shores, with things washed up on them and Echoes that only come out on the flats. Once in a while one of them is Tidetouched, with a pearl sheen all its own.\\pThe menu shows when the tide will next go out.'],
     sweep: ['Sweeping', 'You swept past a weak wild Echo without a battle. Sweep several in a row to build a chain for bonus experience.'],
   };
@@ -58,7 +58,8 @@ G.tutorial = (() => {
       const p = w.player, free = top && !w.busy && p && !p.moving;
       this.idle = free ? this.idle + 1 : 0;
       const goal = G.currentGoal && G.currentGoal();
-      if (!goal || this.nudge || G.gfx.lower) return;   // upright phones show it on the lower screen already
+      // only with tips on: with them off, finding the way is yours (the Journal holds what people said)
+      if (!goal || !on() || this.nudge || G.gfx.lower) return;   // upright phones show it on the lower screen already
       const wait = 60 * (on() ? 15 : 30), again = goal !== this.lastGoal || G.realTime - this.lastGoalT > 180;
       if (this.idle > wait && again) {
         this.lastGoal = goal; this.lastGoalT = G.realTime; const s0 = p.stepN;

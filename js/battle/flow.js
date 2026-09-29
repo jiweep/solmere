@@ -18,6 +18,9 @@ G.levelCapNow = function () {
   return G.LEVEL_CAPS[b];
 };
 G.diff = () => G.DIFF[G.save.settings.difficulty] || G.DIFF.normal;
+// "Super effective" labels on the moves: per journey, on for Easy and off otherwise until switched on in Options
+// (knowing the matchups is part of the game on Normal: docs/GRAVITY_PLAN.md)
+G.hintsOn = function () { const s = G.save && G.save.settings; if (!s) return !!G.settings.hints; return s.hints !== undefined ? !!s.hints : s.difficulty === 'easy'; };
 // ------------------------------------------------------------ randomizer --
 G.randomizeSpecies = function (sp, ctx) {
   const R = G.save.settings.randomizer; if (!R || !R.on) return sp;
@@ -152,14 +155,9 @@ G.runBattle = async function (cfg) {
       const last = cfg.foes.flatMap(f => f.party).reduce((a, m) => Math.max(a, m.lvl), 1);
       let prize = cfg.foes.reduce((a, f) => a + ((G.TRAINERS[f.trainerId] || {}).money || 40) * last, 0);
       if (G.save.party.some(m => m.item === 'amuletcoin')) prize *= 2;
-      if (avenged.length) prize *= 2;
-      if (prize > 0 && !cfg.noMoney) { G.save.money += prize; G.save.stats.earned += prize; await scene.message(`You got $${prize.toLocaleString()} for winning!${avenged.length ? ' Revenge pays double.' : ''}`, { press: true }); }
-      if (avenged.length) {
-        const b = G.save.badges.length, [it, n] = b < 2 ? ['greatorb', 2] : b < 4 ? ['superpotion', 2] : b < 6 ? ['ultraorb', 2] : ['rarecandy', 1];
-        G.bag.add(it, n); for (const id of avenged) delete nem[id];
-        G.save.stats.revenges = (G.save.stats.revenges || 0) + 1;
-        await scene.message(`${G.TRAINERS[avenged[0]].name} hands you ${n > 1 ? n + ' ' : 'a '}${G.ITEMS[it].name}${n > 1 ? 's' : ''}. "Fair's fair. You earned it."`, { press: true });
-      }
+      if (prize > 0 && !cfg.noMoney) { G.save.money += prize; G.save.stats.earned += prize; await scene.message(`You got $${prize.toLocaleString()} for winning!`, { press: true }); }
+      // beating a Tamer who once beat you is its own reward: the moment, not a payout (losing must never pay)
+      if (avenged.length) { for (const id of avenged) delete nem[id]; G.save.stats.revenges = (G.save.stats.revenges || 0) + 1; }
     } else if (result.outcome === 'win' && cfg.wild) { G.audio && G.audio.music('victory_wild'); await scene.wait(40); }
     await G.fadeOut(16);
     G.pop(scene);
@@ -288,9 +286,9 @@ G.postBattle = async function (r, cfg) {
   if (w) w.placeFollower();
 };
 G.blackout = async function (cfg) {
-  // losing already sends you back to the last Haven; the money it costs is a small sting (a tenth), not a
-  // second punishment on top (it used to be half)
-  const lost = Math.min(G.save.money, Math.floor(G.save.money / 10));
+  // losing costs something real (docs/GRAVITY_PLAN.md): half your money, as in the classic games, and the
+  // walk back from the last Haven
+  const lost = Math.min(G.save.money, Math.floor(G.save.money / 2));
   if (G.save.lastHeal && G.save.lastHeal.back) G.save.returnTo = G.save.lastHeal.back;
   if (G.flag('league_entered') && !G.flag('hof_pending')) for (const f of ['e1_done', 'e2_done', 'e3_done', 'e4_done', 'league_entered', 'elite4_done']) G.setFlag(f, false);
   G.save.money -= lost;
@@ -453,6 +451,7 @@ G.trainerBattleFromEnt = async function (e, rematch) {
 };
 // what a Tamer who beat you says when you come back (warm, never mean: STORY_BIBLE.md)
 G.nemesisLine = function (T, stars) {
+  if (T.retry) return T.retry;
   if (T.boss) return stars > 1 ? 'Back again, and again. Good. The ones who keep coming back are the ones who win in the end.' : 'You came back. Most people don\'t. That already tells me something. Show me the rest.';
   const L = stars > 1 ? ['Again? You really don\'t give up, do you? I like that. Come on, then!', 'Round three... or is it four? I\'ve lost count. You haven\'t, I bet.']
     : ['Oh, it\'s you! I\'ve told everyone about our last battle. Ready to change the ending?', 'You\'re back! Good. I was hoping you\'d come back.', 'I remember you! Let\'s see what you\'ve learned since last time.'];

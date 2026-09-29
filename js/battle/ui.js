@@ -187,7 +187,7 @@
         U.text(m.name, x + 6, y + 3, { size: 8, weight: 800, color: '#fff', shadow: 'rgba(0,0,0,.4)' });
         const ppc = mv.pp === 0 ? '#ffb0b0' : mv.pp <= mv.maxpp / 4 ? '#ffe08a' : '#eef4ff';
         U.text(`${G.cap(m.type)} · PP ${mv.pp}/${mv.maxpp}`, x + 6, y + ch - 10, { size: 5.8, weight: 700, color: ppc, shadow: 'rgba(0,0,0,.4)' });
-        if (t && m.cat !== 'status' && G.settings.hints && G.save && G.save.dex.seen[t.mon.sp]) {
+        if (t && m.cat !== 'status' && G.hintsOn() && G.save && G.save.dex.seen[t.mon.sp]) {
           const eff = this.bt.effectiveness(m, this.bt.at(this.req.ref.s, this.req.ref.i) || t, t);
           const lbl = eff === 0 ? 'No effect' : eff > 1 ? 'Super effective' : eff < 1 ? 'Not very effective' : '';
           if (lbl && ch > 26) U.text(lbl, x + 6, y + 13, { size: 5.6, weight: 800, color: eff === 0 ? '#d0d0d8' : eff > 1 ? '#c8ffb0' : '#ffd0c0', shadow: 'rgba(0,0,0,.45)' });
@@ -214,7 +214,7 @@
         const ppc = mv.pp === 0 ? '#ffb0b0' : mv.pp <= mv.maxpp / 4 ? '#ffe08a' : '#eef4ff';
         U.text(`PP ${mv.pp}/${mv.maxpp}`, x + 121, y + 12.3, { size: 5.6, weight: 800, color: ppc, align: 'right', shadow: 'rgba(0,0,0,.4)' });
         const t = this.target();
-        if (t && m.cat !== 'status' && G.settings.hints && G.save && G.save.dex.seen[t.mon.sp]) {
+        if (t && m.cat !== 'status' && G.hintsOn() && G.save && G.save.dex.seen[t.mon.sp]) {
           const eff = this.bt.effectiveness(m, this.bt.at(this.req.ref.s, this.req.ref.i) || t, t);
           const lbl = eff === 0 ? 'No effect' : eff > 1 ? 'Super effective' : eff < 1 ? 'Not very effective' : '';
           if (lbl) U.text(lbl, x + 7, y + 12.8, { size: 5, weight: 800, color: eff === 0 ? '#d0d0d8' : eff > 1 ? '#c8ffb0' : '#ffd0c0', shadow: 'rgba(0,0,0,.45)' });

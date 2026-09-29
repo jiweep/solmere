@@ -1,5 +1,5 @@
-// Nemesis trainers: losing to a Tamer marks them; coming back gets a (kind) taunt; beating them pays double,
-// gives an item and a REVENGE! moment. Battles are stubbed (Battle.run returns a fixed outcome).
+// Nemesis trainers: losing to a Tamer marks them; coming back gets a (kind) taunt; beating them is a REVENGE!
+// moment but pays the usual prize and nothing more (losing must never pay: docs/GRAVITY_PLAN.md). Battles are stubbed (Battle.run returns a fixed outcome).
 // Run: node server.js & NODE_PATH=/opt/node22/lib/node_modules node tests/nemesis.js
 const { chromium } = require('playwright');
 (async () => {
@@ -28,8 +28,8 @@ const { chromium } = require('playwright');
     await G.trainerBattleFromEnt(e2);
     ok(said[0] && said[0].startsWith(T.name + ':') && said[0] !== T.name + ': ' + T.intro, 'the rematch opens with a taunt: ' + (said[0] || '').slice(0, 90));
     const base = (T.money || 40) * Math.max(...T.party.map(p => p.lvl !== undefined ? p.lvl : p[1]));
-    ok(G.save.money - money0 === base * 2, `revenge pays double (${G.save.money - money0} vs ${base})`);
-    ok(G.bag.count('greatorb') === orbs0 + 2, 'and hands over 2 Great Orbs');
+    ok(G.save.money - money0 === base, `revenge pays the normal prize (${G.save.money - money0} vs ${base})`);
+    ok(G.bag.count('greatorb') === orbs0, 'and no gift');
     ok(!G.save.nemesis.r1_bug && G.save.stats.revenges === 1, 'the grudge is settled');
     // no nemeses from the Daily Tide or Spire (their battles pass playerParty)
     outcome = 'lose'; await G.runBattle({ foes: [G.makeTrainerCfg('r1_boy')], format: 'single', playerParty: G.save.party, noMoney: true, noPost: true, canLose: true });

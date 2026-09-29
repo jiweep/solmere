@@ -119,7 +119,7 @@ G.openOptions = function (oo = {}) {
     { k: 'ffMode', label: 'Fast-Forward Key (Tab)', vals: ['toggle', 'hold'], names: ['Toggle', 'Hold'] },
     { k: 'battleStyle', label: 'Battle Style', vals: ['switch', 'set'], names: ['Switch', 'Set'], save: true, apply: v => sv.settings.setMode = v === 'set', get: () => sv.settings.setMode ? 'set' : 'switch' },
     { k: 'expShare', label: 'EXP Share', vals: [true, false], names: ['On', 'Off'], save: true, get: () => sv.settings.expShare, apply: v => sv.settings.expShare = v },
-    { k: 'hints', label: 'Effectiveness Hints', vals: [true, false], names: ['On', 'Off'] },
+    { k: 'hints', label: 'Effectiveness Hints', vals: [true, false], names: ['On', 'Off'], save: true, get: () => G.hintsOn(), apply: v => { if (sv && sv.settings) sv.settings.hints = v; } },
     { k: 'dmgPreview', label: 'Damage Preview', vals: [false, true], names: ['Off', 'On'] },
     { k: 'autosave', label: 'Autosave', vals: [true, false], names: ['On', 'Off'] },
     { k: 'autoRun', label: 'Always Run', vals: [false, true], names: ['Off', 'On'] },

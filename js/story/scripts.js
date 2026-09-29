@@ -9,6 +9,8 @@
   const HALE = 'Prof. Hale', WREN = () => G.save.rival, MOM = 'Mom';
   const pushBack = async (S, dir) => { await S.move('player', { up: 'd', down: 'u', left: 'r', right: 'l' }[dir] || 'd', 1); };
   const starterName = sp => G.SPECIES[sp].name;
+  // your partner: the starter from the lab, wherever it is now (it reacts at the moments that matter)
+  const partner = () => { const u = G.getVar('partnerUid', null); return (u !== null && G.party.allMons().find(m => m.uid === u)) || G.party.allMons().find(m => G.evoLine(m.sp)[0].id === G.getVar('starter', '')) || null; };
   // a choice with personality: options are [heart, chaos, deadpan]; the pick is remembered, and people react to it
   const VIBES = ['heart', 'chaos', 'deadpan'];
   const choose = async (q, opts, speaker) => {
@@ -101,10 +103,11 @@
     S.facePlayer('mom');
     if (!G.flag('mom_talk')) {
       await S.say(`Good morning, sleepyhead. Professor Hale came by looking for you. So did ${R()}, three times, and then ran past the window shouting your name.`, MOM);
-      await S.say(`Here, take this. It's a Tamer's Journal. It keeps track of where you're headed and what you've promised people, in case you forget.`, MOM);
+      await S.say(`Here, take this. It's a Tamer's Journal. It keeps what people tell you, and what you've promised them, in case you forget.`, MOM);
       await S.give('journal');
       S.quest('main1', 'lab');
       const k = await choose('Mom looks at you for a long moment.', ['I\'ll make you proud.', 'I\'ll be back before you know it.', 'Don\'t worry about me.']);
+      G.setVar('momSaid', k);   // read back at the first badge and when you first come home with it
       await S.say([`You already have. Now go on, before I get teary in front of the whole kitchen.`, `I'll hold you to that. There will always be a warm bed for you here.`, `Worrying is my job. Yours is to go and have an adventure.`][k], MOM);
       await S.say(`The lab is down on the pier, past the market. Off you go.`, MOM);
       S.set('mom_talk');
@@ -112,6 +115,13 @@
       return;
     }
     const b = G.save.badges.length;
+    if (G.flag('badge1') && !G.flag('mom_home1')) {   // coming home with the first badge: what you told her, and your partner
+      S.set('mom_home1');
+      await S.say([`One badge already. You said you'd make me proud, and I told you that you already had. I still meant it. This is just extra.`, `Back before I knew it, just like you said. Well. I noticed. I noticed every hour of it.`, `You told me not to worry. I tried, for one whole day. Then Juniper wrote that you'd beaten her, and I stopped trying.`][G.getVar('momSaid', 0)], MOM);
+      const pm = partner();
+      if (pm) { await S.say(`And this must be ${G.mon.name(pm)}. Come here, you.`, MOM); await S.say(`${G.mon.name(pm)} sniffs Mom's hand, then curls up by the stove as if it has lived here all its life.`); }
+      await S.heal(); await S.say('There. Everyone\'s rested. Go carefully, and come home soon.', MOM); return;
+    }
     if (G.flag('champion')) { await S.say(`The Champion of Solmere, sitting at my kitchen table. I'm so proud of you. Now eat your soup before it goes cold.`, MOM); await S.heal(); return; }
     await S.say(G.pick([`You look tired. Sit down and rest a while.`, `${b ? `${b} badge${b > 1 ? 's' : ''}! I keep them on the windowsill where the light catches them. ` : ''}Have something to eat before you go.`, `Are you eating properly out there? And looking after your Echoes?`, `${R()} came by this morning asking if you were home. That child has never once knocked.`]), MOM);
     await S.heal();
@@ -140,6 +150,10 @@
     await S.emote('wren_lab', '!');
     await S.say(`${P()}! There you are! I've been waiting since sunrise!`, WREN());
     await S.say(`Welcome, welcome! Mind the cables on the floor. This way.`, HALE);
+    // Hale's secret, planted (GRAVITY_PLAN 5): she goes quiet whenever anyone mentions the song
+    await S.say(`Professor, is it true the Lodestar sings at night? Old folk on the pier say they heard it once.`, WREN());
+    await S.emote('hale', '...', 40);
+    await S.say(`...Mind the cables, ${R()}. This way.`, HALE);
     await S.walkTo('player', 5, 6);
     S.face('player', 'up');
     await S.say('On the table are three Orbs, and inside each is a young Echo looking for a partner.', HALE);
@@ -179,7 +193,8 @@
     if (!ok) return;
     G.setVar('starter', sp);
     G.defineRivals();
-    await S.giveMon(sp, 5, { starter: true, bond: 120, ball: 'orb', text: `${starterName(shown)} looks up at you, and doesn't look away.` });
+    const pm = await S.giveMon(sp, 5, { starter: true, bond: 120, ball: 'orb', text: `${starterName(shown)} looks up at you, and doesn't look away.` });
+    if (pm) G.setVar('partnerUid', pm.uid);
     S.set('got_starter');
     S.w.spawnEnts();
     await G.tutorial.show('partner');
@@ -255,8 +270,10 @@
       await S.say('A deal\'s a deal. Here are your Sun Berries. Give one to an Echo to hold, and it will eat it when it\'s badly hurt.', WREN());
       await S.give('sunberry', 2);
       G.save.stats.raceWins = (G.save.stats.raceWins || 0) + 1;
+      if (partner()) await S.say(`${G.mon.name(partner())} is panting as hard as ${R()}, and looks very pleased with itself.`);
     } else {
       await S.say(`Beat you! That makes us even, I think. You owe me Sun Berries!`, WREN());
+      if (partner()) await S.say(`${G.mon.name(partner())} glares at ${R()}'s partner, then nudges your hand. Next time.`);
     }
     await S.say('The gym is at the top of town. Juniper looks gentle, but they say she\'s tough. See you in there!', WREN());
     await S.fadeOut(10); S.remove('rw'); await S.fadeIn(10);
@@ -315,6 +332,7 @@
   };
   SC.dowsing_man = async (S) => {
     S.facePlayer('fw_dowse');
+    if (!G.flag('badge1')) { await S.say('I\'m a treasure hunter. Rule one: listen. Half the treasure in Fernwick, somebody has already mentioned without knowing it. Come back when you\'ve a badge and I\'ll show you rule two.', 'Treasure Hunter'); return; }
     if (!G.bag.has('dowsing')) { await S.say('There\'s treasure buried all over Solmere! Take my spare Dowsing Rod. Use it from the Bag and it will point you to hidden items nearby.', 'Treasure Hunter'); await S.give('dowsing'); return; }
     await S.say('Dead ends, the backs of trees, the corners nobody bothers to check. That\'s where the best finds are.', 'Treasure Hunter');
   };
@@ -323,23 +341,32 @@
     const m = G.party.lead(); if (!m) return;
     await S.say(`Ah, ${G.mon.name(m)}! ${m.nick ? 'What a fine name. You can tell it was chosen with care.' : 'No nickname yet? You can give it one from the Party menu. A name makes a partner feel like family.'}`, 'Name Enthusiast');
   };
-  // Before the first gym: a Tamer offers an Emberjay (Fire/Flying, strong against Grass), so every starter has a
-  // fair way into Juniper's Grass gym (Budling mirrors it, Sealet is weak to it). Measured with the gym-1 bots:
-  // with it, disadvantaged starters win about 60-80%; without, almost never (tests/early_balance.js).
+  // Before the first gym: nobody hands you the answer. Mira talks about a wild Emberjay (Fire/Flying) that pecks at
+  // the gym door every morning and where it roosts at night; a player who listens goes and catches it (or finds
+  // another answer on Route 1). tests/attention.js measures what that's worth against Juniper.
   SC.ember_gift = async (S) => {
     const N = 'Tamer Mira'; S.facePlayer('ember_mira');
-    if (G.flag('got_ember')) { await S.say('How\'s my Emberjay doing? It never did like standing still. Sounds like it found the right Tamer.', N); return; }
-    await S.say('Off to see Juniper? Her Grass team sends a lot of new Tamers home early.', N);
-    await S.say('This Emberjay has pecked at that gym door every morning for a week. I think it wants a real challenge. Fire and Flying both beat Grass.', N);
-    if (!await G.yesno('Will you take Emberjay along?')) { await S.say('The offer stands, if you change your mind.', N); return; }
-    await S.giveMon('emberjay', 10, { ball: 'orb', text: 'Emberjay ruffles its feathers and hops onto your shoulder.' });
-    S.set('got_ember');
-    await S.say('Look after it. And give Juniper my regards!', N);
+    if (G.flag('got_ember')) { await S.say('That\'s the Emberjay from the gym door! So it chose you. It never did like standing still. Look after it.', N); return; }
+    if (G.flag('mira_talk')) { await S.say('Mornings, it\'s at the gym door. The rest of the day, the lone tree at the far end of the Sunken Garden, down by the hedge.', N); return; }
+    await S.say('Off to see Juniper? Her garden sends a lot of new Tamers home early.', N);
+    await S.say('There\'s a wild Emberjay that pecks at her gym door every morning, as if it wants to go in and pick a fight. Nobody\'s managed to take it along yet.', N);
+    await S.say('It doesn\'t sleep in the square. It roosts in the lone tree at the far end of the Sunken Garden, down by the hedge. If I were about to face Juniper, that\'s where I\'d be.', N);
+    S.set('mira_talk'); if (!G.save.quests.side_emberjay) S.quest('side_emberjay', 'go', { silent: true });
   };
+  const emberjay = async (S, id) => {
+    const before = G.party.allMons().filter(m => m.sp === 'emberjay').length;
+    G.audio && G.audio.cry('emberjay'); await S.emote(id, '!');
+    await S.say(id === 'ember_door' ? 'An Emberjay is pecking at the gym door. It turns, puffs up its burning feathers and squawks at you!' : 'An Emberjay is dozing in the lone tree. It wakes with a squawk and drops down in front of you!');
+    await G.startWild(null, { species: 'emberjay', lvl: 10, noRandom: true });
+    if (G.party.allMons().filter(m => m.sp === 'emberjay').length > before) { S.set('got_ember'); S.remove(id); if (G.save.quests.side_emberjay) S.quest('side_emberjay', 'done'); return; }
+    S.remove(id); await S.say('The Emberjay flaps away in a shower of sparks. It will be back at its usual spot.');
+  };
+  SC.ember_roost = S => emberjay(S, 'ember_roost');
+  SC.ember_door = S => emberjay(S, 'ember_door');
   SC.gym_guide = async (S, ctx) => {
     const id = S.w.map.id;
     const info = {
-      fernwick_gym: ['Grass', 'Fire, Flying, Bug, Poison and Ice moves are strong against Grass. Watch out for Leech Seed: it drains a little health every turn.'],
+      fernwick_gym: ['Grass', 'Juniper\'s garden bites back, and it\'s patient about it. The Tamers who beat her are the ones who came ready for her, not just for a battle.'],
       galvan_gym: ['Electric', 'Ground types are immune to Electric moves. Step on the glowing pads to lower the barriers.'],
       cinder_gym: ['Fire', 'Water, Ground and Rock moves put out the fire. Brann\'s last Echo can Resonate, so save something strong for the end.'],
       dusk_gym: ['Ghost', 'Dark and Ghost moves are strong against Ghosts. Normal and Fighting moves pass straight through them.'],
@@ -348,7 +375,7 @@
     }[id] || ['?', 'Good luck!'];
     await S.say(`Hello there, challenger! This gym's Warden uses ${info[0]}-type Echoes. ${info[1]}`, 'Gym Guide');
     if (id === 'dusk_gym' && !G.bag.has('lantern')) { await S.say('It\'s pitch black in there. Take this Lantern, so you can see where you\'re going.', 'Gym Guide'); await S.give('lantern'); }
-    if (!G.bag.has('ether') && G.chance(.5)) { await S.say('And here, take these. Good luck in there!', 'Gym Guide'); await S.give('superpotion', 2); }
+    if (id !== 'fernwick_gym' && !G.bag.has('ether') && G.chance(.5)) { await S.say('And here, take these. Good luck in there!', 'Gym Guide'); await S.give('superpotion', 2); }
   };
   const wardenWin = async (S, o) => {
     await S.badge(o.badge);
@@ -366,16 +393,22 @@
     if (G.flag('badge1')) { await S.say('The flowers seem brighter since our battle. Whisperwood is east, past Route 2. Do be careful, dear.', N); return; }
     if (G.bag.has('parcel') && !G.flag('parcel_given')) {
       await S.say('Oh! Notes from Marisol? How lovely. Thank you for bringing them all this way.', N);
-      G.bag.remove('parcel'); S.set('parcel_given');
+      G.bag.remove('parcel'); S.set('parcel_given'); S.quest('main1', 'badge1', { silent: true });
       await S.say('"The stronger the bond, the faster an Echo grows, heals and finds its courage." She always did put it beautifully.', N);
+      await S.say('And what\'s this page? "Lodestar lamp, calibration." ...Every figure on it is crossed out.', N);
+      await S.say('Marisol hasn\'t written a word about the Lodestar in twelve years. Not since that night. I don\'t think she meant to send me this.', N);
+      await S.say('...Well. That\'s hers to tell, not mine.', N);
       await S.say('But you didn\'t come all this way just to deliver a letter, did you? I can see it in your eyes. You want a badge.', N);
     }
     await S.say('I\'m Juniper, Warden of Fernwick. People think a gardener must be gentle. But a garden only thrives if you are patient, and stubborn, and you never give up.', N);
     await S.say('Show me what you\'ve been growing, dear.', N);
+    { const pm = partner(); if (pm) await S.say({ budling: `${G.mon.name(pm)}'s leaves stand straight up. It has never seen a garden like this, and it wants to win it.`, kindlet: `${G.mon.name(pm)}'s ears flare. The whole garden smells like tinder, and it doesn't trust it one bit.`, sealet: `${G.mon.name(pm)} presses close against your leg. Every root in the room seems to be leaning towards it.` }[G.evoLine(pm.sp)[0].id] || `${G.mon.name(pm)} steps up beside you.`); }
     const won = await G.storyBattle('juniper');
-    if (!won) return;
+    if (!won) { S.quest('main1', 'lost', { silent: true }); return; }
     await S.say('...My, my. It has been a long time since I lost. You have earned this: the Bloom Badge.', N);
     await wardenWin(S, { badge: 'bloom', flag: 'badge1', name: N, tm: 'tm19', tmText: 'And this is {tm}. It drains the foe\'s health to restore your own.', gymTrainers: ['fg_1', 'fg_2'] });
+    await S.say([`You told Mom you'd make her proud. The badge is warm in your hand.`, `You told Mom you'd be back before she knew it. Home is only one road south.`, `You told Mom not to worry about you. You wonder if she is anyway.`][G.getVar('momSaid', 0)]);
+    if (partner()) await S.say(`${G.mon.name(partner())} looks at the badge, then up at you, and doesn't look away.`);
     await S.say('May I ask a favour? Strangers in grey coats have been seen at the Heartroot Shrine, deep in Whisperwood, east along Route 2. Would you find out what they want? I\'ll let the guard know you may pass.', N);
     S.quest('main1', 'done'); S.quest('main2', 'go');
   };

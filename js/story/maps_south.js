@@ -10,7 +10,6 @@
     warps: [{ x: 8, y: 2, to: 'home1f', tx: 9, ty: 2, dir: 'left' }],
     objs: [
       { type: 'sign', x: 1, y: 2, invisible: true, text: 'Your bookshelf: "Tamer Basics," "Type Matchups for Beginners," and a dog-eared comic called "Captain Resonance."' },
-      { type: 'item', id: 'room_potion', x: 7, y: 5, item: 'potion', hidden: true },
     ], spawn: [3, 4], noFollower: true });
   D({ id: 'home1f', name: 'Your House', type: 'indoor', wall: 'cream', music: 'home', canRun: true,
     grid: ['WwWWWWpWWwW', 'WWWWWWWWWWW', 'QQ.KK..Z..^', '...........', '...YY......', '...YY....V.', '...........', '.....M.....'],
@@ -33,7 +32,7 @@
       { type: 'sign', x: 4, y: 5, invisible: true, deco: 'orbball:#5ad06a', script: 'starter_budling', cond: '!got_starter' },
       { type: 'sign', x: 5, y: 5, invisible: true, deco: 'orbball:#ff7a3a', script: 'starter_kindlet', cond: '!got_starter' },
       { type: 'sign', x: 6, y: 5, invisible: true, deco: 'orbball:#4aa8ff', script: 'starter_sealet', cond: '!got_starter' },
-      { type: 'sign', x: 10, y: 2, invisible: true, text: 'Research notes: "Resonance field strength rises near the Lodestar each spring. Correlation with bond intensity: 0.91. V. Crane\'s old calibration data attached."' },
+      { type: 'sign', x: 10, y: 2, invisible: true, text: 'Research notes in the Professor\'s hand. The top page says "Lodestar lamp: calibration, pass 14." Every figure under it has been crossed out, hard enough to tear the paper.\\pA sticky note on top, in the same hand: "Not again."' },
     ], spawn: [5, 8], onEnter: 'lab_enter' });
   // --------------------------------------------------------- BRINEHOLLOW -
   // Three tiers down to the sea: Seacliff Heights (homes, the fountain plaza, the road north), a
@@ -76,11 +75,11 @@
         { type: 'npc', id: 'bh_boy', x: 11, y: 10, look: 'boy', dir: 'left', move: 'wander', radius: 2, text: 'Hold Shift to run! And Tab makes everything faster! You can use the mouse in menus, too.' },
         { type: 'npc', id: 'bh_vendor', x: 8, y: 15, look: 'woman', dir: 'down', move: 'look', text: 'Shells! Lucky charms! ...Orbs? No, dear, you\'ll find those at the Mart in Fernwick.' },
         { type: 'npc', id: 'bh_sailor', x: 20, y: 26, look: 'sailor', dir: 'right', move: 'look', text: 'The stairs by the market go down to the cove. Mind the gulls. They\'ll steal your lunch.' },
-        { type: 'npc', id: 'bh_look', x: 33, y: 10, look: 'lady', dir: 'down', move: 'look', text: 'On a clear day you can see the Lodestar from this bench, just a speck of light far out on the Mere. I come here to think.' },
-        { type: 'npc', id: 'bh_kid2', x: 10, y: 26, look: 'kid', dir: 'up', move: 'wander', radius: 2, text: 'I found a shell shaped just like a Sealet! I\'m going to keep it forever.' },
+        { type: 'npc', id: 'bh_look', x: 33, y: 10, look: 'lady', dir: 'down', move: 'look', text: 'On a clear day you can see the Lodestar from this bench, just a speck of light far out on the Mere. The Professor used to sit here too, years ago. She never does now.' },
+        { type: 'npc', id: 'bh_kid2', x: 10, y: 26, look: 'kid', dir: 'up', move: 'wander', radius: 2, text: 'I found a shell shaped just like a Sealet, right at the end of the beach where the rocks start! There was something shinier in the sand, but a gull chased me off.' },
         { type: 'trigger', x: 17, y: 0, w: 4, h: 1, script: 'bh_block', cond: '!got_starter' },
-        { type: 'item', id: 'bh_hidden1', x: 1, y: 27, item: 'pearl', hidden: true },
-        { type: 'item', id: 'bh_park', x: 33, y: 20, item: 'oranberry' },
+        // the first hour's finds are few, and each is pointed at by something someone says (GRAVITY_PLAN 7)
+        { type: 'item', id: 'bh_hidden1', x: 1, y: 27, item: 'mysticwater', hidden: true },
       ], spawn: [18, 9] });
   })();
   G.defHouse('bh_cafe', 'The Driftwood Café', 2, [
@@ -123,9 +122,8 @@
         { type: 'trigger', x: 9, y: 37, w: 4, h: 1, script: 'route1_tutorial', cond: ['got_starter', '!route1_tut'] },
         { type: 'npc', id: 'r1_man', x: 14, y: 12, look: 'man', dir: 'down', move: 'wander', radius: 2, text: 'Wild Echoes live in the tall grass. Walk into one to battle it. Weaken it, then throw an Orb. Sleeping Echoes are easier to catch.' },
         { type: 'npc', id: 'snoozle_lost', x: 17, y: 4, monSprite: 'snoozle', dir: 'down', script: 'lostcub_found', cond: ['lostcub_active', '!lostcub_done'] },
-        { type: 'item', id: 'r1_potion', x: 3, y: 36, item: 'potion' },
         { type: 'item', id: 'r1_orb', x: 18, y: 6, item: 'orb', qty: 2 },
-        { type: 'item', id: 'r1_hid', x: 19, y: 20, item: 'oranberry', hidden: true },
+        { type: 'item', id: 'r1_hid', x: 19, y: 20, item: 'sharpbeak', hidden: true },
       ], spawn: [10, 36] });
   })();
   G.defHouse('hollis_house', 'Hollis Farmhouse', 2, [
@@ -170,6 +168,9 @@
       conn: { s: { map: 'route1', off: 11 }, e: { map: 'route2', off: 14 } },
       objs: [
         { type: 'npc', id: 'ember_mira', x: 20, y: 8, look: 'ace_f', dir: 'right', script: 'ember_gift' },
+        // Mira's Emberjay: at the gym door in the morning (5 to 11), in the lone tree in the Sunken Garden otherwise
+        { type: 'npc', id: 'ember_door', x: 23, y: 7, monSprite: 'emberjay', dir: 'up', script: 'ember_door', cond: ['!got_ember', () => { const h = G.clock.hour(); return h >= 5 && h < 11; }] },
+        { type: 'npc', id: 'ember_roost', x: 17, y: 33, monSprite: 'emberjay', dir: 'down', script: 'ember_roost', cond: ['!got_ember', () => { const h = G.clock.hour(); return !(h >= 5 && h < 11); }] },
         { type: 'trigger', x: 20, y: 35, w: 4, h: 1, script: 'race_finish', cond: ['route1_tut', '!race_done'] },
         G.haven(5, 14), G.mart(34, 14), G.bld('gym', 18, 2, 8, 5, { roof: 'green', accent: '#6ccc52', door: 4, to: 'fernwick_gym', tx: 7, ty: 13 }),
         G.house(5, 20, 'fern_house1', 'orange'), G.house(34, 20, 'fern_house2', 'purple'), G.house(9, 20, 'fern_house3', 'blue'),
@@ -186,9 +187,8 @@
         { type: 'npc', id: 'fw_dowse', x: 8, y: 31, look: 'hiker', dir: 'left', script: 'dowsing_man' },
         { type: 'npc', id: 'fw_view', x: 37, y: 10, look: 'girl', dir: 'down', move: 'look', text: 'From up here you can see the whole square. When the petals blow just right, the fountain looks like it\'s snowing pink.' },
         { type: 'npc', id: 'fw_gard', x: 13, y: 32, look: 'oldwoman', dir: 'left', move: 'look', text: 'Those koi are nearly as old as I am, and far wiser.' },
-        { type: 'npc', id: 'fw_stall', x: 26, y: 22, look: 'farmer', dir: 'down', move: 'look', text: 'Tulips in twelve colours! They say a thirteenth grows somewhere in the Sunken Garden.' },
-        { type: 'item', id: 'fw_hid1', x: 40, y: 33, item: 'superpotion', hidden: true },
-        { type: 'item', id: 'fw_garden', x: 3, y: 33, item: 'oranberry', qty: 2 },
+        { type: 'npc', id: 'fw_stall', x: 26, y: 22, look: 'farmer', dir: 'down', move: 'look', text: 'Tulips in twelve colours! They say a thirteenth grows in the Sunken Garden, in the far corner by the potted palm, and that whatever sleeps under it wakes up good as new.' },
+        { type: 'item', id: 'fw_garden', x: 3, y: 33, item: 'revive', hidden: true },
       ], spawn: [21, 21] });
   })();
   G.defHouse('fern_house1', 'Fernwick House', 0, [

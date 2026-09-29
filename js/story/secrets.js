@@ -6,8 +6,7 @@
 // ============================================================================
 (function () {
   const HIDDEN = {
-    brinehollow: [[21, 24, 'oranberry'], [29, 7, 'orb', 2], [2, 21, 'potion']],
-    fernwick: [[7, 34, 'repel'], [28, 14, 'potion', 2], [10, 14, 'greatorb']],
+    // (none in Brinehollow or Fernwick: the first hour keeps a few finds that someone points you to)
     galvan: [[15, 36, 'superpotion'], [44, 18, 'greatorb', 2], [1, 31, 'pearl']],
     cindervale: [[30, 33, 'revive'], [2, 2, 'superpotion'], [41, 27, 'nugget']],
     duskmere: [[28, 20, 'duskorb', 2], [2, 16, 'hyperpotion']],
