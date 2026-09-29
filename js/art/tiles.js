@@ -698,7 +698,7 @@ G.tiles = (function () {
 
   // --------------------------------------------------------- furniture ---
   function furniture(kind, frame) {
-    const tall = { shelf: 26, plant: 22, pc: 20, machine: 22, healer: 18, counter: 18, statue: 26, tv: 18, dresser: 22, sidetable: 24, armchair: 18, fridge: 28, stove: 20, sink: 20, boxes: 20, floorlamp: 30, vending: 28, display: 20, whiteboard: 26, plant2: 26 };
+    const tall = { shelf: 26, goods: 26, plant: 22, pc: 20, machine: 22, healer: 18, counter: 18, statue: 26, tv: 18, dresser: 22, sidetable: 24, armchair: 18, fridge: 28, stove: 20, sink: 20, boxes: 20, floorlamp: 30, vending: 28, display: 20, whiteboard: 26, plant2: 26 };
     const h = tall[kind] || 16;
     const img = get(`fu|${kind}|${frame}`, 16, h, p => paintFurniture(p, kind, frame, h));
     return { img, ox: 0, oy: 16 - h };
@@ -727,6 +727,14 @@ G.tiles = (function () {
           for (let x = 2; x < 14;) { const bw = 1 + (h2(x, r, 7) > .6 ? 1 : 0), bh = 4 + (h2(x, r, 8) > .5 ? 1 : 0), col = G.rampFrom(cols[Math.floor(h2(x, r, 9) * cols.length)], 3); for (let i = 0; i < bw; i++) for (let j = 0; j < bh; j++) p.set(x + i, y0 + 6 - bh + j, col[i === 0 ? 2 : 1]); x += bw + (h2(x, r, 10) > .8 ? 1 : 0); }
           p.hline(1, 14, y0 + 6, WD[5]);
         }
+        break;
+      }
+      case 'goods': {   // a shop shelf: sprays and potions on top, Orbs in the middle, boxed supplies below
+        box(0, 0, 16, h, 2, MET, 6, 5);
+        const row = (r, fn) => { const y0 = 4 + r * 7; p.rect(1, y0, 14, 6, MET[2]); fn(y0); p.hline(1, 14, y0 + 6, MET[6]); p.set(2 + r * 4, y0 + 6, P('#ffe070')); };
+        row(0, y0 => { for (let i = 0; i < 3; i++) { const x = 2 + i * 4, col = G.rampFrom(['#b05ad8', '#e84a6a', '#4a9ae8'][i], 3); p.rect(x, y0 + 3, 3, 3, col[1]); p.vline(x, y0 + 3, y0 + 5, col[2]); p.set(x + 1, y0 + 2, col[1]); p.set(x + 1, y0 + 1, P('#e8e8f0')); p.set(x + 1, y0 + 4, P('#f4f0e0')); } });   // potions: bottle, neck, cap, label
+        row(1, y0 => { for (let i = 0; i < 3; i++) { const x = 2 + i * 4, g = G.rampFrom(['#2fb8c8', '#4a7cf0', '#8a4ae0'][i], 3); p.rect(x + 1, y0 + 1, 2, 4, g[1]); p.rect(x, y0 + 2, 4, 2, g[1]); p.set(x + 1, y0 + 2, P('#e8fcff')); p.set(x + 2, y0 + 4, g[0]); p.set(x + 3, y0 + 3, g[0]); p.hline(x - 1 + (i ? 1 : 0), x + 4, y0 + 3, P('#d8a020')); } });   // Orbs: glass balls in a thin ring
+        row(2, y0 => { for (let i = 0; i < 2; i++) { const x = 2 + i * 6, col = G.rampFrom(['#d89a4a', '#5ab86a'][i], 3); p.rect(x, y0 + 2, 5, 4, col[1]); p.hline(x, x + 4, y0 + 2, col[2]); p.vline(x + 4, y0 + 3, y0 + 5, col[0]); p.hline(x + 1, x + 3, y0 + 4, P('#f4f0e0')); } });   // boxed supplies with a label
         break;
       }
       case 'bed_top': case 'bed_bot': case 'bed': {

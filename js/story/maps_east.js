@@ -279,7 +279,7 @@
         { type: 'item', id: 'sk_h1', x: 1, y: 25, item: 'dragonfang', hidden: true },
       ], spawn: [16, 17] });
   })();
-  D({ id: 'skymart', name: 'Skyreach Supply', type: 'indoor', wall: 'lab', music: 'mart', canRun: true,
+  D({ id: 'skymart', name: 'Skyreach Supply', type: 'indoor', wall: 'lab', music: 'mart', canRun: true, legend: { 'Q': { o: 'goods', solid: true } },
     grid: ['WWWwWWWWWwWWW', 'WWWWWWWWWWWWW', 'KKK...QQ.QQ..', '.K...........', '.K...QQ..QQ..', '.............', 'V..QQ...QQ..V', '......M......'],
     warps: [{ x: 6, y: 7, to: '_back' }],
     objs: [

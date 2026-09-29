@@ -59,6 +59,7 @@ G.defMap({
 });
 G.defMap({
   id: 'mart', name: 'Supply Shop', type: 'indoor', wall: 'blue', music: 'mart', canRun: true,
+  legend: { 'Q': { o: 'goods', solid: true } },   // shop shelves, not bookcases
   grid: [
     'WWWwWWWWWwWWW',
     'WWWWWWWWWWWWW',
