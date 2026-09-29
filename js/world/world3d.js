@@ -175,7 +175,7 @@ G.W3 = (function () {
       let c;
       if (x >= 0 && y >= 0 && x < W && y < H) c = map.cell(x, y);
       else { const rr = map.resolve(x, y); c = rr ? rr.map.cells[rr.y * rr.map.w + rr.x] : G.borderCell(map, x, y); }
-      const v = !!(c && c.water && c.g !== 'bridge' && c.g !== 'bridgev'); wcache.set(key, v); return v;
+      const v = !!(c && (c.water || c.o === 'boat') && c.g !== 'bridge' && c.g !== 'bridgev'); wcache.set(key, v); return v;   // a moored boat floats on the sea around it
     };
     const vdrop = (vx, vy) => (isWater(vx - 1, vy - 1) && isWater(vx, vy - 1) && isWater(vx - 1, vy) && isWater(vx, vy)) ? -.14 : 0;
     group.userData.vdrop = vdrop;
@@ -259,7 +259,7 @@ G.W3 = (function () {
       for (let y = -PADT; y < H + PADT; y++) for (let x = -PADT; x < W + PADT; x++) {
         const inside = x >= 0 && y >= 0 && x < W && y < H, rr = inside ? null : map.resolve(x, y);
         const c = inside ? map.cell(x, y) : rr ? rr.map.cells[rr.y * rr.map.w + rr.x] : G.borderCell(map, x, y);
-        if (!c || !c.water) continue;
+        if (!c || !(c.water || c.o === 'boat')) continue;
         const hh = (vx, vy) => hv.at(G.clamp(vx, .01, W - .01), G.clamp(vy, .01, H - .01)) + vdrop(vx, vy) + .012, b = wp.length / 3;
         wp.push(x, hh(x, y), y, x + 1, hh(x + 1, y), y, x, hh(x, y + 1), y + 1, x + 1, hh(x + 1, y + 1), y + 1);
         wu.push(x / 4, -y / 4, (x + 1) / 4, -y / 4, x / 4, -(y + 1) / 4, (x + 1) / 4, -(y + 1) / 4);
@@ -726,7 +726,14 @@ G.W3 = (function () {
     } else {   // dead
       const t = new T.CylinderGeometry(.08, .17, 2.2, 6, 1); t.translate(0, 1.1, 0);
       const bs = [paint(t, () => barkC)];
-      for (let k = 0; k < 4; k++) { const b = new T.CylinderGeometry(.03, .07, .9, 5, 1); b.rotateZ(.7 + rng.next() * .5); b.rotateY(k * 1.6 + rng.next()); b.translate(0, 1.3 + k * .22, 0); bs.push(paint(b, () => barkC)); }
+      // bare limbs growing up and out from the trunk, each forking once near its tip, so the tree keeps a
+      // crown-shaped silhouette (limbs centred on the trunk crossed it like an X and read as bare stakes)
+      const limb = (len, r0, tilt, turn, x, y, z) => { const b = new T.CylinderGeometry(r0 * .45, r0, len, 5, 1); b.translate(0, len / 2, 0); b.rotateZ(tilt); b.rotateY(turn); b.translate(x, y, z); bs.push(paint(b, () => barkC)); const dx = -Math.sin(tilt) * len, dy = Math.cos(tilt) * len; return [x + dx * Math.cos(turn), y + dy, z - dx * Math.sin(turn)]; };
+      for (let k = 0; k < 5; k++) {
+        const turn = k / 5 * Math.PI * 2 + rng.next() * .8, tilt = .55 + rng.next() * .45, len = .55 + rng.next() * .35;
+        const tip = limb(len, .065, tilt, turn, 0, 1.25 + k * .2, 0);
+        limb(len * .5, .03, tilt + (rng.next() - .5) * 1.2, turn + (rng.next() - .5) * 1.4, tip[0], tip[1], tip[2]);
+      }
       trunk = merge(bs); crown = null;
     }
     // leaf-pattern UVs: planar from the side, tiled
@@ -1173,8 +1180,12 @@ G.W3 = (function () {
       quad([X0, Yt, zb], [X0, Yt, zf], [X0, Yb, zb], [X0, Yb, zf], null, edgeL.slice(0, 3).map(v => v * .62), false);
       quad([X1, Yt, zf], [X1, Yt, zb], [X1, Yb, zf], [X1, Yb, zb], null, edgeR.slice(0, 3).map(v => v * .5), false);
       // a ledge where this slice is wider than the one above it (or the top of the stack)
-      const top = px(Math.round((lo + hi) / 2), y).slice(0, 3).map(v => v * .8);
-      quad([X0, Yt, zb], [X1, Yt, zb], [X0, Yt, zf], [X1, Yt, zf], null, top, false);
+      // (wound to face up: a downward normal left the stack's top black in the light and the shadows)
+      if (!prev || lo < prev[0] || hi > prev[1]) {
+        // coloured from just inside the art's edge: the edge row itself is the dark outline, which made the top a black slab
+        const mx = Math.round((lo + hi) / 2); let tc = px(mx, y);
+        for (let k = 1; k < 8 && y + k < H; k++) { const q = px(mx, y + k); if (q[3] > 128 && q[0] + q[1] + q[2] > tc[0] + tc[1] + tc[2]) tc = q; }
+        const top = tc.slice(0, 3).map(v => v * .8); quad([X0, Yt, zf], [X1, Yt, zf], [X0, Yt, zb], [X1, Yt, zb], null, top, false); }
       prev = [lo, hi];
     }
     const geo = new T.BufferGeometry();

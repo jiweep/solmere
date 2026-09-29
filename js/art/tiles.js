@@ -729,6 +729,21 @@ G.tiles = (function () {
         }
         break;
       }
+      case 'statue': {   // an exhibit on a stone plinth (museums, lobbies); furniture had no statue, so these rooms showed nothing
+        const S = R(['#3a3c46', '#50525e', '#686a76', '#80828e', '#9a9ca6', '#b4b6be', '#d0d2d8']);
+        box(2, b + 8, 12, 8, 2, S, 5, 3); p.hline(2, 13, b + 15, S[1]);
+        p.sphere(8, b + 3, 4, 5, S, { bias: .08 }); p.sphere(8, b - 3, 3, 3, S, { bias: .1 }); p.ell(8, b - 3.8, 3.6, 1.3, S[5]);
+        break;
+      }
+      case 'bike': {   // a bicycle on a shop stand
+        const K = P('#23262e'), Fr = R(['#5a1018', '#9a2230', '#d0404a', '#f07a7a']), Sp = P('#a8b0bc');
+        for (const cx of [4, 12]) for (let a = 0; a < 28; a++) { const t = a / 28 * Math.PI * 2; p.set(Math.round(cx + Math.cos(t) * 3.4), Math.round(11 + Math.sin(t) * 3.4), K); }
+        p.set(4, 11, Sp); p.set(12, 11, Sp); p.hline(3, 5, 11, Sp); p.hline(11, 13, 11, Sp);
+        p.line(4, 11, 7, 7, Fr[2]); p.line(7, 7, 11, 7, Fr[2]); p.line(7, 7, 8, 11, Fr[1]); p.line(8, 11, 4, 11, Fr[1]); p.line(11, 7, 12, 11, Fr[2]);
+        p.hline(6, 8, 6, K); p.line(11, 7, 11, 5, Fr[3]); p.hline(10, 12, 5, K);
+        p.rect(7, 14, 2, 2, P('#5e594f'));
+        break;
+      }
       case 'goods': {   // a shop shelf: sprays and potions on top, Orbs in the middle, boxed supplies below
         box(0, 0, 16, h, 2, MET, 6, 5);
         const row = (r, fn) => { const y0 = 4 + r * 7; p.rect(1, y0, 14, 6, MET[2]); fn(y0); p.hline(1, 14, y0 + 6, MET[6]); p.set(2 + r * 4, y0 + 6, P('#ffe070')); };

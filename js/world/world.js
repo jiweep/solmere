@@ -284,7 +284,7 @@ G.objImg = function (map, c, frame) {
     }
     case 'barrier': case 'barrier2': { const col = c.o === 'barrier' ? '#ffe070' : '#8ae8ff'; return { img: T.get(`bar|${c.o}|${frame % 2}`, 16, 16, p => { const K = G.rgb('#3a3e4a'), L = G.rgb(col); p.rect(1, 2, 2, 13, K); p.rect(13, 2, 2, 13, K); for (let y = 4; y < 14; y += 3) for (let x = 3; x < 13; x++) p.set(x, y + ((x + frame) % 2), L); p.rect(0, 1, 4, 2, K); p.rect(12, 1, 4, 2, K); }), ox: 0, oy: 0, ao: false }; }
     case 'rug': return { img: T.furniture('rug', 0).img, ox: 0, oy: 0, flat: true };
-    case 'counter': case 'pc': case 'shelf': case 'goods': case 'tv': case 'plant': case 'healer': case 'machine': case 'desk': case 'statue':
+    case 'counter': case 'pc': case 'shelf': case 'goods': case 'bike': case 'tv': case 'plant': case 'healer': case 'machine': case 'desk': case 'statue':
     case 'dresser': case 'sidetable': case 'armchair': case 'fridge': case 'stove': case 'sink': case 'boxes': case 'floorlamp': case 'vending': case 'display': case 'whiteboard': case 'plant2':
       return { ...T.furniture(c.o, ['pc', 'tv', 'healer', 'machine', 'vending'].includes(c.o) ? frame % 2 : 0), ao: !['counter', 'shelf', 'goods', 'fridge', 'stove', 'sink', 'dresser'].includes(c.o) };
     case 'orbball': return { img: G.orbArt('orb', 14), ox: 1, oy: 1, aoW: 5 };

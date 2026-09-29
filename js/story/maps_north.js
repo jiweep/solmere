@@ -66,7 +66,8 @@
   G.defHouse('galvan_house1', 'Galvan House', 0, [{ type: 'npc', id: 'gh1', x: 2, y: 5, look: 'scientist', dir: 'right', script: 'ev_trainer' }]);
   G.defHouse('galvan_house2', 'Galvan House', 2, [{ type: 'npc', id: 'gh2', x: 6, y: 4, look: 'woman', dir: 'down', script: 'move_tutor' }]);
   G.defHouse('galvan_house3', 'Galvan House', 1, [{ type: 'npc', id: 'gh3', x: 7, y: 5, look: 'oldman', dir: 'left', script: 'trade_npc_galvan' }]);
-  D({ id: 'bikeshop', name: 'Spoke & Sprocket Bikes', type: 'indoor', wall: 'blue', music: 'mart', grid: G.tpl.house(0).map((r, i) => i === 2 ? 'QQ..K......' : r), warps: [{ x: 5, y: 7, to: '_back' }],
+  D({ id: 'bikeshop', name: 'Spoke & Sprocket Bikes', type: 'indoor', wall: 'blue', music: 'mart', legend: { 'b': { o: 'bike', solid: true } },   // a shop floor of bikes, not a house with a bed
+    grid: ['WWwWWWWpWWW', 'WWWWWWWWWWW', 'bb..KKK..bb', '...........', '.b.......b.', '...........', 'V.........V', '.....M.....'], warps: [{ x: 5, y: 7, to: '_back' }],
     objs: [{ type: 'npc', id: 'bikeguy', x: 4, y: 3, look: 'punk', dir: 'down', script: 'bike_shop' }], spawn: [5, 6] });
   D({ id: 'crane_lobby', name: 'Crane Dynamics — Galvan Office', type: 'indoor', wall: 'lab', music: 'crane', floor: '#dfe6ee', canRun: true,
     grid: ['WWwWWwWWwWWwW', 'WWWWWWWWWWWWW', 'V.qq.KKK.qq.V', '.............', '.S.........S.', ',,,,,,,,,,,,,', ',,,,,,,,,,,,,', '......M......'],
