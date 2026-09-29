@@ -15,7 +15,7 @@ G.touch = (function () {
   const css = `
   html.mobile, html.mobile body { touch-action: none; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   #touch { position: fixed; inset: 0; z-index: 6; pointer-events: none; }
-  #touch > div { position: absolute; pointer-events: auto; touch-action: none; -webkit-tap-highlight-color: transparent; }
+  #touch > div { position: absolute; box-sizing: border-box; pointer-events: auto; touch-action: none; -webkit-tap-highlight-color: transparent; }
   #tpad { left: calc(env(safe-area-inset-left, 0px) + 14px); bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
     width: min(38vmin, 170px); height: min(38vmin, 170px); border-radius: 50%;
     background: radial-gradient(circle, rgba(20,26,40,.42) 0 58%, rgba(20,26,40,.22) 59%); border: 2px solid rgba(255,255,255,.22); }
@@ -33,12 +33,13 @@ G.touch = (function () {
   #touch .tb.down { transform: translateY(2px) scale(.95); box-shadow: 0 1px 0 rgba(0,0,0,.35); filter: brightness(1.25); }
   #tA { right: calc(env(safe-area-inset-right, 0px) + 16px); bottom: calc(env(safe-area-inset-bottom, 0px) + min(20vmin, 92px));
     width: min(18vmin, 76px); height: min(18vmin, 76px); background: rgba(232,72,74,.62); }
-  #tB { right: calc(env(safe-area-inset-right, 0px) + min(22vmin, 100px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+  #tB { right: calc(env(safe-area-inset-right, 0px) + 26px + min(18vmin, 76px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
     width: min(18vmin, 76px); height: min(18vmin, 76px); background: rgba(59,130,224,.58); }
   #touch .pill { border-radius: 14px; width: min(17vmin, 74px); height: min(7vmin, 30px); background: rgba(20,26,40,.55);
-    font-size: min(3.4vmin, 13px); letter-spacing: .08em; }
+    font-size: min(3.4vmin, 13px); letter-spacing: .08em; white-space: nowrap; }
+  #touch #tRun { width: min(24vmin, 96px); }
   #tStart { right: calc(env(safe-area-inset-right, 0px) + 16px); bottom: calc(env(safe-area-inset-bottom, 0px) + min(42vmin, 186px)); }
-  #tRun { right: calc(env(safe-area-inset-right, 0px) + min(22vmin, 100px)); bottom: calc(env(safe-area-inset-bottom, 0px) + min(24vmin, 104px)); }
+  #tRun { right: calc(env(safe-area-inset-right, 0px) + 26px + min(18vmin, 76px)); bottom: calc(env(safe-area-inset-bottom, 0px) + min(24vmin, 104px)); }
   #tRun.on { background: rgba(42,168,106,.75); }
   /* upright phone: a handheld console body around the game (original design) */
   #shell { position: fixed; inset: 0; z-index: -1; display: none; overflow: hidden;

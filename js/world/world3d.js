@@ -756,14 +756,21 @@ G.W3 = (function () {
     m.customProgramCacheKey = () => 'tree' + (crown ? 1 : 0) + (cards ? 'c' : '');
     return m;
   }
+  // Trees are instanced per 12x12-tile chunk, so the chunks out of view (and out of the sun's shadow box)
+  // are culled: a forest border is a thousand trees, of which the camera sees a tenth (tools/phonebudget.js)
+  const TREE_CHUNK = 12;
   function plantTrees(group, kind, list, map) {
     const variants = kind === 'palm' || kind === 'dead' ? 2 : 3;
     for (let v = 0; v < variants; v++) {
-      const L = list.filter(t => Math.floor(t[3] * variants) === v); if (!L.length) continue;
-      const geo = treeGeo(kind, v), mats = [];
+      const LV = list.filter(t => Math.floor(t[3] * variants) === v); if (!LV.length) continue;
+      const geo = treeGeo(kind, v), chunks = new Map();
+      for (const t of LV) { const k = Math.floor(t[0] / TREE_CHUNK) + ',' + Math.floor(t[2] / TREE_CHUNK); if (!chunks.has(k)) chunks.set(k, []); chunks.get(k).push(t); }
       for (const [g, crown] of [[geo.trunk, false], [geo.crown, true]]) {
         if (!g) continue;
-        const cards = !!(g.userData && g.userData.cards), mesh = new T.InstancedMesh(g, treeMaterial(map, crown, geo.h, cards), L.length);
+        const cards = !!(g.userData && g.userData.cards), mat = treeMaterial(map, crown, geo.h, cards);
+        const depth = new T.MeshDepthMaterial(cards ? { depthPacking: T.RGBADepthPacking, map: leafTexture(), alphaTest: .5 } : { depthPacking: T.RGBADepthPacking });
+        for (const L of chunks.values()) {
+        const mesh = new T.InstancedMesh(g, mat, L.length);
         const M = new T.Matrix4(), Q = new T.Quaternion(), S = new T.Vector3(), Pv = new T.Vector3(), E = new T.Euler();
         L.forEach((t, i) => {
           const sc = (.88 + G.h2(t[0] * 10 | 0, t[2] * 10 | 0, 3) * .3) * .82, ry = t[3] * 40;
@@ -772,8 +779,10 @@ G.W3 = (function () {
           if (crown) { const sh = G.h2(t[4].x | 0, t[4].y | 0, 91), k = sh < .4 ? .78 : sh < .75 ? .9 : 1; mesh.setColorAt(i, new T.Color(k, k, k)); }
         });
         mesh.castShadow = true; mesh.receiveShadow = true;
-        mesh.customDepthMaterial = new T.MeshDepthMaterial(cards ? { depthPacking: T.RGBADepthPacking, map: leafTexture(), alphaTest: .5 } : { depthPacking: T.RGBADepthPacking });
-        group.add(mesh); mats.push(mesh);
+        mesh.customDepthMaterial = depth;
+        mesh.computeBoundingSphere(); mesh.boundingSphere.radius += 1;   // room for the wind sway
+        group.add(mesh);
+        }
       }
     }
   }
@@ -1046,7 +1055,7 @@ G.W3 = (function () {
       const roofT = tex(roof), mRoof = new T.MeshLambertMaterial({ map: roofT, side: T.DoubleSide, alphaTest: .5 }); mRoof.name = 'roof';
       mRoof.userData = { depth: new T.MeshDepthMaterial({ depthPacking: T.RGBADepthPacking, map: roofT, alphaTest: .5 }) };
       const wt2 = tex(wside); wt2.wrapS = T.RepeatWrapping; wt2.repeat.set(Math.max(1, Math.round(depth)), 1);
-      const mWall = new T.MeshLambertMaterial({ map: wt2, emissive: 0xffffff }); mWall.emissiveMap = wt2; mWall.name = 'side wall'; SIDES.add(mWall);
+      const mWall = new T.MeshLambertMaterial({ map: wt2, emissive: 0xffffff, side: T.DoubleSide }); mWall.emissiveMap = wt2; mWall.name = 'side wall'; SIDES.add(mWall);   // two-sided: where the roof art's outline cuts a notch (a hipped corner), you see the gable, not the world behind
       const body = new T.Mesh(new T.BoxGeometry(b.w - .1, wallH, depth), [mWall, mWall, FLAT_ROOF.has(b.kind) ? mSide : mRoofEnd, mSide, mFac, mSide]);
       body.position.set(x0 + b.w / 2, baseY + wallH / 2, zB + depth / 2); body.castShadow = body.receiveShadow = true; g.add(body);
       if (FLAT_ROOF.has(b.kind)) {
@@ -1803,6 +1812,38 @@ G.W3 = (function () {
     prewarm(w);
     return true;
   }
+  // ------------------------------------------------------------- probe (tools/sweep3d.js)
+  // Faults measured in the real render, not a debug view: the same frame drawn three times, back to back
+  // (nothing moves between them, shadows frozen): as played; with every face two-sided (a pixel that changes
+  // was showing something through a one-sided face from behind: a hole or an inside-out face); and with a
+  // pure green background (a pixel that changes shows the void: a gap). Returns clusters of changed pixels in
+  // canvas pixels, biggest first, and the size of the canvas.
+  function probe(w) {
+    if (!cur) return null;
+    render(w);
+    const W = R.domElement.width, H = R.domElement.height, snap = () => { const c = G.makeCanvas(W, H), x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(R.domElement, 0, 0); return x.getImageData(0, 0, W, H).data; };
+    const auto = R.shadowMap.autoUpdate; R.shadowMap.autoUpdate = false; R.shadowMap.needsUpdate = false;
+    R.render(scene, camera); const A = snap();
+    const mats = []; scene.traverse(o => { if (!o.isMesh || !o.visible) return; for (const m of (Array.isArray(o.material) ? o.material : [o.material])) if (m && m.side !== T.DoubleSide && !mats.some(q => q[0] === m)) mats.push([m, m.side]); });
+    for (const [m] of mats) { m.side = T.DoubleSide; m.needsUpdate = true; }
+    R.render(scene, camera); const B = snap();
+    for (const [m, sd] of mats) { m.side = sd; m.needsUpdate = true; }
+    const bg = scene.background; scene.background = new T.Color(0x00ff00);
+    R.render(scene, camera); const C = snap();
+    scene.background = bg; R.shadowMap.autoUpdate = auto;
+    const clusters = (X, Y, thr) => {
+      const cell = 4, gw = Math.ceil(W / cell), gh = Math.ceil(H / cell), grid = new Uint16Array(gw * gh);
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = (y * W + x) * 4, d = Math.abs(X[i] - Y[i]) + Math.abs(X[i + 1] - Y[i + 1]) + Math.abs(X[i + 2] - Y[i + 2]); if (d > thr) grid[(y / cell | 0) * gw + (x / cell | 0)]++; }
+      const seen = new Uint8Array(gw * gh), out = [];
+      for (let i = 0; i < gw * gh; i++) if (grid[i] && !seen[i]) {
+        let n = 0, sx = 0, sy = 0, top = gh, bot = 0; const q = [i]; seen[i] = 1;
+        while (q.length) { const j = q.pop(), jx = j % gw, jy = j / gw | 0; n += grid[j]; sx += jx * grid[j]; sy += jy * grid[j]; top = Math.min(top, jy); bot = Math.max(bot, jy); for (const k of [j - 1, j + 1, j - gw, j + gw]) if (k >= 0 && k < gw * gh && grid[k] && !seen[k] && Math.abs((k % gw) - jx) <= 1) { seen[k] = 1; q.push(k); } }
+        out.push({ px: n, x: (sx / n + .5) * cell / W, y: (sy / n + .5) * cell / H, edge: top === 0 || bot === gh - 1 });
+      }
+      return out.sort((a, b) => b.px - a.px);
+    };
+    return { W, H, holes: clusters(A, B, 24), gaps: clusters(A, C, 60) };
+  }
   // ------------------------------------------------------------- inspection view
   // G.W3.debug('faces'), or ?look3d in the URL: made for catching small misalignments by eye and by script
   // (tools/look3d.js, tools/lookscan.py). Every mesh gets a flat colour of its own, shaded per face, so two
@@ -1934,5 +1975,5 @@ G.W3 = (function () {
         at: [+h.point.x.toFixed(2), +h.point.y.toFixed(2), +h.point.z.toFixed(2)] };
     });
   }
-  return { debug: mode => { DBG = mode || null; return DBG; }, pick, _warm: () => warm && { id: warm.id, i: warm.i, n: warm.list.length, texs: warm.texs && warm.texs.length, done: warm.done }, _tu: () => TU, _rays: () => rays, _cur: () => cur, _bases: () => bases, chimneys: () => (cur && cur.group.userData.chimneys) || [], levels, active, render, hide, project, projectFlat, invalidate: id => { building.delete(id); const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
+  return { debug: mode => { DBG = mode || null; return DBG; }, pick, probe, _info: () => R && { calls: R.info.render.calls, tris: R.info.render.triangles, geos: R.info.memory.geometries, texs: R.info.memory.textures, progs: R.info.programs ? R.info.programs.length : 0, lights: (() => { let n = 0; scene.traverse(o => { if (o.isLight && o.visible && o.intensity > 0) n++; }); return n; })() }, _warm: () => warm && { id: warm.id, i: warm.i, n: warm.list.length, texs: warm.texs && warm.texs.length, done: warm.done }, _tu: () => TU, _rays: () => rays, _cur: () => cur, _bases: () => bases, chimneys: () => (cur && cur.group.userData.chimneys) || [], levels, active, render, hide, project, projectFlat, invalidate: id => { building.delete(id); const e = cache.get(id); if (e) { if (cur === e) { scene.remove(e.group); cur = null; } dispose(e.group); cache.delete(id); } } };
 })();
