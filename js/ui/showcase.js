@@ -154,11 +154,7 @@ G.runTour = async function () {
       for (let yy = 0; yy < m.h; yy++) for (let xx = 0; xx < m.w; xx++) { const c = m.cell(xx, yy); if (!c || c.solid || c.water || c.door) continue; const d = Math.abs(xx - s.x) + Math.abs(yy - s.y); if (d < bd) { bd = d; best = [xx, yy]; } }
       w.enterMap(s.id, best[0], best[1], 'down', { noScript: true });
     } else if (s.k === 'battle') {
-      const sc = new G.BattleScene({ env: s.env, phase: s.phase, format: 'single' });
-      sc.hudShow = { 0: 1, 1: 1 }; sc.tour = s; sc.intro = 1; G.tween(sc, { intro: 0 }, 38, G.ease.outCubic);
-      const mk = (sp, side) => { const m = G.mon.create(sp, 40); const P = sc.pos(side, 0, 1); return Object.assign({}, m, P, { name: G.mon.name(m), lvl: m.lvl, dispHp: Math.round(m.hp * (side ? .62 : .88)), maxhp: m.hp, visible: true, scale: 1, alpha: 1, offx: 0, offy: 0, flash: 0, shake: 0, frame: 0, side, slot: 0, anim: 0 }); };
-      sc.slots['0:0'] = mk(s.mine, 0); sc.slots['1:0'] = mk(s.foe, 1);
-      if (s.trainer) { const T = G.TRAINERS[s.trainer]; sc.trainers = [{ side: 1, look: T && (T.look || T.sprite) || s.trainer, x: 292, y: 143, alpha: 1, off: 54, backed: true, name: T ? T.name : '' }]; }
+      const sc = G.stageBattle(s);
       G.push(sc);
       { const T = s.trainer && G.TRAINERS[s.trainer]; G.audio && G.audio.music(T ? (T.music || (T.boss ? 'gym' : 'trainer')) : s.env === 'crystal' || s.env === 'cave' ? 'wild' : 'wild'); }
       // moves go off on their own every few seconds, each side in turn
@@ -187,6 +183,16 @@ G.runTour = async function () {
     await G.openShowcase();
   };
   await show(0);
+};
+// A battle scene posed for a picture (the tour, tools/battleshots.js): backdrop, both Echoes with their HUDs, and
+// the opposing Tamer if there is one, without running a battle. s: { env, phase, mine, foe, trainer }
+G.stageBattle = function (s) {
+  const sc = new G.BattleScene({ env: s.env, phase: s.phase, format: 'single' });
+  sc.hudShow = { 0: 1, 1: 1 }; sc.tour = s; sc.intro = 1; G.tween(sc, { intro: 0 }, 38, G.ease.outCubic);
+  const mk = (sp, side) => { const m = G.mon.create(sp, 40); const P = sc.pos(side, 0, 1); return Object.assign({}, m, P, { name: G.mon.name(m), lvl: m.lvl, dispHp: Math.round(m.hp * (side ? .62 : .88)), maxhp: m.hp, visible: true, scale: 1, alpha: 1, offx: 0, offy: 0, flash: 0, shake: 0, frame: 0, side, slot: 0, anim: 0 }); };
+  sc.slots['0:0'] = mk(s.mine, 0); sc.slots['1:0'] = mk(s.foe, 1);
+  if (s.trainer) { const T = G.TRAINERS[s.trainer]; sc.trainers = [{ side: 1, look: T && (T.look || T.sprite) || s.trainer, x: 292, y: 143, alpha: 1, off: 54, backed: true, name: T ? T.name : '' }]; }
+  return sc;
 };
 G.TourScene = class {
   constructor() { this.i = 0; this.t = 0; this.noTurbo = true; this.noGhost = true; }
