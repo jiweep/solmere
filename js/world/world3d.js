@@ -207,6 +207,17 @@ G.W3 = (function () {
               pos.push(x, ht, z0, x + 1, ht, z0, x, ht, z1, x + 1, ht, z1);
               uv.push(u0, v0, u1, v0, u0, v1, u1, v1); col.push(1, 1, 1, 1, 1, 1, .9, .9, .9, .9, .9, .9);
               idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3);
+              // cheeks: the step's open sides, down to the foot of the flight, so the retaining wall beside
+              // the stairs meets stone and not the sky (tools/sweep3d.js saw it through the slot)
+              const hb = Math.min(hn, hs);
+              for (const sx of [x, x + 1]) {
+                const nx = sx === x ? x - 1 : x + 1;
+                if (nx >= 0 && nx < W && hv.kind[y * W + nx] === 2) continue;
+                b = pos.length / 3;
+                const hc = Math.max(ht, hp); pos.push(sx, hc, z0, sx, hc, z1, sx, hb, z0, sx, hb, z1);
+                uv.push(u0, v0, u0, v1, u0, v0, u0, v1); col.push(.42, .42, .48, .42, .42, .48, .32, .32, .38, .32, .32, .38);
+                idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3, b, b + 1, b + 2, b + 1, b + 3, b + 2);   // both windings: seen from either side
+              }
             }
             continue;
           }
@@ -759,6 +770,8 @@ G.W3 = (function () {
   // Trees are instanced per 12x12-tile chunk, so the chunks out of view (and out of the sun's shadow box)
   // are culled: a forest border is a thousand trees, of which the camera sees a tenth (tools/phonebudget.js)
   const TREE_CHUNK = 12;
+  // the faces nobody can see (a building's underside, flush with the ground): never drawn
+  const UNDER = T ? new T.MeshBasicMaterial({ visible: false }) : null;
   function plantTrees(group, kind, list, map) {
     const variants = kind === 'palm' || kind === 'dead' ? 2 : 3;
     for (let v = 0; v < variants; v++) {
@@ -1056,14 +1069,14 @@ G.W3 = (function () {
       mRoof.userData = { depth: new T.MeshDepthMaterial({ depthPacking: T.RGBADepthPacking, map: roofT, alphaTest: .5 }) };
       const wt2 = tex(wside); wt2.wrapS = T.RepeatWrapping; wt2.repeat.set(Math.max(1, Math.round(depth)), 1);
       const mWall = new T.MeshLambertMaterial({ map: wt2, emissive: 0xffffff, side: T.DoubleSide }); mWall.emissiveMap = wt2; mWall.name = 'side wall'; SIDES.add(mWall);   // two-sided: where the roof art's outline cuts a notch (a hipped corner), you see the gable, not the world behind
-      const body = new T.Mesh(new T.BoxGeometry(b.w - .1, wallH, depth), [mWall, mWall, FLAT_ROOF.has(b.kind) ? mSide : mRoofEnd, mSide, mFac, mSide]);
+      const body = new T.Mesh(new T.BoxGeometry(b.w - .1, wallH, depth), [mWall, mWall, FLAT_ROOF.has(b.kind) ? mSide : mRoofEnd, UNDER, mFac, mSide]);   // no underside: it lay flush with the ground and could only z-fight with it
       body.position.set(x0 + b.w / 2, baseY + wallH / 2, zB + depth / 2); body.castShadow = body.receiveShadow = true; g.add(body);
       if (FLAT_ROOF.has(b.kind)) {
         // modern flat roof: a shallow slab carrying the roof art on top, with a lit parapet edge
         // (its top is the roof art with the transparent margin filled in: a cut-out edge left the slab hollow
         // round the rim, and the ground behind showed through)
         const mSlab = new T.MeshLambertMaterial({ map: tex(solid(roof, rgbS(roofAvg, 1))) }); mSlab.name = 'roof';
-        const slab = new T.Mesh(new T.BoxGeometry(b.w + .06, .14, depth + .06), [mSide, mSide, mSlab, mSide, mSide, mSide]);
+        const slab = new T.Mesh(new T.BoxGeometry(b.w + .06, .14, depth + .06), [mSide, mSide, mSlab, UNDER, mSide, mSide]);
         slab.position.set(x0 + b.w / 2, baseY + wallH + .07, zB + depth / 2); slab.castShadow = slab.receiveShadow = true; g.add(slab);
         if (doorLeaf) addDoor(g, b, doorLeaf, DOOR[2], x0, baseY, zF, wallH, wallPx, facade.width, trimCol, rgbS);
         continue;
