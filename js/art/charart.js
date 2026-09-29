@@ -220,8 +220,8 @@ G.chars = (function () {
       c.drawImage(spr, Math.round(48 - idle.width / 2 + (k === 'a' ? (idle.width - spr.width) / 2 : 0)), 88 - spr.height);
       cv.atlas = true; cache.set(key, cv); return cv;
     }
-    // no painted art yet (the mother, the nurse, townsfolk): a clean placeholder, a slate silhouette with a
-    // hint of their hair and clothes, until their portraits are drawn (prompts: art_src, group J)
+    // no painted art (every look has some since Group J; this is the fallback for a new look): a clean
+    // placeholder, a slate silhouette with a hint of their hair and clothes
     const W = 72, H = 88, cv = G.makeCanvas(W, H), c = cv.getContext('2d');
     const mix = (col, k) => { const A = G.col.parse(col), B = [52, 58, 88]; return `rgb(${B.map((b, i) => Math.round(b + (A[i] - b) * k)).join(",")})`; };
     const body = () => { c.beginPath(); c.moveTo(9, 88); c.bezierCurveTo(9, 50, 18, 38, 36, 38); c.bezierCurveTo(54, 38, 63, 50, 63, 88); c.closePath(); };

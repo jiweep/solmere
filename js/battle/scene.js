@@ -351,7 +351,7 @@ G.BattleScene = class {
     // mons: draw foes first then mine
     const keys = Object.keys(this.slots).sort((a, c) => (this.slots[a].side === this.persp) - (this.slots[c].side === this.persp));
     for (const k of keys) this.drawMon(b, this.slots[k], ioff);
-    if (this.thrown) { const th = this.thrown; b.save(); b.translate(th.x, th.y); b.rotate(th.rot); b.drawImage(G.orbArt(G.ORB_STYLE[th.ball] ? th.ball : 'orb', 16), -8, -8); b.restore(); }
+    if (this.thrown) { const th = this.thrown; b.save(); b.translate(th.x, th.y); b.rotate(th.rot); b.drawImage(G.itemHD(th.ball) || G.orbArt(G.ORB_STYLE[th.ball] ? th.ball : 'orb', 16), -8, -8, 16, 16); b.restore(); }
     this.parts.draw(b); this.fxp.draw(b);
     if (this.animLayer) this.animLayer(b);
     // stat overlays
