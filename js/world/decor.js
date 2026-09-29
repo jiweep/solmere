@@ -115,6 +115,8 @@
     for (const q of order) {
       if (n >= limit) break;
       if (Math.abs(q.x - lastX) < 2 && q.y === lastY) continue;
+      const behind = cell(q.x, q.y - 1); if (behind && behind.o && behind.o !== 'rug') continue;   // a piece right in front of another reads as stacked on it
+      const ahead = cell(q.x, q.y + 1); if (ahead && ahead.o && ahead.o !== 'rug') continue;
       const o = q.corner ? (rnd.next() < .6 ? 'plant' : 'plant2') : set[si++ % set.length];
       if (put(q, o)) { n++; lastX = q.x; lastY = q.y; }
     }
