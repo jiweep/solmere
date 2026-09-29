@@ -117,6 +117,7 @@ G.runBattle = async function (cfg) {
     const scene = new G.BattleScene({ env: cfg.env || (w ? G.envForMap(w.map) : 'grass'), phase: w && w.map.type === 'outdoor' ? G.clock.phase() : 'day', format: cfg.format, partnerName: cfg.partnerName });
     const player = G.playerTrainer(scene);
     if (cfg.playerParty) { player.party = cfg.playerParty; player.expShare = false; }
+    if (cfg.hidePlayer) player.sprite = null;   // the cold open: the player hasn't chosen how they look yet
     const sides = [{ trainers: [player, ...(cfg.allies || [])] }, { trainers: cfg.foes }];
     const S = G.save.settings;
     const rules = { nuzlocke: S.nuzlocke, setMode: S.setMode || (S.nuzlocke && S.nuzRules.hardcore), noItems: S.noItems || (S.nuzlocke && S.nuzRules.hardcore), noCatch: cfg.noCatch, noCatchMsg: cfg.noCatchMsg };

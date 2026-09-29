@@ -184,9 +184,8 @@
     S.w.spawnEnts();
     await G.tutorial.show('partner');
     const rsp = G.rivalOf[sp];
-    await S.say(`Then I choose ${starterName(rsp)}! It has the type advantage. Told you!`, WREN());
-    await S.say(`${R()} received ${starterName(G.randomizeSpecies(rsp, 'starter'))}!`);
-    await S.say(`And these are for you both: an Echodex, which records every Echo you meet and catch, and an EXP Share, so every Echo on your team grows, even the ones waiting their turn.`, HALE);
+    await S.say(`Then I choose ${starterName(G.randomizeSpecies(rsp, 'starter'))}! It has the type advantage. Told you!`, WREN());
+    await S.say(`And these are for you both: an Echodex, to record every Echo you meet, and an EXP Share, so your whole team grows together.`, HALE);
     await S.give('dex'); await S.give('expshare');
     await S.say(`${P()}, let's battle! Right now! Our very first one!`, WREN());
     await S.say('Here in the lab? ...Oh, very well. Just mind the equipment.', HALE);
@@ -195,10 +194,9 @@
     await S.say(won ? `I lost?! ...That was a warm-up. Next time, ${P()}, I'll win for real.` : `I won! Our first battle, and I won! Don't worry, ${P()}. You'll get me next time.`, WREN());
     await S.say('What a match! And did you see how they listened to you? That bond has a name: Resonance. It only grows from here. Now, let me look after your Echoes.', HALE);
     await S.heal();
-    await S.say(`Could I ask a favour? Warden Juniper in Fernwick, north along Route 1, is waiting on my research notes. Would you take them to her?`, HALE);
+    await S.say(`One favour: Warden Juniper in Fernwick, north along Route 1, is waiting on my notes. She runs Fernwick's gym, too. Earn six Warden badges and the road to the Champion opens. It's a long road. It might be yours.`, HALE);
     await S.give('parcel');
     S.quest('main1', 'parcel');
-    await S.say(`And ${P()}... Juniper is also a Warden, and runs Fernwick's gym. Earn six Warden badges, and the road to the Conclave and the Champion opens. It's a long road. It might be yours.`, HALE);
     await S.say(`Six badges! I'm getting there first. See you on Route 1!`, WREN());
     const wr = S.npc('wren_lab');
     if (wr) { await S.move('wren_lab', 'dddr', 2); S.remove('wren_lab'); G.audio && G.audio.sfx('door'); }

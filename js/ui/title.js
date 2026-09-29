@@ -462,6 +462,22 @@ G.jumpToChapter = async function (ch) {
 };
 
 // ------------------------------------------------------------------ prologue --
+// The cold open's battle: the top of the Lodestar in a storm, a fully grown Glimmer against Vesper Crane's
+// ace. It teaches Fight and moves at the most exciting moment of the story, then rewinds. Nothing from it
+// stays: its own party, no exp or money, and the Echodex and records put back as they were.
+G.coldOpenBattle = async function () {
+  if (!G.TRAINERS.prologue_crane) G.TRAINERS.prologue_crane = { cls: 'Director', name: 'Vesper Crane', look: 'crane', ai: 1, money: 0, boss: true, noRematch: true, music: 'crane_battle', env: 'lighthouse',
+    party: [{ sp: 'stormhound', lvl: 44, moves: ['thunderfang', 'crunch', 'voltdash', 'growl'] }], intro: '', defeat: 'You don\'t understand what you\'re stopping.' };
+  const keep = ['dex', 'stats', 'trainers', 'money', 'nemesis', 'name', 'look'].map(k => [k, JSON.stringify(G.save[k])]);
+  G.save.name = G.save.name || '???';
+  const lumi = G.mon.create('luminelle', 55); lumi.bond = 255; lumi.moves = ['moonblast', 'psychic', 'playrough', 'calmmind'].map(x => G.mon.newMove(x));
+  try {
+    await G.say('Twelve years, I have waited for this song. I will not let a child take it from me now.', { speaker: 'Vesper Crane' });
+    await G.runBattle({ foes: [G.makeTrainerCfg('prologue_crane')], playerParty: [lumi], format: 'single', music: 'crane_battle', boss: true, env: 'lighthouse', noRun: true, canLose: true, hidePlayer: true, exp: false, noMoney: true, noClips: true, noPost: true });
+  } catch (e) { G.reportError(e); }
+  for (const [k, v] of keep) G.save[k] = v === undefined ? undefined : JSON.parse(v);
+  await G.fadeTo(1, 1, '#ffffff'); await G.fadeIn(40);
+};
 // A cold open before the Professor: the night the Lodestar went dark and something in the Mere sang.
 G.PrologueScene = class extends G.TitleScene {
   constructor() { super(); this.caption = ''; this.capA = 0; this.lampLevel = 1; this.breachK = 0; this.glowBreach = true; this.skip = false; this.night = 0; }
@@ -490,18 +506,22 @@ G.runPrologue = async function () {
     await G.fadeIn(50);
     await cap('Twelve years ago, two scientists tried to record a song.', 130);
     for (let i = 0; i <= 60; i++) { sc.night = i / 60; await wait(1); }
-    await cap('"Thirty more seconds," one of them said.', 110);
     await cap('Then the Lodestar went dark.', 40);
     for (let i = 0; i < 70; i++) { sc.lampLevel = i > 55 ? 0 : (G.rand() < .45 ? 0 : .4 + G.rand() * .6); await wait(1); }
     sc.lampLevel = 0; await wait(40);
     const rise = (async () => { for (let i = 0; i <= 260; i++) { sc.breachK = .2 + .3 * i / 260; if (i === 110) { G.audio && G.audio.cry('orrelume'); } await wait(1); } })();
     await cap('And from the black water, something rose... and sang.', 140);
     await rise;
-    await cap('Every Echo in Solmere heard it. Every person who loved one felt it.', 160);
-    await cap('Hidden in the song was a name.', 120);
-    await cap('Somebody has spent twelve years trying to answer it.', 150);
-    await cap('Tonight, the Lodestar has begun to flicker again.', 140);
-    await cap('And in a little harbour town, your story is about to begin.', 170);
+    await cap('Hidden in the song was a name. Somebody has spent twelve years trying to answer it.', 170);
+    // the cold open: hands on the controls at the story's peak, months ahead, then the rewind
+    await cap('Some months from now...', 90);
+  } catch (e) { if (e !== SKIP) throw e; }
+  if (!sc.skip) await G.coldOpenBattle();
+  sc.skip = false;
+  try {
+    sc.lampLevel = 1; sc.night = .3;
+    await cap('Months earlier.', 80);
+    await cap('In a little harbour town, your story is about to begin.', 150);
   } catch (e) { if (e !== SKIP) throw e; }
   await G.fadeOut(40, '#eaf6ff');
   G.pop(sc);
