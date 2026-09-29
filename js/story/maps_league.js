@@ -48,14 +48,18 @@
         { type: 'npc', id: 'cc_vet', x: 6, y: 12, look: 'veteran', dir: 'right', move: 'look', text: 'Beyond those doors there\'s no turning back: four members of the Conclave, then the Champion. Heal up, stock up, and trust your team.' },
       ], spawn: [9, 13] });
   })();
-  const room = (id, name, floor, floor2, elite, next, flag, music, wall = 'gym') => D({
+  // The four chambers share one plan: the Elite before the far door between two fires, standing banners, and the
+  // chamber's own pieces down both sides (A big, B small), so each room says whose it is before they speak
+  const CHAMBER = ['WWWWW,WWWWW', 'WWWWW,WWWWW', 'AF.b.,.b.FA', '.....,.....', 'B....,....B', '.....,.....', 'A....,....A', '.....,.....', 'b....,....b', '.....,.....'];
+  const room = (id, name, floor, floor2, elite, next, flag, music, wall, props) => D({
     id, name, type: 'indoor', wall, music, floor, floor2, env: 'league', noEscape: true,
-    legend: { '.': { g: 'gymfloor' }, ',': { g: 'gymfloor2' } },
-    grid: ['WWWWW,WWWWW', 'WWWWW,WWWWW', 'S....,....S', '.....,.....', 'S....,....S', '.....,.....', 'S....,....S', '.....,.....', 'S....,....S', '.....,.....'],
+    legend: { '.': { g: 'gymfloor' }, ',': { g: 'gymfloor2' }, ...props },
+    grid: CHAMBER,
     warps: [{ x: 5, y: 0, to: next, tx: 5, ty: 8, dir: 'up', cond: flag }],
     objs: [{ type: 'npc', id: 'elite_' + id, x: 5, y: 2, look: G.TRAINERS[elite] ? G.TRAINERS[elite].look : 'ace', dir: 'down', script: 'elite_battle', elite, flag }],
     spawn: [5, 8], onEnter: 'elite_room_enter',
   });
+  const fire = (tint, light = 'flame') => ({ o: 'brazier', solid: true, tint, light }), banner = tint => ({ o: 'banner', solid: true, tint });
   D({ id: 'conclave_lobby', name: 'Conclave Hall', type: 'indoor', wall: 'gym', music: 'conclave', floor: '#3a3068', floor2: '#4a4088', canRun: true,
     legend: { '.': { g: 'gymfloor' }, ',': { g: 'gymfloor2' } },
     grid: ['WWWWWW,WWWWWW', 'WWWWWW,WWWWWW', 'V.....,.....V', 'KHK...,...KKK', '......,......', 'S.....,.....S', '......,......', '......M......'],
@@ -65,13 +69,22 @@
       { type: 'npc', id: 'cl_shop', x: 11, y: 2, look: 'clerk', dir: 'down', script: 'league_shop' },
       { type: 'npc', id: 'cl_guard', x: 6, y: 2, look: 'officer', dir: 'down', script: 'league_guard' },
     ], spawn: [6, 6] });
-  room('e1', 'Conclave — Chamber of Stone', '#6a4a3a', '#7a5a48', 'rook', 'e2', 'e1_done', 'elite_room', 'stone');
-  room('e2', 'Conclave — Chamber of Visions', '#8a4a7a', '#a05a90', 'seraphine', 'e3', 'e2_done', 'elite_room', 'rose');
-  room('e3', 'Conclave — Chamber of Shadow', '#1e1a2a', '#2a2438', 'nyx', 'e4', 'e3_done', 'elite_room', 'gym');
-  room('e4', 'Conclave — Chamber of Steel', '#6a707e', '#7e8494', 'ferrum', 'champ', 'e4_done', 'elite_room', 'stone');
-  D({ id: 'champ', name: 'Champion\'s Sanctum', type: 'indoor', wall: 'gym', music: 'champ_room', floor: '#2a2a5a', floor2: '#3a3a7a', env: 'league', noEscape: true,
-    legend: { '.': { g: 'gymfloor' }, ',': { g: 'gymfloor2' }, 'G': { o: 'statue', solid: true } },
-    grid: ['WWWWWW,WWWWWW', 'WWWWWW,WWWWWW', 'G.....,.....G', '......,......', 'G.....,.....G', '......,......', '......,......', 'G.....,.....G', '......,......', '......,......', 'G.....,.....G', '......,......'],
+  // Rook: runed standing stones and boulders by firelight
+  room('e1', 'Conclave — Chamber of Stone', '#6a4a3a', '#7a5a48', 'rook', 'e2', 'e1_done', 'elite_room', 'stone',
+    { A: { o: 'menhir', solid: true }, B: { o: 'rock', solid: true }, F: banner('#9a6a2a'), b: fire('#ff8a2a') });
+  // Seraphine: crystal balls with visions in them, rose banners, pale pink flames
+  room('e2', 'Conclave — Chamber of Visions', '#8a4a7a', '#a05a90', 'seraphine', 'e3', 'e2_done', 'elite_room', 'rose',
+    { A: { o: 'seer', solid: true, light: 'vision' }, B: { o: 'seer', solid: true, tint: '#8a7aff', light: 'vision' }, F: banner('#d060a8'), b: fire('#ff80d8', 'vision') });
+  // Nyx: black obelisks with violet runes, and shadow-fire
+  room('e3', 'Conclave — Chamber of Shadow', '#1e1a2a', '#2a2438', 'nyx', 'e4', 'e3_done', 'elite_room', 'gym',
+    { A: { o: 'menhir', solid: true, tint: '#b070ff' }, B: fire('#9a50ff', 'shade'), F: banner('#3a2458'), b: fire('#9a50ff', 'shade') });
+  // Ferrum: a forge, great cogs and anvils, steel-blue banners
+  room('e4', 'Conclave — Chamber of Steel', '#6a707e', '#7e8494', 'ferrum', 'champ', 'e4_done', 'elite_room', 'stone',
+    { A: { o: 'cog', solid: true }, B: { o: 'anvil', solid: true }, F: banner('#3e6488'), b: fire('#ff9a3a') });
+  // Sable's hall: a crimson runner to her feet, gold fires and royal banners, the champions of old in stone
+  D({ id: 'champ', name: 'Champion\'s Sanctum', type: 'indoor', wall: 'gym', music: 'champ_room', floor: '#2a2a5a', floor2: '#3a3a7a', env: 'league', noEscape: true, carpet: '#9a2a3a',
+    legend: { '.': { g: 'gymfloor' }, ',': { g: 'carpet' }, 'G': { o: 'statue', solid: true }, 'F': { o: 'banner', solid: true, tint: '#34348a' }, 'b': { o: 'brazier', solid: true, tint: '#ffd050', light: 'flame' } },
+    grid: ['WWWWWW,WWWWWW', 'WWWWWW,WWWWWW', 'GF.b..,..b.FG', '......,......', 'G.....,.....G', '......,......', 'b.....,.....b', 'G.....,.....G', '......,......', 'F.....,.....F', 'G.....,.....G', '......,......'],
     warps: [{ x: 6, y: 0, to: 'hof', tx: 6, ty: 8, dir: 'up', cond: 'champion' }],
     objs: [{ type: 'npc', id: 'sable_npc', x: 6, y: 2, look: 'sable', dir: 'down', script: 'champion_sable', cond: '!champion_scene_done' }],
     spawn: [6, 10] });

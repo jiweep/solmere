@@ -359,6 +359,15 @@ G.WorldScene = class {
       const [dx, dy] = G.DIRS[p.dir];
       if (!this.blocked(p.x + dx, p.y + dy, p)) { p.startMove(p.dir, 2); p.stepN = 0; this.sliding = true; return; }
     }
+    // wind currents (Skyreach Gym): a gust carries you the way it blows until you land somewhere still
+    if (c && c.wind && !G.save.god.noclip) {
+      const [dx, dy] = G.DIRS[c.wind];
+      if (!this.blocked(p.x + dx, p.y + dy, p)) {
+        p.startMove(c.wind, 2); p.stepN = 0; this.sliding = true;
+        for (let i = 0; i < 3; i++) this.fx.add({ x: p.px + 8 + (G.rand() - .5) * 12, y: p.py + 8 + (G.rand() - .5) * 10, vx: dx * 1.6, vy: dy * 1.6, life: 14, size: 1.5, color: '#e8fcff' });
+        return;
+      }
+    }
     this.sliding = false;
     // trainers
     if (this.checkTrainers()) return;
@@ -1131,6 +1140,10 @@ G.WorldScene = class {
       if (c.light === 'crystal') L.push({ x: px, y: py + 8, r: 26, col: c.v % 2 ? 'rgba(140,230,255,' : 'rgba(200,160,255,', a: .45 });
       if (c.light === 'lava') L.push({ x: px, y: py + 8, r: 22, col: 'rgba(255,120,40,', a: .35 });
       if (c.light === 'screen') L.push({ x: px, y: py + 6, r: 16, col: 'rgba(120,220,255,', a: .3 });
+      if (c.light === 'flame') L.push({ x: px, y: py - 2, r: 28, col: 'rgba(255,160,70,', a: .45 });
+      if (c.light === 'shade') L.push({ x: px, y: py - 2, r: 28, col: 'rgba(170,110,255,', a: .45 });
+      if (c.light === 'vision') L.push({ x: px, y: py, r: 24, col: 'rgba(255,140,220,', a: .4 });
+      if (c.light === 'beacon') L.push({ x: px, y: py - 18, r: 60, col: 'rgba(255,240,180,', a: .55 });
     }
     // lit windows
     if (m.type === 'outdoor' && night > .25) {

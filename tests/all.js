@@ -10,6 +10,7 @@ const CHECKS = [
   ['Text lint', 'tools/textlint.js', [], o => /ok: /.test(o) || 'findings'],
   ['Doors, items, people reachable', 'tests/doors_reachable.js', [], o => /^ok:/m.test(o) || 'unreachable things'],
   ['Boulder puzzles solvable', 'tests/boulders.js', [], o => !/FAIL/.test(o) || 'unsolvable'],
+  ['Wind currents carry you to Kaelen', 'tests/wind.js', [], o => /^ok/m.test(o) || 'stuck in the wind'],
   ['Saves at every chapter', 'tests/save_roundtrip.js', [], o => /ok: saving/.test(o) || 'save problems'],
   ['Tides', 'tests/tides.js', [], o => !/FAIL|ERRORS/.test(o) || 'failures'],
   ['Nemesis trainers', 'tests/nemesis.js', [], o => !/FAIL|ERRORS/.test(o) || 'failures'],

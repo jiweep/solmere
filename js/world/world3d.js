@@ -1422,8 +1422,10 @@ G.W3 = (function () {
   // ------------------------------------------------------------- lights
   // every lamp, lantern, crystal and lava cell gets an additive glow sprite (faded in by night, lava
   // always on); a small pool of point lights follows the nearest ones so they light the ground
-  const LIGHT_COL = { room: 0xffc890, lamp: 0xffc47a, lantern: 0xffb060, crystal: 0x7ae0ff, lava: 0xff6a2a, screen: 0x7ab0ff };
-  const LIGHT_LIFT = { room: 1, lamp: 2.29, lantern: .8, crystal: .7, lava: .15, screen: .8 };
+  const LIGHT_COL = { room: 0xffc890, lamp: 0xffc47a, lantern: 0xffb060, crystal: 0x7ae0ff, lava: 0xff6a2a, screen: 0x7ab0ff, flame: 0xff9a40, shade: 0xa870ff, vision: 0xff8ad8, beacon: 0xfff0b0 };
+  const LIGHT_LIFT = { room: 1, lamp: 2.29, lantern: .8, crystal: .7, lava: .15, screen: .8, flame: 1.1, shade: 1.1, vision: .9, beacon: 1.9 };
+  // fires and the great lamp burn whatever the hour (lamps and lanterns only light up at night)
+  const ALWAYS = { lava: .75, flame: .8, shade: .8, vision: .7, beacon: 1 };
   let glowTex = null;
   function glowTexture() {
     if (glowTex) return glowTex;
@@ -1437,7 +1439,7 @@ G.W3 = (function () {
     const L = group.userData.lights || []; group.userData.glows = [];
     for (const l of L) {
       const mat = new T.SpriteMaterial({ map: glowTexture(), color: LIGHT_COL[l.kind] || 0xffc47a, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 });
-      const sp = new T.Sprite(mat), sz = l.kind === 'lava' ? 2.2 : l.kind === 'crystal' ? 1.8 : 1.5;
+      const sp = new T.Sprite(mat), sz = l.kind === 'beacon' ? 4.5 : l.kind === 'lava' ? 2.2 : l.kind === 'crystal' ? 1.8 : 1.5;
       sp.scale.set(sz, sz, 1); sp.position.set(l.x, l.y + (LIGHT_LIFT[l.kind] || 1), l.z - (l.ground ? 0 : .1));
       sp.userData.l = l; group.add(sp); group.userData.glows.push(sp);
     }
@@ -1446,7 +1448,7 @@ G.W3 = (function () {
   function updateLights(E, fx, fz) {
     if (!POOL.length) for (let i = 0; i < (G.gfx.lowPower() ? 3 : 6); i++) { const pl = new T.PointLight(0xffc47a, 0, 6, 1.6); scene.add(pl); POOL.push(pl); }
     const glows = E.group.userData.glows || [];
-    const lit = l => l.kind === 'lava' ? .75 : l.kind === 'room' ? roomGlow : night * .9;
+    const lit = l => l.kind in ALWAYS ? ALWAYS[l.kind] : l.kind === 'room' ? roomGlow : night * .9;
     for (const g of glows) { const on = lit(g.userData.l) * (g.userData.l.kind === 'room' ? .55 : 1); g.material.opacity = on * (.85 + Math.sin(G.realTime * 3 + g.position.x * 1.7) * .15); }
     const near = glows.filter(g => lit(g.userData.l) > .05).map(g => [g, (g.position.x - fx) ** 2 + (g.position.z - fz) ** 2]).sort((a, b) => a[1] - b[1]).slice(0, POOL.length);
     POOL.forEach((pl, i) => {
@@ -1454,7 +1456,7 @@ G.W3 = (function () {
       if (!n || n[1] > 400) { pl.intensity = 0; return; }
       const l = n[0].userData.l; pl.color.setHex(LIGHT_COL[l.kind] || 0xffc47a);
       pl.position.set(l.x, l.y + (LIGHT_LIFT[l.kind] || 1) * .8, l.z);
-      pl.intensity = (l.kind === 'lava' ? 1.2 : l.kind === 'room' ? roomGlow * 2.4 : night * 2.2) * (.9 + Math.sin(G.realTime * 4 + i) * .1);
+      pl.intensity = (l.kind === 'beacon' ? 2.6 : l.kind in ALWAYS ? 1.2 : l.kind === 'room' ? roomGlow * 2.4 : night * 2.2) * (.9 + Math.sin(G.realTime * 4 + i) * .1);
     });
   }
 

@@ -50,7 +50,7 @@ G.WorldMap = class {
     for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
       const ch = rows[y][x] || (this.type === 'indoor' ? '#' : this.type === 'cave' ? '#' : 'T');
       const e = L[ch] || L['.'];
-      const cell = { ch, g: e.g || e.gnd || this.ground, o: e.o || null, solid: !!e.solid, enc: e.enc === undefined ? null : e.enc, water: !!e.water, ledge: e.ledge || null, ice: !!e.ice, light: e.light || null, cut: !!e.cut, smash: !!e.smash, push: !!e.push, pc: !!e.pc, counter: !!e.counter, rare: !!e.rare, wv: e.wv || 0, wstyle: e.wstyle || null, solidIf: e.solidIf || null, sw: e.sw || null, tidal: !!e.tidal, v: G.hash(this.id + x + ',' + y) % 4, x, y };
+      const cell = { ch, g: e.g || e.gnd || this.ground, o: e.o || null, solid: !!e.solid, enc: e.enc === undefined ? null : e.enc, water: !!e.water, ledge: e.ledge || null, ice: !!e.ice, light: e.light || null, cut: !!e.cut, smash: !!e.smash, push: !!e.push, pc: !!e.pc, counter: !!e.counter, rare: !!e.rare, wv: e.wv || 0, wstyle: e.wstyle || null, solidIf: e.solidIf || null, sw: e.sw || null, tint: e.tint || null, wind: e.wind || null, tidal: !!e.tidal, v: G.hash(this.id + x + ',' + y) % 4, x, y };
       if (e.gnd) cell.g = e.gnd;
       if (cell.o && !e.g) cell.g = e.gnd || this.ground;
       if (ch === 'x' && !e.g) cell.g = this.ground;
@@ -184,6 +184,21 @@ G.tileImg = function (map, c, frame) {
     case 'wood': return fresh(p => T.woodFloor(p, X0, Y0, map.def.woodTone || 0));
     case 'tilefloor': return fresh(p => T.tileFloor(p, X0, Y0, map.def.floor || '#e4e8ec'));
     case 'carpet': return fresh(p => T.carpet(p, map, c, c.carpet || map.def.carpet || 'red'));
+    // Skyreach Gym: open sky between the platforms, and wind currents (chevrons point the way they carry you)
+    case 'cloud': return T.get(`cloud|${c.x}|${c.y}`, 16, 16, p => {
+      const S = G.ramp(['#6a8ec8', '#86a8dc', '#a4c2ec', '#c4daf6', '#e4eefc', '#ffffff']);
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+        const n = G.fbm((X0 + x) / 22, (Y0 + y) / 14, 57, 3);
+        p.set(x, y, S[n > .66 ? 5 : n > .58 ? 4 : n > .5 ? 3 : n > .42 ? 2 : n > .34 ? 1 : 0]);
+      }
+    });
+    case 'gust': return T.get(`gust|${c.wind}|${map.def.floor || ''}`, 16, 16, p => {
+      T.gymFloor(p, 0, 0, map.def.floor || '#8aa0b8');
+      const Cy = G.ramp(['#1e6a8a', '#3ab0d8', '#8ae8ff', '#e8fcff']);
+      p.rect(1, 1, 14, 14, Cy[0]); p.rect(2, 2, 12, 12, G.rgb('#16324a'));
+      const rot = { up: (x, y) => [x, y], down: (x, y) => [x, 15 - y], left: (x, y) => [y, x], right: (x, y) => [15 - y, x] }[c.wind] || ((x, y) => [x, y]);
+      for (const [cy, k] of [[4, 3], [8, 2], [12, 1]]) for (let i = 0; i < 5; i++) { const [a, b] = rot(8 - 1 - i, cy + i * .8 | 0), [a2, b2] = rot(8 + i, cy + i * .8 | 0); p.set(a, b, Cy[k]); p.set(a2, b2, Cy[k]); }
+    });
     case 'gymfloor': return fresh(p => T.gymFloor(p, X0, Y0, map.def.floor || '#8aa0b8'));
     case 'gymfloor2': return fresh(p => T.gymFloor(p, X0, Y0, map.def.floor2 || '#6a809a'));
     case 'pave': return fresh(p => T.tileFloor(p, X0, Y0, '#b8b4ac'));
@@ -286,7 +301,8 @@ G.objImg = function (map, c, frame) {
     case 'rug': return { img: T.furniture('rug', 0).img, ox: 0, oy: 0, flat: true };
     case 'counter': case 'pc': case 'shelf': case 'goods': case 'bike': case 'tv': case 'plant': case 'healer': case 'machine': case 'desk': case 'statue':
     case 'dresser': case 'sidetable': case 'armchair': case 'fridge': case 'stove': case 'sink': case 'boxes': case 'floorlamp': case 'vending': case 'display': case 'whiteboard': case 'plant2':
-      return { ...T.furniture(c.o, ['pc', 'tv', 'healer', 'machine', 'vending'].includes(c.o) ? frame % 2 : 0), ao: !['counter', 'shelf', 'goods', 'fridge', 'stove', 'sink', 'dresser'].includes(c.o) };
+    case 'brazier': case 'banner': case 'menhir': case 'seer': case 'cog': case 'anvil': case 'lanternstand': case 'telescope': case 'keeperdesk': case 'ropecoil': case 'oilcans': case 'greatlamp':
+      return { ...T.furniture(c.o, ['pc', 'tv', 'healer', 'machine', 'vending', 'brazier', 'seer', 'lanternstand', 'greatlamp'].includes(c.o) ? frame % 2 : 0, c.tint), ao: !['counter', 'shelf', 'goods', 'fridge', 'stove', 'sink', 'dresser'].includes(c.o) };
     case 'orbball': return { img: G.orbArt('orb', 14), ox: 1, oy: 1, aoW: 5 };
     case 'fountain': {
       const F = G.fountainOf(map, c.x | 0, c.y | 0);

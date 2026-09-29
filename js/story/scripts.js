@@ -344,7 +344,7 @@
       cinder_gym: ['Fire', 'Water, Ground and Rock moves put out the fire. Brann\'s last Echo can Resonate, so save something strong for the end.'],
       dusk_gym: ['Ghost', 'Dark and Ghost moves are strong against Ghosts. Normal and Fighting moves pass straight through them.'],
       frost_gym: ['Ice', 'Mind the slippery floor. Fire, Fighting, Rock and Steel moves shatter ice. Sigrid battles in the snow, which makes her Ice types tougher.'],
-      sky_gym: ['Dragon', 'Ice, Dragon and Fairy moves are strong against Dragons. Kaelen\'s Tempestral is a formidable Echo. Come prepared.'],
+      sky_gym: ['Dragon', 'The wind currents only blow one way, so read the arrows before you step on. Ice, Dragon and Fairy moves are strong against Dragons, and Kaelen\'s Tempestral is a formidable Echo.'],
     }[id] || ['?', 'Good luck!'];
     await S.say(`Hello there, challenger! This gym's Warden uses ${info[0]}-type Echoes. ${info[1]}`, 'Gym Guide');
     if (id === 'dusk_gym' && !G.bag.has('lantern')) { await S.say('It\'s pitch black in there. Take this Lantern, so you can see where you\'re going.', 'Gym Guide'); await S.give('lantern'); }

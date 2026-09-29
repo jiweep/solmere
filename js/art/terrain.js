@@ -55,7 +55,7 @@ G.terrain = (function () {
     }
   }
   // cells whose tile is painted over the natural bake
-  const STRUCT_TILES = new Set(['cliff', 'cavewall', 'crystalwall', 'ledge', 'ledgel', 'ledger', 'bridge', 'bridgev', 'hole', 'ladderup', 'dark', 'mat', 'crystalfloor', 'wall', 'wood', 'tilefloor', 'carpet', 'gymfloor', 'gymfloor2', 'stairsup', 'stairsdown', 'metal', 'none']);
+  const STRUCT_TILES = new Set(['cliff', 'cavewall', 'crystalwall', 'ledge', 'ledgel', 'ledger', 'bridge', 'bridgev', 'hole', 'ladderup', 'dark', 'mat', 'crystalfloor', 'wall', 'wood', 'tilefloor', 'carpet', 'gymfloor', 'gymfloor2', 'stairsup', 'stairsdown', 'metal', 'none', 'cloud', 'gust']);
   // cells animated or state-dependent: drawn each frame instead of baked
   const LIVE_TILES = new Set(['lava', 'switch', 'tall', 'flowers', 'hedge']);
 

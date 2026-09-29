@@ -249,6 +249,7 @@
     // grand staircase down to the civic terrace (Mart, Battle Spire, homes) and the sky gardens
     const m = new G.MB(34, 28, '=', 151);
     m.rect(0, 0, 34, 4, '~'); m.rect(14, 0, 4, 4, 'I');
+    m.rect(0, 0, 1, 4, 'T'); m.rect(33, 0, 1, 4, 'T');   // the woods beyond the map run down to the sea, so the sea stops at a shore, not a square edge
     m.forest(1, 'T', { skip: (x, y) => y < 4 || (x >= 32 && y >= 13 && y <= 15) });
     m.rect(0, 4, 34, 1, '='); m.put(0, 4, 'T'); m.put(33, 4, 'T');
     m.rect(32, 12, 2, 5, '#'); m.put(33, 14, 'c'); m.put(32, 14, '=');
@@ -342,34 +343,38 @@
       { type: 'npc', id: 'hq_kaelen', x: 2, y: 3, look: 'kaelen', dir: 'right', script: 'hq_kaelen', cond: '!hq_done' },
       { type: 'trigger', x: 6, y: 6, w: 3, h: 1, script: 'hq_admins', cond: '!hq_admins_done' },
     ], spawn: [7, 12] });
-  // Skyreach gym: the dragon hall (gauntlet)
+  // Skyreach gym: platforms over open sky, joined by one-way wind currents. The current that starts beside
+  // you (east, to the near ledge) only blows you home again; the way up runs west past each Dragon Tamer.
+  // The way down: from Kaelen's hall to the third Tamer's ledge, down to the first's, and home along the west
   D({ id: 'sky_gym', name: 'Skyreach Gym', type: 'indoor', music: 'gym', floor: '#4a3a7a', floor2: '#5a4a90', wall: 'gym', env: 'sky',
-    legend: { '.': { g: 'gymfloor' }, ',': { g: 'gymfloor2' } },
+    legend: { '.': { g: 'gymfloor' }, ',': { g: 'gymfloor2' }, 'C': { g: 'cloud', solid: true },
+      '8': { g: 'gust', wind: 'up' }, '2': { g: 'gust', wind: 'down' }, '4': { g: 'gust', wind: 'left' }, '6': { g: 'gust', wind: 'right' },
+      'F': { o: 'banner', solid: true, tint: '#6f35fc' }, 'b': { o: 'brazier', solid: true, tint: '#8ae8ff', light: 'screen' } },
     grid: [
       'WWWWWWWWWWWWWWW',
       'WWWWWWWWWWWWWWW',
-      'S.....,,,.....S',
-      '.......,.......',
-      'S......,......S',
-      '.......,.......',
-      'S......,......S',
-      '.......,.......',
-      'S......,......S',
-      '.......,.......',
-      'S......,......S',
-      '.......,.......',
-      'S......,......S',
-      '.......,.......',
-      'S......,......S',
-      '...............',
-      '.......,.......',
-      '.......M.......'],
+      'CCCFb..,..bFCCC',
+      'CCC.........CCC',
+      'CCC82CCCCCCCCCC',
+      'C.....4444444CC',
+      'C.....CCCCCC8CC',
+      'C2CCCCCCCCCC8CC',
+      'C2CCCCCCCCCC8CC',
+      'C....CCCCC....C',
+      'C....66666....C',
+      'C....CCCCCCCCCC',
+      'C....CCCCCC...C',
+      'C28CCCCCCCC28CC',
+      'C2844......48CC',
+      'C6666......68CC',
+      'CCCCC......CCCC',
+      'CCCCCCCMCCCCCCC'],
     warps: [{ x: 7, y: 17, to: '_back' }],
     objs: [
       { type: 'npc', id: 'kaelen_npc', x: 7, y: 2, look: 'kaelen', dir: 'down', script: 'kaelen' },
-      { type: 'trainer', id: 'sg_1e', x: 5, y: 13, look: 'dragontamer', dir: 'right', sight: 2, trainer: 'sg_1' },
-      { type: 'trainer', id: 'sg_2e', x: 9, y: 9, look: 'dragontamer', dir: 'left', sight: 2, trainer: 'sg_2' },
-      { type: 'trainer', id: 'sg_3e', x: 5, y: 5, look: 'dragontamer', dir: 'right', sight: 2, trainer: 'sg_3' },
+      { type: 'trainer', id: 'sg_1e', x: 4, y: 12, look: 'dragontamer', dir: 'up', sight: 2, trainer: 'sg_1' },
+      { type: 'trainer', id: 'sg_2e', x: 13, y: 9, look: 'dragontamer', dir: 'left', sight: 2, trainer: 'sg_2' },
+      { type: 'trainer', id: 'sg_3e', x: 1, y: 5, look: 'dragontamer', dir: 'right', sight: 2, trainer: 'sg_3' },
       { type: 'npc', id: 'sg_guide', x: 10, y: 16, look: 'man', dir: 'left', script: 'gym_guide' },
     ], spawn: [7, 16] });
   D({ id: 'spire', name: 'Battle Spire', type: 'indoor', wall: 'gym', music: 'spire', floor: '#3a3060', floor2: '#4a4078', canRun: true,
@@ -423,19 +428,23 @@
         { type: 'item', id: 'tl_h1', x: 20, y: 13, item: 'tidestone', hidden: true },
       ], spawn: [12, 15] });
   })();
-  const LH = { type: 'indoor', wall: 'stone', floor: '#8a8e9a', floor2: '#6a6e7a', env: 'lighthouse', music: () => G.flag('tidelight_done') ? 'tidelight_calm' : 'lighthouse', legend: { '.': { g: 'gymfloor' }, ',': { g: 'gymfloor2' } }, noEscape: true };
+  // The Lodestar inside: a round stone tower. Sandstone floors with a ring inlay, the keeper's desk and storm lanterns
+  // on the ground floor with oil and rope for the lamp; the keeper's rooms above; the great lamp at the top.
+  const LH = { type: 'indoor', wall: 'stone', floor: '#9a8c74', floor2: '#7e705c', env: 'lighthouse', music: () => G.flag('tidelight_done') ? 'tidelight_calm' : 'lighthouse', noEscape: true, dress: false,
+    legend: { '.': { g: 'gymfloor' }, ',': { g: 'gymfloor2' }, 'J': { o: 'lanternstand', solid: true, light: 'flame' }, 'D': { o: 'keeperdesk', solid: true }, 'e': { o: 'ropecoil', solid: true },
+      'I': { o: 'oilcans', solid: true }, 'E': { o: 'telescope', solid: true } } };
   D({ id: 'lh1', name: 'Lodestar Lighthouse 1F', ...LH,
-    grid: ['WWWWWWWWWWWWW', 'WWWWWWWWWWWWW', 'q.q.......^.q', '.............', '..,,,,,,,,,..', '..,.......,..', '..,.q...q.,..', '..,.......,..', '..,,,,,,,,,..', '.............', 'o...........k', '......M......'],
-    legend: { ...LH.legend, 'k': { o: 'crate', solid: true } },
+    grid: ['WWWWWWWWWWWWW', 'WWWWWWWWWWWWW', 'ookeJ.D...^JI', '.............', '..,,,,,,,,,..', '..,.......,..', '..,.I...o.,..', '..,.......,..', '..,,,,,,,,,..', '.............', 'nJ.........kn', 'nnI...M...enn'],
     warps: [{ x: 6, y: 11, to: 'tidelight', tx: 12, ty: 7, dir: 'down' }, { x: 10, y: 2, to: 'lh2', tx: 8, ty: 2, dir: 'left' }],
     objs: [
       { type: 'trainer', id: 'lh_g1e', x: 1, y: 7, look: 'grunt', dir: 'right', sight: 4, trainer: 'lh_grunt1', cond: '!tidelight_done' },
       { type: 'trainer', id: 'lh_g2e', x: 11, y: 5, look: 'grunt_f', dir: 'left', sight: 4, trainer: 'lh_grunt2', cond: '!tidelight_done' },
       { type: 'npc', id: 'lh_grey', x: 9, y: 2, look: 'grey', dir: 'down', script: 'lh_grey', cond: '!lh_grey_done' },
       { type: 'item', id: 'lh1_i', x: 0, y: 3, item: 'fullrestore' },
+      { type: 'sign', x: 6, y: 2, invisible: true, text: 'The keeper\'s logbook lies open. "Lamp lit at dusk. Sea calm. The old song again tonight, far out past the reef."' },
     ], spawn: [6, 10] });
   D({ id: 'lh2', name: 'Lodestar Lighthouse 2F', ...LH,
-    grid: ['WWWWWWWWWWWWW', 'WWWWWWWWWWWWW', 'q.^......v..q', '.............', '.WWWW...WWWW.', '.W.........W.', '.W.q.....q.W.', '.W.........W.', '.WWWW...WWWW.', '.............', 'q...........q'],
+    grid: ['WWWWWWWWWWWWW', 'WWWWWWWWWWWWW', 'J.^......v..J', '.............', '.WWWW...WWWW.', '.W.........W.', '.W.Q.....Q.W.', '.W.........W.', '.WWWW...WWWW.', '.............', 'nE.........on'],
     warps: [{ x: 9, y: 2, to: 'lh1', tx: 10, ty: 3, dir: 'down' }, { x: 2, y: 2, to: 'lhtop', tx: 6, ty: 9, dir: 'up', cond: 'lh_lark_done' }],
     objs: [
       { type: 'trainer', id: 'lh_se', x: 6, y: 9, look: 'scientist', dir: 'up', sight: 3, trainer: 'lh_sci', cond: '!tidelight_done' },
@@ -443,8 +452,8 @@
       { type: 'item', id: 'lh2_i', x: 6, y: 6, item: 'maxrevive' },
     ], spawn: [9, 3] });
   D({ id: 'lhtop', name: 'Lodestar Summit', ...LH, dark: false, env: 'lighthouse',
-    legend: { '.': { g: 'gymfloor' }, ',': { g: 'gymfloor2' }, 'E': { o: 'machine', solid: true, light: 'screen' }, 'O': { o: 'statue', solid: true } },
-    grid: ['nnnnnnnnnnnnn', 'nnnnnnnnnnnnn', 'nnnnnEOEnnnnn', 'nn..E...E..nn', 'n...........n', 'n...,,,,,...n', 'n...,...,...n', 'n...,,,,,...n', 'n...........n', 'nn.........nn', 'nnnnn.^.nnnnn'],
+    legend: { ...LH.legend, 'x': { g: 'gymfloor', solid: true }, 'L': { o: 'greatlamp', solid: true, light: 'beacon' } },
+    grid: ['nnnnnnnnnnnnn', 'nnnnnnnnnnnnn', 'nnnn.xxx.nnnn', 'nn...xLx...nn', 'n.I.......E.n', 'n...,,,,,...n', 'n...,...,...n', 'n...,,,,,...n', 'n...........n', 'nn.........nn', 'nnnnn.^.nnnnn'],
     warps: [{ x: 6, y: 10, to: 'lh2', tx: 2, ty: 3, dir: 'down' }],
     objs: [
       { type: 'npc', id: 'top_crane', x: 6, y: 4, look: 'crane', dir: 'up', script: 'top_crane', cond: '!tidelight_done' },

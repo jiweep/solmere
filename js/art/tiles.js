@@ -697,13 +697,45 @@ G.tiles = (function () {
   }
 
   // --------------------------------------------------------- furniture ---
-  function furniture(kind, frame) {
-    const tall = { shelf: 26, goods: 26, plant: 22, pc: 20, machine: 22, healer: 18, counter: 18, statue: 26, tv: 18, dresser: 22, sidetable: 24, armchair: 18, fridge: 28, stove: 20, sink: 20, boxes: 20, floorlamp: 30, vending: 28, display: 20, whiteboard: 26, plant2: 26 };
+  function furniture(kind, frame, tint) {
+    if (kind === 'greatlamp') { const img = get(`fu|greatlamp|${frame}`, 48, 60, p => paintGreatLamp(p, frame)); return { img, ox: -16, oy: 16 - 60 }; }
+    const tall = { shelf: 26, goods: 26, plant: 22, pc: 20, machine: 22, healer: 18, counter: 18, statue: 26, tv: 18, dresser: 22, sidetable: 24, armchair: 18, fridge: 28, stove: 20, sink: 20, boxes: 20, floorlamp: 30, vending: 28, display: 20, whiteboard: 26, plant2: 26,
+      brazier: 24, banner: 32, menhir: 30, seer: 26, cog: 28, anvil: 16, lanternstand: 30, telescope: 26, keeperdesk: 20, ropecoil: 16, oilcans: 18 };
     const h = tall[kind] || 16;
-    const img = get(`fu|${kind}|${frame}`, 16, h, p => paintFurniture(p, kind, frame, h));
+    const img = get(`fu|${kind}|${frame}|${tint || ''}`, 16, h, p => paintFurniture(p, kind, frame, h, tint));
     return { img, ox: 0, oy: 16 - h };
   }
-  function paintFurniture(p, kind, frame, h) {
+  // The great lamp of the Lodestar: a beehive of ringed prism glass in a brass cage on a stone plinth, the flame
+  // burning at its heart (48x60, drawn from the plinth's centre cell)
+  function paintGreatLamp(p, frame) {
+    const BR = R(['#3a2410', '#5e3e18', '#8a6224', '#b88a34', '#dcb454', '#f4d88a', '#fff2c4']);
+    const ST = R(['#3a3640', '#524c58', '#6a6470', '#847e88', '#a09aa2', '#bcb6bc']);
+    const GL = R(['#6a4a1a', '#9a7a3a', '#c8a85a', '#e8d08a', '#fff0c0', '#ffffff']);
+    // plinth
+    for (let y = 48; y < 60; y++) for (let x = 6; x < 42; x++) p.set(x, y, ST[y < 51 ? 5 - (y - 48) : x < 9 ? 3 : x > 38 ? 1 : 2]);
+    p.hline(6, 41, 51, ST[1]); for (let x = 10; x < 40; x += 8) p.vline(x, 52, 59, ST[1]);
+    p.hline(4, 43, 47, BR[3]); p.hline(4, 43, 46, BR[5]);   // brass ring on the plinth
+    // lens: ringed glass, widest at the middle
+    const cy = 27, ry = 19;
+    for (let y = cy - ry; y <= cy + ry; y++) {
+      const t = (y - cy) / ry, half = Math.round(16 * Math.sqrt(Math.max(0, 1 - t * t * .75)));
+      const band = Math.floor((y - (cy - ry)) / 3) % 2, core = Math.abs(t) < .28;
+      for (let x = 24 - half; x < 24 + half; x++) {
+        const u = (x - (24 - half)) / Math.max(1, 2 * half);   // 0 at left edge, 1 at right
+        let k = band ? 2 : 3; if (u < .18) k += 1; if (u > .8) k -= 1; if (core) k += 1;
+        p.set(x, y, GL[G.clamp(k, 0, 5)]);
+      }
+      p.set(24 - half, y, BR[2]); p.set(24 + half - 1, y, BR[1]);
+    }
+    for (const x of [15, 24, 33]) for (let y = cy - ry + 2; y < cy + ry - 1; y++) p.set(x, y, BR[x === 15 ? 4 : 3]);   // brass cage bars
+    // the flame inside
+    const fl = frame % 2;
+    p.ell(24, cy + 1, 6, 7, GL[4]); p.ell(24, cy + 1 + fl * .5, 3.5, 5, GL[5]); p.ell(24, cy - 3 - fl, 1.5, 2.5, P('#ffffff'));
+    // crown and finial
+    p.ell(24, cy - ry, 12, 4, BR[3]); p.ell(24, cy - ry - 1, 10, 2.5, BR[5]); p.rect(22, 1, 4, 5, BR[3]); p.rect(22, 1, 1, 5, BR[5]); p.circ(24, 1.5, 1.8, BR[5]);
+    p.outline(null, { k: .3 });
+  }
+  function paintFurniture(p, kind, frame, h, tint) {
     const b = h - 16, WD = R(['#2a1a10', '#46301c', '#664628', '#865e36', '#a67a48', '#c4985e', '#dcb47a']);
     const MET = R(['#1e222a', '#30363f', '#454c58', '#5e6674', '#7a8290', '#9aa2ae', '#c0c6ce', '#e4e8ec']);
     const box = (x, y, w, hh, top, ramp, topK = 5, faceK = 3) => {   // 3/4 box: lit top surface, front face
@@ -866,6 +898,97 @@ G.tiles = (function () {
         p.hline(3, 12, h - 7, T2[4]);
         const L = LEAF.grass;
         for (let a = 0; a < 7; a++) { const ang = -Math.PI / 2 + (a - 3) * .42; for (let r = 0; r < 13; r++) { const x = 8 + Math.cos(ang) * r * .75, y = h - 8 + Math.sin(ang) * r + r * r * .045; p.set(Math.round(x), Math.round(y), L[r < 4 ? 3 : r < 9 ? 5 : 6]); p.set(Math.round(x) + 1, Math.round(y), L[2]); } }
+        break;
+      }
+      // ---- throne-room and lighthouse props (the Conclave chambers, the Champion's Sanctum, the Lodestar)
+      case 'brazier': {   // an iron fire bowl on a tripod; the flame takes the room's colour (tint)
+        const IR = R(['#141218', '#24222a', '#3a3842', '#56545e', '#7a7884']), F = G.rampFrom(tint || '#ff8a2a', 5), fl = frame % 2;
+        p.line(4, 23, 7, 16, IR[2]); p.line(12, 23, 9, 16, IR[1]); p.vline(8, 16, 22, IR[2]); p.hline(3, 5, 23, IR[1]); p.hline(11, 13, 23, IR[1]);
+        for (let y = 12; y < 17; y++) { const hw = 6 - (y - 12); p.hline(8 - hw, 7 + hw, y, IR[y === 12 ? 4 : y === 13 ? 3 : 2]); }
+        p.hline(1, 14, 12, IR[4]); p.set(2, 13, IR[3]); p.set(13, 13, IR[1]);
+        p.ell(8, 8.5, 5, 5, F[2]); p.ell(8 + (fl ? .5 : -.5), 6.5, 3, 5, F[2]); p.ell(8, 9, 3.4, 3.4, F[3]); p.ell(8, 10, 1.8, 2, F[4]); p.set(8 + (fl ? 1 : -1), 1 + fl, F[3]);
+        p.hline(3, 12, 11, F[1]);
+        break;
+      }
+      case 'banner': {   // a standing banner: two poles and a crossbar, a swallow-tailed cloth in the tint, a gold star
+        const Au = R(['#5a3a10', '#8a6220', '#c8963a', '#f0c860', '#fff0a8']), C = G.rampFrom(tint || '#6a3aa8', 5), K = P('#2a2228');
+        p.vline(1, 1, 31, K); p.vline(14, 1, 31, K); p.hline(0, 15, 1, Au[2]); p.set(1, 0, Au[4]); p.set(14, 0, Au[4]);
+        p.rect(0, 30, 3, 2, K); p.rect(13, 30, 3, 2, K);
+        for (let y = 2; y < 27; y++) for (let x = 3; x < 13; x++) {
+          if (y >= 22 && Math.abs(x - 7.5) < (y - 21) * 1.1) continue;   // the swallowtail notch
+          p.set(x, y, C[x === 3 ? 3 : x === 12 ? 1 : 2]);
+        }
+        p.hline(3, 12, 3, Au[3]); p.hline(3, 12, 19, Au[2]);
+        const st = (cx, cy) => { p.vline(cx, cy - 4, cy + 4, Au[3]); p.hline(cx - 4, cx + 4, cy, Au[3]); p.rect(cx - 1, cy - 1, 3, 3, Au[3]); p.set(cx, cy, Au[4]); p.set(cx - 1, cy - 2, Au[2]); };
+        st(7.5 | 0, 11);
+        break;
+      }
+      case 'menhir': {   // a standing stone, glowing runes cut into its face (Rook's chamber)
+        const S = R(['#2a2622', '#403a34', '#5a524a', '#746a60', '#8e8478', '#aca294']), Ru = P(tint || '#ffb050');
+        for (let y = 3; y < 28; y++) {
+          const hw = Math.round(3.5 + (y - 3) * .1 + (y < 6 ? -(6 - y) * .7 : 0));
+          for (let x = 8 - hw; x < 8 + hw; x++) p.set(x, y, S[x < 8 - hw + 2 ? 4 : x > 8 + hw - 3 ? 1 : (h2(x, y, 31) > .8 ? 3 : 2)]);
+        }
+        p.hline(6, 9, 3, S[5]);
+        p.vline(8, 9, 20, Ru); p.line(8, 11, 6, 13, Ru); p.line(8, 14, 10, 16, Ru); p.hline(7, 9, 19, Ru); p.set(7, 9, Ru);
+        p.ell(8, 28, 6, 2, S[1]); p.rect(2, 26, 3, 3, S[3]); p.rect(11, 27, 3, 2, S[2]);
+        break;
+      }
+      case 'seer': {   // a crystal ball on a marble stand, a vision swirling inside (Seraphine's chamber)
+        const M = R(['#5a4a5a', '#7a6a7a', '#a494a2', '#c8bac6', '#e8dce6']), V = G.rampFrom(tint || '#e070c0', 6), fl = frame % 2;
+        p.rect(4, 23, 8, 3, M[1]); p.hline(4, 11, 23, M[3]); p.rect(6, 15, 4, 8, M[2]); p.vline(6, 15, 22, M[4]); p.vline(9, 15, 22, M[1]);
+        p.ell(8, 15, 5, 1.6, M[3]);
+        p.sphere(8, 9, 5.5, 5.5, V, { bias: .15 });
+        p.line(5, 10 - fl, 8, 7 + fl, V[5]); p.line(8, 11, 11, 8 + fl, V[4]); p.set(6, 6, P('#ffffff')); p.set(7, 5, V[5]);
+        break;
+      }
+      case 'cog': {   // a great steel cog on a stand (Ferrum's chamber)
+        const MT = R(['#1e222a', '#343a46', '#4e5664', '#6c7686', '#8e98a8', '#b8c0cc', '#e0e6ee']);
+        p.rect(6, 19, 4, 7, MT[2]); p.vline(6, 19, 25, MT[4]); p.rect(2, 25, 12, 3, MT[1]); p.hline(2, 13, 25, MT[3]);
+        for (let a = 0; a < 10; a++) { const an = a / 10 * Math.PI * 2 + .15, x = 8 + Math.cos(an) * 7, y = 11 + Math.sin(an) * 7; p.rect(Math.round(x - 1), Math.round(y - 1), 2, 2, MT[Math.cos(an - 2.4) > 0 ? 5 : 3]); }
+        p.circ(8, 11, 6.2, MT[3]); p.circ(8, 11, 5, MT[4]); p.circ(7.3, 10.3, 4.2, MT[5]); p.circ(8, 11, 4, MT[3]);
+        for (const [dx, dy] of [[1, 0], [0, 1], [.7, .7], [-.7, .7]]) p.line(8 - dx * 4, 11 - dy * 4, 8 + dx * 4, 11 + dy * 4, MT[2]);
+        p.circ(8, 11, 1.8, MT[1]); p.set(7, 10, MT[6]);
+        break;
+      }
+      case 'anvil': {   // an anvil with a glowing ingot on it
+        const MT = R(['#16181e', '#262a32', '#3a3e48', '#565c68', '#7a808c', '#a8aeb8']);
+        p.rect(3, 5, 11, 3, MT[3]); p.hline(3, 13, 5, MT[5]); p.line(0, 5, 3, 6, MT[4]); p.line(0, 6, 3, 7, MT[2]);
+        p.rect(6, 8, 5, 3, MT[2]); p.rect(3, 11, 11, 4, MT[2]); p.hline(3, 13, 11, MT[4]); p.hline(3, 13, 15, MT[0]);
+        p.rect(8, 3, 4, 2, P('#ff7a30')); p.hline(8, 11, 3, P('#ffd070'));
+        break;
+      }
+      case 'lanternstand': {   // a keeper's storm lantern on an iron post
+        const IR = R(['#141218', '#2a2630', '#44404c', '#625e6a']), fl = frame % 2;
+        p.vline(8, 12, 28, IR[2]); p.vline(7, 12, 28, IR[3]); p.rect(4, 28, 8, 2, IR[1]); p.hline(4, 11, 28, IR[3]);
+        p.rect(5, 3, 6, 9, IR[1]); p.rect(6, 4, 4, 7, P('#ffd890')); p.rect(7, 6 + fl, 2, 4 - fl, P('#fff8e0')); p.hline(4, 11, 2, IR[3]); p.rect(7, 0, 2, 2, IR[2]);
+        p.hline(5, 10, 12, IR[3]);
+        break;
+      }
+      case 'telescope': {   // a brass telescope on a wooden tripod, aimed out to sea
+        const BR = R(['#4a2e10', '#7a5420', '#b0802e', '#dcb050', '#fbe39a']);
+        p.line(8, 12, 3, 25, WD[3]); p.line(8, 12, 13, 25, WD[2]); p.line(8, 12, 8, 25, WD[4]);
+        for (let i = 0; i < 12; i++) { const x = 2 + i, y = 11 - i * .55; p.rect(x, Math.round(y), 1, i < 3 ? 2 : 3, BR[i < 3 ? 3 : 2]); p.set(x, Math.round(y), BR[4]); }
+        p.rect(12, 3, 3, 4, BR[1]); p.set(13, 3, BR[4]); p.circ(8, 12, 1.4, BR[1]);
+        break;
+      }
+      case 'keeperdesk': {   // a writing desk with the keeper's logbook open, a candle and an inkwell
+        box(0, 7, 16, 9, 4, WD, 5, 3); p.rect(1, 14, 2, 2, WD[1]); p.rect(13, 14, 2, 2, WD[1]);
+        p.rect(3, 6, 8, 5, P('#f0e6cc')); p.vline(7, 6, 10, P('#b8a888')); for (let y = 7; y < 10; y++) { p.hline(4, 6, y, P('#8a8070')); p.hline(8, 10, y, P('#8a8070')); }
+        p.rect(12, 6, 2, 3, P('#f4f0e0')); p.set(12, 5, P('#ffd060')); p.set(12, 4, P('#fff4c0')); p.rect(1, 8, 2, 2, P('#1e1a24'));
+        break;
+      }
+      case 'ropecoil': {   // coiled mooring rope
+        const RP = R(['#5a3e1e', '#86602e', '#b08a48', '#d4b070']);
+        for (let r = 0; r < 4; r++) { p.ell(8, 11, 7 - r * 1.5, 4 - r * .8, RP[r % 2 ? 1 : 2]); }
+        for (let a = 0; a < 14; a++) p.set(Math.round(8 + Math.cos(a) * (6 - a * .35)), Math.round(10 + Math.sin(a) * (3.5 - a * .2)), RP[3]);
+        p.circ(8, 11, 1, RP[0]);
+        break;
+      }
+      case 'oilcans': {   // cans of lamp oil, one tall and two short
+        const Rd = R(['#4a1010', '#7a1c1a', '#b0302a', '#d85840', '#f08a6a']);
+        p.rect(6, 4, 5, 12, Rd[2]); p.vline(6, 4, 15, Rd[4]); p.vline(10, 4, 15, Rd[1]); p.rect(7, 2, 2, 2, P('#b8b0a0')); p.hline(6, 10, 8, P('#f0d890')); p.hline(6, 10, 9, P('#f0d890'));
+        p.rect(1, 10, 5, 7, Rd[2]); p.vline(1, 10, 16, Rd[3]); p.rect(11, 11, 4, 6, Rd[1]); p.vline(11, 11, 16, Rd[3]); p.rect(2, 9, 2, 1, P('#b8b0a0'));
         break;
       }
       case 'stairsup': case 'stairsdown': break;
