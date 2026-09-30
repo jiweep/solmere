@@ -68,7 +68,11 @@
   pairs.sort((a, b) => b[0].length - a[0].length);
   const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const KEEP_IN_TEXT = new Set(['Iron', 'Awakening']);   // plain words that also appear inside other names and prose
-  const RX = [[/\bTM(\d+)/g, 'SD$1']].concat(pairs.filter(([o]) => !KEEP_IN_TEXT.has(o)).map(([o, n]) => [new RegExp('\\b' + esc(o) + '\\b', 'g'), n]));
+  // plurals first ("these EXP Candies" -> "these Growth Drops"), then the names themselves
+  const plural = s => /[^aeiou]y$/.test(s) ? s.slice(0, -1) + 'ies' : /(s|x|ch|sh)$/.test(s) ? s + 'es' : s + 's';
+  const named = pairs.filter(([o]) => !KEEP_IN_TEXT.has(o) && !/s$/.test(o));
+  const RX = [[/\bTM(\d+)/g, 'SD$1']].concat(named.map(([o, n]) => [new RegExp('\\b' + esc(plural(o)) + '\\b', 'g'), plural(n)]),
+    pairs.filter(([o]) => !KEEP_IN_TEXT.has(o)).map(([o, n]) => [new RegExp('\\b' + esc(o) + '\\b', 'g'), n]));
   G.renameText = s => { if (typeof s !== 'string') return s; for (const [rx, n] of RX) s = s.replace(rx, n); return s; };
   for (const T of [G.MOVES, G.ABILITIES || {}, G.ITEMS]) for (const id in T) { const o = T[id]; if (o.desc) o.desc = G.renameText(o.desc); }
 })();

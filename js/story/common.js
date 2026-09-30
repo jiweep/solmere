@@ -99,7 +99,7 @@ Object.assign(G.QUESTS, {
   side_spring: { name: 'Hot Spring Hopper', giver: 'Attendant Kiko', desc: 'Kiko at the Cindervale hot springs wants to see a Fire, Water, and Ice Echo relax together. Show her one of each type in your party.', reward: 'Leftovers', doneText: 'The springs have never been more peaceful.' },
   side_lanterns: { name: 'Lantern Festival', giver: 'Lamplighter Ode', desc: 'Relight the four spirit lanterns around Duskmere after dark (7 PM - 5 AM).', reward: 'Spell Tag + Dusk Stone', doneText: 'The spirits of Duskmere are at peace.' },
   side_scale: { name: 'The Glowing Scale', giver: 'Elder Vesna', desc: 'A strange glowing scale washed up on the lake. Bring it to Elder Vesna in Frostpeak.', reward: 'Frost Stone + story', doneText: 'Vesna told you of the old song.' },
-  side_dex: { name: 'Research Assistant', giver: 'Professor Hale', desc: 'Catch 40 different species, then 70, and report to Professor Hale in Brinehollow.', reward: 'EXP Candies, then the Shiny Charm', doneText: 'The Shiny Charm is yours!' },
+  side_dex: { name: 'Research Assistant', giver: 'Professor Hale', desc: 'Catch 20 different species, then 40, 70 and finally every one, and report to Professor Hale in Brinehollow.', reward: 'A Lucky Egg, EXP Candies, the Shiny Charm, then Gold Bottle Caps', doneText: 'Every page of the Echodex is filled.' },
 });
 // --------------------------------------------------- rival team builder --
 G.STARTERS = ['budling', 'kindlet', 'sealet'];

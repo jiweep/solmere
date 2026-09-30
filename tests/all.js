@@ -9,6 +9,7 @@ const root = path.join(__dirname, '..');
 const CHECKS = [
   ['Text lint', 'tools/textlint.js', [], o => /ok: /.test(o) || 'findings'],
   ['Doors, items, people reachable', 'tests/doors_reachable.js', [], o => /^ok:/m.test(o) || 'unreachable things'],
+  ['Everything collectable can be had', 'tests/obtainable.js', [], o => /^ok:/m.test(o) || 'things with no source'],
   ['Boulder puzzles solvable', 'tests/boulders.js', [], o => !/FAIL/.test(o) || 'unsolvable'],
   ['Wind currents carry you to Kaelen', 'tests/wind.js', [], o => /^ok/m.test(o) || 'stuck in the wind'],
   ['Saves at every chapter', 'tests/save_roundtrip.js', [], o => /ok: saving/.test(o) || 'save problems'],

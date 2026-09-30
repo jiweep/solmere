@@ -230,8 +230,22 @@
     S.facePlayer('hale');
     if (!G.flag('got_starter')) { await S.say('The three Orbs are on the table. Take your time, and choose the one that feels right.', HALE); return; }
     const d = G.dexCount();
+    if (d.caught >= 20 && !G.flag('dex20')) { await S.say(`${d.caught} species already! You have a gift for this. Here, an Echo holding this Lucky Egg learns faster from every battle.`, HALE); await S.give('luckyegg'); S.set('dex20'); }
     if (d.caught >= 40 && !G.flag('dex40')) { await S.say(`${d.caught} species already? That's remarkable work. Please, take these for your trouble.`, HALE); await S.give('expcandy', 5); S.set('dex40'); S.quest('side_dex', 'part2'); }
-    if (d.caught >= 70 && !G.flag('dex70')) { await S.say(`${d.caught} species... I never thought I'd see an Echodex this full. Take the Shiny Charm. It makes rare, differently coloured Echoes far more likely to appear.`, HALE); await S.give('shinycharm'); S.set('dex70'); S.quest('side_dex', 'done'); return; }
+    if (d.caught >= 70 && !G.flag('dex70')) { await S.say(`${d.caught} species... I never thought I'd see an Echodex this full. Take the Shiny Charm. It makes rare, differently coloured Echoes far more likely to appear.`, HALE); await S.give('shinycharm'); S.set('dex70'); S.quest('side_dex', 'part3'); return; }
+    if (d.caught >= d.total && !G.flag('dex_full')) {
+      await S.say(`Every page... all ${d.total} species, from the Budling in this lab to the song under the Lodestar. No one has ever done this before, ${P()}. Not even me.`, HALE);
+      await S.say('The Echodex is yours to keep, and so is the work. Take these as well. They were meant for the Tamer who finished it.', HALE);
+      await S.give('goldcap', 3); S.set('dex_full'); S.quest('side_dex', 'done'); return;
+    }
+    // After the Champion: the two Orbs you didn't choose have waited on the table all this time
+    if (G.flag('champion') && !G.flag('hale_starters')) {
+      const others = G.STARTERS.filter(sp => sp !== G.getVar('starter', 'kindlet'));
+      await S.say(`Champion ${P()}! Do you remember the three Orbs on this table? The other two never left. I think they were waiting for you.`, HALE);
+      await S.say('They should see the world, and I can think of no better Tamer to show them. Please, take them both.', HALE);
+      for (const sp of others) await S.giveMon(sp, 5, { bond: 120, text: `${starterName(sp)} hops out of its Orb and looks up at you.` });
+      S.set('hale_starters'); return;
+    }
     if (!G.save.quests.side_dex) S.quest('side_dex', 'part1');
     const tips = G.flag('champion') ? `Champion ${P()}, strange news from Starfall Peak, north-west of Frostpeak. The stars above it are going out, one by one. Would you go and see?` : `${d.caught} of ${d.total} species caught. Different Echoes come out at night, and more live in the water. Stay curious!`;
     await S.say(tips, HALE);
@@ -639,6 +653,14 @@
   SC.fossil_dig = async (S) => {
     S.facePlayer('gc_dig');
     const N = 'Digger Pim';
+    // Once the first one lives again, Pim hands over the fossil you left behind (so the Echodex can be finished alone)
+    if (G.flag('got_fossil') && S.questStep('side_fossil') === 'done' && !G.flag('got_fossil2')) {
+      const other = ['clawfossil', 'wingfossil'].find(i => !G.save.dex.caught[G.ITEMS[i].fossil] && !G.bag.has(i));
+      if (other) {
+        await S.say('You brought it back to life? Then the other one shouldn\'t sit in my bag any longer. Here, it\'s yours too.', N);
+        await S.give(other); S.set('got_fossil2'); return;
+      }
+    }
     if (G.flag('got_fossil')) { await S.say('Take good care of that fossil! Dr. Orla at the Galvan Harbor Museum can revive it.', N); return; }
     await S.say('Two fossils in one dig! But my bag only has room for one. You found me, so you choose.', N);
     const k = await G.ask('Which fossil will you take?', ['Claw Fossil', 'Wing Fossil'], { speaker: N, cancel: -1 });
@@ -677,7 +699,7 @@
   SC.mint_lady = async (S) => {
     S.facePlayer('ch2');
     await S.say('These mints are grown in volcanic soil. A mint changes how an Echo\'s stats grow, just like a new nature. $5,000 each.', 'Mint Grower');
-    const stock = ['mint_adamant', 'mint_jolly', 'mint_modest', 'mint_timid', 'mint_bold', 'mint_impish', 'mint_calm', 'mint_careful', 'mint_brave', 'mint_quiet'];
+    const stock = ['mint_adamant', 'mint_jolly', 'mint_modest', 'mint_timid', 'mint_bold', 'mint_impish', 'mint_calm', 'mint_careful', 'mint_brave', 'mint_quiet', 'mint_relaxed', 'mint_sassy', 'mint_hasty', 'mint_naive', 'mint_serious'];
     await new Promise(res => G.push(new G.ShopScene(stock, res)));
   };
   SC.name_rater_cinder = async (S) => {
@@ -1112,13 +1134,18 @@
     S.set('wanderer_done'); S.remove('sf_wanderer'); S.restoreMusic();
   };
   SC.nyxalis_encounter = async (S) => {
-    await S.say('The stars over the crater flicker, and go out, one by one. Something made of night uncoils where the comet fell.');
-    G.audio && G.audio.cry('nyxalis'); S.shake(30);
-    await S.say('It opens its eyes. The whole sky holds its breath.');
+    if (G.flag('nyxalis_met')) await S.say('Nyxalis is still coiled in the crater, watching you with the whole night in its eyes.');
+    else {
+      await S.say('The stars over the crater flicker, and go out, one by one. Something made of night uncoils where the comet fell.');
+      G.audio && G.audio.cry('nyxalis'); S.shake(30);
+      await S.say('It opens its eyes. The whole sky holds its breath.');
+    }
     await G.startWild(null, { species: 'nyxalis', lvl: 65, legend: true, noRandom: true });
-    S.set('nyxalis_done'); S.remove('sf_nyx');
-    await S.say('The stars bloom back over Starfall Peak, brighter than before.');
-    S.quest('post1', 'done');
+    const caught = G.party.allMons().some(m => m.sp === 'nyxalis');
+    if (!G.flag('nyxalis_met')) { S.set('nyxalis_met'); await S.say('The stars bloom back over Starfall Peak, brighter than before.'); S.quest('post1', 'done'); }
+    // one chance only would make the Echodex impossible to finish, so it waits in the crater until it's caught
+    if (caught) { S.set('nyxalis_done'); S.remove('sf_nyx'); }
+    else await S.say('Nyxalis sinks back into the dark of the crater. It will be there when you return.');
   };
   SC.orrelume_return = async (S) => {
     await S.say('A soft song drifts up from the water. Orrelume has returned. It seems to have been waiting for you.');
@@ -1164,11 +1191,12 @@
   SC.spire_exchange = async (S) => {
     S.facePlayer('spire_ex');
     const sp = G.save.spire; sp.bp = sp.bp || 0;
-    const stock = [['abilitypatch', 40], ['goldcap', 60], ['bottlecap', 20], ['rarecandy', 4], ['lifegem', 16], ['powerband', 16], ['focuslens', 16], ['swiftscarf', 16], ['guardvest', 16], ['mint_adamant', 8], ['mint_timid', 8], ['mint_modest', 8], ['mint_jolly', 8]];
+    const stock = [['abilitypatch', 40], ['goldcap', 60], ['bottlecap', 20], ['rarecandy', 4], ['lifegem', 16], ['powerband', 16], ['focuslens', 16], ['swiftscarf', 16], ['guardvest', 16], ['evocrystal', 24], ['tm10', 16], ['tm03', 24], ['tm70', 24], ['tm15', 32], ['mint_adamant', 8], ['mint_timid', 8], ['mint_modest', 8], ['mint_jolly', 8]];
     while (true) {
       const k = await G.choose(stock.map(([id, c]) => ({ label: G.ITEMS[id].name, right: c + ' BP' })).concat([{ label: 'Done' }]), { x: 120, y: 10, w: 180, maxRows: 12, title: `BP: ${sp.bp}`, cancel: stock.length });
       if (k < 0 || k >= stock.length) return;
       const [id, c] = stock[k];
+      if (G.ITEMS[id].tm && G.bag.has(id)) { await S.say('You already have that Skill Disc. It can be used again and again.', 'Exchange'); continue; }
       if (sp.bp < c) { await S.say('You don\'t have enough BP for that.', 'Exchange'); continue; }
       sp.bp -= c; G.bag.add(id); G.audio && G.audio.sfx('money'); G.toast('Got ' + G.ITEMS[id].name);
     }
@@ -1223,16 +1251,16 @@
     const town = G.save.returnTo ? G.save.returnTo.map : 'fernwick';
     const stock = {
       fernwick: ['oranberry', 'sunberry', 'cheriberry', 'chestoberry', 'pechaberry', 'rawstberry', 'miracleseed'],
-      galvan: ['tm17', 'tm16', 'tm33', 'tm12', 'tm05', 'magnet', 'xattack', 'xspeed'],
-      cindervale: ['hpup', 'protein', 'iron', 'calcium', 'zinc', 'carbos', 'charcoal', 'flamestone'],
-      duskmere: ['duskorb', 'timerorb', 'spelltag', 'duskstone', 'dawnstone', 'tm60', 'tm45'],
-      frostpeak: ['iceheal', 'froststone', 'nevermeltice', 'tm07', 'tm61', 'leppaberry', 'lumenberry'],
+      galvan: ['tm17', 'tm16', 'tm33', 'tm12', 'tm05', 'tm25', 'tm59', 'tm47', 'tm67', 'tm21', 'magnet', 'metalcoat', 'xattack', 'xspeed'],
+      cindervale: ['hpup', 'protein', 'iron', 'calcium', 'zinc', 'carbos', 'resetbrew', 'everstone', 'charcoal', 'flamestone', 'tm62', 'tm37'],
+      duskmere: ['duskorb', 'timerorb', 'spelltag', 'blackglasses', 'twistedspoon', 'poisonbarb', 'blacksludge', 'duskstone', 'dawnstone', 'tm60', 'tm45', 'tm36', 'tm49', 'tm06'],
+      frostpeak: ['iceheal', 'froststone', 'nevermeltice', 'tm07', 'tm61', 'tm18', 'tm41', 'leppaberry', 'lumenberry'],
     }[town] || ['greatorb', 'superpotion', 'repel'];
     await G.openShop(stock, { greet: 'Local specialties! Things you won\'t find anywhere else.', speaker: 'Clerk' });
   };
   SC.sky_special = async (S) => {
     S.facePlayer('clerk2');
-    await G.openShop(['lifegem', 'powerband', 'focuslens', 'swiftscarf', 'leftovers', 'guardvest', 'spikedhelm', 'expertbelt', 'scopelens', 'widelens', 'gritsash', 'linkcord', 'abilitycapsule', 'leafstone', 'tidestone', 'voltstone', 'tm26', 'tm24', 'tm13', 'tm04', 'tm01'], { greet: 'Welcome to Skyreach Supply, home of the finest held items in Solmere.', speaker: 'Clerk' });
+    await G.openShop(['lifegem', 'powerband', 'focuslens', 'swiftscarf', 'leftovers', 'guardvest', 'spikedhelm', 'expertbelt', 'scopelens', 'widelens', 'gritsash', 'linkcord', 'abilitycapsule', 'leafstone', 'tidestone', 'voltstone', 'tm26', 'tm24', 'tm13', 'tm04', 'tm01', 'tm22', 'tm65', 'tm02', 'tm66'], { greet: 'Welcome to Skyreach Supply, home of the finest held items in Solmere.', speaker: 'Clerk' });
   };
   // ------------------------------------------------------ map patches
   // extra NPCs that belong to later story beats
@@ -1243,6 +1271,19 @@
     { type: 'npc', id: 'gateguard2', x: 4, y: 2, look: 'officer', dir: 'right', text: 'Victory Road lies beyond. Good luck, Tamer.', cond: 'vr_open' },
   ];
   G.MAPDEFS.route2.objs.forEach(o => { if (o.id === 'r2_i3') o.item = 'tm11'; });
+  // Skill Discs and held items that had no way into the game, in dead ends off the path (tests/obtainable.js)
+  for (const [map, id, x, y, item] of [
+    ['route2', 'r2_i_tm28', 22, 5, 'tm28'],
+    ['route2', 'r2_i_silk', 23, 11, 'silkscarf'], ['whisperwood', 'ww_i_tm46', 19, 29, 'tm46'], ['whisperwood', 'ww_i_tm51', 13, 30, 'tm51'],
+    ['galvan', 'gv_i_coin', 4, 25, 'amuletcoin'], ['route3', 'r3_i_tm64', 16, 15, 'tm64'], ['route3', 'r3_i_tm08', 23, 17, 'tm08'],
+    ['glimmercave', 'gc_i_tm23', 9, 3, 'tm23'], ['glimmercave', 'gc_i_sand', 13, 24, 'softsand'], ['route4', 'r4_i_tm32', 23, 18, 'tm32'],
+    ['route4', 'r4_i_claw', 2, 32, 'quickclaw'], ['cindervale', 'cv_i_tm54', 13, 5, 'tm54'], ['route5', 'r5_i_tm43', 27, 36, 'tm43'],
+    ['route5', 'r5_i_bell', 25, 38, 'shellbell'], ['glaciapass', 'gp_i_tm69', 39, 24, 'tm69'], ['glaciapass', 'gp_i_tm53', 1, 22, 'tm53'],
+    ['frostpeak', 'fp_i_tm31', 18, 6, 'tm31'], ['skyreach', 'sk_i_tm57', 30, 24, 'tm57'], ['skyreach', 'sk_i_ribbon', 3, 13, 'fairyribbon'],
+    ['tidelight', 'tl_i_tm44', 22, 9, 'tm44'], ['tidelight', 'tl_i_tm63', 3, 13, 'tm63'], ['victoryroad', 'vr_i_tm52', 32, 17, 'tm52'],
+    ['victoryroad', 'vr_i_tm55', 25, 22, 'tm55'], ['victoryroad', 'vr_i_tm29', 25, 12, 'tm29'], ['starfall', 'sf_i_tm68', 5, 5, 'tm68'],
+    ['starfall', 'sf_i_tm56', 2, 9, 'tm56'],
+  ]) G.MAPDEFS[map].objs.push({ type: 'item', id, x, y, item });
   G.MAPDEFS.lh1.warps[1].cond = 'lh_grey_done';
   G.MAPDEFS.lh1.objs.push({ type: 'trigger', x: 0, y: 3, w: 13, h: 1, script: 'lh_grey', cond: '!lh_grey_done' });   // the whole row: the stairs can't be reached round her
   G.MAPDEFS.lh2.objs.push({ type: 'trigger', x: 2, y: 3, w: 2, h: 1, script: 'lh_lark', cond: '!lh_lark_done' });
