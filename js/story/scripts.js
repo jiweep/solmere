@@ -387,7 +387,7 @@
       galvan_gym: ['Electric', 'Ione hates to wait, and her Echoes are faster than yours will ever be. The ones who beat her stopped trying to outrun her. Step on the glowing pads to lower the barriers.'],
       cinder_gym: ['Fire', 'Everyone who walks into Brann\'s forge thinks they already know how to put a fire out. He\'s counting on it.'],
       dusk_gym: ['Ghost', 'Mireille\'s Echoes never hit a healthy Echo first. Everyone who loses in here says the same thing afterwards: "I didn\'t see it coming." Mind you, it is very dark.'],
-      frost_gym: ['Ice', 'Mind the slippery floor. Fire, Fighting, Rock and Steel moves shatter ice. Sigrid battles in the snow, which makes her Ice types tougher.'],
+      frost_gym: ['Ice', 'Mind the slippery floor. Sigrid has never lost a battle on a snowy day, and she\'ll tell you so herself. Funny thing is, it\'s always snowing in here.'],
       sky_gym: ['Dragon', 'The wind currents only blow one way, so read the arrows before you step on. Ice, Dragon and Fairy moves are strong against Dragons, and Kaelen\'s Tempestral is a formidable Echo.'],
     }[id] || ['?', 'Good luck!'];
     await S.say(`Hello there, challenger! This gym's Warden uses ${info[0]}-type Echoes. ${info[1]}`, 'Gym Guide');
@@ -928,6 +928,7 @@
     await S.say(`${R()}'s ${G.SPECIES[st].name} is trembling. It lets out a thin, tired cry. It sounds like it's been crying for a while.`);
     await S.say('Hey. Hey, what\'s wrong? You\'re shaking. Is it the Amplifier? Did the Amplifier do this? ...How long has it been like this?', WREN());
     const k = await choose(`${R()} is staring at their partner.`, ['Take the band off. Right now.', 'It\'s not too late to stop.', 'It\'s been like this since Cindervale.'], WREN());
+    G.setVar('wrenRoute5', k);   // Sigrid reads it back in Frostpeak, Wren at Skyreach; it should decide whether Wren comes to Crane HQ (GRAVITY_PLAN item 4)
     await S.say([`...Yeah. Yeah. I... I need to think. Don't follow me. Please.`, `I hope you're right. I... I need to think. Don't follow me.`, `You saw it? You saw it, and I didn't? ...I need to think. Don't follow me.`][k], WREN());
     if (G.flag('band_on')) { const pm = partner(); await S.say(`${R()} looks at the band on your own wrist, and then at ${pm ? G.mon.name(pm) : 'your partner'}. Neither of you says anything.`); }
     await S.fadeOut(10); S.remove('r5w'); await S.fadeIn(10);
@@ -941,7 +942,13 @@
     S.facePlayer('fp_boots');
     const N = 'Old Halvard';
     if (G.bag.has('gripboots')) { await S.say('Mt. Glacia Pass is to the east. Push the boulders into the holes to make a way across.', N); return; }
-    if (!G.flag('badge5')) { await S.say('My daughter Sigrid runs the gym. Beat her, and I\'ll give you what you need to cross the pass.', N); return; }
+    if (!G.flag('badge5')) {
+      await S.say('My daughter Sigrid runs the gym. Beat her, and I\'ll give you what you need to cross the pass.', N);
+      // Sigrid's plan is the snow (trainers.js); the one time she lost, it rained: Rain Call, sold two doors down
+      await S.say('She\'ll tell you she\'s never lost. Not quite true. She lost once, the spring she was twelve. It rained all afternoon, and the snow on the mountain turned to slush under her.', N);
+      await S.say('She sulked for a week. She\'s never let it rain in that gym since.', N);
+      return;
+    }
     await S.say('Sigrid says you\'re the real thing. These Grip Boots carried me over Mt. Glacia a hundred times. Walk into a boulder to push it.', N);
     await S.give('gripboots'); S.set('got_boots');
   };
@@ -951,6 +958,13 @@
     if (G.bag.has('oldamber')) {
       await S.say('That scale... child, that is a scale of Orrelume itself. It hasn\'t shed one in a hundred years.', N);
       await S.say('The old song says Solmere has two great lights. The song of the sea, and the hunger of the stars. The sea sings bonds together. The stars... remember whatever falls.', N);
+      // the partner that hummed back to the crystals (chapter 3) and on the pier (chapter 4) knows this song too
+      { const pm = partner(); if (pm && G.flag('crystal_hum')) {
+        await S.say(`${pm === G.party.lead() ? '' : `${G.mon.name(pm)}'s Orb opens. `}The scale hums in your hand. ${G.mon.name(pm)} leans close to it and hums the note from Glimmer Cave. The scale hums the next one back.`);
+        await S.emote('vesna', '!', 40);
+        await S.say('Two notes. That is how the old song begins. Nobody in Frostpeak has heard the second in my lifetime. Your partner knows the first by heart, child. Who taught it?', N);
+        S.set('scale_duet');
+      } }
       await S.say('If Orrelume is shedding, it is afraid. Keep the scale close. You may need its song. And take this Frost Stone. I have kept it a long time, waiting for the right person.', N);
       await S.give('froststone'); S.quest('side_scale', 'done'); S.set('scale_read'); return;
     }
@@ -959,13 +973,24 @@
   SC.sigrid = async (S) => {
     const N = 'Warden Sigrid';
     S.facePlayer('sigrid_npc');
-    if (G.flag('badge5')) { await S.say(`Mt. Glacia Pass is east of the village, and Skyreach City lies beyond it. ${R()} came through here, too... looking lost. Not the kind of lost a map can fix.`, N); return; }
-    await S.say('Welcome to the summit! I\'m Sigrid, Warden of Frostpeak. I\'ve climbed every peak in Solmere, and I\'ve never once turned back!', N);
-    await S.say('Balance, speed, and nerves of ice! Let\'s see you keep your footing!', N);
+    if (G.flag('badge5')) { await S.say(`Mt. Glacia Pass is east of the village, and Skyreach City lies beyond it. If you catch up with ${R()} up there, go gently. They're further from home than a map can show.`, N); return; }
+    if (!G.flag('sigrid_met')) {   // a rematch after a loss goes straight to her retry line
+      await S.say('Welcome to the summit! I\'m Sigrid, Warden of Frostpeak. I\'ve climbed every peak in Solmere, and I\'ve never once turned back!', N);
+      await S.say('Balance, speed, and nerves of ice! Let\'s see you keep your footing!', N);
+      if (G.flag('band_on')) await S.say('...That band on your wrist. Crane\'s? On a mountain we rope ourselves together too. But a rope is only safe if either of you can cut it.', N);
+      S.set('sigrid_met');
+      { const pm = partner(); if (pm) await S.say(fromOrb(pm) + ({ budling: `${G.mon.name(pm)} pulls its leaves in tight against the cold. It doesn't take a step back, though.`, kindlet: `The snow hisses where ${G.mon.name(pm)} stands. It looks very pleased with itself. Sigrid looks at the steam, and smiles.`, sealet: `${G.mon.name(pm)} takes one look at the ice and slides the whole length of the floor on its belly. Sigrid laughs out loud.` }[G.evoLine(pm.sp)[0].id] || `${G.mon.name(pm)} steps up beside you.`)); }
+    }
     const won = await G.storyBattle('sigrid'); if (!won) return;
     await S.say('Incredible! Like the first clear morning after a blizzard! The Rime Badge is yours!', N);
     await wardenWin(S, { badge: 'rime', flag: 'badge5', name: N, tm: 'tm14', tmText: 'And {tm}! In the snow, it never misses.', gymTrainers: ['ig_1', 'ig_2'] });
-    await S.say(`My father, Halvard, will want to meet you. He's by the frozen pond. And ${R()}... they headed for Skyreach. They wouldn't say a word to anyone. That worried me more than anything.`, N);
+    await S.say(`My father, Halvard, will want to meet you. He's by the frozen pond.`, N);
+    // what you told Wren on Route 5 (rival3), read back by someone who met them after
+    await S.say([
+      `And ${R()}... they came through just ahead of you. They asked my father how you take a band off an Echo without hurting it. He didn't know. Nobody here would.`,
+      `And ${R()}... they came through just ahead of you. They asked me if it's ever too late to turn back on a climb. I told them it's never too late. It's the one thing I've never done myself.`,
+      `And ${R()}... they came through just ahead of you, headed for Skyreach. They kept saying, "Even my rival saw it. Since Cindervale." Over and over.`,
+    ][G.getVar('wrenRoute5', 1)], N);
     S.quest('main6', 'done'); S.quest('main7', 'go');
   };
   // ------------------------------------------------------------- SKYREACH
@@ -976,7 +1001,8 @@
     S.faceEach('sk_wren', 'player');
     await S.say(`${P()}. Wait. Please.`, WREN());
     await S.say('I was wrong. About Crane, about the Fellowship, about my rank. All of it. The Amplifier was hurting my partner, and all I cared about was climbing higher.', WREN());
-    await S.say('I threw the band into the lake. I\'m not a Fellow any more. It feels strange... like I can finally breathe.', WREN());
+    await S.say(['You told me to take it off, right there on the ice. So I did. I threw the band into the lake.', 'You said it wasn\'t too late. I kept hearing it. So I threw the band into the lake.', 'You saw it before I did. That\'s the part I couldn\'t get past. I threw the band into the lake.'][G.getVar('wrenRoute5', 1)], WREN());
+    await S.say('I\'m not a Fellow any more. It feels strange... like I can finally breathe.', WREN());
     await S.say('I overheard them. Warden Kaelen is locked up on the Director\'s floor. And Crane is moving the Chorus Engine\'s core to the Lodestar. Tonight.', WREN());
     await S.say('I took a keycard on my way out. The lobby elevator needs it. We stop her. Together, like we always used to do everything.', WREN());
     await S.give('cranekeycard');

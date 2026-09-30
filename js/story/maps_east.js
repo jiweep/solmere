@@ -140,11 +140,7 @@
         { type: 'trigger', x: 3, y: 38, w: 24, h: 1, script: 'rival3', cond: ['badge4', '!rival3_done'] },
         { type: 'sign', x: 17, y: 37, text: '{c}ROUTE 5{w}\\n↑ Duskmere (by water)   ↓ Frostpeak Village' },
         { type: 'item', id: 'r5_i1', x: 8, y: 8, item: 'tm42' },
-        { type: 'item', id: 'r5_i2', x: 20, y: 12, item: 'netorb', qty: 3 },
         { type: 'item', id: 'r5_i3', x: 11, y: 20, item: 'mysticwater' },
-        { type: 'item', id: 'r5_i4', x: 5, y: 32, item: 'ultraorb', qty: 2 },
-        { type: 'item', id: 'r5_i5', x: 25, y: 42, item: 'froststone' },
-        { type: 'item', id: 'r5_h1', x: 21, y: 28, item: 'pearl', hidden: true },
         { type: 'item', id: 'r5_h2', x: 9, y: 21, item: 'bottlecap', hidden: true },
       ], spawn: [14, 40] });
   })();
@@ -180,7 +176,6 @@
         { type: 'npc', id: 'fp_w', x: 9, y: 11, look: 'woman', dir: 'down', move: 'look', text: 'Crane wagons came through the pass last week, heading for Skyreach and loaded with glowing crystals. The crystals were humming, sadly.' },
         { type: 'trainer', id: 'fp_s1', x: 17, y: 21, look: 'skier', dir: 'right', sight: 3, trainer: 'fp_skier1' },
         { type: 'trainer', id: 'fp_s2', x: 8, y: 14, look: 'skier', dir: 'right', sight: 3, trainer: 'fp_skier2' },
-        { type: 'item', id: 'fp_h1', x: 27, y: 22, item: 'nevermeltice', hidden: true },
       ], spawn: [13, 11] });
   })();
   G.defHouse('frost_house1', 'Elder Vesna\'s House', 0, [{ type: 'npc', id: 'vesna', x: 7, y: 5, look: 'oldwoman', dir: 'left', script: 'elder_vesna' }], { wall: 'wood' });
@@ -235,8 +230,6 @@
         { type: 'trainer', id: 'mg_v', x: 33, y: 13, look: 'veteran', dir: 'left', sight: 2, trainer: 'mg_vet' },
         { type: 'npc', id: 'mg_tip', x: 7, y: 14, look: 'hiker', dir: 'down', text: 'Boulders block the pass. With Grip Boots you can push them into the holes. If you get stuck, step outside and they\'ll be back where they started.' },
         { type: 'item', id: 'mg_i1', x: 4, y: 22, item: 'tm13' },
-        { type: 'item', id: 'mg_i2', x: 36, y: 25, item: 'maxrevive' },
-        { type: 'item', id: 'mg_i3', x: 12, y: 23, item: 'nevermeltice' },
         { type: 'item', id: 'mg_h1', x: 23, y: 21, item: 'rarecandy', hidden: true },
       ], spawn: [2, 14] });
   })();

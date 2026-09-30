@@ -860,7 +860,7 @@ G.THROW_MULT = [1, 1.25, 1.6, 2.2];   // catch-rate multiplier by throw quality:
         const turns = m.screen === 'tailwind' ? 4 : 5;
         S.cond[m.screen] = turns;
         this.emit({ t: 'screen', side: b.side, kind: m.screen });
-        this.raw({ reflect: 'Reflect made your side stronger against physical moves!', lightscreen: 'Light Screen made your side stronger against special moves!', tailwind: 'The Tailwind blew from behind your team!', veil: 'Aurora Veil made your team stronger against all moves!' }[m.screen].replace('your', b.side === 0 ? 'your' : 'the opposing').replace('your team', b.side === 0 ? 'your team' : 'the opposing team'));
+        this.raw({ reflect: 'Reflect made your side stronger against physical moves!', lightscreen: G.MOVES.lightscreen.name + ' made your side stronger against special moves!', tailwind: 'The Tailwind blew from behind your team!', veil: G.MOVES.auroraveil.name + ' made your team stronger against all moves!' }[m.screen].replace('your', b.side === 0 ? 'your' : 'the opposing').replace('your team', b.side === 0 ? 'your team' : 'the opposing team'));
         return;
       }
       if (m.hazard) {
@@ -1076,7 +1076,7 @@ G.THROW_MULT = [1, 1.25, 1.6, 2.2];   // catch-rate multiplier by throw quality:
         await this.processFaints(); if (this.checkEnd()) return;
       }
       for (const S of this.sides) for (const k of ['reflect', 'lightscreen', 'tailwind', 'veil']) {
-        if (S.cond[k]) { S.cond[k]--; if (!S.cond[k]) { this.raw(`${S.idx === 0 ? 'Your' : 'The opposing'} team's ${{ reflect: 'Reflect', lightscreen: 'Light Screen', tailwind: 'Tailwind', veil: 'Aurora Veil' }[k]} wore off!`); this.emit({ t: 'screen', side: S.idx, kind: k, off: true }); } }
+        if (S.cond[k]) { S.cond[k]--; if (!S.cond[k]) { this.raw(`${S.idx === 0 ? 'Your' : 'The opposing'} team's ${{ reflect: 'Reflect', lightscreen: G.MOVES.lightscreen.name, tailwind: 'Tailwind', veil: G.MOVES.auroraveil.name }[k]} wore off!`); this.emit({ t: 'screen', side: S.idx, kind: k, off: true }); } }
       }
       if (this.trickRoom) { this.trickRoom--; if (!this.trickRoom) this.raw('The twisted dimensions returned to normal!'); }
       for (const b of this.allActive()) { b.vol.protect = false; b.vol.flinch = false; b.vol.helped = false; b.turnsOut++; }

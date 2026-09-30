@@ -298,7 +298,7 @@
             y += 22;
           }
           for (const S of bt.sides) {
-            const bits = []; for (const [k, v] of Object.entries(S.cond)) if (v) bits.push(`${({ reflect: 'Reflect', lightscreen: 'Light Screen', tailwind: 'Tailwind', veil: 'Aurora Veil' })[k]} ${v}`);
+            const bits = []; for (const [k, v] of Object.entries(S.cond)) if (v) bits.push(`${({ reflect: 'Reflect', lightscreen: G.MOVES.lightscreen.name, tailwind: 'Tailwind', veil: G.MOVES.auroraveil.name })[k]} ${v}`);
             for (const [k, v] of Object.entries(S.hazards)) if (v) bits.push(({ rocks: 'Shard Trap', spikes: 'Spikes', tspikes: 'Venom Spikes', web: 'Sticky Web' })[k] + (v > 1 ? ' ×' + v : ''));
             if (bits.length) { U.text((S.idx === sc.persp ? 'Your side: ' : 'Foe side: ') + bits.join(', '), 30, y, { size: 5.6, color: '#cde' }); y += 10; }
           }

@@ -14,8 +14,8 @@
 // a Scrapmonk for Rock: careless fights who blocks the road, straight also catches the Water Echo everyone reaches for
 // (a Clawdle on Route 3), prepared talks to Fisher Bo and the cave hiker and uses what they point at: the Rain Call
 // Disc behind the little trees and the Rock Slide Disc in the Hollow's tunnel.
-// The fourth gym (Mireille, Duskmere) carries them on once more; see journey() for who brings what.
-//   node tests/attention.js [runs=150] [gym=juniper|ione|brann|mireille|all]   (exits 1 if careless wins too often or prepared too rarely)
+// The fourth gym (Mireille, Duskmere) and the fifth (Sigrid, Frostpeak) carry them on; see journey() for who brings what.
+//   node tests/attention.js [runs=150] [gym=juniper|ione|brann|mireille|sigrid|all]   (exits 1 if careless wins too often or prepared too rarely)
 const { load, CORE } = require('./harness');
 const G = load(CORE);
 G.rng = new G.RNG(+(process.env.SEED || 20260930));   // seeded, so a result near a threshold doesn't flip from run to run
@@ -23,7 +23,7 @@ G.TRAINERS = {}; G.rivalOf = { budling: 'kindlet', kindlet: 'sealet', sealet: 'b
 new Function('G', require('fs').readFileSync(require('path').join(__dirname, '../js/story/trainers.js'), 'utf8'))(G);
 const N = +(process.argv[2] || 150);
 // JUNIPER='[["shroomie",10,{"moves":[...]}],...]' tries another team without editing trainers.js
-for (const id of ['juniper', 'ione', 'brann', 'grey1', 'mireille']) if (process.env[id.toUpperCase()]) G.TRAINERS[id].party = JSON.parse(process.env[id.toUpperCase()]).map(([sp, lvl, x]) => ({ sp, lvl, ...(x || {}) }));
+for (const id of ['juniper', 'ione', 'brann', 'grey1', 'mireille', 'sigrid']) if (process.env[id.toUpperCase()]) G.TRAINERS[id].party = JSON.parse(process.env[id.toUpperCase()]).map(([sp, lvl, x]) => ({ sp, lvl, ...(x || {}) }));
 const GYM = process.argv[3] || 'all';
 const display = { async play() { } };
 // engine.js awardExp (as tests/level_curve.js): the fighter gets it all, the rest of the team .75 (EXP Share)
@@ -83,7 +83,26 @@ function journey(starter, style, gym) {
   if (gym === 'grey1') return team.slice(0, 6).map(m => [m.sp, Math.min(32, m.lvl), teach[m.sp]]);   // Grey is measured, not gated: node tests/attention.js 100 grey1
   beat(team, 'grey1');
   evolve(team); for (const id of ['dg_1', 'dg_2', 'dg_3']) beat(team, id); evolve(team);
-  return team.slice(0, 6).map(m => [m.sp, Math.min(32, m.lvl), teach[m.sp]]);   // the level cap after three badges
+  if (gym === 'mireille') return team.slice(0, 6).map(m => [m.sp, Math.min(32, m.lvl), teach[m.sp]]);   // the level cap after three badges
+  beat(team, 'mireille');
+  // Route 5 and Frostpeak: the swimmers stand in the water lanes, Wren waits at the snow line, the skiers in the gym.
+  // Straight catches a Mireel on the way over; prepared listened to Halvard (rain: the Rain Call it already carries, or
+  // buys in the specialty shop), Bjorn (the Wall Breaker in the snow by the gym door) and Anya (the bears hate the
+  // ground shaking: a Mireel too, for its Ground moves), and fought the two skiers in the village.
+  for (const id of ['r5_swim1', 'r5_swim2', 'r5_swim3']) beat(team, id);
+  for (const [sp, l] of [['gustling', 35], ['stormhound', 35], ['bouldrok', 36], [G.evoLine(G.rivalOf[starter]).slice(-1)[0].id, 38]]) gain(team, sp, l, true);
+  if (style !== 'careless') team.splice(Math.min(team.length, 5), 0, G.mon.create('mireel', 30));
+  if (style === 'prepared') {
+    for (const id of ['r5_fisher', 'r5_ace', 'fp_skier1', 'fp_skier2']) beat(team, id);
+    for (const sp of ['slumbruin', 'snoozle', 'brinewhisk', 'tidalrus', 'pyrolynx', 'solarynx', 'grandmonk']) teach[sp] = [...(teach[sp] || []), 'wallbreaker'];
+  }
+  wild(team, style === 'careless' ? 3 : style === 'straight' ? 6 : 12, 1, ['pengrost', 'snowlet', 'mireel', 'lillipad'], 30);
+  evolve(team); for (const id of ['ig_1', 'ig_2']) beat(team, id); evolve(team);
+  if (style === 'prepared') {   // the rain-caller leads, the wall-breakers next, and the Echoes ice cuts through stay home
+    const rank = m => (teach[m.sp] || []).includes('raincall') ? 0 : (teach[m.sp] || []).includes('wallbreaker') ? 1 : ['nightwing', 'terramole'].includes(m.sp) ? 3 : 2;
+    team.sort((a, b) => rank(a) - rank(b));
+  }
+  return team.slice(0, 6).map(m => [m.sp, Math.min(39, m.lvl), teach[m.sp]]);   // the level cap after four badges
 }
 function foe(id) {
   const T = G.TRAINERS[id];
@@ -100,9 +119,9 @@ async function rate(team, ai, items, gym) {
       return m;
     });
     const player = { name: 'P', party, isPlayer: true, controller: G.AI.controller(ai), items: { ...items }, resonance: gym !== 'juniper' };   // Hale's band comes in Whisperwood
-    // a player who went and found the Rain Call Disc uses it the moment the forge is lit (the bots never weigh weather that high)
+    // a player who went and found the Rain Call Disc uses it the moment the forge is lit or the snow comes down (the bots never weigh weather that high)
     const think = player.controller.decide.bind(player.controller);
-    player.controller.decide = (bt, req) => { const rc = req.moves.find(m => m.id === 'raincall' && !m.dis); return bt.weather === 'sun' && rc ? { type: 'move', moveIdx: rc.idx } : think(bt, req); };
+    player.controller.decide = (bt, req) => { const rc = req.moves.find(m => m.id === 'raincall' && !m.dis); return (bt.weather === 'sun' || bt.weather === 'snow') && rc ? { type: 'move', moveIdx: rc.idx } : think(bt, req); };
     const bt = new G.Battle({ format: 'single', wild: false, sides: [{ trainers: [player] }, { trainers: [foe(gym)] }], displays: [display], exp: false, env: 'gym' });
     let guard = 0; const run = bt.collectActions.bind(bt); bt.collectActions = async function () { if (++guard > 200) { this.end('draw'); return []; } return run(); };
     if ((await bt.run()).outcome === 'win') won++;
@@ -111,7 +130,7 @@ async function rate(team, ai, items, gym) {
 }
 (async () => {
   const fail = [];
-  for (const gym of GYM === 'all' ? ['juniper', 'ione', 'brann', 'mireille'] : [GYM]) {
+  for (const gym of GYM === 'all' ? ['juniper', 'ione', 'brann', 'mireille', 'sigrid'] : [GYM]) {
     const rows = {};
     console.log(`\n${G.TRAINERS[gym].name}: ${G.TRAINERS[gym].party.map(p => p.sp + ' ' + p.lvl).join(', ')}`);
     for (const s of ['budling', 'kindlet', 'sealet']) {

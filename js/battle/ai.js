@@ -56,7 +56,11 @@ G.AI = (function () {
     if (m.stats && t) { sc = 18; if (m.stats.atk && t.stats.atk < t.stats.spa) sc -= 12; if (m.stats.def && b.stats.atk < b.stats.spa) sc -= 12; if (t.stages[Object.keys(m.stats)[0]] <= -2) sc -= 25; }
     if (m.hazard) { const n = F.hazards[m.hazard]; const left = bt.bench(1 - b.side, 0).length; sc = n ? (m.hazard === 'spikes' && n < 3 ? 25 : -60) : 30 + left * 6; if (bt.wild) sc = -40; }
     if (m.screen) sc = S.cond[m.screen] ? -80 : m.screen === 'veil' && bt.weather !== 'snow' ? -80 : m.screen === 'tailwind' ? 32 : 36;
-    if (m.weather) { const good = { sun: 'fire', rain: 'water', sand: 'rock', snow: 'ice' }[m.weather]; sc = bt.weather === m.weather ? -80 : (b.hasType(good) || allies.some(a => a.hasType(good))) ? 42 : 5; }
+    if (m.weather) {
+      const good = { sun: 'fire', rain: 'water', sand: 'rock', snow: 'ice' }[m.weather]; sc = bt.weather === m.weather ? -80 : (b.hasType(good) || allies.some(a => a.hasType(good))) ? 42 : 5;
+      // a thinking trainer takes its sky back: Sigrid's ace calls the snow down again once the player has changed it
+      if (lvl >= 2 && sc === 42 && (bt.weather || b.mon.moves.some(x => G.MOVES[x.id].fx === m.weather + 'sure'))) sc += 22;
+    }
     switch (m.fx) {
       case 'protect': sc = bt.nSlots > 1 ? 22 : (t && (t.vol.seeded || t.status === 'tox' || t.status === 'psn') ? 30 : 4); if (b.vol.protectN) sc = -50; break;
       case 'substitute': sc = hpF > .5 && !b.vol.sub ? 26 : -60; break;
