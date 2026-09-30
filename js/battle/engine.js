@@ -411,7 +411,7 @@ G.THROW_MULT = [1, 1.25, 1.6, 2.2];   // catch-rate multiplier by throw quality:
         ref: b.ref(), uid: b.mon.uid, side: b.side, owner: b.owner, moves, struggle,
         canSwitch: this.bench(b.side, b.owner).length > 0 && !b.vol.trapped,
         canRun: this.wild && b.side === 0, canItem: !(this.rules.noItems && !this.wild) && b.side === 0 && !tr.isRemote,
-        canResonate: !!tr.resonance && !this.sides[b.side].resUsed[b.owner] && !b.resonant,
+        canResonate: !!tr.resonance && (this.sides[b.side].resUsed[b.owner] || 0) < (tr.amplified ? 2 : 1) && !b.resonant,
         doubles: this.nSlots > 1, turn: this.turn,
       };
     }
@@ -492,11 +492,12 @@ G.THROW_MULT = [1, 1.25, 1.6, 2.2];   // catch-rate multiplier by throw quality:
       for (const a of actions.filter(a => a.type === 'move' && a.resonate)) {
         const b = a.b; if (!b.active || b.fainted) continue;
         const tr = this.trainerOf(b);
-        if (this.sides[b.side].resUsed[b.owner]) continue;
-        this.sides[b.side].resUsed[b.owner] = true;
+        if ((this.sides[b.side].resUsed[b.owner] || 0) >= (tr.amplified ? 2 : 1)) continue;
+        this.sides[b.side].resUsed[b.owner] = (this.sides[b.side].resUsed[b.owner] || 0) + 1;
         b.resonant = true; b.vol.resShield = true;
         this.emit({ t: 'resonate', ref: b.ref(), type: b.types[0] }); if (G.tidemarks) G.tidemarks.onResonate(this, b);
         this.say(`{0} is Resonating with ${tr.name || 'its Tamer'}! Its ${G.cap(b.types[0])} power surges!`, b);
+        if (tr.amplified) { b.mon.bond = Math.max(0, b.mon.bond - 8); this.say('The Chorus band on your wrist hums louder. {0} flinches.', b); }
       }
       // --- moves
       const mv = actions.filter(a => a.type === 'move' || a.type === 'recharge');

@@ -382,7 +382,7 @@
     const id = S.w.map.id;
     const info = {
       fernwick_gym: ['Grass', 'Juniper\'s garden bites back, and it\'s patient about it. The Tamers who beat her are the ones who came ready for her, not just for a battle.'],
-      galvan_gym: ['Electric', 'Ground types are immune to Electric moves. Step on the glowing pads to lower the barriers.'],
+      galvan_gym: ['Electric', 'Ione hates to wait, and her Echoes are faster than yours will ever be. The ones who beat her stopped trying to outrun her. Step on the glowing pads to lower the barriers.'],
       cinder_gym: ['Fire', 'Water, Ground and Rock moves put out the fire. Brann\'s last Echo can Resonate, so save something strong for the end.'],
       dusk_gym: ['Ghost', 'Dark and Ghost moves are strong against Ghosts. Normal and Fighting moves pass straight through them.'],
       frost_gym: ['Ice', 'Mind the slippery floor. Fire, Fighting, Rock and Steel moves shatter ice. Sigrid battles in the snow, which makes her Ice types tougher.'],
@@ -390,7 +390,7 @@
     }[id] || ['?', 'Good luck!'];
     await S.say(`Hello there, challenger! This gym's Warden uses ${info[0]}-type Echoes. ${info[1]}`, 'Gym Guide');
     if (id === 'dusk_gym' && !G.bag.has('lantern')) { await S.say('It\'s pitch black in there. Take this Lantern, so you can see where you\'re going.', 'Gym Guide'); await S.give('lantern'); }
-    if (id !== 'fernwick_gym' && !G.bag.has('ether') && G.chance(.5)) { await S.say('And here, take these. Good luck in there!', 'Gym Guide'); await S.give('superpotion', 2); }
+    // no free potions at the door (docs/GRAVITY_PLAN.md: nothing arrives for free); the Mart is next door
   };
   const wardenWin = async (S, o) => {
     await S.badge(o.badge);
@@ -466,11 +466,14 @@
     await S.approach('wwhale', 'hale', { prefer: ['up', 'left', 'right', 'down'] });
     await S.say(`You're all right! Juniper sent word, and I came as fast as I could.`, HALE);
     await S.say('Look at the Heartroot. It\'s a Resonance crystal, and it was pulsing in time with your team through the whole battle. That doesn\'t happen for just anyone.', HALE);
+    // planted for her confession: Hale goes quiet whenever anyone mentions a song
+    await S.say('It sings, you know. On still nights. Low, like someone humming under the water.', 'Ranger Ash');
+    await S.emote('wwhale', '...', 50);
+    await S.say('...Does it.', HALE);
+    await S.say('Well! Never mind that.', HALE);
     await S.say('I think you\'re ready for this. A Resonance Band.', HALE);
     await S.give('resonanceband');
     await S.say('Once per battle, an Echo that trusts you can {c}Resonate{w}. Moves of its main type hit far harder, and a Resonant Shield softens the first super-effective hit it takes.\\pIn battle, open FIGHT and press R. Save it for the moment that matters.', HALE);
-    await S.say('And these EXP Candies. If an Echo ever falls behind the rest of your team, one of these will help it catch up.', HALE);
-    await S.give('expcandy', 3);
     await S.say('Crane Dynamics tools in the hands of the Hollow... I don\'t like it. Galvan Harbor is to the north. Warden Ione may know something.', HALE);
     await S.fadeOut(10); S.remove('wwhale'); await S.fadeIn(10);
     S.set('wood_done'); S.quest('main2', 'done'); S.quest('main3', 'go');
@@ -498,12 +501,26 @@
     await S.say('The Chorus band changes that. It measures your Resonance, and with its Amplifier, it makes that bond stronger than time alone ever could.', N);
     await S.say('Join the Crane Fellowship, and become the Tamer you were always meant to be.', N);
     await S.say('The crowd erupts in applause. But Director Crane isn\'t looking at them. Her eyes are on the far middle of the Mere.');
-    await S.move('gv_crane', 'ddd', 1); S.remove('gv_crane');
     S.remove('gv_c1'); S.remove('gv_c2');
     if (far) await S.camera.reset(20);
+    // she comes to you: she has heard about the Heartroot, and strong bonds are what her Engine wants
+    S.remove('gv_crane'); await S.approach('gv_crane', 'crane');
+    await S.say('You were in Whisperwood. The Rangers say the Heartroot pulsed in time with your team. It doesn\'t do that for many people.', N);
+    { const pm = partner(); if (pm) await S.say(`Crane looks at ${G.mon.name(pm)} for a long moment, the way you might look at a letter from someone you miss.`); }
+    await S.say('Take a band. No Fellowship, no rank, no obligation. Wear it for a while, and see what the two of you really are.', N);
+    const took = await G.ask('Crane holds out a Chorus band. It is warm, and it hums.', ['No, thank you.', 'Take the band.'], { cancel: 0 }) === 1;
+    if (took) {
+      await S.give('chorusband'); S.set('band_on'); S.set('band_taken');
+      await S.say('Its hum settles against your pulse. The little dial on its face climbs, stops, and holds.');
+      await S.say('Good. Use your bond when it matters. The band will make sure there is more of it to use.', N);
+    } else await S.say('...No? Most people don\'t even ask what it does first. I\'ll remember that.', N);
+    await S.say('Director Crane walks back through the crowd, and it parts for her without being asked.');
+    await S.fadeOut(8); S.remove('gv_crane'); await S.fadeIn(8);
     S.remove('gv_wren'); await S.approach('gv_wren', 'wren');
-    await S.say(`${P()}! Did you hear that? The Fellowship! Fellows are the best Tamers in Solmere. Everyone knows their names.`, WREN());
+    await S.say(took ? `${P()}! The Director gave you one herself?! Do you know how long people wait for that?` : `${P()}! Did you just turn down the Director? You're unbelievable. The Fellowship! Fellows are the best Tamers in Solmere.`, WREN());
+    if (G.save.stats.raceWins) await S.say('You beat me to Fernwick, so I owe you. But I\'m counting the Fellowship as two races. That\'s how it works now.', WREN());
     const k = await choose(`${R()}'s eyes are shining.`, ['Just be careful, all right?', 'I\'ll race you to the top.', 'Forcing a bond seems wrong.'], WREN());
+    G.setVar('wrenGalvan', k);   // Wren says it back at Cindervale, and when the band finally comes off
     await S.say([`Careful? It's a band, not a dragon. ...But all right. I'll be careful.`, `You're on! Whoever ranks higher buys dinner.`, `It's not forcing, it's... helping. That's all. Right?`][k], WREN());
     await S.say('Ione\'s gym first. Then I\'m joining. If I become a Fellow, Sable will have to notice me.', WREN());
     await S.fadeOut(10); S.remove('gv_wren'); await S.fadeIn(10);
@@ -513,12 +530,17 @@
     const N = 'Warden Ione';
     S.facePlayer('ione_npc');
     if (G.flag('badge2')) { await S.say('Route 3 is to the east. Glimmer Cave runs beneath the cliffs to Cindervale. It\'s a long cave, so stock up first.', N); return; }
-    await S.say('Welcome to the Galvan Gym!', N);
-    await S.say('I\'m Ione. I keep the harbour\'s lights burning, every lamp and every beacon. Let\'s see if you can keep up with the current!', N);
+    if (!G.flag('ione_met')) {   // a rematch after a loss goes straight to her retry line
+      await S.say('Welcome to the Galvan Gym!', N);
+      await S.say('I\'m Ione. I keep the harbour\'s lights burning, every lamp and every beacon. Let\'s see if you can keep up with the current!', N);
+      S.set('ione_met');
+    }
+    { const pm = partner(); if (pm) await S.say({ budling: `${G.mon.name(pm)} digs its roots into the floor. The whole room is humming, and it has decided not to mind.`, kindlet: `${G.mon.name(pm)}'s fur stands on end. Every hair crackles, and it looks furious about it.`, sealet: `${G.mon.name(pm)} shifts from flipper to flipper. The floor is buzzing, and it knows exactly what lightning does to water.` }[G.evoLine(pm.sp)[0].id] || `${G.mon.name(pm)} steps up beside you.`); }
     const won = await G.storyBattle('ione'); if (!won) return;
     await S.say('Well done! You didn\'t just keep up, you outpaced me. The Current Badge is yours.', N);
     await wardenWin(S, { badge: 'current', flag: 'badge2', name: N, tm: 'tm34', tmText: 'And {tm}. Strike, then switch out in the same move.', gymTrainers: ['gg_1', 'gg_2', 'gg_3'] });
     await S.say('Can I be honest with you? Crane Dynamics built half the machines in this city. But those new Fellows... their Echoes look strained, like they\'re being pushed too hard. Something isn\'t right.', N);
+    if (G.flag('band_on')) { await S.say('...You\'re wearing one. I didn\'t notice until just now. Only, keep an eye on your partner. That\'s all.', N); const pm = partner(); if (pm) await S.say(`${G.mon.name(pm)} is scratching at the band on your wrist. You don't know how long it's been doing that.`); }
     await S.say('Head east along Route 3. Glimmer Cave will take you through to Cindervale. Good luck.', N);
     S.quest('main3', 'done'); S.quest('main4', 'go');
   };
@@ -675,6 +697,8 @@
     await S.emote('cv_wren', '!');
     await S.say(`${P()}! Look, a Fellowship scarf! And the Chorus band! I'm ranked twentieth of all the Fellows. Twentieth, after just a few weeks!`, WREN());
     await S.say('The band\'s Amplifier pushes our bond higher than it\'s ever been. My team has never been this strong.', WREN());
+    await S.say([`And I've been careful! Mostly. Like you said.`, `You said you'd race me to the top. Twentieth, ${P()}. Where are you?`, `You said forcing a bond was wrong. Does this look wrong to you? Look how strong we are!`][G.getVar('wrenGalvan', 0)], WREN());
+    if (G.flag('band_on')) await S.say('And you\'re wearing yours! See? You feel it too.', WREN());
     await S.say('Come on. Let\'s see how you measure up!', WREN());
     const won = await G.storyBattle('rival2');
     S.set('rival2_done');
@@ -832,6 +856,7 @@
     await S.say('Hey. Hey, what\'s wrong? You\'re shaking. Is it the Amplifier? Did the Amplifier do this? ...How long has it been like this?', WREN());
     const k = await choose(`${R()} is staring at their partner.`, ['Take the band off. Right now.', 'It\'s not too late to stop.', 'It\'s been like this since Cindervale.'], WREN());
     await S.say([`...Yeah. Yeah. I... I need to think. Don't follow me. Please.`, `I hope you're right. I... I need to think. Don't follow me.`, `You saw it? You saw it, and I didn't? ...I need to think. Don't follow me.`][k], WREN());
+    if (G.flag('band_on')) { const pm = partner(); await S.say(`${R()} looks at the band on your own wrist, and then at ${pm ? G.mon.name(pm) : 'your partner'}. Neither of you says anything.`); }
     await S.fadeOut(10); S.remove('r5w'); await S.fadeIn(10);
   };
   // ------------------------------------------------------------- FROSTPEAK
@@ -917,6 +942,7 @@
     await S.say('When I fire it, Orrelume will sing louder than it ever has. Loud enough to reach Lumi. Every bond in Solmere, borrowed for a single moment. A small price for a miracle.', N);
     const k = await choose('Crane waits, curious what you will say.', ['You\'re hurting everyone to ease your own pain.', 'Those bonds aren\'t yours to take.', 'Hale told me what happened.'], N);
     await S.say([`Yes. I've weighed it, and I've made my peace with it.`, `Nothing is ever given. Everything is taken by someone. I've simply chosen what to take.`, `...Did she? Then Marisol has finally told someone the truth. It changes nothing.`][k], N);
+    await bandAtEngine(S, N);
     const won = await G.storyBattle('crane1'); if (!won) return;
     await S.say('...So your bond is real. Real enough to hurt me. Real enough to...', N);
     await S.say('No. It doesn\'t matter. The core is already on its way to the Lodestar. Goodbye, child.', N);
@@ -924,6 +950,26 @@
     S.remove('hq_crane');
     await S.say('Crane vanishes in a flash of white light. A teleporter pad hums softly where she stood.');
     await SC.hq_kaelen(S);
+  };
+  // The band Crane gave you in Galvan comes due: this close to the Engine it pulls on your partner. Tear it off, or
+  // keep it on and fight her with a team that has been drained. If you never took one, she noticed that too.
+  const bandAtEngine = async (S, N) => {
+    const pm = partner(), nm = pm ? G.mon.name(pm) : 'Your partner';
+    if (!G.flag('band_taken')) { if (!G.flag('hq_band_said')) await S.say('You never wore one of my bands. Not even once. I did wonder about you, in Galvan.', N); S.set('hq_band_said'); return; }
+    if (!G.flag('band_on')) { if (!G.flag('hq_band_said')) await S.say('You took my band off. Your friend did too. I suppose I should have expected that from the two of you.', N); S.set('hq_band_said'); return; }
+    G.audio && G.audio.sfx('resonate');
+    await S.say(`The Chorus band on your wrist goes cold, then burns. ${nm} cries out. Something far below the floor is pulling on it, through the band.`);
+    await S.say('Do you feel that? That is your bond, going where it was always meant to go. It doesn\'t hurt for long.', N);
+    if (await G.ask(`${nm} is shaking.`, ['Tear the band off.', 'Leave it on.'], { cancel: 0 }) === 0) {
+      G.setFlag('band_on', false);
+      G.bag.remove('chorusband');
+      await S.say(`You tear the band off and it clatters across the floor. ${nm} sags against you, breathing hard, and doesn't let go.`);
+      await S.say('...Just like that. Twelve years I have watched people choose the number. You chose the Echo.', N);
+    } else {
+      for (const m of G.save.party) { m.bond = Math.max(0, m.bond - 20); if (m.hp > 0) m.hp = Math.max(1, Math.floor(m.hp * .6)); }
+      await S.say('Every Echo on your belt feels heavier. The dial on the band climbs higher than it has ever gone.');
+    }
+    S.set('hq_band_said');
   };
   SC.hq_kaelen = async (S) => {
     if (!G.flag('hq_admins_done') || G.flag('hq_done')) { if (!G.flag('hq_admins_done')) await S.say('A tall man in a violet coat sits calmly in a glass cell, reading. He nods at you like you\'re late.'); return; }

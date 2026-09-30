@@ -55,12 +55,12 @@
         { type: 'npc', id: 'gv_kid', x: 22, y: 32, look: 'kid', dir: 'down', move: 'wander', radius: 2, text: 'Zipsquee glide between the power poles at night! Their cheeks glow like fireflies!' },
         { type: 'npc', id: 'gv_canal', x: 27, y: 27, look: 'sailor', dir: 'down', move: 'look', text: 'Children race paper boats down the canal every Sunday. Crane wants to fill it in and build a factory. Not while I\'m around.' },
         { type: 'npc', id: 'gv_vsr', x: 8, y: 24, look: 'officer', dir: 'right', script: 'vsrecorder_npc' },
+        { type: 'npc', id: 'gv_line', x: 29, y: 13, look: 'worker', dir: 'down', move: 'look', text: 'Every storm, the power lines through Whisperwood come down, sparks everywhere. And the Digmole down there just keep digging, like it\'s only rain. Wish my linemen were half as brave.' },
         { type: 'npc', id: 'gv_quay', x: 30, y: 5, look: 'gentleman', dir: 'up', move: 'look', text: 'The ferries used to run out to the Lodestar. Nobody\'s gone out there in twelve years. Nobody talks about why.' },
         { type: 'trainer', id: 'gv_sailor_e', x: 23, y: 3, look: 'sailor', dir: 'down', sight: 1, trainer: 'gv_sailor' },
         { type: 'trainer', id: 'gv_worker_e', x: 42, y: 24, look: 'worker', dir: 'left', sight: 3, trainer: 'gv_worker' },
         { type: 'trigger', x: 1, y: 13, w: 44, h: 2, script: 'crane_speech', cond: '!crane_speech' },
         { type: 'item', id: 'gv_h1', x: 44, y: 6, item: 'magnet', hidden: true },
-        { type: 'item', id: 'gv_i1', x: 40, y: 10, item: 'xspeed', qty: 2 },
       ], spawn: [22, 19] });
   })();
   G.defHouse('galvan_house1', 'Galvan House', 0, [{ type: 'npc', id: 'gh1', x: 2, y: 5, look: 'scientist', dir: 'right', script: 'ev_trainer' }]);

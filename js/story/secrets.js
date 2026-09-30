@@ -6,8 +6,7 @@
 // ============================================================================
 (function () {
   const HIDDEN = {
-    // (none in Brinehollow or Fernwick: the first hour keeps a few finds that someone points you to)
-    galvan: [[15, 36, 'superpotion'], [44, 18, 'greatorb', 2], [1, 31, 'pearl']],
+    // (none in Brinehollow, Fernwick or Galvan: through the second badge the finds are few, and someone points you to each)
     cindervale: [[30, 33, 'revive'], [2, 2, 'superpotion'], [41, 27, 'nugget']],
     duskmere: [[28, 20, 'duskorb', 2], [2, 16, 'hyperpotion']],
     frostpeak: [[2, 19, 'revive'], [27, 2, 'ultraorb'], [18, 16, 'hyperpotion']],

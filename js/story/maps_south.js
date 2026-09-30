@@ -261,10 +261,8 @@
         { type: 'trainer', id: 'r2_kid_e', x: 6, y: 9, look: 'boy', dir: 'right', sight: 3, trainer: 'r2_kid' },
         { type: 'sign', x: 3, y: 3, text: '{b}ROUTE 2{w}\\n← Fernwick   → Whisperwood' },
         { type: 'npc', id: 'r2_berry', x: 20, y: 14, look: 'woman', dir: 'up', script: 'berry_lady' },
-        { type: 'item', id: 'r2_i1', x: 9, y: 16, item: 'greatorb' },
-        { type: 'item', id: 'r2_i2', x: 38, y: 16, item: 'repel', qty: 2 },
         { type: 'item', id: 'r2_i3', x: 10, y: 15, item: 'tm09' },
-        { type: 'item', id: 'r2_h1', x: 27, y: 2, item: 'ether', hidden: true },
+        { type: 'item', id: 'r2_h1', x: 27, y: 2, item: 'ether', hidden: true },   // Hiker Dale says where
       ], spawn: [4, 4] });
   })();
   // --------------------------------------------------------- WHISPERWOOD -
@@ -297,11 +295,8 @@
         { type: 'trigger', x: 6, y: 25, w: 13, h: 1, script: 'wood_grunts', cond: '!wood_done' },
         { type: 'sign', x: 5, y: 8, text: '{g}WHISPERWOOD{w}\\n"Speak softly. The trees are listening."' },
         { type: 'sign', x: 18, y: 27, text: 'Heartroot Shrine. A crystal the size of a fist glows in a cradle of roots. Something has been pried out of it.' },
-        { type: 'item', id: 'ww_i1', x: 10, y: 27, item: 'awakening', qty: 2 },
         { type: 'item', id: 'ww_i2', x: 29, y: 9, item: 'silverpowder' },
-        { type: 'item', id: 'ww_i3', x: 31, y: 21, item: 'greatorb', qty: 2 },
         { type: 'item', id: 'ww_trap', x: 12, y: 18, item: 'potion', monTrap: 'coffret', lvl: 12 },
-        { type: 'item', id: 'ww_h1', x: 6, y: 23, item: 'lumenberry', hidden: true },
         { type: 'item', id: 'ww_h2', x: 34, y: 6, item: 'rarecandy', hidden: true },
       ], spawn: [2, 10] });
   })();

@@ -102,7 +102,7 @@ G.playerTrainer = function (scene) {
   const S = G.save.settings, cap = S.levelCap === 'hard' ? G.levelCapNow() : 100;
   return {
     name: G.save.name, isPlayer: true, party: G.save.party, controller: scene, sprite: G.LOOKS[G.save.look],
-    resonance: G.bag.has('resonanceband'), expShare: S.expShare && G.bag.has('expshare'), expMult: G.diff().exp,
+    resonance: G.bag.has('resonanceband'), amplified: G.bag.has('resonanceband') && G.flag('band_on'), expShare: S.expShare && G.bag.has('expshare'), expMult: G.diff().exp,
     levelCap: cap, softCap: S.levelCap === 'soft' ? G.levelCapNow() : null, otId: G.save.otId,
   };
 };
@@ -293,7 +293,7 @@ G.blackout = async function (cfg) {
   if (G.flag('league_entered') && !G.flag('hof_pending')) for (const f of ['e1_done', 'e2_done', 'e3_done', 'e4_done', 'league_entered', 'elite4_done']) G.setFlag(f, false);
   G.save.money -= lost;
   G.fade.a = 1;
-  await G.say(`You have no more Echoes that can fight!\\pYou hurried back to a Haven with your exhausted team${lost ? `, dropping $${lost.toLocaleString()} on the way` : ''}.`, { box: { style: 'dark' } });
+  await G.say(`You have no more Echoes that can fight!\\pYou hurried ${G.save.lastHeal && /^home/.test(G.save.lastHeal.map) ? 'home' : 'back to a Haven'} with your exhausted team${lost ? `, dropping $${lost.toLocaleString()} on the way` : ''}.`, { box: { style: 'dark' } });
   G.party.healAll();
   const h = G.save.lastHeal;
   const w = G.world.scene;

@@ -193,7 +193,7 @@ G.itemFieldUsable = function (id) {
   if (it.pocket === 'tm') return true;
   if (it.pocket === 'med' || it.pocket === 'berry') return !!(it.heal || it.healPct || it.cure || it.revive || it.pp || it.level || it.ev || it.ppup || it.evreset || it.expc);
   if (it.stone || it.mint || it.capsule || it.patch || it.cap || it.repel || it.escape) return true;
-  if (it.pocket === 'key') return ['bike', 'rod', 'prorod', 'wingwhistle', 'dex', 'journal', 'tideboard', 'resonanceband', 'expshare', 'vsrecorder', 'lantern', 'dowsing'].includes(id);
+  if (it.pocket === 'key') return ['bike', 'rod', 'prorod', 'wingwhistle', 'dex', 'journal', 'tideboard', 'resonanceband', 'chorusband', 'expshare', 'vsrecorder', 'lantern', 'dowsing'].includes(id);
   if (it.fossil) return false;
   return false;
 };
@@ -238,6 +238,15 @@ G.useItemField = async function (id, bagScene) {
     if (id === 'expshare') { G.save.settings.expShare = !G.save.settings.expShare; await G.say(`EXP Share turned ${G.save.settings.expShare ? 'ON. Your whole party will share battle EXP' : 'OFF. Only Echoes that battle will earn EXP'}.`); return false; }
     if (id === 'tideboard') { await G.say('Face some water and press Z to ride the Tide Board!'); return false; }
     if (id === 'resonanceband') { await G.say('The band hums with a soft warmth.\\pIn battle, open FIGHT and press R to let one Echo Resonate: its main type\'s moves hit much harder, and a Resonant Shield softens the first super-effective hit it takes. Once per battle!'); return false; }
+    if (id === 'chorusband') {
+      // the dial is the thing Crane sells: a number for a bond. It also shows, to anyone who looks, what the Amplifier costs
+      const read = G.save.party.map(m => `${G.mon.name(m)} ${Math.round(Math.min(255, m.bond) / 2.55)}%`).join(', ');
+      if (G.flag('band_on')) {
+        await G.say(`The band hums against your wrist. Its dial reads: ${read}.`);
+        if (await G.yesno('Take the band off?')) { G.setFlag('band_on', false); await G.say('The hum stops. It is very quiet without it.'); }
+      } else if (await G.yesno(`The band is cold. Held up, its dial still reads: ${read}.\pPut it back on?`)) { G.setFlag('band_on'); await G.say('The band warms, and the hum settles against your pulse.'); }
+      return false;
+    }
     if (id === 'vsrecorder') { await G.say('Trainers you\'ve beaten may want a rematch after you earn more badges. Just talk to them again!'); return false; }
     if (id === 'lantern') { await G.say('The Lantern lights your way automatically in dark places.'); return false; }
     if (id === 'dowsing') { const n = G.hiddenItemNear ? G.hiddenItemNear() : null; await G.say(n ? `The rod is twitching! Something is hidden about ${n} step${n > 1 ? 's' : ''} away...` : 'The rod isn\'t reacting. Nothing hidden nearby.'); return false; }

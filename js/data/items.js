@@ -129,6 +129,7 @@ G.POCKETS = [
   K('dex', 'Echodex', 'A high-tech encyclopedia that records every Echo you see or catch.', { icon: 'dex', ic: '#e8484a' });
   K('journal', 'Tamer\'s Journal', 'Your mother\'s gift: a journal that tracks quests and notes.', { icon: 'book', ic: '#b0892a' });
   K('resonanceband', 'Resonance Band', 'A band that lets a strongly bonded Echo Resonate once per battle. Press R in the Fight menu.', { icon: 'band', ic: '#3fd0bf' });
+  K('chorusband', 'Chorus Band', 'Crane Dynamics\' band. Its dial reads your bond with each Echo, and its Amplifier lets a second Echo Resonate in the same battle.', { icon: 'band', ic: '#e8e0d0' });
   K('bike', 'Bike', 'A folding bike for fast travel. Press F to ride or register it.', { icon: 'bike', ic: '#e8484a', field: 'bike' });
   K('trailknife', 'Trail Knife', 'A sturdy knife for clearing thin trees. Walk into one to use it.', { icon: 'knife', ic: '#8a8aa0' });
   K('pickhammer', 'Pick Hammer', 'A hammer that shatters cracked boulders. Walk into one to use it.', { icon: 'hammer', ic: '#b0892a' });
