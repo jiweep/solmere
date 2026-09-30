@@ -14,7 +14,8 @@
 // a Scrapmonk for Rock: careless fights who blocks the road, straight also catches the Water Echo everyone reaches for
 // (a Clawdle on Route 3), prepared talks to Fisher Bo and the cave hiker and uses what they point at: the Rain Call
 // Disc behind the little trees and the Rock Slide Disc in the Hollow's tunnel.
-//   node tests/attention.js [runs=150] [gym=juniper|ione|brann|all]   (exits 1 if careless wins too often or prepared too rarely)
+// The fourth gym (Mireille, Duskmere) carries them on once more; see journey() for who brings what.
+//   node tests/attention.js [runs=150] [gym=juniper|ione|brann|mireille|all]   (exits 1 if careless wins too often or prepared too rarely)
 const { load, CORE } = require('./harness');
 const G = load(CORE);
 G.rng = new G.RNG(+(process.env.SEED || 20260930));   // seeded, so a result near a threshold doesn't flip from run to run
@@ -22,7 +23,7 @@ G.TRAINERS = {}; G.rivalOf = { budling: 'kindlet', kindlet: 'sealet', sealet: 'b
 new Function('G', require('fs').readFileSync(require('path').join(__dirname, '../js/story/trainers.js'), 'utf8'))(G);
 const N = +(process.argv[2] || 150);
 // JUNIPER='[["shroomie",10,{"moves":[...]}],...]' tries another team without editing trainers.js
-for (const id of ['juniper', 'ione', 'brann']) if (process.env[id.toUpperCase()]) G.TRAINERS[id].party = JSON.parse(process.env[id.toUpperCase()]).map(([sp, lvl, x]) => ({ sp, lvl, ...(x || {}) }));
+for (const id of ['juniper', 'ione', 'brann', 'grey1', 'mireille']) if (process.env[id.toUpperCase()]) G.TRAINERS[id].party = JSON.parse(process.env[id.toUpperCase()]).map(([sp, lvl, x]) => ({ sp, lvl, ...(x || {}) }));
 const GYM = process.argv[3] || 'all';
 const display = { async play() { } };
 // engine.js awardExp (as tests/level_curve.js): the fighter gets it all, the rest of the team .75 (EXP Share)
@@ -65,7 +66,24 @@ function journey(starter, style, gym) {
   wild(team, style === 'careless' ? 3 : style === 'straight' ? 6 : 12, 1, ['clawdle', 'digmole', 'pebblin', 'gustling'], 15);
   evolve(team); for (const id of ['cg_1', 'cg_2', 'cg_3']) beat(team, id); evolve(team);
   if (style === 'prepared') for (const mv of ['rockslide', 'raincall']) { const c = team.findIndex(m => teach[m.sp] && teach[m.sp][0] === mv); if (c > 0) team.unshift(team.splice(c, 1)[0]); }   // the rain-caller leads, the rock-thrower next
-  return team.slice(0, 6).map(m => [m.sp, Math.min(26, m.lvl), teach[m.sp]]);   // the level cap after two badges
+  if (gym === 'brann') return team.slice(0, 6).map(m => [m.sp, Math.min(26, m.lvl), teach[m.sp]]);   // the level cap after two badges
+  beat(team, 'brann');
+  // Route 4, the Ruins and Duskmere: Rin, Taro and Luz stand on the road, the grunts and Grey in the Ruins. Straight catches
+  // what the gold grass throws at it (a Magmite); prepared listened to Vic and the Duskmere kid and brings a Dark Echo
+  // (a Duskbat from the Ruins, a Nightwing by the gym) and to Rin: a Normal Echo Hex can't touch (a Snoozle from Route 4).
+  for (const id of ['r4_ace', 'r4_bb', 'r4_mystic', 'ru_grunt1', 'ru_grunt2', 'ru_grunt3']) beat(team, id);
+  if (style !== 'careless') team.push(G.mon.create('magmite', 24));
+  if (style === 'prepared') {
+    for (const id of ['r4_hiker', 'r4_punk']) beat(team, id);
+    const drop = team.findIndex(m => m.sp === 'magmite'); if (drop >= 0) team.splice(drop, 1);
+    team.unshift(G.mon.create('duskbat', 26), G.mon.create('snoozle', 25));   // both come along to the gym, so they lead the list the level cap cuts
+  }
+  wild(team, style === 'careless' ? 3 : style === 'straight' ? 6 : 12, 1, ['magmite', 'maskling', 'duskbat', 'rascoon'], 24);
+  evolve(team);
+  if (gym === 'grey1') return team.slice(0, 6).map(m => [m.sp, Math.min(32, m.lvl), teach[m.sp]]);   // Grey is measured, not gated: node tests/attention.js 100 grey1
+  beat(team, 'grey1');
+  evolve(team); for (const id of ['dg_1', 'dg_2', 'dg_3']) beat(team, id); evolve(team);
+  return team.slice(0, 6).map(m => [m.sp, Math.min(32, m.lvl), teach[m.sp]]);   // the level cap after three badges
 }
 function foe(id) {
   const T = G.TRAINERS[id];
@@ -93,7 +111,7 @@ async function rate(team, ai, items, gym) {
 }
 (async () => {
   const fail = [];
-  for (const gym of GYM === 'all' ? ['juniper', 'ione', 'brann'] : [GYM]) {
+  for (const gym of GYM === 'all' ? ['juniper', 'ione', 'brann', 'mireille'] : [GYM]) {
     const rows = {};
     console.log(`\n${G.TRAINERS[gym].name}: ${G.TRAINERS[gym].party.map(p => p.sp + ' ' + p.lvl).join(', ')}`);
     for (const s of ['budling', 'kindlet', 'sealet']) {

@@ -294,16 +294,13 @@
       objs: [
         { type: 'sign', x: 13, y: 3, text: '{o}ROUTE 4{w} — The Ashen Way\\n↑ Cindervale   ↓ Duskmere' },
         { type: 'trainer', id: 'r4_hiker_e', x: 9, y: 10, look: 'hiker', dir: 'left', sight: 3, trainer: 'r4_hiker' },
-        { type: 'trainer', id: 'r4_ace_e', x: 14, y: 20, look: 'ace', dir: 'down', sight: 3, trainer: 'r4_ace' },
+        { type: 'trainer', id: 'r4_ace_e', x: 14, y: 22, look: 'ace', dir: 'right', sight: 3, trainer: 'r4_ace' },
         { type: 'trainer', id: 'r4_punk_e', x: 19, y: 26, look: 'punk', dir: 'left', sight: 2, trainer: 'r4_punk' },
-        { type: 'trainer', id: 'r4_bb_e', x: 12, y: 30, look: 'blackbelt', dir: 'left', sight: 3, trainer: 'r4_bb' },
-        { type: 'trainer', id: 'r4_mystic_e', x: 13, y: 38, look: 'mystic', dir: 'left', sight: 2, trainer: 'r4_mystic' },
-        { type: 'npc', id: 'r4_ranger', x: 7, y: 16, look: 'ranger', dir: 'right', move: 'look', text: 'Volcanic ash turns the grass gold here. Fire-type Echoes wander this road all the way to Duskmere.' },
+        { type: 'trainer', id: 'r4_bb_e', x: 12, y: 30, look: 'blackbelt', dir: 'left', sight: 4, trainer: 'r4_bb' },
+        { type: 'trainer', id: 'r4_mystic_e', x: 12, y: 39, look: 'mystic', dir: 'left', sight: 3, trainer: 'r4_mystic' },
+        { type: 'npc', id: 'r4_ranger', x: 7, y: 16, look: 'ranger', dir: 'right', move: 'look', text: 'Hear the ash crunch? The Rascoon hear it too. They sit in the gold grass bold as anything, all day. At night the Duskbats come down from the Ruins, and even the Rascoon keep their heads down.' },
         { type: 'item', id: 'r4_i1', x: 19, y: 5, item: 'tm38' },
-        { type: 'item', id: 'r4_i2', x: 21, y: 37, item: 'hyperpotion' },
-        { type: 'item', id: 'r4_i3', x: 4, y: 26, item: 'burnheal', qty: 2 },
         { type: 'item', id: 'r4_h1', x: 17, y: 12, item: 'flamestone', hidden: true },
-        { type: 'item', id: 'r4_h2', x: 3, y: 38, item: 'ppup', hidden: true },
       ], spawn: [11, 2] });
   })();
 })();

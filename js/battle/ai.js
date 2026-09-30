@@ -31,6 +31,8 @@ G.AI = (function () {
       if (m.fx === 'solar' && bt.weather !== 'sun') sc *= .55;
       if (m.fx === 'pivot' && lvl >= 3 && bt.bench(b.side, b.owner).length) sc += 8;
       if (m.fx === 'rampage' && foes.length > 1) sc -= 10;
+      // Hex and Venom Shock want the status first (Mireille's and Grey's plans): hold them while a status move could still land
+      if ((m.fx === 'hex' || m.fx === 'venoshock') && lvl >= 2 && t && !t.status && b.mon.moves.some(x => { const s = G.MOVES[x.id]; return x.pp > 0 && s.status && bt.canStatus(t, s.status, b) && (m.fx === 'hex' || s.status === 'psn' || s.status === 'tox'); })) sc -= 30;
       return sc;
     }
     // --------------- status moves
@@ -41,6 +43,7 @@ G.AI = (function () {
       if (!t || t.status || !bt.canStatus(t, m.status, b) || (m.powder && t.hasType('grass')) || (m.status === 'par' && m.type === 'electric' && t.hasType('ground'))) return -100;
       sc = { slp: 62, par: faster ? 30 : 55, brn: t.stats.atk > t.stats.spa ? 58 : 25, tox: 44, psn: 30 }[m.status] || 30;
       if (m.status === 'slp' && foes.some(f => f.status === 'slp')) sc -= 30;
+      if (lvl >= 2 && b.mon.moves.some(x => { const f = G.MOVES[x.id].fx; return f === 'hex' || (f === 'venoshock' && (m.status === 'psn' || m.status === 'tox')); })) sc += 25;   // set up the follow-up
     }
     if (m.boost && m.target === 'self') {
       const tot = Object.entries(m.boost).reduce((a, [k, v]) => a + (v > 0 ? v : 0), 0);
@@ -59,7 +62,7 @@ G.AI = (function () {
       case 'substitute': sc = hpF > .5 && !b.vol.sub ? 26 : -60; break;
       case 'leechseed': sc = t && !t.vol.seeded && !t.hasType('grass') ? 42 : -60; break;
       case 'taunt': sc = t && !t.vol.taunt && t.mon.moves.some(x => G.MOVES[x.id].cat === 'status') ? 32 : -30; break;
-      case 'confuse': sc = t && !t.vol.confused ? 28 : -60; break;
+      case 'confuse': sc = t && !t.vol.confused ? 28 + (lvl >= 2 && b.abilityHas && b.abilityHas('prankster') ? 22 : 0) : -60; break;   // a Prankster plays its trick first
       case 'trickroom': sc = bt.trickRoom ? -80 : (foes.every(f => bt.speed(f) > bt.speed(b)) ? 55 : -40); break;
       case 'roar': sc = t && Object.values(t.stages).some(v => v >= 2) ? 55 : bt.wild ? -40 : 5; break;
       case 'healbell': sc = bt.partyOf(b.side, b.owner).filter(x => x.status).length * 25 - 10; break;

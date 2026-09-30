@@ -35,16 +35,15 @@
         { type: 'npc', id: 'dm_ode', x: 11, y: 19, look: 'oldman', dir: 'down', script: 'lamplighter' },
         { type: 'npc', id: 'dm_w1', x: 18, y: 9, look: 'woman', dir: 'left', move: 'wander', radius: 2, text: 'The mist never lifts in Duskmere. We light lanterns so lost spirits can find their way home.' },
         { type: 'npc', id: 'dm_rodguy', x: 16, y: 23, look: 'fisher', dir: 'down', script: 'prorod_guy' },
-        { type: 'npc', id: 'dm_kid', x: 10, y: 17, look: 'girl', dir: 'up', move: 'look', text: 'Grandma says Wispurr are the spirits of cats who loved their families too much to leave. I think that\'s nice.' },
+        { type: 'npc', id: 'dm_kid', x: 10, y: 17, look: 'girl', dir: 'up', move: 'look', text: 'Grandma says Wispurr are the spirits of cats who loved their families too much to leave. They play tricks on everybody.\\pExcept the Duskbats up in the Ruins. Grandma says you can\'t trick something that lives in the dark.' },
         { type: 'sign', id: 'lant1', x: 12, y: 6, invisible: true, script: 'spirit_lantern', lantern: 1 },
         { type: 'sign', id: 'lant2', x: 17, y: 15, invisible: true, script: 'spirit_lantern', lantern: 2 },
         { type: 'sign', id: 'lant3', x: 3, y: 19, invisible: true, script: 'spirit_lantern', lantern: 3 },
         { type: 'sign', id: 'lant4', x: 27, y: 18, invisible: true, script: 'spirit_lantern', lantern: 4 },
-        { type: 'item', id: 'dm_h1', x: 2, y: 3, item: 'spelltag', hidden: true },
       ], spawn: [14, 12] });
   })();
   G.defHouse('dusk_house1', 'Duskmere House', 2, [{ type: 'npc', id: 'dh1', x: 6, y: 5, look: 'mystic', dir: 'left', script: 'fortune_teller' }], { wall: 'rose' });
-  G.defHouse('dusk_house2', 'Duskmere House', 0, [{ type: 'npc', id: 'dh2', x: 2, y: 4, look: 'oldwoman', dir: 'right', text: 'Twelve years ago the Lodestar flared so bright you could read by it here. Then it went dark for a week. They say a young scientist lost her partner that night. And another one never forgave herself.' }]);
+  G.defHouse('dusk_house2', 'Duskmere House', 0, [{ type: 'npc', id: 'dh2', x: 2, y: 4, look: 'oldwoman', dir: 'right', script: 'dusk_nell' }]);
   D({ id: 'ruins', name: 'Ruins of Echo', subtitle: 'Voices of the old tide', area: 'ruins', type: 'cave', music: 'ruins', env: 'ruins', theme: 'dusk',
     legend: { '=': { g: 'pave', enc: 'cave' }, 'S': { o: 'statue', solid: true }, 'g': { o: 'grave', solid: true } },
     grid: [
@@ -80,10 +79,8 @@
       { type: 'trigger', x: 6, y: 4, w: 12, h: 1, script: 'grey1', cond: '!ruins_done' },
       { type: 'sign', x: 12, y: 1, invisible: true, text: 'An empty stone cradle, shaped for a key. Wave patterns are carved all around it. Ancient script reads: "The sea gate opens for the song."' },
       { type: 'sign', x: 8, y: 5, invisible: true, text: 'A worn gravestone: "Here rests Aurel, first Tamer to hear the Lodestar sing."' },
-      { type: 'item', id: 'ru_i1', x: 5, y: 9, item: 'duskstone' },
       { type: 'item', id: 'ru_i2', x: 18, y: 9, item: 'tm30' },
       { type: 'item', id: 'ru_trap', x: 7, y: 13, item: 'rarecandy', monTrap: 'coffret', lvl: 28 },
-      { type: 'item', id: 'ru_h1', x: 16, y: 13, item: 'maxrevive', hidden: true },
     ], spawn: [11, 19] });
   // Duskmere gym: darkness
   D({ id: 'dusk_gym', name: 'Duskmere Gym', type: 'indoor', music: 'gym', floor: '#2a2440', floor2: '#3a3058', wall: 'gym', env: 'ruins', dark: true,

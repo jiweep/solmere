@@ -386,12 +386,12 @@
       fernwick_gym: ['Grass', 'Juniper\'s garden bites back, and it\'s patient about it. The Tamers who beat her are the ones who came ready for her, not just for a battle.'],
       galvan_gym: ['Electric', 'Ione hates to wait, and her Echoes are faster than yours will ever be. The ones who beat her stopped trying to outrun her. Step on the glowing pads to lower the barriers.'],
       cinder_gym: ['Fire', 'Everyone who walks into Brann\'s forge thinks they already know how to put a fire out. He\'s counting on it.'],
-      dusk_gym: ['Ghost', 'Dark and Ghost moves are strong against Ghosts. Normal and Fighting moves pass straight through them.'],
+      dusk_gym: ['Ghost', 'Mireille\'s Echoes never hit a healthy Echo first. Everyone who loses in here says the same thing afterwards: "I didn\'t see it coming." Mind you, it is very dark.'],
       frost_gym: ['Ice', 'Mind the slippery floor. Fire, Fighting, Rock and Steel moves shatter ice. Sigrid battles in the snow, which makes her Ice types tougher.'],
       sky_gym: ['Dragon', 'The wind currents only blow one way, so read the arrows before you step on. Ice, Dragon and Fairy moves are strong against Dragons, and Kaelen\'s Tempestral is a formidable Echo.'],
     }[id] || ['?', 'Good luck!'];
     await S.say(`Hello there, challenger! This gym's Warden uses ${info[0]}-type Echoes. ${info[1]}`, 'Gym Guide');
-    if (id === 'dusk_gym' && !G.bag.has('lantern')) { await S.say('It\'s pitch black in there. Take this Lantern, so you can see where you\'re going.', 'Gym Guide'); await S.give('lantern'); }
+    if (id === 'dusk_gym' && !G.bag.has('lantern')) await S.say('The sign on the door isn\'t a joke, by the way. "Bring your own light." Old Ode by the water keeps every lamp in Duskmere.', 'Gym Guide');
     // no free potions at the door (docs/GRAVITY_PLAN.md: nothing arrives for free); the Mart is next door
   };
   const wardenWin = async (S, o) => {
@@ -778,12 +778,19 @@
     const N = 'Admin Grey';
     G.audio && G.audio.music('encounter_villain');
     S.face('ru_grey', 'down');
+    if (G.flag('grey_met')) { await S.say('Back. The model allowed for that. Four percent is still four percent.', N); }   // a rematch after a loss skips the introductions
+    else {
     await S.say('...', N);
     await S.say('You are the one Lark keeps complaining about. I am Grey, an Admin of the Hollow.', N);
     { const k = G.getVar('larkCave', -1); if (k >= 0) await S.say(['She says you told her to leave the crystals alone, as if they were yours to protect. She found that very funny. She has repeated it four times.', 'She says you told her you were not scared. She says you should have been. She was not smiling when she said it.', 'She says you asked her why she works for us. She has not stopped thinking about it. I have noticed. So, I suspect, will the Director.'][k], N); }
-    await S.say('The Tide Key has already left its cradle. The probability that you change anything here is four percent.', N);
+    await S.say('The Tide Key has already left its cradle. Your friend carried it out. Fellow Wren. Ranked twentieth, and very eager to be ranked higher.', N);
+    await S.say('The probability that you change anything here is four percent.', N);
     await S.say('I would like to see the four percent.', N);
+    S.set('grey_met');
+    }
+    G.setVar('greyTries', G.getVar('greyTries', 0) + 1);
     const won = await G.storyBattle('grey1'); if (!won) return;
+    { const n = G.getVar('greyTries', 1); if (n > 1) await S.say(`${['', '', 'Two', 'Three', 'Four', 'Five'][n] || 'So many'} attempts. The model said you would stop after one. The model was wrong about you twice, then.`, N); }
     await S.say('Interesting. I will revise the model to six percent. The key is already on its way to the Director.', N);
     await S.say('Grey raises a hand. A Nightwing swoops down out of the dark and carries him off into the mist.');
     G.audio && G.audio.sfx('fly');
@@ -791,7 +798,7 @@
     await S.approach('ru_mir', 'mireille', { prefer: ['down', 'left', 'right'] });
     await S.say('The cradle is empty. I came the moment the spirits began to wail. You faced them alone? Brave little flame.', 'Warden Mireille');
     await S.say('The Tide Key opens the sea gate beneath the Lodestar. The old songs say Orrelume sleeps behind it. If Crane has the key...', 'Warden Mireille');
-    await S.say('Come to my gym when you are ready. We have much to discuss, once I have seen what burns in you.', 'Warden Mireille');
+    await S.say('A child carried it out, the spirits say. A child in a Fellowship scarf. ...Come to my gym when you are ready. I would like to see what burns in you before I send word to Marisol.', 'Warden Mireille');
     await S.fadeOut(10); S.remove('ru_mir'); await S.fadeIn(10);
     S.set('ruins_done'); S.restoreMusic(); S.quest('main5', 'gym');
     G.persist.write();
@@ -801,8 +808,13 @@
     const N = 'Warden Mireille';
     S.facePlayer('mireille_npc');
     if (G.flag('badge4')) { await S.say('Professor Hale is waiting for you on the Duskmere pier. Go, little flame.', N); return; }
-    await S.say('Welcome, little flame. It is in darkness that we see what truly matters.', N);
-    await S.say('My Echoes are the whispers of those who loved too much to leave. Let us see if your bond can shine through them.', N);
+    if (!G.flag('mireille_met')) {   // a rematch after a loss goes straight to her retry line
+      await S.say('Welcome, little flame. It is in darkness that we see what truly matters.', N);
+      await S.say('My Echoes are the whispers of those who loved too much to leave. Nothing holds them here. They stay because they choose to.', N);
+      if (G.flag('band_on')) await S.say('...And you have come in wearing a leash. The spirits can see it, you know. They are very quiet about it.', N);
+      S.set('mireille_met');
+    }
+    { const pm = partner(); if (pm) await S.say(fromOrb(pm) + ({ budling: `${G.mon.name(pm)} lifts its head towards the lanterns, the way a plant turns to the sun. There isn't much light in here, and it is going to find all of it.`, kindlet: `${G.mon.name(pm)}'s ears glow, the only warm light in the room. Something in the dark leans closer to look.`, sealet: `${G.mon.name(pm)} goes very still, listening. Somewhere in the dark, something is breathing in time with it.` }[G.evoLine(pm.sp)[0].id] || `${G.mon.name(pm)} steps up beside you.`)); }
     const won = await G.storyBattle('mireille'); if (!won) return;
     await S.say('The candle flickers... and still it burns. As do you. The Veil Badge is yours.', N);
     await wardenWin(S, { badge: 'veil', flag: 'badge4', name: N, tm: 'tm58', tmText: 'And {tm}. A ghostly burn that weakens the foe\'s physical attacks.', gymTrainers: ['dg_1', 'dg_2', 'dg_3'] });
@@ -812,11 +824,33 @@
     S.facePlayer('dm_hale');
     if (G.flag('got_surf')) { await S.say('Frostpeak is south, across the lake. I\'ll stay here and go through Vesper\'s old research. It\'s the least I can do.', HALE); return; }
     await S.say(`${P()}. Mireille told me. The Tide Key. Vesper actually did it.`, HALE);
-    await S.say('Twelve years ago, Vesper Crane and I worked at the Lodestar together. We wanted to record Orrelume\'s song. The first recording, ever.', HALE);
+    await S.say('I owe you a story. I think you\'ve already worked some of it out.', HALE);
+    // what the player noticed on the way is what they get to say (docs/GRAVITY_PLAN.md: attention paid back)
+    const clues = [['You went quiet when Ash said the crystal sings.', 'song'], ['Juniper found your calibration page.', 'page']];
+    if (G.flag('dusk_story')) clues.push(['Someone here lost her partner. Someone never forgave herself.', 'town']);
+    if ([1, 2, 3, 4, 5, 6].some(i => G.flag('keeperpage' + i))) clues.push(['The lighthouse keeper heard the Mere hum.', 'log']);
+    clues.push(['No. Tell me.', 'none']);
+    const c = clues[Math.max(0, await G.ask('What have you worked out?', clues.map(x => x[0]), { speaker: HALE }))][1];
+    G.setVar('haleClue', c);
+    await S.say({
+      song: 'You noticed that. ...Yes. I can\'t hear anyone call it a song. Not since the night we recorded one.',
+      page: 'She wasn\'t meant to have that. Lodestar lamp, pass fourteen. Thirteen times I got it wrong. The fourteenth time I got it right, and that was worse.',
+      town: 'Old Nell, on the hill. She\'s lived here fifty years, and she\'s right about both of us.',
+      log: 'The keeper\'s log. He heard it every night of his life, and he never once tried to make it louder. I read that twelve years too late.',
+      none: 'Kind of you. Or you weren\'t watching. Either way, here it is.',
+    }[c], HALE);
+    await S.say('Twelve years ago, Vesper Crane and I worked at the Lodestar together. We tuned its great lamp to carry Orrelume\'s song, so we could record it. The first recording, ever.', HALE);
     await S.say('Her partner was a Luminelle named Lumi. The sweetest Echo you ever met. When the song started, Lumi... sang back.', HALE);
     await S.say('And here\'s the part I\'ve never said out loud. Vesper wanted to stop. Lumi was shaking. And I said, "Thirty more seconds. We\'ll never get this again."', HALE);
     await S.say('The Lodestar flared so bright the whole Mere went white. When it faded, Lumi was gone. No trace. Gone.', HALE);
+    // the partner hummed the crystals' note back in Glimmer Cave (chapter 3); here it turns out to be the song's
+    { const pm = partner(); if (pm && G.flag('crystal_hum')) {
+      await S.say(`${pm === G.party.lead() ? '' : `${G.mon.name(pm)}'s Orb opens. `}${G.mon.name(pm)} is looking out over the water. Very quietly, it hums the note from Glimmer Cave.`);
+      await S.emote('dm_hale', '!', 40);
+      await S.say('...Where did it learn that? That\'s the first note. That\'s how the song starts. That\'s the note Lumi sang back.', HALE);
+    } }
     const k = await choose('Hale can\'t quite look at you.', ['You couldn\'t have known.', 'Why are you telling me this?', 'Does Vesper blame you?'], HALE);
+    G.setVar('haleConf', k);   // read back at the Lodestar, when Hale finally tells Vesper
     await S.say([`That's kind of you. I've had twelve years to decide whether it's true.`, `Because you keep turning up where it matters. You deserve the truth.`, `She's never said so. She's never had to.`][k], HALE);
     await S.say('If Vesper wants the sea gate, she wants to force Orrelume to sing again. Loud enough to reach Lumi, wherever she is. And she won\'t care what it costs anyone else. I taught her that.', HALE);
     await S.say('I can\'t stop her. But you can reach places I can\'t. Take this Tide Board. Face the water and press Z to surf.', HALE);
@@ -830,6 +864,12 @@
     const N = 'Lamplighter Ode';
     const lit = [1, 2, 3, 4].filter(i => G.flag('lantern' + i)).length;
     const q = G.save.quests.side_lanterns;
+    // "Bring your own light": the gym's Lantern comes from the man who keeps Duskmere's lamps, not the door
+    if (!G.bag.has('lantern')) {
+      await S.say('Going to the gym, are you? Then you\'ve read Mireille\'s sign. "Bring your own light." Most people think it\'s poetry.', N);
+      await S.say('It isn\'t. Here, take my spare. It\'s seen me through forty winters of fog.', N);
+      await S.give('lantern');
+    }
     if (q && q.step === 'done') { await S.say('The spirits rest easy now. You have a lamplighter\'s heart.', N); return; }
     if (lit >= 4) {
       await S.say('All four spirit lanterns are burning! Can you hear that? The spirits are singing.', N);
@@ -854,7 +894,13 @@
   SC.prorod_guy = async (S) => {
     S.facePlayer('dm_rodguy');
     await S.say('Deep lake, big fish. With a Pro Rod you can hook Mireel, Riptalon, even Crustank.', 'Fisher Lou');
-    if (!G.flag('lou_gift')) { await S.say('Here, take some Net Orbs. They work especially well on Water and Bug types.', 'Fisher Lou'); await S.give('netorb', 5); S.set('lou_gift'); }
+    // no free Orbs (docs/GRAVITY_PLAN.md: nothing arrives for free); the Pro Rod is a lock before its key
+    if (!G.bag.has('prorod')) await S.say('Never had one myself. Old Marv in Galvan has the only one I know of, and he says he\'ll give it to whoever shows him a Riptalon. Fifty years he\'s been saying that.', 'Fisher Lou');
+  };
+  SC.dusk_nell = async (S) => {
+    S.facePlayer('dh2'); S.set('dusk_story');   // Hale's confession lets you say you heard this
+    await S.say('Twelve years ago the Lodestar flared so bright you could read by it here. Then it went dark for a week.', 'Old Nell');
+    await S.say('They say a young scientist lost her partner that night. And another one never forgave herself.', 'Old Nell');
   };
   SC.fortune_teller = async (S) => {
     S.facePlayer('dh1');
@@ -873,7 +919,8 @@
     await S.approach('r5w', 'wren_crane', { prefer: ['down', 'left', 'right'] });
     await S.emote('r5w', '...', 40);
     await S.say('Took you long enough.', WREN());
-    await S.say('I\'m ranked fourth of all the Fellows now. The Director fitted my band with a new Amplifier. It forces Resonance, every moment of every battle. No waiting for a bond to grow. No waiting at all.', WREN());
+    await S.say('I\'m ranked fourth of all the Fellows now. That\'s what carrying one little key out of the Ruins gets you.', WREN());
+    await S.say('The Director fitted my band with a new Amplifier. It forces Resonance, every moment of every battle. No waiting for a bond to grow. No waiting at all.', WREN());
     await S.say(`I'm going to be Champion, ${P()}, and Sable will have to look at me. Starting with you.`, WREN());
     const won = await G.storyBattle('rival3');
     S.set('rival3_done');
@@ -1095,6 +1142,7 @@
     S.music('tidelight_calm');
     await S.say(`${P()}! You did it! Vesper has turned herself in. She said she heard Lumi, that the song carried her voice.`, HALE);
     await S.say('I told her the truth about that day, to her face. She said, "I know, Marisol. I was there." And then she embraced me.', HALE);
+    { const hk = G.getVar('haleConf', -1); if (hk >= 0) await S.say(['On the pier you told me I couldn\'t have known. I told her I could have. That I chose the thirty seconds. It was the first true thing I\'d said to her in twelve years.', 'On the pier you asked me why I was telling you. I think I was practising. It went better the second time.', 'On the pier you asked me whether Vesper blamed me. I finally asked her. She said she\'d been waiting twelve years for me to.'][hk], HALE); }
     await S.say(`${P()}, that was incredible! I... oh. Um. Hello, Sable.`, WREN());
     await S.say(`So you're the one ${R()} is always talking about.`, 'Champion Sable');
     await S.say('I\'m Sable, the Champion. I came as fast as I could when the light went out. It seems you didn\'t need me.', 'Champion Sable');
