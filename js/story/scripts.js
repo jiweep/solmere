@@ -10,6 +10,8 @@
   const pushBack = async (S, dir) => { await S.move('player', { up: 'd', down: 'u', left: 'r', right: 'l' }[dir] || 'd', 1); };
   const starterName = sp => G.SPECIES[sp].name;
   // your partner: the starter from the lab, wherever it is now (it reacts at the moments that matter)
+  // a partner line that describes it beside you needs it out of its Orb first when it isn't the one following you
+  const fromOrb = pm => pm === G.party.lead() ? '' : `${G.mon.name(pm)}'s Orb pops open on its own. `;
   const partner = () => { const u = G.getVar('partnerUid', null); return (u !== null && G.party.allMons().find(m => m.uid === u)) || G.party.allMons().find(m => G.evoLine(m.sp)[0].id === G.getVar('starter', '')) || null; };
   // a choice with personality: options are [heart, chaos, deadpan]; the pick is remembered, and people react to it
   const VIBES = ['heart', 'chaos', 'deadpan'];
@@ -383,7 +385,7 @@
     const info = {
       fernwick_gym: ['Grass', 'Juniper\'s garden bites back, and it\'s patient about it. The Tamers who beat her are the ones who came ready for her, not just for a battle.'],
       galvan_gym: ['Electric', 'Ione hates to wait, and her Echoes are faster than yours will ever be. The ones who beat her stopped trying to outrun her. Step on the glowing pads to lower the barriers.'],
-      cinder_gym: ['Fire', 'Water, Ground and Rock moves put out the fire. Brann\'s last Echo can Resonate, so save something strong for the end.'],
+      cinder_gym: ['Fire', 'Everyone who walks into Brann\'s forge thinks they already know how to put a fire out. He\'s counting on it.'],
       dusk_gym: ['Ghost', 'Dark and Ghost moves are strong against Ghosts. Normal and Fighting moves pass straight through them.'],
       frost_gym: ['Ice', 'Mind the slippery floor. Fire, Fighting, Rock and Steel moves shatter ice. Sigrid battles in the snow, which makes her Ice types tougher.'],
       sky_gym: ['Dragon', 'The wind currents only blow one way, so read the arrows before you step on. Ice, Dragon and Fairy moves are strong against Dragons, and Kaelen\'s Tempestral is a formidable Echo.'],
@@ -423,7 +425,7 @@
       S.set('jun_met');
     }
     await S.say('Show me what you\'ve been growing, dear.', N);
-    { const pm = partner(); if (pm) await S.say({ budling: `${G.mon.name(pm)}'s leaves stand straight up. It has never seen a garden like this, and it wants to win it.`, kindlet: `${G.mon.name(pm)}'s ears flare. The whole garden smells like tinder, and it doesn't trust it one bit.`, sealet: `${G.mon.name(pm)} presses close against your leg. Every root in the room seems to be leaning towards it.` }[G.evoLine(pm.sp)[0].id] || `${G.mon.name(pm)} steps up beside you.`); }
+    { const pm = partner(); if (pm) await S.say(fromOrb(pm) + ({ budling: `${G.mon.name(pm)}'s leaves stand straight up. It has never seen a garden like this, and it wants to win it.`, kindlet: `${G.mon.name(pm)}'s ears flare. The whole garden smells like tinder, and it doesn't trust it one bit.`, sealet: `${G.mon.name(pm)} presses close against your leg. Every root in the room seems to be leaning towards it.` }[G.evoLine(pm.sp)[0].id] || `${G.mon.name(pm)} steps up beside you.`)); }
     const won = await G.storyBattle('juniper');
     if (!won) { S.quest('main1', 'lost', { silent: true }); return; }
     await S.say('...My, my. It has been a long time since I lost. You have earned this: the Bloom Badge.', N);
@@ -535,7 +537,7 @@
       await S.say('I\'m Ione. I keep the harbour\'s lights burning, every lamp and every beacon. Let\'s see if you can keep up with the current!', N);
       S.set('ione_met');
     }
-    { const pm = partner(); if (pm) await S.say({ budling: `${G.mon.name(pm)} digs its roots into the floor. The whole room is humming, and it has decided not to mind.`, kindlet: `${G.mon.name(pm)}'s fur stands on end. Every hair crackles, and it looks furious about it.`, sealet: `${G.mon.name(pm)} shifts from flipper to flipper. The floor is buzzing, and it knows exactly what lightning does to water.` }[G.evoLine(pm.sp)[0].id] || `${G.mon.name(pm)} steps up beside you.`); }
+    { const pm = partner(); if (pm) await S.say(fromOrb(pm) + ({ budling: `${G.mon.name(pm)} digs its roots into the floor. The whole room is humming, and it has decided not to mind.`, kindlet: `${G.mon.name(pm)}'s fur stands on end. Every hair crackles, and it looks furious about it.`, sealet: `${G.mon.name(pm)} shifts from flipper to flipper. The floor is buzzing, and it knows exactly what lightning does to water.` }[G.evoLine(pm.sp)[0].id] || `${G.mon.name(pm)} steps up beside you.`)); }
     const won = await G.storyBattle('ione'); if (!won) return;
     await S.say('Well done! You didn\'t just keep up, you outpaced me. The Current Badge is yours.', N);
     await wardenWin(S, { badge: 'current', flag: 'badge2', name: N, tm: 'tm34', tmText: 'And {tm}. Strike, then switch out in the same move.', gymTrainers: ['gg_1', 'gg_2', 'gg_3'] });
@@ -646,14 +648,25 @@
   SC.lark1 = async (S) => {
     if (G.flag('lark1_done')) return;
     const N = 'Admin Lark';
+    // the crystals sing, and the partner answers them (a plant: at the Lodestar it is the partner who answers the song)
+    { const pm = partner(); if (pm && !G.flag('crystal_hum')) {
+      S.set('crystal_hum');
+      await S.say('The crystal hall is humming, one low note that you feel in your teeth more than hear.');
+      await S.say(pm === G.party.lead() ? `${G.mon.name(pm)} stops dead. Then, very quietly, it hums the same note back. The crystals nearest to it brighten.` : `${G.mon.name(pm)}'s Orb opens by itself. It stands there in the blue light, and very quietly hums the same note back. The crystals nearest to it brighten.`);
+      if (G.flag('band_on')) await S.say('The dial on your Chorus band jumps, and the band goes hot against your wrist.');
+      await S.say('A flake of the brightest crystal comes loose and drifts down, glittering. It is still warm when you pick it up.');
+      await S.give('stardust');
+    } }
     S.faceEach('gc_lark', 'player');
     G.audio && G.audio.music('encounter_villain');
     await S.emote('gc_lark', '!');
     await S.say('Well, well. You\'re the one who sent my people running from Whisperwood.', N);
     await S.say('I\'m Lark, an Admin of the Hollow. These singing crystals belong to us now. The Director needs every drop of Resonance in them. Don\'t ask me why. I never do.', N);
     const k = await choose('Lark watches you with a crooked smile.', ['Leave the crystals alone.', 'I\'m not scared of you.', 'Why do you work for them?'], N);
+    G.setVar('larkCave', k);   // Grey reads it back at the Ruins; it should decide whether Lark comes to the Lodestar (GRAVITY_PLAN item 4)
     await S.say([`A hero, then. How sweet. Let's see how long that lasts.`, `You will be.`, `...Because they wanted me. Nobody else ever did. Enough talking!`][k], N);
     const won = await G.storyBattle('lark1'); if (!won) return;
+    if (k === 2) await S.say('Lark looks at you a moment too long, as if you had asked something nobody asks.');
     await S.say('Tch! Fine, keep your glowing rocks. The Director won\'t need them soon anyway. She\'s after something far bigger.', N);
     await S.say('Something that sleeps beneath a lighthouse. See you around, hero.', N);
     await S.move('gc_lark', 'lll', 2); S.remove('gc_lark');
@@ -668,6 +681,7 @@
     if (!G.bag.has('pickhammer')) {
       await S.say('You chased them off! Thank you! They blocked the way to Cindervale with rubble. Take my Pick Hammer and break right through.', N);
       await S.give('pickhammer', 1, { note: 'Walk up to a cracked rock and press Z to smash it.' });
+      S.quest('main4', 'forge');
       return;
     }
     await S.say('Cindervale is just past those rocks. Its hot springs are the best place in Solmere to rest.', N);
@@ -699,10 +713,16 @@
     await S.say('The band\'s Amplifier pushes our bond higher than it\'s ever been. My team has never been this strong.', WREN());
     await S.say([`And I've been careful! Mostly. Like you said.`, `You said you'd race me to the top. Twentieth, ${P()}. Where are you?`, `You said forcing a bond was wrong. Does this look wrong to you? Look how strong we are!`][G.getVar('wrenGalvan', 0)], WREN());
     if (G.flag('band_on')) await S.say('And you\'re wearing yours! See? You feel it too.', WREN());
-    await S.say('Come on. Let\'s see how you measure up!', WREN());
+    // straight out of Lark's fight: Wren won't beat a team that's already down (a friend, not a trap)
+    if (G.save.party.some(m => m.hp < G.mon.maxHP(m) / 2)) {
+      await S.say('...Wait. Look at your team. Did you fight your way through the whole cave? Come on, the Haven\'s right there. I\'m not beating you like this.', WREN());
+      await S.fadeOut(10); await S.heal(); G.save.lastHeal = { map: 'haven', x: 7, y: 6, back: { map: 'cindervale', x: 6, y: 24 } }; await S.fadeIn(10);
+      await S.say('Right. Now it counts.', WREN());
+    } else await S.say('Come on. Let\'s see how you measure up!', WREN());
     const won = await G.storyBattle('rival2');
     S.set('rival2_done');
     if (!won) return;
+    await S.say(`${R()}'s ${G.SPECIES[G.lineAt(G.rivalOf[G.getVar('starter', 'kindlet')], 22)].name} is shaking. ${R()} doesn't seem to notice.`);
     await S.say('Tch. That\'ll cost me my rank... Whatever. The Fellowship says something important is happening at the Ruins of Echo, near Duskmere. I\'m going.', WREN());
     await S.fadeOut(10); S.remove('cv_wren'); await S.fadeIn(10);
   };
@@ -737,8 +757,13 @@
     const N = 'Warden Brann';
     S.facePlayer('brann_npc');
     if (G.flag('badge3')) { await S.say('Duskmere is south, along Route 4! And watch yourself. The Hollow has been sniffing around the Ruins of Echo!', N); return; }
-    await S.say('HAH! A challenger! I\'m Brann! Forty years shaping steel, and twenty shaping Tamers!', N);
-    await S.say('Heat reveals the flaws in metal, and battle reveals the flaws in a bond! Let\'s see what you\'re made of!', N);
+    if (!G.flag('brann_met')) {   // a rematch after a loss goes straight to his retry line
+      await S.say('HAH! A challenger! I\'m Brann! Forty years shaping steel, and twenty shaping Tamers!', N);
+      await S.say('Heat reveals the flaws in metal, and battle reveals the flaws in a bond! Let\'s see what you\'re made of!', N);
+      if (G.flag('band_on')) await S.say('...Hm. That thing on your wrist. I\'ve made clamps that look just like it. You clamp metal when it won\'t hold its shape on its own.', N);
+      S.set('brann_met');
+    }
+    { const pm = partner(); if (pm) await S.say(fromOrb(pm) + ({ budling: `${G.mon.name(pm)}'s leaves curl up at the edges in the heat. It plants itself beside you anyway, and doesn't budge.`, kindlet: `${G.mon.name(pm)} breathes in the forge air like it has come home, and its tail flares brighter than the lava.`, sealet: `${G.mon.name(pm)}'s skin is drying in the heat. It looks up at you, then at the lava, then back at you.` }[G.evoLine(pm.sp)[0].id] || `${G.mon.name(pm)} steps up beside you.`)); }
     const won = await G.storyBattle('brann'); if (!won) return;
     await S.say('HAAA! There\'s real fire in you! The Forge Badge is yours!', N);
     await wardenWin(S, { badge: 'forge', flag: 'badge3', name: N, tm: 'tm35', tmText: 'And {tm}! As reliable as a good hammer!', gymTrainers: ['cg_1', 'cg_2', 'cg_3'],
@@ -755,6 +780,7 @@
     S.face('ru_grey', 'down');
     await S.say('...', N);
     await S.say('You are the one Lark keeps complaining about. I am Grey, an Admin of the Hollow.', N);
+    { const k = G.getVar('larkCave', -1); if (k >= 0) await S.say(['She says you told her to leave the crystals alone, as if they were yours to protect. She found that very funny. She has repeated it four times.', 'She says you told her you were not scared. She says you should have been. She was not smiling when she said it.', 'She says you asked her why she works for us. She has not stopped thinking about it. I have noticed. So, I suspect, will the Director.'][k], N); }
     await S.say('The Tide Key has already left its cradle. The probability that you change anything here is four percent.', N);
     await S.say('I would like to see the four percent.', N);
     const won = await G.storyBattle('grey1'); if (!won) return;
@@ -1298,7 +1324,7 @@
     const stock = {
       fernwick: ['oranberry', 'sunberry', 'cheriberry', 'chestoberry', 'pechaberry', 'rawstberry', 'miracleseed'],
       galvan: ['tm17', 'tm16', 'tm33', 'tm12', 'tm05', 'tm25', 'tm59', 'tm47', 'tm67', 'tm21', 'magnet', 'metalcoat', 'xattack', 'xspeed'],
-      cindervale: ['hpup', 'protein', 'iron', 'calcium', 'zinc', 'carbos', 'resetbrew', 'everstone', 'charcoal', 'flamestone', 'tm62', 'tm37'],
+      cindervale: ['hpup', 'protein', 'iron', 'calcium', 'zinc', 'carbos', 'resetbrew', 'everstone', 'charcoal', 'flamestone', 'tm62', 'tm37', 'tm40'],
       duskmere: ['duskorb', 'timerorb', 'spelltag', 'blackglasses', 'twistedspoon', 'poisonbarb', 'blacksludge', 'duskstone', 'dawnstone', 'tm60', 'tm45', 'tm36', 'tm49', 'tm06'],
       frostpeak: ['iceheal', 'froststone', 'nevermeltice', 'tm07', 'tm61', 'tm18', 'tm41', 'leppaberry', 'lumenberry'],
     }[town] || ['greatorb', 'superpotion', 'repel'];

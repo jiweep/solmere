@@ -151,11 +151,8 @@
         { type: 'trainer', id: 'r3_ace_e', x: 36, y: 11, look: 'ace_f', dir: 'left', sight: 3, trainer: 'r3_ace' },
         { type: 'trainer', id: 'r3_kid_e', x: 26, y: 7, look: 'kid', dir: 'down', sight: 2, trainer: 'r3_kid' },
         { type: 'npc', id: 'r3_old', x: 8, y: 7, look: 'oldman', dir: 'down', move: 'look', text: 'The cave ahead sings when the wind blows. It\'s the crystals, they say. Lately, people in grey coats keep hauling crates out of it.' },
-        { type: 'item', id: 'r3_i1', x: 39, y: 18, item: 'tm40' },
-        { type: 'item', id: 'r3_i2', x: 45, y: 5, item: 'stardust' },
-        { type: 'item', id: 'r3_i3', x: 3, y: 17, item: 'greatorb', qty: 3 },
-        { type: 'item', id: 'r3_h1', x: 22, y: 4, item: 'pearl', hidden: true },
-        { type: 'item', id: 'r3_h2', x: 39, y: 19, item: 'nugget', hidden: true },
+        // chapter 3's finds are few and someone points to each (docs/GRAVITY_PLAN.md item 7): Fisher Bo to this Disc
+        { type: 'item', id: 'r3_i1', x: 39, y: 18, item: 'tm18' },
       ], spawn: [3, 10] });
   })();
   // --------------------------------------------------------- GLIMMER CAVE
@@ -182,10 +179,7 @@
         { type: 'npc', id: 'gc_dig', x: 10, y: 24, look: 'scientist', dir: 'up', script: 'fossil_dig' },
         { type: 'item', id: 'gc_i1', x: 12, y: 2, item: 'hardstone' },
         { type: 'item', id: 'gc_i2', x: 24, y: 11, item: 'tm39' },
-        { type: 'item', id: 'gc_i3', x: 8, y: 21, item: 'escaperope' },
         { type: 'item', id: 'gc_trap', x: 14, y: 3, item: 'nugget', monTrap: 'coffret', lvl: 19 },
-        { type: 'item', id: 'gc_h1', x: 18, y: 20, item: 'stardust', hidden: true },
-        { type: 'item', id: 'gc_h2', x: 30, y: 12, item: 'rarecandy', hidden: true },
         { type: 'trigger', x: 32, y: 9, w: 1, h: 10, script: 'lark1', cond: '!lark1_done' },
       ], spawn: [2, 15] });
   })();
@@ -231,9 +225,9 @@
         { type: 'npc', id: 'cv_smith', x: 11, y: 9, look: 'worker', dir: 'down', move: 'look', text: 'Brann forged every Warden\'s badge himself. He says a badge is only metal until someone earns it.' },
         { type: 'npc', id: 'cv_old', x: 35, y: 21, look: 'oldwoman', dir: 'left', move: 'look', text: 'The volcano sleeps because the Volcanoth beneath it sleep. Let\'s hope they never wake.' },
         { type: 'npc', id: 'cv_kid', x: 12, y: 18, look: 'boy', dir: 'right', move: 'wander', radius: 3, text: 'My Water-type Echo doesn\'t like the heat in Cindervale. It keeps asking to go home!' },
-        { type: 'npc', id: 'cv_bath', x: 23, y: 29, look: 'oldman', dir: 'right', move: 'look', text: 'Ahh. The spring comes up hot from the mountain\'s heart. My old knees feel forty years younger.' },
+        { type: 'npc', id: 'cv_bath', x: 23, y: 29, look: 'oldman', dir: 'right', move: 'look', text: 'Ahh. The spring comes up hot from the mountain\'s heart. My wife buried a Flame Stone where this path runs out, at the west end, the year we opened the forge. For luck, she said. I never had the heart to dig it up.' },
         { type: 'npc', id: 'cv_row', x: 31, y: 17, look: 'blackbelt', dir: 'down', move: 'look', text: 'Every blade on this row was tempered in lava. Please don\'t touch the channels.' },
-        { type: 'trigger', x: 2, y: 17, w: 1, h: 3, script: 'rival2', cond: ['lark1_done', '!rival2_done'] },
+        { type: 'trigger', x: 2, y: 17, w: 2, h: 3, script: 'rival2', cond: ['lark1_done', '!rival2_done'] },
         { type: 'item', id: 'cv_i1', x: 40, y: 15, item: 'charcoal' },
         { type: 'item', id: 'cv_h1', x: 3, y: 33, item: 'flamestone', hidden: true },
       ], spawn: [21, 20] });

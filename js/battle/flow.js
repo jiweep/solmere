@@ -92,7 +92,7 @@ G.makeTrainerCfg = function (id, o = {}) {
   const D = G.diff();
   const party = T.party.map(p => G.buildTrainerMon(p, T));
   const aiLvl = G.clamp((T.ai !== undefined ? T.ai : 2) + D.ai, 1, 4);
-  const cfg = { name: T.name, cls: T.cls, sprite: G.LOOKS[T.look] || T.look, party, controller: G.AI.controller(aiLvl, T), items: { ...(T.items || {}) }, resonance: !!T.resonate, trainerId: id, boss: T.boss };
+  const cfg = { name: T.name, cls: T.cls, sprite: G.LOOKS[T.look] || T.look, party, controller: G.AI.controller(aiLvl, T), items: { ...(T.items || {}) }, resonance: !!T.resonate, amplified: !!T.amplified, trainerId: id, boss: T.boss };
   if (T.ace !== undefined && party[T.ace]) cfg.aceUid = party[T.ace].uid; else if (T.resonate) cfg.aceUid = party[party.length - 1].uid;
   if (G.save.settings.difficulty === 'easy') cfg.items = {};
   if (G.save.settings.difficulty === 'master' && T.boss) cfg.items.fullrestore = (cfg.items.fullrestore || 0) + 1;

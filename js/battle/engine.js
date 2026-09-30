@@ -497,7 +497,8 @@ G.THROW_MULT = [1, 1.25, 1.6, 2.2];   // catch-rate multiplier by throw quality:
         b.resonant = true; b.vol.resShield = true;
         this.emit({ t: 'resonate', ref: b.ref(), type: b.types[0] }); if (G.tidemarks) G.tidemarks.onResonate(this, b);
         this.say(`{0} is Resonating with ${tr.name || 'its Tamer'}! Its ${G.cap(b.types[0])} power surges!`, b);
-        if (tr.amplified) { b.mon.bond = Math.max(0, b.mon.bond - 8); this.say('The Chorus band on your wrist hums louder. {0} flinches.', b); }
+        if (tr.amplified && tr.isPlayer) { b.mon.bond = Math.max(0, b.mon.bond - 8); this.say('The Chorus band on your wrist hums louder. {0} flinches.', b); }
+        else if (tr.amplified) this.say(`The Chorus band on ${tr.name}'s wrist hums louder. {0} flinches.`, b);
       }
       // --- moves
       const mv = actions.filter(a => a.type === 'move' || a.type === 'recharge');

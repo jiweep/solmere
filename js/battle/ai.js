@@ -137,7 +137,7 @@ G.AI = (function () {
         }
         if (!best) best = { type: 'move', moveIdx: usable[0] ? usable[0].idx : 0, struggle: !usable.length };
         // resonance for aces
-        if (req.canResonate && (bt.bench(b.side, b.owner).length === 0 || tr.aceUid === b.mon.uid)) best.resonate = true;
+        if (req.canResonate && (bt.bench(b.side, b.owner).length === 0 || tr.aceUid === b.mon.uid || (tr.amplified && !(bt.sides[b.side].resUsed[b.owner] || 0)))) best.resonate = true;   // a Chorus band forces its first one at once
         return best;
       },
       async chooseSwitch(bt, req) {
