@@ -191,11 +191,12 @@ G.NewGameScene = class {
       { k: 'rtrain', label: '  · Trainers', vals: [true, false], names: ['On', 'Off'], dep: 'random', desc: ['Randomize trainer teams.', 'Keep trainer teams.'] },
       { k: 'rstart', label: '  · Starters', vals: [true, false], names: ['On', 'Off'], dep: 'random', desc: ['Randomize the starter choices.', 'Keep the classic three.'] },
       { k: 'rsimilar', label: '  · Similar strength', vals: [true, false], names: ['On', 'Off'], dep: 'random', desc: ['Replacements have similar base stat totals.', 'Anything goes. Chaos.'] },
-      { k: 'god', label: 'God Mode (testing)', vals: [false, true], names: ['Off', 'On'], desc: ['Off.', 'Adds a God Mode menu (pause menu, or ` key): invincibility, one-hit KOs, noclip, warps, chapter skips, give Echoes/items and more.'] },
+      { k: 'god', label: 'God Mode (testing)', dev: true, vals: [false, true], names: ['Off', 'On'], desc: ['Off.', 'Adds a God Mode menu (pause menu, or ` key): invincibility, one-hit KOs, noclip, warps, chapter skips, give Echoes/items and more.'] },
       { k: 'start', label: '▶  BEGIN JOURNEY', start: true, desc: ['All set? Your adventure in Solmere awaits.'] },
     ];
   }
-  visible() { return this.rows.filter(r => !r.dep || this.v[r.dep]); }
+  // God Mode is a testing tool: only offered with ?dev in the address, so a player's first screen isn't a cheat menu
+  visible() { const dev = typeof location !== 'undefined' && /[?&]dev\b/.test(location.search); return this.rows.filter(r => (!r.dep || this.v[r.dep]) && (!r.dev || dev)); }
 };
 // the challenge setup, as a compact list at the side of the title (the sea stays in view)
 G.newGameSetup = function () {
@@ -469,13 +470,16 @@ G.coldOpenBattle = async function () {
   // the foe is a shadow in a Crane coat: no name, no face, and a line that means nothing until the Lodestar
   // (docs/GRAVITY_PLAN.md: the first minute used to show the villain, her motive and the finale)
   if (!G.TRAINERS.prologue_crane) G.TRAINERS.prologue_crane = { cls: '', name: '???', look: Object.assign({}, G.LOOKS.crane, { shadow: true }), ai: 1, money: 0, boss: true, noRematch: true, music: 'crane_battle', env: 'lighthouse',
-    party: [{ sp: 'stormhound', lvl: 44, moves: ['thunderfang', 'crunch', 'voltdash', 'growl'] }], intro: '', defeat: 'Not tonight. Not after all this time.' };
+    party: [{ sp: 'dynamech', lvl: 42, moves: ['flashcannon', 'ironhead', 'ironwall', 'voltdash'] }], intro: '', defeat: 'Not tonight. Not after all this time.' };
   const keep = ['dex', 'stats', 'trainers', 'money', 'nemesis', 'name', 'look'].map(k => [k, JSON.stringify(G.save[k])]);
   G.save.name = G.save.name || '???';
   const lumi = G.mon.create('luminelle', 55); lumi.bond = 255; lumi.moves = ['moonblast', 'psychic', 'playrough', 'calmmind'].map(x => G.mon.newMove(x));
   try {
     await G.say('Step away from the lamp. You have no idea what\'s listening.', { speaker: '???' });
-    await G.runBattle({ foes: [G.makeTrainerCfg('prologue_crane')], playerParty: [lumi], format: 'single', music: 'crane_battle', boss: true, env: 'lighthouse', noRun: true, canLose: true, hidePlayer: true, exp: false, noMoney: true, noClips: true, noPost: true });
+    // a steel Echo shrugs off every one of Lumi's moves: a fight of two or three turns that can go either way
+    // (it used to be a level 55 one-shotting a level 44), and either way the night ends the same
+    const r = await G.runBattle({ foes: [G.makeTrainerCfg('prologue_crane')], playerParty: [lumi], format: 'single', music: 'crane_battle', boss: true, env: 'lighthouse', noRun: true, canLose: true, hidePlayer: true, exp: false, noMoney: true, noClips: true, noPost: true });
+    if (r && r.outcome !== 'win') await G.say('Lumi falls against the great lamp. The glass hums. Far below, the sea begins to sing.', { box: { style: 'dark' } });
   } catch (e) { G.reportError(e); }
   for (const [k, v] of keep) G.save[k] = v === undefined ? undefined : JSON.parse(v);
   await G.fadeTo(1, 1, '#ffffff'); await G.fadeIn(40);
@@ -488,9 +492,12 @@ G.PrologueScene = class extends G.TitleScene {
     this.t++; this.parts.update();
     if (top && (G.input.pressed('b') || G.input.pressed('start'))) { G.input.consumeAll(); this.skip = true; }
   }
-  draw(b) {
-    super.draw(b);
-    if (this.night > 0) { b.fillStyle = `rgba(6,8,34,${(.5 * this.night).toFixed(3)})`; b.fillRect(0, 0, G.W, G.H); }
+  draw(b) { super.draw(b); }
+  // "it went dark" has to look dark: the painted sunset gets a deep night wash over everything, the risen shape
+  // included, so what comes out of the water is a shape and a glow, not a monster you can study
+  drawBack(c) {
+    super.drawBack(c);
+    if (this.night > 0) { const cv = c.canvas; c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = `rgba(4,6,24,${(.82 * this.night).toFixed(3)})`; c.fillRect(0, 0, cv.width, cv.height); c.restore(); }
   }
   drawUI() {
     const U = G.ui;

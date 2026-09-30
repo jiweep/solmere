@@ -350,6 +350,8 @@
       if (S3.orrM.map !== S3._orrTex) { S3._orrTex = texOf(img, { nearest: true }); S3.orrM.map = S3.orrGlow.material.map = S3._orrTex; S3.orrM.needsUpdate = S3.orrGlow.material.needsUpdate = true; }
       const p = b.p, Hh = img.height * sc, yw = HZ + F * CAMH / dd;
       S3.orr.scale.set(img.width * sc * s, Hh * s, 1);
+      // in the prologue it is night: a dark shape with a faint rim of light, not a monster you can study
+      S3.orrM.color.setScalar(b.glow && st.night ? 1 - .93 * st.night : 1); S3.orrGlow.material.opacity = b.glow && st.night ? .45 - .3 * st.night : .45;
       if (b.glow) {
         const x0 = 420, rise = Math.pow(Math.sin(p * Math.PI), .6), x = x0 + (p - .5) * 26, y = yw + Hh * .5 - rise * Hh * .95;
         S3.orr.position.set((x - AW / 2) * s, CAMH + (HZ - y) * s, -dd); S3.orr.rotation.z = -((p - .5) * .5 + Math.sin(t / 20) * .02);

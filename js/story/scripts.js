@@ -115,6 +115,7 @@
       return;
     }
     const b = G.save.badges.length;
+    if (!G.save.party.length) { await S.say(`Still here? Professor Hale doesn't wait for anyone, you know. The lab's down on the pier.`, MOM); return; }
     if (G.flag('badge1') && !G.flag('mom_home1')) {   // coming home with the first badge: what you told her, and your partner
       S.set('mom_home1');
       await S.say([`One badge already. You said you'd make me proud, and I told you that you already had. I still meant it. This is just extra.`, `Back before I knew it, just like you said. Well. I noticed. I noticed every hour of it.`, `You told me not to worry. I tried, for one whole day. Then Juniper wrote that you'd beaten her, and I stopped trying.`][G.getVar('momSaid', 0)], MOM);
@@ -184,7 +185,7 @@
       const U = G.ui, s = G.SPECIES[sp]; U.panel(40, 8, G.W - 80, 146, 'light', { r: 8 }); U.panel(48, 16, 110, 110, 'dark', { r: 6 });
       U.img(G.monArt.front(sp, false, Math.floor(this.t / 12) % 4), 55, 22); U.text(s.name, 166, 20, { size: 11, weight: 900 }); U.text(`The ${s.cat} Echo`, 166, 34, { size: 6.4, color: '#6a7080' });
       U.typeBadge(s.types[0], 166, 44, 36, 10); G.ui.wrap(s.dex, 170, 6.2).forEach((l, k) => U.text(l, 166, 60 + k * 9.4, { size: 6.2, color: '#4a5060' }));
-      const fin = G.SPECIES[G.evoLine(sp).slice(-1)[0].id]; U.text(`Evolves into ${G.SPECIES[G.evoLine(sp)[1].id].name}, then ${fin.name} (${fin.types.map(G.cap).join('/')}).`, 166, 112, { size: 5.6, weight: 800, color: G.TYPE_COLORS[s.types[0]] });
+      // no evolution spoiler here: what your partner grows into is something you find out together
     } };
     G.push(sc); G.audio && G.audio.cry(sp);
     const shown = G.randomizeSpecies(sp, 'starter');
@@ -399,8 +400,14 @@
       await S.say('Marisol hasn\'t written a word about the Lodestar in twelve years. Not since that night. I don\'t think she meant to send me this.', N);
       await S.say('...Well. That\'s hers to tell, not mine.', N);
       await S.say('But you didn\'t come all this way just to deliver a letter, did you? I can see it in your eyes. You want a badge.', N);
+      // the parcel isn't the player's choice to fight: let them go and get ready (a hurt team walked in to deliver it)
+      await S.say('I\'m Juniper, Warden of Fernwick. People think a gardener must be gentle. But a garden only thrives if you are patient, and stubborn, and you never give up.', N);
+      S.set('jun_met');
+      if (await G.ask('Juniper sets down the notes and waits.', ['Battle her now.', 'Not yet.'], { cancel: 1 }) === 1) { await S.say('Of course. Nobody plants in a hurry. I\'ll be right here among the roots when you\'re ready.', N); return; }
+    } else if (!G.flag('jun_met')) {
+      await S.say('I\'m Juniper, Warden of Fernwick. People think a gardener must be gentle. But a garden only thrives if you are patient, and stubborn, and you never give up.', N);
+      S.set('jun_met');
     }
-    await S.say('I\'m Juniper, Warden of Fernwick. People think a gardener must be gentle. But a garden only thrives if you are patient, and stubborn, and you never give up.', N);
     await S.say('Show me what you\'ve been growing, dear.', N);
     { const pm = partner(); if (pm) await S.say({ budling: `${G.mon.name(pm)}'s leaves stand straight up. It has never seen a garden like this, and it wants to win it.`, kindlet: `${G.mon.name(pm)}'s ears flare. The whole garden smells like tinder, and it doesn't trust it one bit.`, sealet: `${G.mon.name(pm)} presses close against your leg. Every root in the room seems to be leaning towards it.` }[G.evoLine(pm.sp)[0].id] || `${G.mon.name(pm)} steps up beside you.`); }
     const won = await G.storyBattle('juniper');

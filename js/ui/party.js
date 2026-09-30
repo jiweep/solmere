@@ -22,6 +22,8 @@ G.PartyScene = class {
     this.msg = o.msg || (o.forced ? 'Choose an Echo to send out.' : o.mode === 'battle' ? 'Choose an Echo.' : o.mode === 'select' ? (o.prompt || 'Choose an Echo.') : 'Choose an Echo.');
     this.party = G.save.party;
     if (this.i >= this.party.length) this.i = 0;
+    // in battle the cursor starts on the first Echo that can actually be sent out
+    if (o.mode === 'battle' && this.party[this.i] && this.party[this.i].hp <= 0) { const k = this.party.findIndex(m => m.hp > 0 && !m.egg); if (k >= 0) this.i = k; }
   }
   close(v) { G.pop(this); this.res(v); }
   update(top) {

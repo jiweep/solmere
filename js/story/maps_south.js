@@ -10,11 +10,14 @@
     warps: [{ x: 8, y: 2, to: 'home1f', tx: 9, ty: 2, dir: 'left' }],
     objs: [
       { type: 'sign', x: 1, y: 2, invisible: true, text: 'Your bookshelf: "Tamer Basics," "Type Matchups for Beginners," and a dog-eared comic called "Captain Resonance."' },
+      // small things that plant the Lodestar's missing years (docs/GRAVITY_PLAN.md: mysteries get more than one clue)
+      { type: 'sign', x: 6, y: 4, invisible: true, text: 'A late rerun: "The Lodestar: Three Hundred Years of Light." The narrator goes from the first keepers straight to the present day, as if some years weren\'t worth mentioning.' },
     ], spawn: [3, 4], noFollower: true });
   D({ id: 'home1f', name: 'Your House', type: 'indoor', wall: 'cream', music: 'home', canRun: true,
     grid: ['WwWWWWpWWwW', 'WWWWWWWWWWW', 'QQ.KK..Z..^', '...........', '...YY......', '...YY....V.', '...........', '.....M.....'],
     warps: [{ x: 10, y: 2, to: 'home2f', tx: 7, ty: 2, dir: 'left' }, { x: 5, y: 7, to: 'brinehollow', tx: 10, ty: 8, dir: 'down' }],
-    objs: [{ type: 'npc', id: 'mom', x: 6, y: 4, look: 'mom', dir: 'left', script: 'mom' }],
+    objs: [{ type: 'npc', id: 'mom', x: 6, y: 4, look: 'mom', dir: 'left', script: 'mom' },
+      { type: 'sign', x: 7, y: 2, invisible: true, text: 'The morning news: fishing boats say the Lodestar flickered twice last night. The harbourmaster blames the gulls.' }],
     spawn: [5, 6] });
   D({ id: 'wrenhouse', name: 'Wren\'s House', type: 'indoor', wall: 'green', music: 'home',
     grid: G.tpl.house(1), warps: [{ x: 5, y: 7, to: 'brinehollow', tx: 26, ty: 8, dir: 'down' }],

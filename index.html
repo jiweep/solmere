@@ -136,7 +136,10 @@
       const dimBtn = document.getElementById('dim');
       const syncDim = () => { const on = !!G.settings.render3d; dimBtn.textContent = on ? '3D' : '2D'; dimBtn.classList.toggle('on', on); };
       const toggle3d = () => { G.settings.render3d = !G.settings.render3d; G.toast(G.settings.render3d ? '3D world' : '2D world  (classic top-down)', { life: 70 }); try { G.persist.saveSettings(); } catch (e) {} syncDim(); };
-      syncDim(); setInterval(syncDim, 500);   // also follows the Options menu
+      // the Showcase button reloads the page, so it only shows on the title screen (a journey never loses progress to it)
+      const scBtn = document.getElementById('sc');
+      const syncSc = () => { scBtn.style.display = G.scenes.length && !G.scenes.some(s => s instanceof G.TitleScene && !(G.PrologueScene && s instanceof G.PrologueScene)) ? 'none' : ''; };
+      syncDim(); setInterval(() => { syncDim(); syncSc(); }, 500);   // also follows the Options menu
       dimBtn.addEventListener('click', ev => { ev.preventDefault(); toggle3d(); ev.currentTarget.blur(); });
       window.addEventListener('keydown', ev => { if (ev.code === 'F1') { ev.preventDefault(); toShowcase(); } if (ev.code === 'F3') { ev.preventDefault(); toggle3d(); } });
       document.getElementById('ff').addEventListener('click', ev => { ev.preventDefault(); G.setTurbo(!G.turbo); G.ffButton = G.turbo; ev.currentTarget.blur(); });

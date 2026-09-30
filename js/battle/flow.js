@@ -299,7 +299,9 @@ G.blackout = async function (cfg) {
   const w = G.world.scene;
   if (w) { w.enterMap(h.map, h.x, h.y, 'up', { noBanner: true }); w.surfing = false; w.biking = false; }
   await G.fadeIn(20);
-  await G.say('Welcome back. Your Echoes have been fully restored. Please be careful out there.', { speaker: 'Nurse' });
+  // waking up at home is Mom, not a Haven nurse
+  if (/^home/.test(h.map)) await G.say(`There you are. You were out cold on the doorstep, ${G.save.name}. Everyone's rested now.\\pWhatever knocked you flat is still out there. Go and look at it properly this time.`, { speaker: 'Mom' });
+  else await G.say('Welcome back. Your Echoes have been fully restored. Please be careful out there.', { speaker: 'Nurse' });
 };
 G.nuzlockeFailed = async function () {
   G.fade.a = 1; G.audio && G.audio.stopMusic();
