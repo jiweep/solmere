@@ -16,16 +16,21 @@
 // Disc behind the little trees and the Rock Slide Disc in the Hollow's tunnel.
 // The fourth gym (Mireille, Duskmere), the fifth (Sigrid, Frostpeak) and the sixth (Kaelen, Skyreach) carry them on; see
 // journey() for who brings what. `hq` measures Grey and Lark's double at Crane HQ (HQ_ALONE=1: without Wren); not gated.
-// The Lodestar: `grey3`, `lark3` and `crane2` are measured the same way (not gated: node tests/attention.js 100 crane2).
+// The Lodestar: `grey3`, `lark3` and `crane2` are measured the same way (not gated: node tests/attention.js 100 crane2), and so are
+// the Conclave's four and the Champion: `rook`, `seraphine`, `nyx`, `ferrum`, `sable`.
 //   node tests/attention.js [runs=150] [gym=juniper|ione|brann|mireille|sigrid|kaelen|all]   (exits 1 if careless wins too often or prepared too rarely)
 const { load, CORE } = require('./harness');
 const G = load(CORE);
 G.rng = new G.RNG(+(process.env.SEED || 20260930));   // seeded, so a result near a threshold doesn't flip from run to run
 G.TRAINERS = {}; G.rivalOf = { budling: 'kindlet', kindlet: 'sealet', sealet: 'budling' };
 new Function('G', require('fs').readFileSync(require('path').join(__dirname, '../js/story/trainers.js'), 'utf8'))(G);
+// the rival's teams and the Champion are built from the starter (js/story/common.js G.defineRivals)
+const rivals = new Function('G', require('fs').readFileSync(require('path').join(__dirname, '../js/story/common.js'), 'utf8').match(/G\.STARTERS = [\s\S]*?\n\};\n/)[0]);
+const defineRivals = starter => { G.save = G.save || { rival: 'Wren' }; G.getVar = (k, d) => k === 'starter' ? starter : d; rivals(G); G.defineRivals(); };
+defineRivals('budling');
 const N = +(process.argv[2] || 150);
 // JUNIPER='[["shroomie",10,{"moves":[...]}],...]' tries another team without editing trainers.js
-for (const id of ['juniper', 'ione', 'brann', 'grey1', 'mireille', 'sigrid', 'kaelen', 'grey3', 'lark3', 'crane2']) if (process.env[id.toUpperCase()]) G.TRAINERS[id].party = JSON.parse(process.env[id.toUpperCase()]).map(([sp, lvl, x]) => ({ sp, lvl, ...(x || {}) }));
+for (const id of ['juniper', 'ione', 'brann', 'grey1', 'mireille', 'sigrid', 'kaelen', 'grey3', 'lark3', 'crane2', 'rook', 'seraphine', 'nyx', 'ferrum', 'sable']) if (process.env[id.toUpperCase()]) G.TRAINERS[id].party = JSON.parse(process.env[id.toUpperCase()]).map(([sp, lvl, x]) => ({ sp, lvl, ...(x || {}) }));
 const GYM = process.argv[3] || 'all';
 let STARTER = 'budling';
 const display = { async play() { } };
@@ -141,7 +146,29 @@ function journey(starter, style, gym) {
     const d = t7.find(m => G.canLearnTM(m.sp, 'darkpulse')); if (d) teach[d.sp] = [...(teach[d.sp] || []).filter(x => x !== 'decoy' && x !== 'roar'), 'darkpulse'];
     const slow = [...t7].sort((a, b) => G.SPECIES[a.sp].base[5] - G.SPECIES[b.sp].base[5])[0]; t7.splice(t7.indexOf(slow), 1); t7.splice(1, 0, slow);   // the slow one comes in second, as the room twists
   }
-  return t7.map(m => [m.sp, Math.min(53, m.lvl), teach[m.sp]]);   // Crane (the level cap after six badges)
+  if (gym === 'crane2') return t7.map(m => [m.sp, Math.min(53, m.lvl), teach[m.sp]]);   // Crane (the level cap after six badges)
+  // Victory Road and the Conclave: every Tamer on the road stands in the way, and so does Wren. The four and Sable are measured one
+  // at a time with a fresh team (in play they come back to back, with the league shop's medicine). Prepared listened on the road:
+  // the Psychic disc for Rook (Kenji), the dark for Seraphine (Bram: something her thoughts can't touch; the Umbral Pulse it already
+  // carries leads), Moonblast or Focus Blast for Nyx (Iris, Zola), heat for Ferrum and a lead that stays (Vale), and for Sable its
+  // own wind (Zola) and its own sky (Wren: the Sunshine disc).
+  const t8 = t7.map(m => G.mon.create(m.sp, Math.min(53, m.lvl)));
+  beat(t8, 'crane2'); for (const id of ['vr_ace1', 'vr_ace2', 'vr_vet', 'vr_bb', 'vr_dt']) beat(t8, id);
+  for (const [sp, l] of [['galeclaw', 50], ['stormhound', 50], ['craggolem', 51], ['lilyking', 51], ['banditoon', 51], [G.evoLine(G.rivalOf[starter]).slice(-1)[0].id, 53]]) gain(t8, sp, l, true);   // Wren
+  wild(t8, style === 'careless' ? 3 : style === 'straight' ? 6 : 12, 1, ['craggolem', 'nightwing', 'terramole', 'armadrill'], 45);
+  evolve(t8);
+  const cap = gym === 'sable' ? 57 : 53;
+  if (style === 'prepared') {
+    const give = (mv, n = 1) => { let k = 0; for (const m of t8) if (k < n && G.canLearnTM(m.sp, mv) && !(teach[m.sp] || []).includes(mv)) { teach[m.sp] = [...(teach[m.sp] || []), mv]; k++; } };
+    const lead = f => { const i = t8.findIndex(f); if (i > 0) t8.unshift(t8.splice(i, 1)[0]); };
+    if (gym === 'rook') give('psychic', 2);
+    // the Nightwing the challenger in the hall talks about lives on Victory Road: caught there, it comes in for the weakest
+    if (gym === 'seraphine' || gym === 'nyx') { const w = [...t8].sort((x, y) => x.lvl - y.lvl)[0]; t8.splice(t8.indexOf(w), 1, G.mon.create('nightwing', 50)); }
+    if (gym === 'nyx') { give('moonblast'); give('focusblast'); }
+    if (gym === 'ferrum') give('flamethrower', 2);
+    if (gym === 'sable') { give('sunshine'); lead(m => (teach[m.sp] || []).includes('sunshine')); }
+  }
+  return t8.map(m => [m.sp, Math.min(cap, m.lvl), teach[m.sp]]);
 }
 function foe(id) {
   const T = G.TRAINERS[id];
@@ -163,6 +190,7 @@ async function rate(team, ai, items, gym) {
     // and one who took the Old Strategist's Decoy hides behind it while Kaelen's wind blows
     player.controller.decide = (bt, req) => {
       const rc = req.moves.find(m => m.id === 'raincall' && !m.dis); if ((bt.weather === 'sun' || bt.weather === 'snow') && rc) return { type: 'move', moveIdx: rc.idx };
+      const su = req.moves.find(m => m.id === 'sunshine' && !m.dis); if (bt.weather === 'rain' && su) return { type: 'move', moveIdx: su.idx };   // and one who heard Wren takes Sable's sky back
       const dc = req.moves.find(m => m.id === 'decoy' && !m.dis), me = bt.at(req.ref.s, req.ref.i);
       if (dc && bt.sides[1].cond.tailwind && !me.vol.sub && me.hp > me.maxhp / 2) return { type: 'move', moveIdx: dc.idx };
       return think(bt, req);
@@ -183,7 +211,7 @@ async function rate(team, ai, items, gym) {
     console.log(`\n${gym === 'hq' ? 'Grey and Lark' : G.TRAINERS[gym].name}: ${(G.TRAINERS[gym] || G.TRAINERS.lark2).party.map(p => p.sp + ' ' + p.lvl).join(', ')}`);
     for (const s of ['budling', 'kindlet', 'sealet']) {
       for (const style of ['careless', 'straight', 'prepared']) {
-        STARTER = s; const team = journey(s, style, gym), items = style === 'careless' ? {} : gym === 'brann' ? { superpotion: 3 } : gym === 'ione' ? { superpotion: 2 } : { potion: 2 };
+        STARTER = s; defineRivals(s); const team = journey(s, style, gym), items = style === 'careless' ? {} : gym === 'brann' ? { superpotion: 3 } : gym === 'ione' ? { superpotion: 2 } : ['rook', 'seraphine', 'nyx', 'ferrum', 'sable'].includes(gym) ? { hyperpotion: 3 } : { potion: 2 };   // the league shop is the last shop: everyone who reads stocks up
         const c = await rate(team, 3, items, gym), n = await rate(team, 1, items, gym);
         (rows[style] = rows[style] || []).push(c, n);
         console.log(`${s.padEnd(8)} ${style.padEnd(9)} ${team.map(t => t.join(' ')).join(', ').padEnd(64)} competent ${(100 * c).toFixed(0).padStart(3)}%   novice ${(100 * n).toFixed(0).padStart(3)}%`);

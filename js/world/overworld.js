@@ -265,7 +265,8 @@ G.WorldScene = class {
       this.bump(); return false;
     }
     // boulder push
-    if (c && c.push && !this.boulderGone(nx, ny) && G.bag.has('gripboots') && !G.save.god.noclip) { G.run(() => this.pushBoulder(nx, ny, d)); return false; }
+    // a boulder that was already pushed off its own tile can be pushed again (Victory Road's needs four pushes; tests/boulders.js assumes it)
+    if (c && ((c.push && !this.boulderGone(nx, ny)) || this.boulderAt(nx, ny) === 'moved') && G.bag.has('gripboots') && !G.save.god.noclip) { G.run(() => this.pushBoulder(nx, ny, d)); return false; }
     // surf dismount onto land
     if (this.surfing && c && !c.water && !this.blocked(nx, ny, p, false)) {
       const isFollowerTile = this.follower && this.follower.x === nx && this.follower.y === ny;

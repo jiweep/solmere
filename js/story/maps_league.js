@@ -29,8 +29,6 @@
         { type: 'item', id: 'vr_i1', x: 10, y: 23, item: 'fullrestore' },
         { type: 'item', id: 'vr_i2', x: 31, y: 26, item: 'tm48' },
         { type: 'item', id: 'vr_i3', x: 26, y: 17, item: 'maxrevive' },
-        { type: 'item', id: 'vr_i4', x: 17, y: 16, item: 'ultraorb', qty: 3 },
-        { type: 'item', id: 'vr_h1', x: 8, y: 27, item: 'rarecandy', hidden: true },
       ], spawn: [5, 29] });
   })();
   // --------------------------------------------------------------- CONCLAVE
@@ -45,7 +43,8 @@
       objs: [
         G.bld('gym', 5, 2, 10, 6, { roof: 'purple', accent: '#f4d040', door: 5, to: 'conclave_lobby', tx: 6, ty: 7 }),
         { type: 'sign', x: 12, y: 9, text: '{y}THE CONCLAVE{w}\\n"Here the Lodestar\'s finest are tested, and remembered."' },
-        { type: 'npc', id: 'cc_vet', x: 6, y: 12, look: 'veteran', dir: 'right', move: 'look', text: 'Beyond those doors there\'s no turning back: four members of the Conclave, then the Champion. Heal up, stock up, and trust your team.' },
+        // the second pointer for the first and last of the four (the first is on Victory Road: Kenji, Vale)
+        { type: 'npc', id: 'cc_vet', x: 6, y: 12, look: 'veteran', dir: 'right', move: 'look', text: 'Rook threw me out in five turns. Every blow my Echoes landed, his only braced harder. The girl after me beat him without laying a hand on him: her Hootsage just thought at him, and his bracing did nothing.\\pAnd Ferrum. Don\'t go in there swapping about. He scatters shards on the floor before anything else, and every Echo you send in after that bleeds for it. Choose who goes first and let them stay.' },
       ], spawn: [9, 13] });
   })();
   // The four chambers share one plan: the Elite before the far door between two fires, standing banners, and the
@@ -68,6 +67,8 @@
       { type: 'npc', id: 'nurse', x: 1, y: 2, look: 'nurse', dir: 'down', script: 'nurse' },
       { type: 'npc', id: 'cl_shop', x: 11, y: 2, look: 'clerk', dir: 'down', script: 'league_shop' },
       { type: 'npc', id: 'cl_guard', x: 6, y: 2, look: 'officer', dir: 'down', script: 'league_guard' },
+      // the second pointer for the middle two (the first is on Victory Road: Bram, Iris)
+      { type: 'npc', id: 'cl_tamer', x: 3, y: 5, look: 'ace_f', dir: 'right', move: 'look', text: 'Third try, and I still haven\'t got past Nyx. Everything I hit her with came straight back at me. It\'s like she borrows your strength. The only one of mine she couldn\'t trick was my Nightwing. Her pranks just slid off it.\\pSeraphine was easier, the second time. Her fox\'s last move is only as strong as everything it\'s thought first, and my Nightwing never felt a single one of those thoughts.' },
     ], spawn: [6, 6] });
   // Rook: runed standing stones and boulders by firelight
   room('e1', 'Conclave — Chamber of Stone', '#6a4a3a', '#7a5a48', 'rook', 'e2', 'e1_done', 'elite_room', 'stone',

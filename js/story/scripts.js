@@ -1228,6 +1228,8 @@
     await S.move('lh_lark', 'r', 1); S.face('lh_lark', 'left');
     S.set('lh_lark_done');
   };
+  G.QUESTS.main9.steps = { go: 'Sable: "The Conclave has opened Victory Road, west of Route 1. I\'ll be waiting at the top."',
+    wren: 'Wren: "She opens with the wind. Always. When the wind drops, she calls the rain, and that Lilyking of hers is suddenly the fastest thing alive. The only time I ever beat her, I made the sky mine first."' };
   G.QUESTS.main8.steps = { go: 'Warden Kaelen: "Six badges. But first, the Lodestar. Surf north from the harbour."',
     model: 'Grey: "Her Chimelle raises a wall before anything else moves. Then her masked Echo twists the room, and for five turns the slow strike first. Her Stormhound waits until the room comes straight."',
     lark: 'Lark stepped aside on the stairs: "So there\'s my answer. I don\'t. Not any more."' };
@@ -1305,7 +1307,8 @@
     await S.say('...It\'s all right... I\'m part of the song now... I always was... Let go, Vesper... and live...', '???');
     await S.say('Vesper Crane sinks to her knees and weeps. For the first time, she looks her age. And somehow, lighter.', '');
     S.music('legend');
-    await S.say('The leviathan turns its luminous eyes on you. It wants to test the bond that set it free!');
+    { const pm = partner(); if (pm && pm.hp <= 0 && G.getVar('songChoice', -1) === 1) await S.say(`The leviathan looks past you, at ${G.mon.name(pm)} lying on the stone, for a long moment. Then it turns its luminous eyes on you. It wants to test the bond that set it free!`);
+      else await S.say('The leviathan turns its luminous eyes on you. It wants to test the bond that set it free!'); }
     const r = await G.startWild(null, { species: 'orrelume', lvl: 50, legend: true, noRandom: true, noRun: false });
     if (G.party.allMons().some(m => m.sp === 'orrelume')) S.set('orrelume_caught');
     else { S.set('orrelume_away'); await S.say('Orrelume dives beneath the waves with a long, echoing call, as if promising to return.'); }
@@ -1347,12 +1350,28 @@
     await S.approach('vrw', 'wren', { prefer: ['up', 'down', 'left', 'right'] });
     await S.emote('vrw', '!');
     await S.say(`${P()}. I knew you'd make it.`, WREN());
-    await S.say('I\'ve been thinking about what strength really is. The Amplifier made my team strong, and it made them hurt, and I didn\'t care as long as I kept climbing.', WREN());
-    await S.say('That wasn\'t strength. That was me being afraid of being left behind. By Sable. By you.', WREN());
+    // what you told them on Route 5, and what happened because of it (vars.wrenRoute5, flag wren_alone)
+    if (G.flag('wren_alone')) {
+      await S.say('Last time you saw me I was sitting in a cell in Crane\'s tower. I went in alone because you said you\'d seen it since Cindervale, and I couldn\'t stand that you had and I hadn\'t.', WREN());
+      await S.say('I thought if I fixed it by myself, it would count. It didn\'t. You still had to open the door.', WREN());
+    } else await S.say([
+      '"Take the band off. Right now." That\'s what you said on Route 5. Not "are you sure", not "maybe". I did it the same night. My hands were shaking.',
+      '"It\'s not too late to stop." You said that on Route 5, and I held onto it the whole way up Crane\'s tower. You were right. It wasn\'t.',
+    ][G.getVar('wrenRoute5', 1)] || 'I\'ve been thinking about Route 5 a lot.', WREN());
+    // the band you took at Galvan, if you took it
+    if (G.flag('band_lodestar')) { const pm = partner(); await S.say(`...And you wore one too. Right to the top. I heard what happened at the lamp. Is ${pm ? G.mon.name(pm) : 'your partner'} all right? ...Does it still flinch?`, WREN()); }
+    else if (G.flag('band_torn')) await S.say(G.flag('wren_alone') ? 'And you wore one too, for a while. Kaelen told me you tore it off right in front of her. I wish I\'d been brave enough to do it where she could see.' : 'And you wore one too, for a while. I watched you tear it off in front of her. I wish I\'d been brave enough to do it where she could see.', WREN());
+    else if (G.flag('band_taken')) await S.say('You wore one too, for a while. I never asked you what it felt like. I think I was scared you\'d say it felt fine.', WREN());
+    await S.say('The Amplifier made my team strong, and it made them hurt, and I didn\'t care as long as I kept climbing. That wasn\'t strength. That was me being afraid of being left behind. By Sable. By you.', WREN());
     await S.say('No band. No rank. Just me and my team. One last battle before the Conclave. A real one.', WREN());
     const won = await G.storyBattle('rival4'); if (!won) { S.remove('vrw'); return; }
     S.set('rival4_done');
-    await S.say(`Ha... hahaha! The best battle of my life, and nobody saw it but us. That's just right. Go on, Sable's waiting. And ${P()}... thank you. For everything.`, WREN());
+    await S.say(`Ha... hahaha! The best battle of my life, and nobody saw it but us. That's just right.`, WREN());
+    // the one thing Wren knows that nobody else can tell you: how their sibling fights (Sable's plan, js/story/common.js)
+    await S.say('Listen. I\'ve lost to Sable about four hundred times. Kitchen table, back garden, the beach. She opens with the wind. Always. Her Galeclaw calls it before you\'ve had a single turn.', WREN());
+    await S.say('And when the wind drops, she calls the rain, and that Lilyking of hers is suddenly the fastest thing alive. The only time I ever beat her, I made the sky mine first.', WREN());
+    await S.say(`Go on, she's waiting. And ${P()}... thank you. For everything.`, WREN());
+    S.quest('main9', 'wren');
     await S.fadeOut(10); S.remove('vrw'); await S.fadeIn(10);
   };
   // ------------------------------------------------------------- CONCLAVE
@@ -1386,12 +1405,24 @@
     const N = 'Champion Sable';
     S.facePlayer('sable_npc');
     if (G.flag('champion')) return;
-    await S.say(`So. You came.`, N);
-    await S.say(`${R()} has talked about you since the day you both got your first Echoes. How you always made them want to be better. How you never gave up on them.`, N);
-    await S.say('I\'ve heard every one of your adventures twice: once from the town criers, and once from my little sibling, late into the night.', N);
-    await S.say('All of Solmere is waiting to hear how this ends. I stopped caring about that years ago. But let\'s give them something worth hearing.', N);
-    const won = await G.storyBattle('sable'); if (!won) return;
+    // back after losing to her: she has said all this already, and the nemesis line (flow.js) greets you
+    if ((G.save.nemesis || {}).sable) { if (!await G.storyBattle('sable')) return; }
+    else {
+      await S.say(`So. You came.`, N);
+      await S.say(`${R()} has talked about you since the day you both got your first Echoes. How you always made them want to be better. How you never gave up on them.`, N);
+      await S.say('I\'ve heard every one of your adventures twice: once from the town criers, and once from my little sibling, late into the night.', N);
+      // she noticed your partner, and what it did at the lamp (vars.songChoice, flag band_lodestar)
+      { const pm = partner(), nm = pm ? G.mon.name(pm) : null, sc = G.getVar('songChoice', -1);
+        if (nm) await S.say(`But I only heard one of them myself. I was on the water when the light went out, and I heard the song come back. There was a voice in it that wasn't the Engine's. That was ${nm}, wasn't it?`, N);
+        if (nm && G.flag('band_lodestar')) await S.say(`It watches your wrist. Even now. You'll have seen that. It's all right. It came up the road beside you anyway, and that says more than anything I could.`, N);
+        else if (nm && sc === 0) await S.say(`And then it stopped, halfway through a note, because you asked it to. Most Tamers never learn when to stop. I didn't, for a long time.`, N);
+        else if (nm && sc === 1) await S.say(`It sang to the end. Marisol told me what you said to it. "Thirty more seconds." I'd have said the same, at your age. I'm not sure I'd say it now.`, N); }
+      await S.say(`${R()} came up this morning with a grin I haven't seen since we were small. I suppose they told you how I fight. Good. I'd be disappointed if you came in knowing nothing.`, N);
+      await S.say('All of Solmere is waiting to hear how this ends. I stopped caring about that years ago. But let\'s give them something worth hearing.', N);
+      const won = await G.storyBattle('sable'); if (!won) return;
+    }
     await S.say('...So that\'s what it feels like. You know, it\'s not so bad.', N);
+    { const pm = partner(); if (pm) await S.say(`${G.mon.name(pm)} was looking at you the whole time, not at me. That's what beat me, I think.`, N); }
     await S.say(`From this moment, you are the Champion of Solmere, ${P()}. Come. The Hall of Fame awaits.`, N);
     S.set('champion'); S.set('champion_scene_done');
     await S.move('sable_npc', 'l', 1); S.face('sable_npc', 'right');
@@ -1584,8 +1615,8 @@
     ['route5', 'r5_i_bell', 25, 38, 'shellbell'], ['glaciapass', 'gp_i_tm69', 39, 24, 'tm69'], ['glaciapass', 'gp_i_tm53', 1, 22, 'tm53'],
     ['frostpeak', 'fp_i_tm31', 18, 6, 'tm31'], ['skyreach', 'sk_i_tm57', 30, 24, 'tm57'], ['skyreach', 'sk_i_ribbon', 3, 13, 'fairyribbon'],
     ['tidelight', 'tl_i_tm44', 22, 9, 'tm44'], ['tidelight', 'tl_i_tm63', 3, 13, 'tm63'], ['victoryroad', 'vr_i_tm52', 32, 17, 'tm52'],
-    ['victoryroad', 'vr_i_tm55', 25, 22, 'tm55'], ['victoryroad', 'vr_i_tm29', 25, 12, 'tm29'], ['starfall', 'sf_i_tm68', 5, 5, 'tm68'],
-    ['starfall', 'sf_i_tm56', 2, 9, 'tm56'],
+    ['victoryroad', 'vr_i_tm56', 25, 22, 'tm56'], ['victoryroad', 'vr_i_tm29', 25, 12, 'tm29'], ['starfall', 'sf_i_tm68', 5, 5, 'tm68'],
+    ['starfall', 'sf_i_tm55', 2, 9, 'tm55'],
   ]) G.MAPDEFS[map].objs.push({ type: 'item', id, x, y, item });
   G.MAPDEFS.lh1.warps[1].cond = 'lh_grey_done';
   G.MAPDEFS.lh1.objs.push({ type: 'trigger', x: 0, y: 3, w: 13, h: 1, script: 'lh_grey', cond: '!lh_grey_done' });   // the whole row: the stairs can't be reached round her

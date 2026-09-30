@@ -80,10 +80,22 @@ G.AI = (function () {
       case 'focusenergy': sc = b.vol.focus ? -60 : 8; break;
       case 'helpinghand': sc = allies.length ? 26 : -100; break;
       case 'defog': sc = Object.values(S.hazards).some(Boolean) ? 40 : -40; break;
-      case 'pivotstatus': sc = 30; break;
+      case 'pivotstatus': sc = 30 + (lvl >= 3 && b.turnsOut === 0 && b.abilityHas && b.abilityHas('prankster') && bt.bench(b.side, b.owner).length ? 40 : 0); break;   // a Prankster weakens you and slips away before you move (Nyx's Banditoon)
       case 'flop': sc = 1; break;
     }
     return sc;
+  }
+  // A trainer with a plan (T.setup: the Conclave, Sable) plays it: a lead lays its shards, an Echo that comes in fresh and safe
+  // braces or thinks once, a Stored Power holder keeps thinking, and a rain-caller calls its sky when the other side has none
+  function setupBonus(bt, b, m, t) {
+    const hpF = b.hp / b.maxhp, threat = bestHit(bt, t, b) / b.hp;
+    if (m.hazard && b.turnsOut === 0 && !bt.sides[1 - b.side].hazards[m.hazard]) return 40;
+    if (m.weather && bt.weather !== m.weather && b.turnsOut <= 1) return 55;
+    if (!(m.boost && m.target === 'self') || hpF < .6 || threat > .5) return 0;
+    const cur = Object.keys(m.boost).reduce((a, k) => a + Math.max(0, b.stages[k]), 0);
+    if (cur === 0 && b.turnsOut === 0) return 45;
+    if (cur < 4 && b.mon.moves.some(x => G.MOVES[x.id].fx === 'storedpower')) return 30;
+    return 0;
   }
   function pickTarget(bt, b, m) {
     const foes = bt.foes(b);
@@ -146,6 +158,7 @@ G.AI = (function () {
           const tref = pickTarget(bt, b, m);
           const t = tref ? bt.at(tref.s, tref.i) : null;
           let s = scoreMove(bt, b, m, t, level) + G.rand() * noise[level];
+          if (trainer.setup && t && level >= 3) s += setupBonus(bt, b, m, t);
           if (level === 1 && m.cat === 'status') s -= 15;
           if (s > bs) { bs = s; best = { type: 'move', moveIdx: mv.idx, target: tref }; }
         }

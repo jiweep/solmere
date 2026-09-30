@@ -117,7 +117,10 @@ G.defineRivals = function () {
   W('wren_ally', { intro: '' }, [{ sp: 'galeclaw', lvl: 41 }, { sp: 'stormhound', lvl: 41 }, { sp: G.lineAt(r, 43), lvl: 43 }], { ai: 3 });   // no band now: the Galeclaw it grew into, at a level that can stand beside yours
   G.TRAINERS.sable = { cls: 'Champion', name: 'Sable', look: 'sable', ai: 4, money: 200, music: 'champion', victory: 'victory_champion', boss: true, resonate: true, noRematch: true, env: 'league',
     intro: '', defeat: 'Magnificent. The Lodestar shines brighter for having you in Solmere.',
-    party: [{ sp: 'galeclaw', lvl: 55, item: 'sharpbeak' }, { sp: 'glaciursa', lvl: 55, item: 'sunberry' }, { sp: 'volcanoth', lvl: 56, item: 'leftovers' }, { sp: 'lilyking', lvl: 56, item: 'sunberry' }, { sp: 'dynamech', lvl: 56, item: 'magnet' }, { sp: G.lineAt(third, 58), lvl: 58, item: 'lifegem' }] };
+    // Sable's plan (GRAVITY_PLAN item 2): her Galeclaw opens with the wind, and when it drops her Lilyking calls the rain (Swift Swim)
+    // and her Dynamech's Thunder stops missing. Pointed to by Zola on Victory Road and by Wren after their last fight.
+    setup: true, aceLast: true,
+    party: [{ sp: 'galeclaw', lvl: 52, item: 'sharpbeak', moves: ['tailwind', 'bravedive', 'crunch', 'quickstrike'] }, { sp: 'glaciursa', lvl: 52, item: 'sunberry' }, { sp: 'volcanoth', lvl: 53, item: 'leftovers' }, { sp: 'lilyking', lvl: 53, item: 'sunberry', abil: 0, moves: ['raincall', 'surf', 'energyball', 'icebeam'] }, { sp: 'dynamech', lvl: 53, item: 'magnet', moves: ['thunder', 'flashcannon', 'ironwall', 'voltdash'] }, { sp: G.lineAt(third, 55), lvl: 55, item: 'lifegem' }] };
   G.TRAINERS.sable_rematch = { ...G.TRAINERS.sable, party: G.TRAINERS.sable.party.map(p => ({ ...p, lvl: p.lvl + 17 })) };
 };
 // ------------------------------------------------------------ chapters ---
