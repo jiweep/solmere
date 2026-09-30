@@ -1185,33 +1185,89 @@
     await S.say('A Decoy takes the hits in your Echo\'s place while the weather does what weather does. Then it runs out, and so does the wind.', 'Old Strategist');
   };
   // ------------------------------------------------------------- THE LODESTAR
+  // The grunts on the isle stand either side of the path: one still believes, one has stopped. The second knows the Director's masks.
   SC.tl_grunt = async (S, ctx) => {
     S.facePlayer(ctx.ent.id);
-    await S.say(G.pick(['The Director is at the top. We\'re supposed to stop you... but I\'m not sure any more that we should.', 'Can you hear it? The song is getting quieter. That isn\'t what they told us would happen.', 'I used to feel my Echo\'s heart through the band. Now I can\'t feel anything at all.']), 'Hollow Grunt');
+    if (ctx.ent.id === 'tl_g2') { await S.say('Her masked Echoes are afraid of exactly one thing. The dark. My Nightwing makes them flinch, so she never lets it anywhere near them.', 'Hollow Grunt'); await S.say('Can you hear the song? It\'s getting quieter. That isn\'t what they told us would happen.', 'Hollow Grunt'); return; }
+    await S.say('The Director is at the top. We\'re supposed to stop you... but I\'m not sure any more that we should.', 'Hollow Grunt');
   };
   SC.lh_grey = async (S) => {
     const N = 'Admin Grey';
     S.facePlayer('lh_grey');
     await S.say('I ran the numbers again. And again. Every model says the same thing: when the Engine fires, every bond in Solmere breaks. Including hers.', N);
+    { const n = G.getVar('greyTries', 1); await S.say(n > 1 ? `At the Ruins you came back at me ${['', '', 'twice', 'three times', 'four times', 'five times'][n] || 'again and again'}. I have kept a column for you ever since. It is the only column that never converges.` : 'At the Ruins I gave you four percent. I have kept a column for you ever since. It keeps going up.', N); }
     await S.say('But I have followed her for twelve years. I won\'t step aside for a calculation. Only for a result.', N);
     const won = await G.storyBattle('grey3'); if (!won) return;
-    await S.say('Calculations complete. We were wrong. I was wrong. Loyalty was never in the model. The stairs are yours. Ninety-one percent. Go.', N);
+    await S.say('Calculations complete. We were wrong. I was wrong. Loyalty was never in the model.', N);
+    // his result: the model he built for her, handed over. What she does, not what beats it: that the road already told you
+    await S.say('I built her battle model myself. Here is what it says. Her Chimelle raises a wall before anything else moves. Then her masked Echo twists the room, and for five turns the slow strike first. Her Stormhound waits until the room comes straight.', N);
+    await S.say('That is everything I know. In the tower I gave you twelve percent of changing her mind. My last count says ninety-one. The stairs are yours. Go.', N);
     await S.move('lh_grey', 'l', 1); S.face('lh_grey', 'right');
-    S.set('lh_grey_done');
+    S.set('lh_grey_done'); S.quest('main8', 'model');
   };
+  // Lark's answer in Glimmer Cave comes due (GRAVITY_PLAN item 4). If you asked her why she works for them, she has an answer now,
+  // and it isn't a fight: she steps aside and goes up ahead of you, and Crane fights with an empty coat. Otherwise she fights, and says why.
   SC.lh_lark = async (S) => {
-    const N = 'Admin Lark';
+    const N = 'Admin Lark', k = G.getVar('larkCave', -1);
     S.facePlayer('lh_lark');
-    await S.say('You know the worst part? I liked it here. The Hollow was the first place that ever chose me. First. Not last.', N);
+    if (k === 2) {
+      await S.say('It\'s you. Of course it\'s you.', N);
+      await S.say('In the cave you asked me why I work for them. I said because they wanted me. At the tower I said I still didn\'t have an answer I liked.', N);
+      await S.say('I\'ve been standing on these stairs for an hour, listening to her up there. She\'s going to break every bond in Solmere to get one back. Mine too. Nightwing\'s.', N);
+      await S.emote('lh_lark', '...', 40);
+      await S.say('So there\'s my answer. I don\'t. Not any more.', N);
+      await S.say('Go on up. I\'ll be right behind you. There\'s something of hers I need to take care of first.', N);
+      await S.move('lh_lark', 'r', 1); S.face('lh_lark', 'left');
+      S.set('lh_lark_done'); S.set('lark_turned'); S.quest('main8', 'lark'); return;
+    }
+    await S.say(k === 0 ? 'In the cave you told me to leave the crystals alone. Like they were yours to protect. Well. This place is mine.' : k === 1 ? 'In the cave you told me you weren\'t scared of me. You still aren\'t. That\'s the worst part.' : 'You. Again.', N);
+    await S.say('You know what else? I liked it here. The Hollow was the first place that ever chose me. First. Not last.', N);
     await S.say('So I\'m not letting you through without a fight. That\'s just who I am.', N);
     const won = await G.storyBattle('lark3'); if (!won) return;
     await S.say('...Go. Stop her. Somebody has to, and it was never going to be me. ...And, hero? Thanks.', N);
     await S.move('lh_lark', 'r', 1); S.face('lh_lark', 'left');
     S.set('lh_lark_done');
   };
+  G.QUESTS.main8.steps = { go: 'Warden Kaelen: "Six badges. But first, the Lodestar. Surf north from the harbour."',
+    model: 'Grey: "Her Chimelle raises a wall before anything else moves. Then her masked Echo twists the room, and for five turns the slow strike first. Her Stormhound waits until the room comes straight."',
+    lark: 'Lark stepped aside on the stairs: "So there\'s my answer. I don\'t. Not any more."' };
+  // At the top, the partner, not a meter, answers the song (GRAVITY_PLAN item 6): the note it hummed back in Glimmer Cave and on the
+  // pier, the scale's second note from Frostpeak, and a third nobody taught it. It shakes the way Lumi shook, and you get Hale's choice.
+  const answerSong = async (S) => {
+    const pm = partner() && G.save.party.includes(partner()) ? partner() : null, nm = pm ? G.mon.name(pm) : null;   // a partner left in the box can't answer
+    if (!pm) { await S.say('Far below, the song cracks and cracks again. Something has to answer it.'); return; }
+    const down = pm.hp <= 0;
+    await S.say(`${pm === G.party.lead() ? '' : `${nm}'s Orb opens by itself. `}${down ? `${nm} shouldn't be able to stand after that fight. It stands. ` : ''}${nm} walks past you to the great lamp and looks out over the water.`);
+    if (down) pm.hp = 1;
+    S.spawn({ id: 'toppm', x: 6, y: 6, monSprite: pm.sp, dir: 'up' });
+    if (G.flag('band_on')) {
+      // the band you never took off: the Engine takes the song through it, and takes it out of your partner
+      await S.say(`${nm} lifts its head to sing, and the Chorus band on your wrist goes white-hot. The dial spins past its last mark. Every note goes into the band, and through the band into the Engine.`);
+      await S.say('It is too much, all at once. It is exactly what the Engine was built for, and exactly what it cannot hold.');
+      await S.say(`The band splits and falls from your wrist. ${nm} sways, and drops, and lies very still. It is breathing. Barely.`);
+      G.setFlag('band_on', false); G.bag.remove('chorusband'); S.set('band_lodestar');
+      pm.bond = Math.max(0, (pm.bond || 0) - 40); pm.hp = G.save.party.some(m => m !== pm && m.hp > 0) ? 0 : 1;
+      return;
+    }
+    if (G.flag('crystal_hum')) await S.say(`Very quietly, ${nm} hums the note from Glimmer Cave. The one it hummed to Hale on the pier. The song below catches on it, the way a foot finds a step in the dark.`);
+    else await S.say(`${nm} opens its mouth and sings. It doesn't know the song. It sings anyway, and the song bends toward it.`);
+    if (G.flag('scale_duet') && G.bag.has('oldamber')) await S.say('In your bag, Orrelume\'s scale hums the second note, the one it sang back at Elder Vesna\'s fire. The song below takes that one too.');
+    await S.say(`Then ${nm} finds a third note on its own. Nobody taught it this one. Far out on the Mere, something enormous hears it.`);
+    await S.say(`${nm} is shaking. The song is pulling on it the way it must have pulled on Lumi, twelve years ago, on this same floor.`);
+    const k = await choose(`${nm} doesn't stop. It looks at you.`, ['Let it stop.', 'Thirty more seconds.'], null);
+    G.setVar('songChoice', k);   // Hale's words on the pier, in your mouth; Hale reads it back below
+    if (k === 0) {
+      await S.say(`You put your hand on ${nm}'s back, and it stops. The song doesn't. It has what it needed. Far below, something answers it, whole.`);
+      pm.bond = Math.min(255, (pm.bond || 0) + 30);
+    } else {
+      await S.say(`${nm} keeps singing. The great lamp beside you flares, and flares again, and the whole Mere goes white.`);
+      await S.say(`When it fades, ${nm} is lying on the stone. It is breathing. The song is whole, and ${nm} is very, very tired.`);
+      pm.hp = G.save.party.some(m => m !== pm && m.hp > 0) ? 0 : 1;
+    }
+  };
   SC.top_crane = async (S) => {
     if (G.flag('tidelight_done')) return;
-    const N = 'Director Crane';
+    const N = 'Director Crane', larkUp = G.flag('lark_turned');
     S.music('crane');
     S.shake(20);
     await S.say('The summit trembles. A vast, sorrowful song rises from under the sea, bending and cracking as the machine hums.');
@@ -1219,11 +1275,25 @@
     await S.say('You\'re too late. Listen. It\'s changing. Soon it will call out to everything that has ever lived, and loved, in Solmere.', N);
     await S.say('Lumi. I\'m almost there. I can almost hear you.', N);
     await S.say(`It's hurting them! Every Echo on the Mere is crying out! Can't you hear it, Director?`, P());
+    // what you told her in the tower (vars.craneHQ), and the band she gave you
+    { const k = G.getVar('craneHQ', -1); if (k >= 0) await S.say(['In my tower you told me I was hurting everyone to ease my own pain. You were right. It is working anyway.', 'In my tower you told me those bonds weren\'t mine to take. Listen to them. I\'m not taking them. I\'m borrowing them, for one song.', 'Marisol told you what happened. Did she tell you what she said? "Thirty more seconds." I have heard those words every night for twelve years.'][k], N); }
+    if (G.flag('band_on')) await S.say('And you are still wearing my band. Good. When the Engine sings, it will carry your partner\'s voice with all the rest.', N);
     await S.say('I hear one voice. I have for twelve years. Step aside, or go quiet with the rest.', N);
-    const won = await G.storyBattle('crane2'); if (!won) return;
+    if (larkUp) {
+      await S.approach('topl', 'lark', { prefer: ['down', 'right', 'left'] }); S.face('topl', 'up');
+      await S.say('Looking for these, Director? Your Grand Salves. Your Full Restore. I picked your coat while you were busy with the machine.', 'Lark');
+      await S.say('I used to steal for you. Old habits.', 'Lark');
+      await S.say('...Lark. Even you.', N);
+      await S.say('Somebody asked me a question once. Took me four towns to answer it.', 'Lark');
+    }
+    const won = await G.storyBattle(larkUp ? 'crane2l' : 'crane2'); if (!won) return;
+    if (larkUp) G.save.trainers.crane2 = G.save.trainers.crane2l;
     await S.say('Lumi... I\'m sorry. I couldn\'t even do this right.', N);
     G.audio && G.audio.sfx('thunder'); S.shake(40);
-    await G.flashScreen('#ffffff', 30);
+    await S.say('The Chorus Engine does not stop. With nobody at its controls it pulls harder, and far below, the song bends and cracks.');
+    await S.say('It won\'t stop. I built it not to stop.', N);
+    await answerSong(S);
+    await G.flashScreen('#ffffff', 30); S.remove('toppm');
     await S.say('The Chorus Engine sparks, groans, and with a crack like the sky splitting, tears itself apart!');
     G.audio && G.audio.stopMusic();
     await S.wait(40);
@@ -1240,25 +1310,32 @@
     if (G.party.allMons().some(m => m.sp === 'orrelume')) S.set('orrelume_caught');
     else { S.set('orrelume_away'); await S.say('Orrelume dives beneath the waves with a long, echoing call, as if promising to return.'); }
     await S.fadeOut(30);
-    S.remove('top_crane');
+    S.remove('top_crane'); if (larkUp) S.remove('topl');
     const hale = S.spawn({ id: 'toph', x: 5, y: 8, look: 'hale', dir: 'up' });
     const wr = S.spawn({ id: 'topw', x: 7, y: 8, look: 'wren', dir: 'up' });
     const sb = S.spawn({ id: 'tops', x: 6, y: 5, look: 'sable', dir: 'down' });
+    if (larkUp) S.spawn({ id: 'topl', x: 9, y: 7, look: 'lark', dir: 'left' });
     await S.fadeIn(30);
     S.music('tidelight_calm');
     await S.say(`${P()}! You did it! Vesper has turned herself in. She said she heard Lumi, that the song carried her voice.`, HALE);
     await S.say('I told her the truth about that day, to her face. She said, "I know, Marisol. I was there." And then she embraced me.', HALE);
     { const hk = G.getVar('haleConf', -1); if (hk >= 0) await S.say(['On the pier you told me I couldn\'t have known. I told her I could have. That I chose the thirty seconds. It was the first true thing I\'d said to her in twelve years.', 'On the pier you asked me why I was telling you. I think I was practising. It went better the second time.', 'On the pier you asked me whether Vesper blamed me. I finally asked her. She said she\'d been waiting twelve years for me to.'][hk], HALE); }
-    await S.say(`${P()}, that was incredible! I... oh. Um. Hello, Sable.`, WREN());
+    // what you said to your partner at the lamp, read back by the one person who said it first
+    { const pm = partner(), nm = pm ? G.mon.name(pm) : 'your partner', sc = G.getVar('songChoice', -1);
+      if (G.flag('band_lodestar')) await S.say(`I saw the band go. I saw ${nm} fall. It will wake. They always wake. But it will remember the band, and so will you. That's the price, and I know that price better than anyone.`, HALE);
+      else if (sc === 0) await S.say(`I watched you put your hand on ${nm}'s back. You let it stop. I didn't, twelve years ago. I'll be thinking about that for the rest of my life.`, HALE);
+      else if (sc === 1) await S.say(`I heard you. "Thirty more seconds." My words. ${nm} will be all right, I think. I'm not going to tell you that you were wrong. I'm going to tell you that now you know what it weighs.`, HALE); }
+    await S.say(G.flag('wren_alone') ? `${P()}, you got me out of a cell and then you went and did this. I'm going to stop keeping score, I think. ...Oh. Um. Hello, Sable.` : `${P()}, that was incredible! I... oh. Um. Hello, Sable.`, WREN());
+    if (larkUp) { await S.say('Don\'t look at me like that, Professor. I\'m walking her down myself. Somebody should, who isn\'t afraid of her.', 'Lark'); await S.say(`...Thanks for asking, ${P()}. In the cave. Nobody ever asks.`, 'Lark'); }
     await S.say(`So you're the one ${R()} is always talking about.`, 'Champion Sable');
     await S.say('I\'m Sable, the Champion. I came as fast as I could when the light went out. It seems you didn\'t need me.', 'Champion Sable');
     await S.say('The Lodestar shines again. The Conclave has opened Victory Road, west of Route 1. I\'ll be waiting at the top.', 'Champion Sable');
     await S.say(`And ${R()}... I'm proud of you. I should have told you long before you went looking for it somewhere else.`, 'Champion Sable');
-    await S.fadeOut(20); S.remove('toph'); S.remove('topw'); S.remove('tops');
+    await S.fadeOut(20); S.remove('toph'); S.remove('topw'); S.remove('tops'); if (larkUp) S.remove('topl');
     S.set('tidelight_done'); S.quest('main8', 'done'); S.quest('main9', 'go');
     G.persist.write();
     await S.fadeIn(20);
-    await S.say('The Lodestar\'s beam sweeps across the Mere once more.\\p{k}(Victory Road is open. Use the Wing Whistle to fly back to Fernwick, then head to Route 1.){w}');
+    await S.say('The Lodestar\'s beam sweeps across the Mere once more.' + (G.save.vars.tips ? '\\p{k}(Victory Road is open. Use the Wing Whistle to fly back to Fernwick, then head to Route 1.){w}' : ''));
   };
   SC.tl_hale = async (S) => {
     S.facePlayer('tl_hale');
@@ -1480,7 +1557,7 @@
       galvan: ['tm17', 'tm16', 'tm33', 'tm12', 'tm05', 'tm25', 'tm59', 'tm47', 'tm67', 'tm21', 'magnet', 'metalcoat', 'xattack', 'xspeed'],
       cindervale: ['hpup', 'protein', 'iron', 'calcium', 'zinc', 'carbos', 'resetbrew', 'everstone', 'charcoal', 'flamestone', 'tm62', 'tm37', 'tm40'],
       duskmere: ['duskorb', 'timerorb', 'spelltag', 'blackglasses', 'twistedspoon', 'poisonbarb', 'blacksludge', 'duskstone', 'dawnstone', 'tm60', 'tm45', 'tm36', 'tm49', 'tm06'],
-      frostpeak: ['iceheal', 'froststone', 'nevermeltice', 'tm07', 'tm61', 'tm18', 'tm41', 'leppaberry', 'lumenberry'],
+      frostpeak: ['iceheal', 'froststone', 'nevermeltice', 'tm07', 'tm61', 'tm18', 'tm41', 'tm27', 'leppaberry', 'lumenberry'],
     }[town] || ['greatorb', 'superpotion', 'repel'];
     await G.openShop(stock, { greet: 'Local specialties! Things you won\'t find anywhere else.', speaker: 'Clerk' });
   };

@@ -16,6 +16,7 @@
 // Disc behind the little trees and the Rock Slide Disc in the Hollow's tunnel.
 // The fourth gym (Mireille, Duskmere), the fifth (Sigrid, Frostpeak) and the sixth (Kaelen, Skyreach) carry them on; see
 // journey() for who brings what. `hq` measures Grey and Lark's double at Crane HQ (HQ_ALONE=1: without Wren); not gated.
+// The Lodestar: `grey3`, `lark3` and `crane2` are measured the same way (not gated: node tests/attention.js 100 crane2).
 //   node tests/attention.js [runs=150] [gym=juniper|ione|brann|mireille|sigrid|kaelen|all]   (exits 1 if careless wins too often or prepared too rarely)
 const { load, CORE } = require('./harness');
 const G = load(CORE);
@@ -24,7 +25,7 @@ G.TRAINERS = {}; G.rivalOf = { budling: 'kindlet', kindlet: 'sealet', sealet: 'b
 new Function('G', require('fs').readFileSync(require('path').join(__dirname, '../js/story/trainers.js'), 'utf8'))(G);
 const N = +(process.argv[2] || 150);
 // JUNIPER='[["shroomie",10,{"moves":[...]}],...]' tries another team without editing trainers.js
-for (const id of ['juniper', 'ione', 'brann', 'grey1', 'mireille', 'sigrid', 'kaelen']) if (process.env[id.toUpperCase()]) G.TRAINERS[id].party = JSON.parse(process.env[id.toUpperCase()]).map(([sp, lvl, x]) => ({ sp, lvl, ...(x || {}) }));
+for (const id of ['juniper', 'ione', 'brann', 'grey1', 'mireille', 'sigrid', 'kaelen', 'grey3', 'lark3', 'crane2']) if (process.env[id.toUpperCase()]) G.TRAINERS[id].party = JSON.parse(process.env[id.toUpperCase()]).map(([sp, lvl, x]) => ({ sp, lvl, ...(x || {}) }));
 const GYM = process.argv[3] || 'all';
 let STARTER = 'budling';
 const display = { async play() { } };
@@ -124,7 +125,23 @@ function journey(starter, style, gym) {
     // and the Snowlet from Frostpeak, grown with Vesna's Frost Stone: dragon moves pass straight through an Aurorelle (the kid by the Mart)
     const w = t6.findIndex(m => m.sp === 'slumbruin'); t6.splice(w >= 0 ? w : 5, 1, G.mon.create('aurorelle', 43));
   }
-  return t6.map(m => [m.sp, Math.min(45, m.lvl), teach[m.sp]]);   // the level cap after five badges
+  if (gym === 'kaelen') return t6.map(m => [m.sp, Math.min(45, m.lvl), teach[m.sp]]);   // the level cap after five badges
+  // Route 6 and the Lodestar: everyone on Route 6 stands in the water lanes, the grunts and Dr. Pell in the tower. Grey, Lark and Crane
+  // are measured one at a time with a fresh team (in play there is no Haven between them). Prepared listened on the way up: the Dark
+  // Pulse the lookout dropped (Marina) goes on an Echo that can learn it, and a slow Echo (Finn's Lilyking; a Terramole) leads into
+  // Crane's twisted room. Straight carries nothing new.
+  const t7 = t6.map(m => G.mon.create(m.sp, Math.min(45, m.lvl)));
+  beat(t7, 'kaelen'); for (const id of ['r6_sailor', 'r6_swim1', 'r6_swim2', 'r6_ace', 'r6_grunt', 'lh_grunt1', 'lh_grunt2', 'lh_sci']) beat(t7, id);
+  wild(t7, style === 'careless' ? 3 : style === 'straight' ? 6 : 12, 1, ['jellume', 'crustank', 'riptalon', 'lilyking'], 40);
+  evolve(t7);
+  if (gym === 'grey3') return t7.map(m => [m.sp, Math.min(53, m.lvl), teach[m.sp]]);
+  beat(t7, 'grey3');
+  if (gym === 'lark3') return t7.map(m => [m.sp, Math.min(53, m.lvl), teach[m.sp]]);
+  if (style === 'prepared') {
+    const d = t7.find(m => G.canLearnTM(m.sp, 'darkpulse')); if (d) teach[d.sp] = [...(teach[d.sp] || []).filter(x => x !== 'decoy' && x !== 'roar'), 'darkpulse'];
+    const slow = [...t7].sort((a, b) => G.SPECIES[a.sp].base[5] - G.SPECIES[b.sp].base[5])[0]; t7.splice(t7.indexOf(slow), 1); t7.splice(1, 0, slow);   // the slow one comes in second, as the room twists
+  }
+  return t7.map(m => [m.sp, Math.min(53, m.lvl), teach[m.sp]]);   // Crane (the level cap after six badges)
 }
 function foe(id) {
   const T = G.TRAINERS[id];

@@ -393,9 +393,7 @@
         { type: 'trainer', id: 'r6_s2', x: 12, y: 18, look: 'swimmer', dir: 'right', sight: 4, trainer: 'r6_swim2' },
         { type: 'trainer', id: 'r6_a', x: 24, y: 19, look: 'ace', dir: 'left', sight: 3, trainer: 'r6_ace' },
         { type: 'trainer', id: 'r6_g', x: 16, y: 8, look: 'grunt', dir: 'down', sight: 4, trainer: 'r6_grunt', cond: '!tidelight_done' },
-        { type: 'item', id: 'r6_i1', x: 10, y: 8, item: 'tm27' },
-        { type: 'item', id: 'r6_i2', x: 25, y: 18, item: 'maxpotion', qty: 2 },
-        { type: 'item', id: 'r6_h2', x: 11, y: 10, item: 'goldcap', hidden: true },
+        { type: 'item', id: 'r6_i1', x: 10, y: 8, item: 'tm45' },   // the disc the lookout dropped (Marina): Umbral Pulse, the dark, for Crane's masks
       ], spawn: [8, 28] });
   })();
   // ----------------------------------------------------------- TIDELIGHT

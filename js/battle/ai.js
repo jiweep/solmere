@@ -60,6 +60,8 @@ G.AI = (function () {
     if (m.screen) sc = S.cond[m.screen] ? -80 : m.screen === 'veil' && bt.weather !== 'snow' ? -80 : m.screen === 'tailwind' ? 32 : 36;
     // a wind is worth calling when the other side is faster: Kaelen's plan (his Stratowyrm leads with it), and the player's answer to it
     if (m.screen === 'tailwind' && !S.cond.tailwind && lvl >= 2 && (foes.some(f => bt.speed(f) > bt.speed(b)) || F.cond.tailwind || (b.turnsOut === 0 && bt.bench(b.side, b.owner).length))) sc = 64 + (b.turnsOut === 0 ? 16 : 0);
+    // a wall goes up before anyone swings: a lead with a team behind it raises its screen first (Crane's Chimelle, a Prankster)
+    if ((m.screen === 'reflect' || m.screen === 'lightscreen') && !S.cond[m.screen] && lvl >= 3 && b.turnsOut === 0 && bt.bench(b.side, b.owner).length) sc = 70;
     if (m.weather) {
       const good = { sun: 'fire', rain: 'water', sand: 'rock', snow: 'ice' }[m.weather]; sc = bt.weather === m.weather ? -80 : (b.hasType(good) || allies.some(a => a.hasType(good))) ? 42 : 5;
       // a thinking trainer takes its sky back: Sigrid's ace calls the snow down again once the player has changed it
@@ -71,7 +73,7 @@ G.AI = (function () {
       case 'leechseed': sc = t && !t.vol.seeded && !t.hasType('grass') ? 42 : -60; break;
       case 'taunt': sc = t && !t.vol.taunt && t.mon.moves.some(x => G.MOVES[x.id].cat === 'status') ? 32 : -30; break;
       case 'confuse': sc = t && !t.vol.confused ? 28 + (lvl >= 2 && b.abilityHas && b.abilityHas('prankster') ? 22 : 0) : -60; break;   // a Prankster plays its trick first
-      case 'trickroom': sc = bt.trickRoom ? -80 : (foes.every(f => bt.speed(f) > bt.speed(b)) ? 55 : -40); break;
+      case 'trickroom': sc = bt.trickRoom ? -80 : (foes.every(f => bt.speed(f) > bt.speed(b)) ? 55 + (lvl >= 3 && b.turnsOut === 0 ? 35 : 0) : -40); break;   // a room-twister twists the moment it comes in (Crane's Masquerail)
       case 'roar': sc = t && Object.values(t.stages).some(v => v >= 2) ? 55 : bt.wild ? -40 : 5; break;
       case 'healbell': sc = bt.partyOf(b.side, b.owner).filter(x => x.status).length * 25 - 10; break;
       case 'bellydrum': sc = hpF > .75 && threat < .4 ? 50 : -60; break;
@@ -132,7 +134,8 @@ G.AI = (function () {
           const cur = matchup(bt, b.mon, b.side, b.owner);
           if (cur < -.55 && G.chance(level >= 4 ? .6 : .38)) {
             let best = null, bs = cur + .5;
-            for (const x of bt.bench(b.side, b.owner)) { const s = matchup(bt, x.m, b.side, b.owner); if (s > bs) { bs = s; best = x; } }
+            const bench = bt.bench(b.side, b.owner);
+            for (const x of bench) { if (trainer.aceLast && tr.aceUid === x.m.uid && bench.length > 1) continue; const s = matchup(bt, x.m, b.side, b.owner); if (s > bs) { bs = s; best = x; } }   // an aceLast trainer holds the ace back (Crane: her Stormhound waits for the room)
             if (best && !b.vol.switchedRecently) { b.vol.switchedRecently = true; return { type: 'switch', to: best.i }; }
           }
         }
