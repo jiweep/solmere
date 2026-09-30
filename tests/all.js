@@ -20,7 +20,7 @@ const CHECKS = [
   // (two Flying types into the Electric gym is meant to be hard; the design target with Digmole is 64-84%)
   ['Early gym balance', 'tests/early_balance.js', [], o => { const bad = [...o.matchAll(/competent (Juniper natural|Ione natural\+Digmole)[^:]*:\s+(\d+)% win/g)].filter(m => +m[2] < 50); return !bad.length || bad.map(m => m[0]).join('; '); }],
   // docs/GRAVITY_PLAN.md: a player who skips everything loses to Juniper; one who listened wins
-  ['Attention pays at the first four gyms', 'tests/attention.js', [], o => /^ok$/m.test(o) || 'careless wins or prepared loses'],
+  ['Attention pays at every gym so far', 'tests/attention.js', [], o => /^ok$/m.test(o) || 'careless wins or prepared loses'],
   ['Touch controls fit every screen', 'tests/phone_layout.js', [], o => /^ok: the controls fit/m.test(o) || 'layout problems'],
   ['Phone budget on every map', 'tools/phonebudget.js', ['--views', '3'], o => /^ok: all/m.test(o) || 'maps over budget', true],
   ['Golden path: New Game to Champion', 'tools/goldenpath.js', ['new', '--max', '6000'], o => /"champion": true/.test(o) || 'did not reach the Champion', true],

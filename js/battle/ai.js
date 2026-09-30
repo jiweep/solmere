@@ -51,11 +51,15 @@ G.AI = (function () {
       sc = 26 + tot * 10 - cur * 14;
       if (hpF < .5) sc -= 30; if (threat > .6) sc -= 35; if (threat < .25) sc += 20;
       if (m.boost.spe && faster) sc -= 10;
+      // a dancer dances the moment it comes in fresh: that is its whole plan (Kaelen's and Oro's Tempestral)
+      if (lvl >= 2 && m.boost.spe && (m.boost.atk || m.boost.spa) && b.turnsOut === 0 && hpF === 1 && !cur) sc += 40;
     }
     if (m.heal || m.fx === 'weatherheal' || m.fx === 'rest') sc = hpF < .35 ? 80 : hpF < .55 ? 50 : hpF < .8 ? 5 : -50;
     if (m.stats && t) { sc = 18; if (m.stats.atk && t.stats.atk < t.stats.spa) sc -= 12; if (m.stats.def && b.stats.atk < b.stats.spa) sc -= 12; if (t.stages[Object.keys(m.stats)[0]] <= -2) sc -= 25; }
     if (m.hazard) { const n = F.hazards[m.hazard]; const left = bt.bench(1 - b.side, 0).length; sc = n ? (m.hazard === 'spikes' && n < 3 ? 25 : -60) : 30 + left * 6; if (bt.wild) sc = -40; }
     if (m.screen) sc = S.cond[m.screen] ? -80 : m.screen === 'veil' && bt.weather !== 'snow' ? -80 : m.screen === 'tailwind' ? 32 : 36;
+    // a wind is worth calling when the other side is faster: Kaelen's plan (his Stratowyrm leads with it), and the player's answer to it
+    if (m.screen === 'tailwind' && !S.cond.tailwind && lvl >= 2 && (foes.some(f => bt.speed(f) > bt.speed(b)) || F.cond.tailwind || (b.turnsOut === 0 && bt.bench(b.side, b.owner).length))) sc = 64 + (b.turnsOut === 0 ? 16 : 0);
     if (m.weather) {
       const good = { sun: 'fire', rain: 'water', sand: 'rock', snow: 'ice' }[m.weather]; sc = bt.weather === m.weather ? -80 : (b.hasType(good) || allies.some(a => a.hasType(good))) ? 42 : 5;
       // a thinking trainer takes its sky back: Sigrid's ace calls the snow down again once the player has changed it

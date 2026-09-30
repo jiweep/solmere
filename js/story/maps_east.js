@@ -265,7 +265,7 @@
         { type: 'trigger', x: 13, y: 13, w: 7, h: 1, script: 'hq_wren', cond: ['badge5', '!hq_started'] },
         { type: 'npc', id: 'sk_sailor', x: 15, y: 4, look: 'sailor', dir: 'up', script: 'sky_sailor' },
         { type: 'npc', id: 'sk_w1', x: 17, y: 21, look: 'gentleman', dir: 'left', move: 'wander', radius: 2, text: 'Skyreach is the richest city in Solmere. Crane pays for everything here. But everything has a price.' },
-        { type: 'npc', id: 'sk_w2', x: 7, y: 21, look: 'lady', dir: 'right', move: 'look', text: 'Warden Kaelen was Champion once, before Sable. They say he still flies his Tempestral over the Mere at dawn.' },
+        { type: 'npc', id: 'sk_w2', x: 7, y: 21, look: 'lady', dir: 'right', move: 'look', text: 'Warden Kaelen was Champion once, before Sable. He still flies his Tempestral over the Mere at dawn. Its scales shine so bright that the first thing to hit it just slides off. Nobody has ever landed a second.' },
         { type: 'npc', id: 'sk_kid', x: 26, y: 21, look: 'kid', dir: 'down', move: 'wander', radius: 2, text: 'A Link Cord makes Bouldrok evolve! I saved up for a whole year to buy one. Now I just need a Bouldrok.' },
         { type: 'item', id: 'sk_h1', x: 1, y: 25, item: 'dragonfang', hidden: true },
       ], spawn: [16, 17] });
@@ -276,7 +276,7 @@
     objs: [
       { type: 'npc', id: 'clerk', x: 0, y: 3, look: 'clerk', dir: 'right', script: 'mart_clerk' },
       { type: 'npc', id: 'clerk2', x: 0, y: 5, look: 'clerk', dir: 'right', script: 'sky_special' },
-      { type: 'npc', id: 'skm1', x: 9, y: 5, look: 'ace', dir: 'up', text: 'Held items change everything at high levels. A Life Gem on a fast attacker is hard to beat.' },
+      { type: 'npc', id: 'skm1', x: 9, y: 5, look: 'ace', dir: 'up', text: 'The dragon Tamers up the road only go quiet for one thing: an Aurorelle. Dragon moves pass straight through it, like it isn\'t there. Frostpeak is full of Snowlets, if you know how to grow one. Mind the steel in Kaelen\'s jaws, though.' },
     ], spawn: [6, 6] });
   G.defHouse('sky_house1', 'Skyreach House', 1, [{ type: 'npc', id: 'skh1', x: 7, y: 5, look: 'scientist', dir: 'left', script: 'iv_judge' }]);
   G.defHouse('sky_house2', 'Skyreach House', 2, [{ type: 'npc', id: 'skh2', x: 3, y: 5, look: 'oldman', dir: 'right', script: 'hidden_power_guy' }]);
@@ -331,6 +331,7 @@
       { type: 'npc', id: 'hq_lark', x: 8, y: 5, look: 'lark', dir: 'down', script: 'hq_admins', cond: '!hq_admins_done' },
       { type: 'npc', id: 'hq_crane', x: 7, y: 2, look: 'crane', dir: 'down', script: 'hq_crane', cond: '!hq_done' },
       { type: 'npc', id: 'hq_kaelen', x: 2, y: 3, look: 'kaelen', dir: 'right', script: 'hq_kaelen', cond: '!hq_done' },
+      { type: 'npc', id: 'hqw', x: 3, y: 3, look: 'wren', dir: 'left', script: 'hq_wren_cell', cond: ['wren_alone', 'hq_started', '!hq_done'] },   // went in alone (vars.wrenRoute5)
       { type: 'trigger', x: 6, y: 6, w: 3, h: 1, script: 'hq_admins', cond: '!hq_admins_done' },
     ], spawn: [7, 12] });
   // Skyreach gym: platforms over open sky, joined by one-way wind currents. The current that starts beside

@@ -9,7 +9,7 @@
     // (none in Brinehollow, Fernwick, Galvan or Cindervale: through the third badge the finds are few, and someone points you to each)
     duskmere: [[28, 20, 'duskorb', 2], [2, 16, 'hyperpotion']],
     frostpeak: [[2, 19, 'revive'], [27, 2, 'ultraorb'], [18, 16, 'hyperpotion']],
-    skyreach: [[22, 26, 'ppup'], [1, 4, 'ultraorb', 2], [32, 22, 'rarecandy']],
+    skyreach: [[32, 22, 'rarecandy']],   // the PP Up and Ultra Orbs went (GRAVITY_PLAN item 7); the Mart sells Orbs
   };
   const PEOPLE = {
     route6: [{ type: 'npc', id: 'r6_castaway', x: 9, y: 10, look: 'fisher', dir: 'down', move: 'look',

@@ -388,7 +388,7 @@
       cinder_gym: ['Fire', 'Everyone who walks into Brann\'s forge thinks they already know how to put a fire out. He\'s counting on it.'],
       dusk_gym: ['Ghost', 'Mireille\'s Echoes never hit a healthy Echo first. Everyone who loses in here says the same thing afterwards: "I didn\'t see it coming." Mind you, it is very dark.'],
       frost_gym: ['Ice', 'Mind the slippery floor. Sigrid has never lost a battle on a snowy day, and she\'ll tell you so herself. Funny thing is, it\'s always snowing in here.'],
-      sky_gym: ['Dragon', 'The wind currents only blow one way, so read the arrows before you step on. Ice, Dragon and Fairy moves are strong against Dragons, and Kaelen\'s Tempestral is a formidable Echo.'],
+      sky_gym: ['Dragon', 'The wind currents only blow one way, so read the arrows before you step on. Kaelen brings his own weather to a battle. Nobody has ever outrun his dragons with the wind at their backs. Mind you, the wind in here never blows for long.'],
     }[id] || ['?', 'Good luck!'];
     await S.say(`Hello there, challenger! This gym's Warden uses ${info[0]}-type Echoes. ${info[1]}`, 'Gym Guide');
     if (id === 'dusk_gym' && !G.bag.has('lantern')) await S.say('The sign on the door isn\'t a joke, by the way. "Bring your own light." Old Ode by the water keeps every lamp in Duskmere.', 'Gym Guide');
@@ -996,38 +996,89 @@
   // ------------------------------------------------------------- SKYREACH
   SC.sky_gym_guard = async (S) => { S.facePlayer('sk_gguard'); await S.say('Warden Kaelen went into the Crane tower this morning to have a word with the Director, and never came out. The gym is closed until he returns.', 'Dragon Tamer'); };
   SC.sky_sailor = async (S) => { S.facePlayer('sk_sailor'); await S.say(G.flag('badge6') ? 'The Lodestar is straight north across the water. Surf safely.' : 'The sea route north leads to the Lodestar. It went dark last night, for the first time in my whole life. It felt like the sky had blinked.', 'Sailor'); };
+  // What you told Wren on Route 5 (vars.wrenRoute5) decides whether they go into Crane HQ with you (GRAVITY_PLAN item 4).
+  // "Take it off" and "not too late" were said to them; "since Cindervale" was something you'd seen and they hadn't, and
+  // that is the one they can't get past: they go in alone to put right the key they carried, and you find them in a cell.
+  const wrenAlone = () => G.getVar('wrenRoute5', 1) === 2;
   SC.hq_wren = async (S) => {
     if (G.flag('hq_started')) return;
     S.faceEach('sk_wren', 'player');
+    const k = G.getVar('wrenRoute5', 1);
     await S.say(`${P()}. Wait. Please.`, WREN());
     await S.say('I was wrong. About Crane, about the Fellowship, about my rank. All of it. The Amplifier was hurting my partner, and all I cared about was climbing higher.', WREN());
-    await S.say(['You told me to take it off, right there on the ice. So I did. I threw the band into the lake.', 'You said it wasn\'t too late. I kept hearing it. So I threw the band into the lake.', 'You saw it before I did. That\'s the part I couldn\'t get past. I threw the band into the lake.'][G.getVar('wrenRoute5', 1)], WREN());
-    await S.say('I\'m not a Fellow any more. It feels strange... like I can finally breathe.', WREN());
+    await S.say(['You told me to take it off, right there on the ice. So I did. I threw the band into the lake.', 'You said it wasn\'t too late. I kept hearing it. So I threw the band into the lake.', 'You saw it before I did. That\'s the part I couldn\'t get past. I threw the band into the lake.'][k], WREN());
+    if (G.flag('band_on')) {
+      await S.say(`${R()} looks at the band on your wrist, and keeps looking.`);
+      await S.say('You\'re still wearing yours. I\'m not going to tell you to take it off. I know what it feels like from the inside now. It doesn\'t feel like anything. That\'s the problem.', WREN());
+    }
     await S.say('I overheard them. Warden Kaelen is locked up on the Director\'s floor. And Crane is moving the Chorus Engine\'s core to the Lodestar. Tonight.', WREN());
-    await S.say('I took a keycard on my way out. The lobby elevator needs it. We stop her. Together, like we always used to do everything.', WREN());
+    await S.say('The core sits in a vault that only the Tide Key opens. The key I carried out of the Ruins. So this is my mess.', WREN());
+    await S.say('I took a keycard on my way out. The lobby elevator needs it.', WREN());
     await S.give('cranekeycard');
-    S.set('hq_started'); S.set('hq_card'); S.quest('main7', 'hq');
-    await S.say('I\'ll meet you upstairs. And... thank you for not saying "I told you so."', WREN());
+    S.set('hq_started'); S.set('hq_card');
+    if (k < 2) {
+      await S.say('We stop her. Together, like we always used to do everything.', WREN());
+      S.quest('main7', 'hq');
+      await S.say(k === 0 ? 'I\'ll meet you upstairs. And... thank you for not saying "I told you so."' : 'I\'ll meet you upstairs. You said it wasn\'t too late. Let\'s find out.', WREN());
+    } else {
+      await S.say('Three towns, and I never saw it once. So this part I have to do by myself. Kaelen is up there because of a key I carried.', WREN());
+      await S.say('Don\'t follow me straight away. Give me a head start. I need to have done one thing right on my own.', WREN());
+      S.set('wren_alone'); S.quest('main7', 'alone');
+    }
     await S.move('sk_wren', 'u', 2); S.remove('sk_wren');
   };
-  G.QUESTS.main7.steps = { go: G.QUESTS.main7.desc, hq: 'Infiltrate Crane Dynamics HQ with Wren and free Warden Kaelen.', gym: 'Crane fled. Challenge Warden Kaelen at the Skyreach Gym.' };
-  SC.hq1_enter = async (S) => { if (G.flag('hq_started') && !G.flag('hq_done')) G.toast('The elevator at the back leads to the Director\'s floor.'); };
-  SC.hq_elevator_guard = async (S) => { S.facePlayer('hq_lift'); await S.say('No keycard, no elevator! Director\'s orders!', 'Hollow Grunt'); };
-  SC.hq_recep = async (S) => { S.facePlayer('hq_recep'); await S.say(G.flag('hq_done') ? 'Everyone here is being questioned. I only worked the front desk. I never knew what they were doing upstairs.' : 'W-welcome to Crane Dynamics! Please, I only work the front desk!', 'Receptionist'); };
+  G.QUESTS.main7.steps = { go: G.QUESTS.main7.desc,
+    hq: 'Wren: "Warden Kaelen is locked up on the Director\'s floor. The lobby elevator needs the keycard. I\'ll meet you upstairs."',
+    alone: 'Wren went into the Crane tower alone: "Give me a head start. I need to have done one thing right on my own."',
+    gym: 'Warden Kaelen: "The Lodestar is north across the water. But first, my gym."' };
+  // the band you kept on starts to pull the moment you're under the Engine's roof (GRAVITY_PLAN item 6)
+  SC.hq1_enter = async (S) => {
+    if (!G.flag('hq_started') || G.flag('hq_done')) return;
+    if (G.save.vars.tips) G.toast('The elevator at the back leads to the Director\'s floor.');
+    if (G.flag('band_on') && !G.flag('hq_strain')) {
+      S.set('hq_strain');
+      const pm = partner(), nm = pm ? G.mon.name(pm) : 'Your partner';
+      await S.say(`${pm && pm !== G.party.lead() ? `${nm}'s Orb rattles on your belt. ` : `${nm} stops dead in the doorway. `}The Chorus band is warm against your wrist, and the dial is creeping up on its own. Somewhere above you, something hums.`);
+      if (G.flag('rival3_done')) await S.say(`${nm} makes a small sound. It is the thin, tired sound ${R()}'s partner made on the ice.`);
+    }
+  };
+  SC.hq_elevator_guard = async (S) => { S.facePlayer('hq_lift'); await S.say(G.flag('wren_alone') ? 'No keycard, no elevator! ...Wait. Didn\'t the Fellow just go up with a card like that?' : 'No keycard, no elevator! Director\'s orders!', 'Hollow Grunt'); };
+  SC.hq_recep = async (S) => { S.facePlayer('hq_recep'); await S.say(G.flag('hq_done') ? 'Everyone here is being questioned. I only worked the front desk. I never knew what they were doing upstairs.' : G.flag('wren_alone') ? 'A Fellow in an old coat went up in the lift a little while ago. On their own. They didn\'t look like they expected to come back down.' : 'W-welcome to Crane Dynamics! Please, I only work the front desk!', 'Receptionist'); };
+  // Lark's answer in Glimmer Cave (vars.larkCave), read back where she can't walk away from it
+  const larkAtHQ = async (S) => {
+    const k = G.getVar('larkCave', -1); if (k < 0) return;
+    await S.say(['Still protecting things that aren\'t yours, hero?', 'Still not scared? You should be. I am, a bit. Don\'t tell Grey.', 'You asked me why I work for them. In the cave. I\'ve been asking myself ever since. I still don\'t have an answer I like.'][k], 'Admin Lark');
+  };
   SC.hq_admins = async (S) => {
     if (G.flag('hq_admins_done')) return;
     G.audio && G.audio.music('encounter_villain');
-    await S.say('You again?! Don\'t you ever give up?', 'Admin Lark');
-    await S.say('And the Fellow who left us. Ranked fourth, and threw it all away. I did not predict that.', 'Admin Grey');
-    await S.approach('hqw', 'wren', { prefer: ['down', 'left', 'right'] });
-    await S.say(`Two on two. Ready, ${P()}? Let's show them what a real bond looks like!`, WREN());
-    const won = await G.storyBattle('grey2', { withTrainer: 'lark2', ally: 'wren_ally', double: true }); if (!won) { S.remove('hqw'); return; }
+    const alone = G.flag('wren_alone');
+    if (alone) {
+      await S.say('You came up after all. The Fellow did not wait for you.', 'Admin Grey');
+      await S.say('Walked straight past us to the cells, bold as anything. Put up a real fight when we closed the door, too. My Nightwing won\'t be flying again today.', 'Admin Lark');
+      await S.say('I estimated a ninety percent chance that they would bring you. They did not. I have been wrong about the two of you before. I keep a separate column for it now.', 'Admin Grey');
+      await larkAtHQ(S);
+      await S.say('Two of us. One of you. Show me the rest.', 'Admin Grey');
+    } else {
+      await S.say('You again?! Don\'t you ever give up?', 'Admin Lark');
+      await S.say('And the Fellow who carried the Tide Key out of the Ruins for us. Ranked fourth for it, and threw it all away. I did not predict that.', 'Admin Grey');
+      await larkAtHQ(S);
+      await S.approach('hqw', 'wren', { prefer: ['down', 'left', 'right'] });
+      await S.say(`Two on two. Ready, ${P()}? Let's show them what a real bond looks like!`, WREN());
+    }
+    const won = await G.storyBattle('grey2', alone ? { withTrainer: 'lark2w', double: true } : { withTrainer: 'lark2', ally: 'wren_ally', double: true }); if (!won) { S.remove('hqw'); return; }
     await S.say('...Go. The Director is waiting. I estimate a twelve percent chance that you change her mind. I find that I am hoping for the twelve.', 'Admin Grey');
-    await S.say('Tch. Go on, then. Before I change my mind.', 'Admin Lark');
+    await S.say(G.getVar('larkCave', -1) === 2 ? 'Go on. Before I work out the answer to your question.' : 'Tch. Go on, then. Before I change my mind.', 'Admin Lark');
+    if (alone) {
+      await S.say('The cells are at the west end. The Fellow is in the one beside the Warden. I did not lock it. Lark did.', 'Admin Grey');
+      await S.say('...I didn\'t lock it very hard.', 'Admin Lark');
+    }
     S.remove('hq_grey'); S.remove('hq_lark');
     S.set('hq_admins_done');
-    await S.say('I\'ll get Kaelen out. You go after Crane. Hurry!', WREN());
-    await S.fadeOut(8); S.remove('hqw'); S.spawn({ id: 'hqw', x: 3, y: 3, look: 'wren', dir: 'left' }); await S.fadeIn(8);
+    if (!alone) {
+      await S.say('I\'ll get Kaelen out. You go after Crane. Hurry!', WREN());
+      await S.fadeOut(8); S.remove('hqw'); S.spawn({ id: 'hqw', x: 3, y: 3, look: 'wren', dir: 'left' }); await S.fadeIn(8);
+    }
     S.restoreMusic();
   };
   SC.hq_crane = async (S) => {
@@ -1038,9 +1089,11 @@
     await S.say('So this is the Tamer who keeps unravelling my plans. You look so young.', N);
     await S.say('Have you ever heard the voice of the one you love most... and then nothing? Twelve years of nothing.', N);
     await S.say('Every Chorus band in Solmere draws a little of its bond into my Engine. The Fellows never asked where their strength was going.', N);
+    await S.say(G.flag('wren_alone') ? 'Your friend carried the Tide Key out of the Ruins for me. Now they sit in my cell and won\'t say a word. Loyal to the end, that one. Just not to me.' : 'The core sleeps in a vault only the Tide Key opens. Your friend carried it out of the Ruins for me. I made sure they were thanked.', N);
     await S.say('When I fire it, Orrelume will sing louder than it ever has. Loud enough to reach Lumi. Every bond in Solmere, borrowed for a single moment. A small price for a miracle.', N);
     const k = await choose('Crane waits, curious what you will say.', ['You\'re hurting everyone to ease your own pain.', 'Those bonds aren\'t yours to take.', 'Hale told me what happened.'], N);
     await S.say([`Yes. I've weighed it, and I've made my peace with it.`, `Nothing is ever given. Everything is taken by someone. I've simply chosen what to take.`, `...Did she? Then Marisol has finally told someone the truth. It changes nothing.`][k], N);
+    G.setVar('craneHQ', k);
     await bandAtEngine(S, N);
     const won = await G.storyBattle('crane1'); if (!won) return;
     await S.say('...So your bond is real. Real enough to hurt me. Real enough to...', N);
@@ -1062,6 +1115,7 @@
     if (await G.ask(`${nm} is shaking.`, ['Tear the band off.', 'Leave it on.'], { cancel: 0 }) === 0) {
       G.setFlag('band_on', false);
       G.bag.remove('chorusband');
+      S.set('band_torn');
       await S.say(`You tear the band off and it clatters across the floor. ${nm} sags against you, breathing hard, and doesn't let go.`);
       await S.say('...Just like that. Twelve years I have watched people choose the number. You chose the Echo.', N);
     } else {
@@ -1070,25 +1124,47 @@
     }
     S.set('hq_band_said');
   };
+  SC.hq_wren_cell = async (S) => {
+    S.facePlayer('hqw');
+    await S.say(`${R()} sits in the cell beside the Warden's with their knees pulled up. They look up at you, then quickly away.`);
+  };
   SC.hq_kaelen = async (S) => {
     if (!G.flag('hq_admins_done') || G.flag('hq_done')) { if (!G.flag('hq_admins_done')) await S.say('A tall man in a violet coat sits calmly in a glass cell, reading. He nods at you like you\'re late.'); return; }
+    const N = 'Warden Kaelen', alone = G.flag('wren_alone');
     S.remove('hq_kaelen'); await S.approach('hq_kaelen', 'kaelen');
-    await S.say('Thank you, both of you. Crane\'s people took me while I was looking into her shipments.', 'Warden Kaelen');
-    await S.say('The Lodestar is north across the water. But first, my gym. The dragons will want to measure you before you face her again.', 'Warden Kaelen');
+    await S.say(alone ? 'Thank you. Crane\'s people took me while I was looking into her shipments. Your friend in there has been keeping me company.' : 'Thank you, both of you. Crane\'s people took me while I was looking into her shipments.', N);
+    if (G.flag('band_torn')) await S.say('I watched you tear that band off through the glass. Most people who put one on never manage it.', N);
+    else if (G.flag('band_on')) await S.say('You kept the band on. Even here, even with her standing over you. The dragons will have something to say about that.', N);
+    await S.say('The Lodestar is north across the water. But first, my gym. The dragons will want to measure you before you face her again.', N);
+    if (alone) {
+      S.faceEach('hqw', 'player');
+      await S.say('You came up anyway. I told myself I\'d do this one thing on my own, and I got as far as the cells.', WREN());
+      await S.say('You were right, on the ice. Since Cindervale. I couldn\'t hear it from you then. I think I can now.', WREN());
+    }
     await S.say(`I'll help the police secure the tower. ${P()}... thank you for not giving up on me, even when I gave you every reason to.`, WREN());
     S.set('hq_done'); S.quest('main7', 'gym');
     G.persist.write();
     await S.fadeOut(20); S.remove('hq_kaelen'); S.remove('hqw'); await S.fadeIn(20);
   };
+  // Kaelen's plan is his weather (trainers.js): Stratowyrm calls a Tailwind and his dragons outpace everything while it
+  // blows; Tempestral's scales shed the first blow and then it dances. The wind lasts four breaths (Ryu, the guide), the
+  // Old Strategist's Decoy waits it out, and a wind of your own answers it (the Tailwind disc behind the Spire); the
+  // scales crack if something hits them first (the lady on the square, Mei); a Roar blows the dance away (Oro).
   SC.kaelen = async (S) => {
     const N = 'Warden Kaelen';
     S.facePlayer('kaelen_npc');
     if (G.flag('badge6')) { await S.say('North of the city, the sea route leads to the Lodestar. Go, and save the song.', N); return; }
-    await S.say('I was Champion once, before Sable. It taught me that strength without a reason is only noise.', N);
-    await S.say('Now. Let\'s see if you can weather my storm.', N);
+    if (!G.flag('kaelen_met')) {   // a rematch after a loss goes straight to his retry line
+      await S.say('I was Champion once, before Sable. It taught me that strength without a reason is only noise.', N);
+      { const pm = partner(); if (pm) await S.say(fromOrb(pm) + ({ budling: `${G.mon.name(pm)} turns its face up into the wind and lets its leaves stream out behind it. Kaelen watches it for a long moment.`, kindlet: `The wind catches ${G.mon.name(pm)}'s flame and roars it up bright. ${G.mon.name(pm)} doesn't flinch. Kaelen nods, once.`, sealet: `${G.mon.name(pm)} leans into the wind with its eyes shut, as if it were swimming. Kaelen almost smiles.` }[G.evoLine(pm.sp)[0].id] || `${G.mon.name(pm)} steps up beside you.`)); }
+      await S.say('Now. Let\'s see if you can weather my storm.', N);
+      S.set('kaelen_met');
+    }
     const won = await G.storyBattle('kaelen'); if (!won) return;
     await S.say('The storm has passed. The dragons respect you, and so do I. The Wyrm Badge is yours.', N);
     await wardenWin(S, { badge: 'wyrm', flag: 'badge6', name: N, tm: 'tm50', tmText: 'And {tm}. A dragon\'s roar, given shape.', gymTrainers: ['sg_1', 'sg_2', 'sg_3'] });
+    // Wren, read back by the man who sat beside them in the tower
+    await S.say(G.flag('wren_alone') ? `Your friend sat in that cell beside me for an hour and never once asked me to get them out. They asked me whether you were strong enough for this gym. I said we'd see. We've seen.` : `${R()} came to see me after the tower. They told me what you said to them on the ice. They repeat it like something they mean to keep.`, N);
     await S.say('Six badges. The Conclave will call for you soon. But first, the Lodestar. Surf north from the harbour.', N);
     S.quest('main7', 'done'); S.quest('main8', 'go');
   };
@@ -1101,8 +1177,12 @@
   };
   SC.hidden_power_guy = async (S) => {
     S.facePlayer('skh2');
-    if (!G.flag('got_tm20')) { await S.say('In my day, we made decoys out of straw to fool our opponents. This Skill Disc works far better. Decoy!', 'Old Strategist'); await S.give('tm20'); S.set('got_tm20'); return; }
-    await S.say('A Decoy blocks status moves and takes hits in your Echo\'s place. Pair it with a move that raises your stats.', 'Old Strategist');
+    if (!G.flag('got_tm20')) {
+      await S.say('In my day, we made decoys out of straw. A decoy is for waiting out something you can\'t stop. A storm, say. Let it blow itself out on the straw.', 'Old Strategist');
+      await S.say('This Skill Disc works far better than straw. Decoy! Young Kaelen hates it. Don\'t tell him where you got it.', 'Old Strategist');
+      await S.give('tm20'); S.set('got_tm20'); return;
+    }
+    await S.say('A Decoy takes the hits in your Echo\'s place while the weather does what weather does. Then it runs out, and so does the wind.', 'Old Strategist');
   };
   // ------------------------------------------------------------- THE LODESTAR
   SC.tl_grunt = async (S, ctx) => {

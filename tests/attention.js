@@ -14,8 +14,9 @@
 // a Scrapmonk for Rock: careless fights who blocks the road, straight also catches the Water Echo everyone reaches for
 // (a Clawdle on Route 3), prepared talks to Fisher Bo and the cave hiker and uses what they point at: the Rain Call
 // Disc behind the little trees and the Rock Slide Disc in the Hollow's tunnel.
-// The fourth gym (Mireille, Duskmere) and the fifth (Sigrid, Frostpeak) carry them on; see journey() for who brings what.
-//   node tests/attention.js [runs=150] [gym=juniper|ione|brann|mireille|sigrid|all]   (exits 1 if careless wins too often or prepared too rarely)
+// The fourth gym (Mireille, Duskmere), the fifth (Sigrid, Frostpeak) and the sixth (Kaelen, Skyreach) carry them on; see
+// journey() for who brings what. `hq` measures Grey and Lark's double at Crane HQ (HQ_ALONE=1: without Wren); not gated.
+//   node tests/attention.js [runs=150] [gym=juniper|ione|brann|mireille|sigrid|kaelen|all]   (exits 1 if careless wins too often or prepared too rarely)
 const { load, CORE } = require('./harness');
 const G = load(CORE);
 G.rng = new G.RNG(+(process.env.SEED || 20260930));   // seeded, so a result near a threshold doesn't flip from run to run
@@ -23,8 +24,9 @@ G.TRAINERS = {}; G.rivalOf = { budling: 'kindlet', kindlet: 'sealet', sealet: 'b
 new Function('G', require('fs').readFileSync(require('path').join(__dirname, '../js/story/trainers.js'), 'utf8'))(G);
 const N = +(process.argv[2] || 150);
 // JUNIPER='[["shroomie",10,{"moves":[...]}],...]' tries another team without editing trainers.js
-for (const id of ['juniper', 'ione', 'brann', 'grey1', 'mireille', 'sigrid']) if (process.env[id.toUpperCase()]) G.TRAINERS[id].party = JSON.parse(process.env[id.toUpperCase()]).map(([sp, lvl, x]) => ({ sp, lvl, ...(x || {}) }));
+for (const id of ['juniper', 'ione', 'brann', 'grey1', 'mireille', 'sigrid', 'kaelen']) if (process.env[id.toUpperCase()]) G.TRAINERS[id].party = JSON.parse(process.env[id.toUpperCase()]).map(([sp, lvl, x]) => ({ sp, lvl, ...(x || {}) }));
 const GYM = process.argv[3] || 'all';
+let STARTER = 'budling';
 const display = { async play() { } };
 // engine.js awardExp (as tests/level_curve.js): the fighter gets it all, the rest of the team .75 (EXP Share)
 const gainOne = (m, sp, L, trainer, k) => { const b = G.SPECIES[sp].exp; let e = (b * L / 5) * Math.pow((2 * L + 10) / (L + m.lvl + 10), 2.5) + 1; e *= (trainer ? 1.5 : 1) * k; G.mon.addExp(m, Math.max(1, Math.floor(e))); };
@@ -102,7 +104,27 @@ function journey(starter, style, gym) {
     const rank = m => (teach[m.sp] || []).includes('raincall') ? 0 : (teach[m.sp] || []).includes('wallbreaker') ? 1 : ['nightwing', 'terramole'].includes(m.sp) ? 3 : 2;
     team.sort((a, b) => rank(a) - rank(b));
   }
-  return team.slice(0, 6).map(m => [m.sp, Math.min(39, m.lvl), teach[m.sp]]);   // the level cap after four badges
+  if (gym === 'sigrid') return team.slice(0, 6).map(m => [m.sp, Math.min(39, m.lvl), teach[m.sp]]);   // the level cap after four badges
+  beat(team, 'sigrid');
+  // Crane HQ and Skyreach: the grunts, scientists, Grey and Lark (with Wren) and Crane all stand in the way, as do the three
+  // Tamers on the gym's wind path. Straight brings the answer everyone knows for dragons: Ice (Sigrid's Blizzard disc).
+  // Prepared listened in Skyreach too: the Old Strategist's Decoy waits out the wind (Ryu: it blows four breaths), and it
+  // chips Tempestral's shining scales before the big hit (Spikes from a Terramole, if it has one; Mei and the lady on the square).
+  for (const id of ['hq_grunt1', 'hq_grunt2', 'hq_sci1', 'hq_grunt3', 'hq_sci2']) beat(team, id);
+  if (gym === 'hq') return team.slice(0, 6).map(m => [m.sp, Math.min(45, m.lvl), teach[m.sp]]);   // Grey and Lark are measured, not gated: node tests/attention.js 100 hq
+  for (const id of ['grey2', 'lark2', 'crane1']) beat(team, id);
+  wild(team, style === 'careless' ? 3 : style === 'straight' ? 6 : 12, 1, ['riptalon', 'crustank', 'jellume', 'mireel'], 36);
+  evolve(team); for (const id of ['sg_1', 'sg_2', 'sg_3']) beat(team, id); evolve(team);
+  const t6 = team.slice(0, 6);
+  if (style !== 'careless') { const c = t6.find(m => G.canLearnTM(m.sp, 'blizzard') && !(teach[m.sp] || []).length); if (c) teach[c.sp] = ['blizzard']; }
+  if (style === 'prepared') {   // a flyer leads with a wind of its own (Galeclaw knows Tailwind) and carries Oro's Roar; the Decoy goes on a sturdy Echo
+    const f = t6.findIndex(m => m.sp === 'galeclaw'); if (f > 0) t6.unshift(t6.splice(f, 1)[0]);
+    if (t6[0].sp === 'galeclaw') teach.galeclaw = ['roar'];
+    const d = t6.find(m => m.sp !== 'galeclaw' && G.canLearnTM(m.sp, 'decoy')); if (d) teach[d.sp] = [...(teach[d.sp] || []), 'decoy'];
+    // and the Snowlet from Frostpeak, grown with Vesna's Frost Stone: dragon moves pass straight through an Aurorelle (the kid by the Mart)
+    const w = t6.findIndex(m => m.sp === 'slumbruin'); t6.splice(w >= 0 ? w : 5, 1, G.mon.create('aurorelle', 43));
+  }
+  return t6.map(m => [m.sp, Math.min(45, m.lvl), teach[m.sp]]);   // the level cap after five badges
 }
 function foe(id) {
   const T = G.TRAINERS[id];
@@ -121,21 +143,30 @@ async function rate(team, ai, items, gym) {
     const player = { name: 'P', party, isPlayer: true, controller: G.AI.controller(ai), items: { ...items }, resonance: gym !== 'juniper' };   // Hale's band comes in Whisperwood
     // a player who went and found the Rain Call Disc uses it the moment the forge is lit or the snow comes down (the bots never weigh weather that high)
     const think = player.controller.decide.bind(player.controller);
-    player.controller.decide = (bt, req) => { const rc = req.moves.find(m => m.id === 'raincall' && !m.dis); return (bt.weather === 'sun' || bt.weather === 'snow') && rc ? { type: 'move', moveIdx: rc.idx } : think(bt, req); };
-    const bt = new G.Battle({ format: 'single', wild: false, sides: [{ trainers: [player] }, { trainers: [foe(gym)] }], displays: [display], exp: false, env: 'gym' });
+    // and one who took the Old Strategist's Decoy hides behind it while Kaelen's wind blows
+    player.controller.decide = (bt, req) => {
+      const rc = req.moves.find(m => m.id === 'raincall' && !m.dis); if ((bt.weather === 'sun' || bt.weather === 'snow') && rc) return { type: 'move', moveIdx: rc.idx };
+      const dc = req.moves.find(m => m.id === 'decoy' && !m.dis), me = bt.at(req.ref.s, req.ref.i);
+      if (dc && bt.sides[1].cond.tailwind && !me.vol.sub && me.hp > me.maxhp / 2) return { type: 'move', moveIdx: dc.idx };
+      return think(bt, req);
+    };
+    // Crane HQ: Grey and Lark together, with Wren beside you (what you told them on Route 5 decides it: HQ_ALONE=1 without)
+    const wren = () => { const r = G.rivalOf[STARTER]; return { name: 'Wren', party: [['galeclaw', 41], ['stormhound', 41], [G.evoLine(r).slice(-1)[0].id, 43]].map(([sp, l]) => G.mon.create(sp, l)), controller: G.AI.controller(3), items: {} }; };
+    const bt = gym === 'hq' ? new G.Battle({ format: 'double', wild: false, sides: [{ trainers: process.env.HQ_ALONE ? [player] : [player, wren()] }, { trainers: [foe('grey2'), foe(process.env.HQ_ALONE ? 'lark2w' : 'lark2')] }], displays: [display], exp: false, env: 'hq' })
+      : new G.Battle({ format: 'single', wild: false, sides: [{ trainers: [player] }, { trainers: [foe(gym)] }], displays: [display], exp: false, env: 'gym' });
     let guard = 0; const run = bt.collectActions.bind(bt); bt.collectActions = async function () { if (++guard > 200) { this.end('draw'); return []; } return run(); };
-    if ((await bt.run()).outcome === 'win') won++;
+    const res = await bt.run(); if (res.outcome === 'win') won++; else if (process.env.DIAG) { const k = bt.sides[1].trainers[0].party.filter(m => m.hp > 0).map(m => m.sp + ':' + m.hp).join(' '); (global.DG = global.DG || {})[k] = ((global.DG || {})[k] || 0) + 1; }
   }
   return won / N;
 }
 (async () => {
   const fail = [];
-  for (const gym of GYM === 'all' ? ['juniper', 'ione', 'brann', 'mireille', 'sigrid'] : [GYM]) {
+  for (const gym of GYM === 'all' ? ['juniper', 'ione', 'brann', 'mireille', 'sigrid', 'kaelen'] : [GYM]) {
     const rows = {};
-    console.log(`\n${G.TRAINERS[gym].name}: ${G.TRAINERS[gym].party.map(p => p.sp + ' ' + p.lvl).join(', ')}`);
+    console.log(`\n${gym === 'hq' ? 'Grey and Lark' : G.TRAINERS[gym].name}: ${(G.TRAINERS[gym] || G.TRAINERS.lark2).party.map(p => p.sp + ' ' + p.lvl).join(', ')}`);
     for (const s of ['budling', 'kindlet', 'sealet']) {
       for (const style of ['careless', 'straight', 'prepared']) {
-        const team = journey(s, style, gym), items = style === 'careless' ? {} : gym === 'brann' ? { superpotion: 3 } : gym === 'ione' ? { superpotion: 2 } : { potion: 2 };
+        STARTER = s; const team = journey(s, style, gym), items = style === 'careless' ? {} : gym === 'brann' ? { superpotion: 3 } : gym === 'ione' ? { superpotion: 2 } : { potion: 2 };
         const c = await rate(team, 3, items, gym), n = await rate(team, 1, items, gym);
         (rows[style] = rows[style] || []).push(c, n);
         console.log(`${s.padEnd(8)} ${style.padEnd(9)} ${team.map(t => t.join(' ')).join(', ').padEnd(64)} competent ${(100 * c).toFixed(0).padStart(3)}%   novice ${(100 * n).toFixed(0).padStart(3)}%`);
@@ -146,6 +177,7 @@ async function rate(team, ai, items, gym) {
     const avg = a => (100 * a.reduce((x, y) => x + y, 0) / a.length).toFixed(0);
     console.log(`average   careless ${avg(rows.careless)}%   straight ${avg(rows.straight)}%   prepared ${avg(rows.prepared)}%   (aim: under a third, about half, most)`);
   }
+  if (process.env.DIAG) console.log(global.DG);
   if (fail.length) { console.log('\nFAIL\n  ' + fail.join('\n  ')); process.exit(1); }
   console.log('ok');
 })();

@@ -751,6 +751,7 @@ G.THROW_MULT = [1, 1.25, 1.6, 2.2];   // catch-rate multiplier by throw quality:
         let hits = 1;
         if (m.multi) hits = b.abilityHas('skillLink') ? m.multi[1] : m.multi[0] === m.multi[1] ? m.multi[0] : G.pick([2, 2, 2, 3, 3, 3, 4, 5].filter(n => n >= m.multi[0] && n <= m.multi[1]));
         let done = 0, dealt = 0, lastCrit = false, lastShield = false;
+        const scaled = t.ability === 'multiscale' && t.hp >= t.maxhp && !t.vol.sub;   // shown, so the player can learn it (Kaelen's gym)
         for (let h = 0; h < hits; h++) {
           if (t.fainted || b.fainted) break;
           let r = this.calcDamage(b, t, m, { spread, eff });
@@ -763,6 +764,7 @@ G.THROW_MULT = [1, 1.25, 1.6, 2.2];   // catch-rate multiplier by throw quality:
           if (m.multi && t.hp <= 0) break;
         }
         if (m.multi) this.raw(`The Echo was hit ${done} time${done > 1 ? 's' : ''}!`);
+        if (scaled && dealt > 0) { this.popup(t); this.say('{0}\'s scales shone, and half the blow slid off!', t); }
         if (lastShield) { t.vol.resShield = false; this.emit({ t: 'shieldBreak', ref: t.ref() }); this.say('{0}\'s Resonant Shield absorbed the blow and shattered!', t); }
         if (eff > 1) { if (spread) this.say('It\'s super effective on {0}!', t); else this.raw('It\'s super effective!'); }
         else if (eff < 1) { if (spread) this.say('It\'s not very effective on {0}...', t); else this.raw('It\'s not very effective...'); }
